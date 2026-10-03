@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/recheck-prices",
+      "schedule": "0 19 * * *"
+    }
+  ]
+}

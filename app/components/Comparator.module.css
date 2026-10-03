@@ -759,6 +759,138 @@
   cursor: default;
 }
 
+.brandLink {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+.navLinks {
+  display: flex;
+  gap: 18px;
+}
+.navLink,
+.navLinkActive {
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  color: #c9d2e5;
+  padding: 4px 1px;
+  white-space: nowrap;
+}
+.navLinkActive {
+  color: #fff;
+  border-bottom: 2px solid var(--amber);
+}
+.navLink:hover {
+  color: #fff;
+}
+
+.heroCta {
+  display: inline-block;
+  margin-top: 22px;
+  background: var(--amber);
+  color: var(--amber-ink);
+  border-radius: 10px;
+  padding: 13px 22px;
+  font-weight: 800;
+  font-size: 15px;
+  text-decoration: none;
+}
+.heroCta:hover {
+  filter: brightness(0.96);
+}
+
+.howSteps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 16px;
+}
+@media (max-width: 720px) {
+  .howSteps {
+    grid-template-columns: 1fr;
+  }
+}
+.howStepCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+.howStepNum {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: #fff;
+  font-family: "Archivo", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.howStepCard h3 {
+  font-size: 15.5px;
+  margin: 0 0 6px;
+}
+.howStepCard p {
+  font-size: 13px;
+  color: var(--grey);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.trustBadges {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 720px) {
+  .trustBadges {
+    grid-template-columns: 1fr;
+  }
+}
+.trustBadge {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--grey);
+  line-height: 1.5;
+}
+.trustBadge strong {
+  color: var(--ink);
+}
+
+.alertsCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--grey);
+  margin: 2px 0 14px;
+  cursor: pointer;
+  line-height: 1.45;
+}
+.alertsCheckboxRow input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.pricingReassure {
+  margin-top: 14px;
+  font-size: 11.5px;
+  color: var(--grey-soft);
+  line-height: 1.5;
+  max-width: 580px;
+}
+
 .footer {
   margin-top: 40px;
   padding: 24px 0 48px;

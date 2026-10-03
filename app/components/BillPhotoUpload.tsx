@@ -43,16 +43,20 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
     setErrorMsg("");
 
     try {
-      const resized = await resizeImage(file);
+      // PDFs go to the server as-is (the browser's canvas-based resize only
+      // works on images) — they're sent to Claude as a document, not an
+      // image, so there's no size benefit to resizing anyway.
+      const isPdf = file.type === "application/pdf";
+      const toSend = isPdf ? file : await resizeImage(file);
       const form = new FormData();
-      form.append("photo", resized, "bill.jpg");
+      form.append("photo", toSend, isPdf ? "bill.pdf" : "bill.jpg");
 
       const res = await fetch("/api/extract-bill", { method: "POST", body: form });
-      const body = await res.json().catch(() => ({ ok: false, message: "Something went wrong reading that photo." }));
+      const body = await res.json().catch(() => ({ ok: false, message: "Something went wrong reading that file." }));
 
       if (!body.ok) {
         setStatus("error");
-        setErrorMsg(body.message || "Couldn't read that photo.");
+        setErrorMsg(body.message || "Couldn't read that file.");
         return;
       }
 
@@ -60,7 +64,7 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
       onApply(body.extracted as ExtractedBill);
     } catch {
       setStatus("error");
-      setErrorMsg("Something went wrong reading that photo — please try again, or enter your details manually below.");
+      setErrorMsg("Something went wrong reading that file — please try again, or enter your details manually below.");
     }
   }
 
@@ -76,8 +80,8 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
         <span className={styles.photoBolt}>⚡</span> Got your bill handy?
       </div>
       <p className={styles.helper}>
-        Snap a photo or upload one and we&apos;ll read the numbers off it for you — you&apos;ll still get to check
-        everything below before we calculate anything.
+        Snap a photo, or upload a photo or PDF, and we&apos;ll read the numbers off it for you — you&apos;ll
+        still get to check everything below before we calculate anything.
       </p>
 
       <div className={styles.photoActions}>
@@ -95,7 +99,7 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
           onClick={() => fileInputRef.current?.click()}
           disabled={status === "reading"}
         >
-          Upload a photo
+          Upload a photo or PDF
         </button>
       </div>
 
@@ -107,7 +111,13 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
         className={styles.photoInputHidden}
         onChange={onInputChange}
       />
-      <input ref={fileInputRef} type="file" accept="image/*" className={styles.photoInputHidden} onChange={onInputChange} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        className={styles.photoInputHidden}
+        onChange={onInputChange}
+      />
 
       {status === "error" && <p className={styles.leadErr}>{errorMsg}</p>}
     </div>

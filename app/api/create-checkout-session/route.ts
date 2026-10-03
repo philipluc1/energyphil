@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       ],
       metadata,
       success_url: `${origin}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/#pricing`,
+      cancel_url: `${origin}/check#pricing`,
     });
 
     if (!session.url) {

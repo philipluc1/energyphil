@@ -15,6 +15,7 @@ import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import BillPhotoUpload from "./BillPhotoUpload";
 import ResultsChart, { ChartItem } from "./ResultsChart";
 import PricingSection from "./PricingSection";
+import SiteHeader from "./SiteHeader";
 import styles from "./Comparator.module.css";
 
 const PLAN_COUNT = PLANS.length;
@@ -48,6 +49,7 @@ export default function Comparator() {
   const [cl, setCl] = useState(0);
   const [currentBillRaw, setCurrentBillRaw] = useState("");
   const [email, setEmail] = useState("");
+  const [wantsAlerts, setWantsAlerts] = useState(false);
   const [leadStatus, setLeadStatus] = useState<LeadStatus>("idle");
   const [scanBanner, setScanBanner] = useState<{ retailer: string | null; warnings: string[] } | null>(null);
 
@@ -139,6 +141,7 @@ export default function Comparator() {
       best_total: top?.total ?? null,
       estimated_saving: save,
       estimated_saving_pct: save !== null && bench > 0 ? save / bench : null,
+      wants_price_alerts: wantsAlerts,
     });
     setLeadStatus(error ? "error" : "saved");
   }
@@ -168,23 +171,15 @@ export default function Comparator() {
 
   return (
     <>
-      <header className={styles.top}>
-        <div className={styles.bar}>
-          <div className={styles.brand}>
-            <span className={styles.mark}>
-              VIC Energy<span className={styles.accent}>Check</span>
-            </span>
-          </div>
-          <span className={styles.badge}>{PLAN_COUNT} live plans · 15 retailers</span>
-        </div>
-      </header>
+      <SiteHeader active="check" />
 
       <div className={styles.wrap}>
         <section className={styles.hero}>
-          <h1>See if you&apos;re overpaying for electricity — checked live against the Victorian market.</h1>
+          <h1>Check your bill</h1>
           <p className={styles.lede}>
-            Tell us your network and usage, and we&apos;ll check it against every current residential plan
-            we can see live from Victorian retailers. No sign-up needed to see your result.
+            Snap a photo, upload a photo or PDF, or just type in your details below — we&apos;ll check it
+            against every current residential plan we can see live from Victorian retailers. No sign-up needed
+            to see your result.
           </p>
           <div className={styles.trustRow}>
             <div className={styles.trustChip}>
@@ -508,8 +503,14 @@ export default function Comparator() {
           <h3>Just want this result for your records?</h3>
           <p>
             Leave your email and we&apos;ll send you a one-off copy of today&apos;s comparison — no ongoing
-            monitoring, no spam, no obligation. (For ongoing price-watching and alerts, see the plans above.)
+            monitoring, no spam, no obligation. (For fully automatic ongoing price-watching and alerts, see the
+            plans above instead.)
           </p>
+          <label className={styles.alertsCheckboxRow}>
+            <input type="checkbox" checked={wantsAlerts} onChange={(e) => setWantsAlerts(e.target.checked)} />
+            Also tell me by email if a cheaper plan appears later for my area (occasional emails, unsubscribe
+            anytime — this is separate from the paid monitoring above).
+          </label>
           <form className={styles.leadForm} onSubmit={handleLeadSubmit}>
             <input
               type="email"
@@ -538,12 +539,15 @@ export default function Comparator() {
         <footer className={styles.footer}>
           <div className={styles.fbrand}>VIC Energy Check</div>
           <p>
-            An independent comparison tool for Victorian residential electricity customers. Plan data is pulled from
-            each retailer&apos;s own Consumer Data Right (CDR) product reference feed and reflects each retailer&apos;s
-            most recently published rates; always confirm final pricing with the retailer before switching. This tool
-            does not sell or transfer energy and is not an authorised retailer. Benchmark figures reference the
-            Essential Services Commission&apos;s Victorian Default Offer. Figures shown are indicative estimates for
-            the billing period you enter and exclude one-off fees, concessions, and solar feed-in credits.
+            An independent comparison tool for Victorian residential electricity customers — not affiliated with,
+            operated by, or endorsed by the Victorian Government, the Australian Energy Regulator, or any official
+            &ldquo;Victorian Energy Compare&rdquo; service. Plan data is pulled from each retailer&apos;s own Consumer
+            Data Right (CDR) product reference feed and reflects each retailer&apos;s most recently published rates;
+            always confirm final pricing with the retailer before switching. This tool does not sell or transfer
+            energy and is not an authorised retailer. Benchmark figures reference the Essential Services
+            Commission&apos;s Victorian Default Offer. Figures shown are indicative estimates for the billing period
+            you enter and exclude one-off fees, concessions, and solar feed-in credits. We only use the bill details
+            you give us to calculate your result — we never sell or share your information.
           </p>
         </footer>
       </div>

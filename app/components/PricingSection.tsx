@@ -98,6 +98,10 @@ export default function PricingSection({
           </div>
         ))}
       </div>
+      <p className={styles.pricingReassure}>
+        Independent of any government energy-comparison service — this is our own calculation, kept private to
+        you and never sold or shared. Cancel monthly/quarterly/half-yearly plans anytime.
+      </p>
       {error && <p className={styles.leadErr}>{error}</p>}
     </section>
   );

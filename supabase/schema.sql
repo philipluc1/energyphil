@@ -81,3 +81,35 @@ alter table public.subscribers enable row level security;
 -- Intentionally no policies here — the public site has no reason to ever
 -- select/insert/update this table directly, so every role stays denied by
 -- default and only the secret-key server connection can touch it.
+
+-- Price-watch columns — power the automatic recheck job (app/api/cron/recheck-prices)
+-- that re-prices each saved profile and emails people when something cheaper shows
+-- up. Safe to re-run: each line only adds a column if it isn't already there, so
+-- running this whole file again after upgrading is fine.
+alter table public.leads add column if not exists wants_price_alerts boolean not null default false;
+alter table public.leads add column if not exists unsubscribed boolean not null default false;
+alter table public.leads add column if not exists last_notified_total numeric;
+alter table public.leads add column if not exists last_notified_retailer text;
+alter table public.leads add column if not exists last_notified_plan_name text;
+alter table public.leads add column if not exists last_notified_at timestamptz;
+
+alter table public.subscribers add column if not exists unsubscribed boolean not null default false;
+alter table public.subscribers add column if not exists last_notified_total numeric;
+alter table public.subscribers add column if not exists last_notified_retailer text;
+alter table public.subscribers add column if not exists last_notified_plan_name text;
+alter table public.subscribers add column if not exists last_notified_at timestamptz;
+
+-- Customer accounts ("what plan am I on?") — sign-in is passwordless (Supabase
+-- Auth magic-link email), so there's no separate "sign up" step: entering an
+-- email on /account creates the account the first time and signs it in every
+-- time after. This policy is what lets a signed-in customer's browser read
+-- their OWN row straight out of this table — matched by email, nothing else
+-- is exposed, and anonymous (not-signed-in) requests still can't read any of
+-- it, same as before.
+grant select on public.subscribers to authenticated;
+drop policy if exists "subscriber can view own record" on public.subscribers;
+create policy "subscriber can view own record"
+  on public.subscribers
+  for select
+  to authenticated
+  using ((select auth.email()) = email);

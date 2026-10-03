@@ -6,8 +6,9 @@ export const maxDuration = 30;
 
 // The browser resizes photos to ~1600px before upload (see BillPhotoUpload.tsx),
 // so a real submission should be well under this — this just guards against a
-// stray huge file wasting an API call.
-const MAX_BYTES = 8 * 1024 * 1024;
+// stray huge file wasting an API call. PDFs aren't resized client-side, so the
+// cap is a bit higher to allow for a multi-page scanned bill.
+const MAX_BYTES = 15 * 1024 * 1024;
 
 // Cheapest current vision-capable model. Swap this for a Sonnet model string
 // if extraction accuracy turns out to need it — one line, higher cost per scan.
@@ -88,14 +89,15 @@ export async function POST(req: NextRequest) {
 
   const file = form.get("photo");
   if (!(file instanceof File)) {
-    return NextResponse.json({ ok: false, message: "No photo received." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "No file received." }, { status: 400 });
   }
-  if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ ok: false, message: "That doesn't look like an image file." }, { status: 400 });
+  const isPdf = file.type === "application/pdf";
+  if (!isPdf && !file.type.startsWith("image/")) {
+    return NextResponse.json({ ok: false, message: "That doesn't look like an image or PDF file." }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { ok: false, message: "That photo's too large — try a smaller or less detailed shot." },
+      { ok: false, message: "That file's too large — try a smaller photo, or a shorter PDF." },
       { status: 400 },
     );
   }
@@ -103,6 +105,13 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const base64 = buffer.toString("base64");
   const mediaType = file.type === "image/jpg" ? "image/jpeg" : file.type;
+  // Claude reads a PDF as a "document" content block (it handles the pages
+  // itself — no server-side rasterizing needed) and a photo as an "image"
+  // block. If PDF reads start erroring out, the model above is the first
+  // thing to try bumping to a newer/larger one.
+  const contentBlock = isPdf
+    ? { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: base64 } }
+    : { type: "image" as const, source: { type: "base64" as const, media_type: mediaType, data: base64 } };
 
   let anthropicRes: Response;
   try {
@@ -122,15 +131,16 @@ export async function POST(req: NextRequest) {
           {
             role: "user",
             content: [
-              { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+              contentBlock,
               {
                 type: "text",
                 text:
-                  "This is a photo of an Australian residential electricity bill. Read it carefully and call " +
-                  "extract_bill_fields with your best-effort reading. Leave a field null rather than guessing if " +
-                  "it isn't clearly shown, and note anything uncertain in warnings. Victorian distributor names " +
-                  "can appear with extra wording (e.g. 'CitiPower', 'Jemena Electricity Networks') — map them to " +
-                  "the closest of the five listed options, or null if it's clearly a different network.",
+                  `This is a ${isPdf ? "PDF" : "photo"} of an Australian residential electricity bill. Read it ` +
+                  "carefully and call extract_bill_fields with your best-effort reading. Leave a field null " +
+                  "rather than guessing if it isn't clearly shown, and note anything uncertain in warnings. " +
+                  "Victorian distributor names can appear with extra wording (e.g. 'CitiPower', 'Jemena " +
+                  "Electricity Networks') — map them to the closest of the five listed options, or null if it's " +
+                  "clearly a different network.",
               },
             ],
           },
@@ -159,7 +169,10 @@ export async function POST(req: NextRequest) {
 
   if (!toolUse?.input) {
     return NextResponse.json(
-      { ok: false, message: "Couldn't make sense of that photo — please try a clearer shot or enter details manually." },
+      {
+        ok: false,
+        message: `Couldn't make sense of that ${isPdf ? "PDF" : "photo"} — please try a clearer one or enter details manually.`,
+      },
       { status: 200 },
     );
   }
@@ -170,7 +183,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        message: "That doesn't look like an electricity bill — try another photo, or enter your details manually below.",
+        message: "That doesn't look like an electricity bill — try another file, or enter your details manually below.",
       },
       { status: 200 },
     );
