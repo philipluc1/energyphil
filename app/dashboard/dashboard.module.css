@@ -1,0 +1,237 @@
+.wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+.brand {
+  font-family: "Archivo", sans-serif;
+  font-weight: 900;
+  font-size: 19px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.accent {
+  color: var(--amber);
+}
+.brandSub {
+  font-family: "Karla", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--grey);
+}
+.logoutBtn {
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.logoutBtn:hover {
+  border-color: var(--navy);
+}
+
+.notice {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  color: var(--grey);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.notice code {
+  font-family: "IBM Plex Mono", monospace;
+  background: var(--track);
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 12.5px;
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+@media (max-width: 640px) {
+  .statRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.statCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+}
+.statValue {
+  font-family: "Archivo", sans-serif;
+  font-weight: 900;
+  font-size: 24px;
+  color: var(--navy-accent-text);
+}
+.statLabel {
+  font-size: 12px;
+  color: var(--grey);
+  margin-top: 2px;
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+@media (max-width: 760px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+}
+.chartCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+.chartTitle {
+  font-family: "Archivo", sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--navy-accent-text);
+  margin-bottom: 8px;
+}
+
+.tableCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+.emptyNote {
+  font-size: 13px;
+  color: var(--grey-soft);
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--grey-soft);
+  padding: 8px 10px;
+  border-bottom: 1.5px solid var(--border);
+  white-space: nowrap;
+}
+.table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.table tbody tr:hover {
+  background: var(--track);
+}
+.planName {
+  display: block;
+  font-size: 11px;
+  color: var(--grey-soft);
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+/* --- Login page --- */
+.loginWrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.loginCard {
+  width: 100%;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.loginBrand {
+  font-family: "Archivo", sans-serif;
+  font-weight: 900;
+  font-size: 20px;
+  text-align: center;
+}
+.loginAccent {
+  color: var(--amber);
+}
+.loginSub {
+  font-size: 13px;
+  color: var(--grey);
+  text-align: center;
+  margin: 0;
+}
+.loginCard input {
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: 9px;
+  padding: 11px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  width: 100%;
+}
+.loginCard input:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+  border-color: var(--amber);
+}
+.loginCard button {
+  background: var(--amber);
+  color: var(--amber-ink);
+  border: none;
+  border-radius: 9px;
+  padding: 11px 18px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.loginCard button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.loginErr {
+  color: var(--warn);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  text-align: center;
+}

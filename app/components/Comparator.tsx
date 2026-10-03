@@ -10,6 +10,11 @@ import {
   rankPlans,
 } from "@/lib/plans";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
+import type { ExtractedBill } from "@/lib/billExtraction";
+import { RETAILER_LINKS } from "@/lib/retailerLinks";
+import BillPhotoUpload from "./BillPhotoUpload";
+import ResultsChart, { ChartItem } from "./ResultsChart";
+import PricingSection from "./PricingSection";
 import styles from "./Comparator.module.css";
 
 const PLAN_COUNT = PLANS.length;
@@ -44,6 +49,33 @@ export default function Comparator() {
   const [currentBillRaw, setCurrentBillRaw] = useState("");
   const [email, setEmail] = useState("");
   const [leadStatus, setLeadStatus] = useState<LeadStatus>("idle");
+  const [scanBanner, setScanBanner] = useState<{ retailer: string | null; warnings: string[] } | null>(null);
+
+  function handleBillExtracted(bill: ExtractedBill) {
+    if (bill.distributor) setDistributor(bill.distributor);
+    if (bill.billingDays !== null) setDays(bill.billingDays);
+    if (bill.usageMode) setMode(bill.usageMode);
+    if (bill.usageMode === "simple" && bill.anytimeKwh !== null) setAnytime(bill.anytimeKwh);
+    if (bill.usageMode === "detailed") {
+      if (bill.peakKwh !== null) setPeak(bill.peakKwh);
+      if (bill.shoulderKwh !== null) setShoulder(bill.shoulderKwh);
+      if (bill.offpeakKwh !== null) setOffpeak(bill.offpeakKwh);
+    }
+    if (bill.controlledLoadKwh !== null && bill.controlledLoadKwh > 0) {
+      setCl(bill.controlledLoadKwh);
+      setShowCl(true);
+    }
+    if (bill.currentBill !== null) setCurrentBillRaw(String(bill.currentBill));
+
+    const warnings = [...bill.warnings];
+    const hasUsage =
+      bill.usageMode === "simple" ? bill.anytimeKwh !== null : bill.peakKwh !== null || bill.offpeakKwh !== null;
+    if (!bill.distributor) warnings.push("Couldn't tell which network you're on — please check Step 1 below.");
+    if (bill.billingDays === null) warnings.push("Couldn't find your billing period length — please check Step 2.");
+    if (!hasUsage) warnings.push("Couldn't find your usage figures — please check Step 3.");
+
+    setScanBanner({ retailer: bill.retailerName, warnings });
+  }
 
   const currentBill = currentBillRaw === "" ? null : parseFloat(currentBillRaw);
   const usagePeak = mode === "detailed" ? peak : 0;
@@ -114,6 +146,26 @@ export default function Comparator() {
   const top = matches[0];
   const rest = matches.slice(1, 9);
 
+  const hasCurrentBill = currentBill !== null && !Number.isNaN(currentBill);
+  const chartItems: ChartItem[] = top
+    ? [
+        {
+          label: hasCurrentBill ? "Your bill" : "VDO benchmark",
+          sublabel: hasCurrentBill
+            ? "What you told us you're paying now"
+            : "Essential Services Commission benchmark",
+          value: bench,
+          kind: "reference",
+        },
+        ...matches.slice(0, 5).map((m, i) => ({
+          label: m.plan[0],
+          sublabel: m.plan[2],
+          value: m.total,
+          kind: (i === 0 ? "cheapest" : "plan") as ChartItem["kind"],
+        })),
+      ]
+    : [];
+
   return (
     <>
       <header className={styles.top}>
@@ -153,6 +205,30 @@ export default function Comparator() {
             </div>
           </div>
         </section>
+
+        <BillPhotoUpload onApply={handleBillExtracted} />
+
+        {scanBanner && (
+          <div className={styles.scanBanner}>
+            <div className={styles.scanBannerHead}>
+              <span>
+                {scanBanner.retailer
+                  ? `Read your ${scanBanner.retailer} bill — we've filled in what we could below.`
+                  : "We've filled in what we could read from your bill below."}
+              </span>
+              <button type="button" className={styles.scanBannerClose} onClick={() => setScanBanner(null)} aria-label="Dismiss">
+                ×
+              </button>
+            </div>
+            {scanBanner.warnings.length > 0 && (
+              <ul className={styles.scanBannerWarnings}>
+                {scanBanner.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className={styles.card}>
           <div className={styles.stepLabel}>
@@ -326,6 +402,11 @@ export default function Comparator() {
             </div>
           ) : (
             <>
+              <div className={styles.chartCard}>
+                <div className={styles.chartTitle}>Your bill vs. the cheapest options</div>
+                <ResultsChart items={chartItems} />
+              </div>
+
               <div className={styles.bestCard}>
                 <span className={styles.bestTag}>Cheapest match</span>
                 <div className={styles.retailer}>
@@ -352,6 +433,19 @@ export default function Comparator() {
                     <div className={styles.l}>{bench - top.total >= 0 ? "lower" : "higher"}</div>
                   </div>
                 </div>
+                {RETAILER_LINKS[top.plan[0]] && (
+                  <div className={styles.switchRow}>
+                    <a
+                      href={RETAILER_LINKS[top.plan[0]]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.switchBtn}
+                    >
+                      Switch with {top.plan[0]} →
+                    </a>
+                    <span className={styles.switchNote}>Opens {top.plan[0]}&apos;s site — look for &ldquo;{top.plan[2]}&rdquo;</span>
+                  </div>
+                )}
               </div>
 
               <div className={styles.planList}>
@@ -373,6 +467,16 @@ export default function Comparator() {
                           {mSave >= 0 ? "-" : "+"}
                           {fmtCurrency(Math.abs(mSave))}
                         </div>
+                        {RETAILER_LINKS[m.plan[0]] && (
+                          <a
+                            href={RETAILER_LINKS[m.plan[0]]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.rowSwitchLink}
+                          >
+                            Go to site →
+                          </a>
+                        )}
                       </div>
                     </div>
                   );
@@ -382,11 +486,29 @@ export default function Comparator() {
           )}
         </section>
 
+        <PricingSection
+          email={email}
+          onEmailChange={setEmail}
+          profile={{
+            distributor,
+            billingDays: days,
+            usageMode: mode,
+            peak: usagePeak,
+            shoulder: usageShoulder,
+            offpeak: usageOffpeak,
+            anytime: usageAnytime,
+            cl,
+            baselineTotal: top ? top.total : null,
+            baselineRetailer: top ? top.plan[0] : null,
+            baselinePlanName: top ? top.plan[2] : null,
+          }}
+        />
+
         <div className={styles.leadCard}>
-          <h3>Want us to text or email you when it&apos;s time to switch?</h3>
+          <h3>Just want this result for your records?</h3>
           <p>
-            Leave your email and we&apos;ll let you know if a cheaper plan shows up, or when your current deal is
-            about to expire. No spam, no obligation.
+            Leave your email and we&apos;ll send you a one-off copy of today&apos;s comparison — no ongoing
+            monitoring, no spam, no obligation. (For ongoing price-watching and alerts, see the plans above.)
           </p>
           <form className={styles.leadForm} onSubmit={handleLeadSubmit}>
             <input
@@ -397,11 +519,11 @@ export default function Comparator() {
               onChange={(e) => setEmail(e.target.value)}
             />
             <button type="submit" className={styles.btnPrimary} disabled={leadStatus === "saving" || leadStatus === "saved"}>
-              {leadStatus === "saving" ? "Saving…" : leadStatus === "saved" ? "Saved" : "Notify me"}
+              {leadStatus === "saving" ? "Saving…" : leadStatus === "saved" ? "Saved" : "Email me this"}
             </button>
           </form>
           {leadStatus === "saved" && (
-            <p className={styles.leadOk}>Thanks — we&apos;ve noted your email. We&apos;ll be in touch if a better deal turns up.</p>
+            <p className={styles.leadOk}>Thanks — we&apos;ve noted your email for this result.</p>
           )}
           {leadStatus === "error" && (
             <p className={styles.leadErr}>Something went wrong saving that — please try again in a moment.</p>
