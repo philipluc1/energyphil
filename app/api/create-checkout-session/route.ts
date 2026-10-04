@@ -61,6 +61,11 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: plan.mode,
       customer_email: email,
+      // Stripe's "Managed Payments" (merchant-of-record) feature is on by
+      // default for newer accounts and requires every product to carry a
+      // tax code, which this app doesn't set up. Turning it off restores
+      // the standard Checkout behaviour this app was built against.
+      managed_payments: { enabled: false },
       line_items: [
         {
           quantity: 1,
