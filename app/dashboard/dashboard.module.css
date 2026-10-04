@@ -59,6 +59,34 @@
   font-size: 12.5px;
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 30px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid var(--border);
+}
+.sectionHeader:first-of-type {
+  margin-top: 0;
+}
+.sectionTitle {
+  font-family: "Archivo", sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--ink);
+}
+.sectionNote {
+  font-size: 12.5px;
+  color: var(--grey-soft);
+}
+@media (max-width: 500px) {
+  .sectionHeader {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
 .statRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

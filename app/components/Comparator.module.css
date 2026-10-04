@@ -8,9 +8,17 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--navy-deep);
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 70%);
   color: var(--navy-ink);
-  border-bottom: 3px solid var(--amber);
+}
+.top::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--amber));
 }
 .bar {
   display: flex;
@@ -114,7 +122,7 @@
   flex-wrap: wrap;
 }
 .photoBtn {
-  background: var(--amber);
+  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
   color: var(--amber-ink);
   border: none;
   border-radius: 9px;
@@ -124,9 +132,10 @@
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(245, 166, 35, 0.3);
 }
 .photoBtn:hover {
-  filter: brightness(0.96);
+  filter: brightness(1.04);
 }
 .photoBtn:disabled {
   opacity: 0.7;
@@ -251,7 +260,7 @@
 }
 .distBtnActive {
   border-color: var(--navy);
-  background: var(--navy);
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
   color: var(--navy-ink);
 }
 
@@ -318,7 +327,7 @@
   font-family: inherit;
 }
 .modeToggleActive {
-  background: var(--navy) !important;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%) !important;
   color: var(--navy-ink) !important;
 }
 
@@ -374,6 +383,55 @@
   }
 }
 
+.advanceRow {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+}
+.advanceRow .heroCta {
+  margin-top: 0;
+}
+
+.resultsTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.backLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--navy-accent-text);
+  cursor: pointer;
+  font-family: inherit;
+}
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.toggleDetailsBtn {
+  display: block;
+  margin: 18px auto 0;
+  background: none;
+  border: 1.5px dashed var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--grey);
+  cursor: pointer;
+  font-family: inherit;
+}
+.toggleDetailsBtn:hover {
+  border-color: var(--navy-accent-text);
+  color: var(--navy-accent-text);
+}
+
 .resultsHead {
   display: flex;
   align-items: baseline;
@@ -413,6 +471,7 @@
   color: #fff;
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow);
 }
 .bestCard::after {
   content: "";
@@ -423,6 +482,17 @@
   height: 140px;
   background: var(--amber);
   opacity: 0.18;
+  border-radius: 50%;
+}
+.bestCard::before {
+  content: "";
+  position: absolute;
+  bottom: -60px;
+  left: -50px;
+  width: 160px;
+  height: 160px;
+  background: var(--teal);
+  opacity: 0.14;
   border-radius: 50%;
 }
 .bestTag {
@@ -469,6 +539,58 @@
   color: var(--amber);
 }
 
+.periodBreakdown {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  position: relative;
+  z-index: 1;
+}
+.periodBreakdownLabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 10px;
+}
+.periodBreakdownRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.periodTile {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.periodTileHighlight {
+  background: rgba(240, 162, 2, 0.18);
+  border-color: rgba(240, 162, 2, 0.45);
+}
+.periodTileV {
+  font-family: "Archivo", sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+}
+.periodTileHighlight .periodTileV {
+  color: var(--amber);
+}
+.periodTileL {
+  font-size: 10.5px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 3px;
+}
+@media (max-width: 420px) {
+  .periodBreakdownRow {
+    grid-template-columns: 1fr;
+  }
+}
+
 .switchRow {
   margin-top: 18px;
   display: flex;
@@ -480,7 +602,7 @@
 }
 .switchBtn {
   display: inline-block;
-  background: var(--amber);
+  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
   color: var(--amber-ink);
   border-radius: 9px;
   padding: 11px 18px;
@@ -488,9 +610,10 @@
   font-size: 13.5px;
   text-decoration: none;
   white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(245, 166, 35, 0.3);
 }
 .switchBtn:hover {
-  filter: brightness(0.96);
+  filter: brightness(1.04);
 }
 .switchNote {
   font-size: 11.5px;
@@ -627,7 +750,7 @@
   border-color: var(--amber);
 }
 .btnPrimary {
-  background: var(--amber);
+  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
   color: var(--amber-ink);
   border: none;
   border-radius: 9px;
@@ -637,9 +760,10 @@
   white-space: nowrap;
   cursor: pointer;
   font-family: inherit;
+  box-shadow: 0 4px 14px rgba(245, 166, 35, 0.3);
 }
 .btnPrimary:hover {
-  filter: brightness(0.96);
+  filter: brightness(1.04);
 }
 .btnPrimary:disabled {
   opacity: 0.6;
@@ -707,6 +831,15 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+.pricingCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+  border-color: var(--teal);
 }
 .pricingName {
   font-family: "Archivo", sans-serif;
@@ -740,7 +873,7 @@
 }
 .pricingBtn {
   margin-top: 4px;
-  background: var(--navy);
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
   color: var(--navy-ink);
   border: none;
   border-radius: 9px;
@@ -790,16 +923,17 @@
 .heroCta {
   display: inline-block;
   margin-top: 22px;
-  background: var(--amber);
+  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
   color: var(--amber-ink);
   border-radius: 10px;
   padding: 13px 22px;
   font-weight: 800;
   font-size: 15px;
   text-decoration: none;
+  box-shadow: 0 6px 18px rgba(245, 166, 35, 0.32);
 }
 .heroCta:hover {
-  filter: brightness(0.96);
+  filter: brightness(1.04);
 }
 
 .howSteps {
@@ -819,6 +953,10 @@
   border-radius: 14px;
   box-shadow: var(--shadow);
   padding: 20px;
+  transition: transform 0.2s ease;
+}
+.howStepCard:hover {
+  transform: translateY(-3px);
 }
 .howStepNum {
   width: 30px;

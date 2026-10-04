@@ -16,6 +16,11 @@ export interface SubscribeProfile {
   baselineTotal: number | null;
   baselineRetailer: string | null;
   baselinePlanName: string | null;
+  // What the customer is actually paying now (their entered bill, or the
+  // VDO benchmark if they left it blank) — the real starting point for
+  // "how much have you saved", as opposed to baselineTotal above, which is
+  // just the price of the plan being recommended.
+  referenceTotal: number | null;
 }
 
 export default function PricingSection({

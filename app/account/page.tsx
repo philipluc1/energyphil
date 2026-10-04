@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
 import { findPlan, fmtPrice } from "@/lib/pricingPlans";
+import { accumulatedSavings } from "@/lib/savings";
 import SiteHeader from "../components/SiteHeader";
 import styles from "./account.module.css";
 
@@ -23,10 +24,22 @@ interface SubscriberSummary {
   created_at: string;
 }
 
+interface EpisodeRow {
+  started_at: string;
+  ended_at: string | null;
+  daily_rate: number;
+  best_retailer: string | null;
+  best_plan_name: string | null;
+}
+
 type Stage = "loading" | "signedOut" | "signedIn";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function fmtDollars(n: number): string {
+  return "$" + n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function statusLabel(status: string): string {
@@ -53,6 +66,9 @@ export default function AccountPage() {
   const [subError, setSubError] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState("");
+
+  const [episodes, setEpisodes] = useState<EpisodeRow[]>([]);
+  const [episodesLoading, setEpisodesLoading] = useState(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -105,6 +121,46 @@ export default function AccountPage() {
     };
   }, [stage]);
 
+  // Savings history is its own fetch (its own table), independent of
+  // whether there's a current subscription — past savings still count even
+  // if they've since canceled.
+  useEffect(() => {
+    if (stage !== "signedIn" || !supabase) return;
+    let cancelled = false;
+
+    async function loadEpisodes() {
+      setEpisodesLoading(true);
+      const { data, error } = await supabase!
+        .from("savings_episodes")
+        .select("started_at, ended_at, daily_rate, best_retailer, best_plan_name")
+        .order("started_at", { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        // Fails quietly rather than showing customers a scary error — the
+        // most likely cause is simply that the savings_episodes table/SQL
+        // migration hasn't been run yet, which just means no history to show.
+        console.error("Couldn't load savings history", error);
+        setEpisodes([]);
+      } else {
+        setEpisodes((data ?? []) as EpisodeRow[]);
+      }
+      setEpisodesLoading(false);
+    }
+
+    loadEpisodes();
+    return () => {
+      cancelled = true;
+    };
+  }, [stage]);
+
+  const accumulated = useMemo(
+    () =>
+      accumulatedSavings(
+        episodes.map((ep) => ({ startedAt: ep.started_at, endedAt: ep.ended_at, dailyRate: ep.daily_rate })),
+      ),
+    [episodes],
+  );
+
   async function handleSendLink(e: FormEvent) {
     e.preventDefault();
     if (!supabase) return;
@@ -126,6 +182,7 @@ export default function AccountPage() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setSub(null);
+    setEpisodes([]);
     setLinkSent(false);
     setLoginEmail("");
   }
@@ -232,6 +289,42 @@ export default function AccountPage() {
                   </button>
                   {portalError && <p className={styles.error}>{portalError}</p>}
                 </div>
+              )}
+
+              {episodesLoading && <p className={styles.note}>Loading your savings history…</p>}
+
+              {!episodesLoading && episodes.length > 0 && (
+                <div className={styles.savingsBox}>
+                  <div className={styles.savingsLabel}>Savings so far</div>
+                  <div className={styles.savingsTotal}>{fmtDollars(accumulated.total)}</div>
+                  {accumulated.sinceDate && (
+                    <div className={styles.savingsSince}>Estimated since {fmtDate(accumulated.sinceDate)}</div>
+                  )}
+                  <p className={styles.savingsCaveat}>
+                    An estimate, not a guarantee — based on you switching to the plan we matched you to each
+                    time, and staying on it. We can&apos;t see whether you actually switched.
+                  </p>
+
+                  <div className={styles.savingsHistoryLabel}>History</div>
+                  <ul className={styles.savingsHistoryList}>
+                    {[...episodes].reverse().map((ep, i) => (
+                      <li key={ep.started_at} className={styles.savingsHistoryItem}>
+                        <span className={styles.savingsHistoryDate}>{fmtDate(ep.started_at)}</span>
+                        <span className={styles.savingsHistoryText}>
+                          {i === episodes.length - 1 ? "Started monitoring" : "Found something cheaper"}
+                          {ep.best_retailer ? ` — ${ep.best_retailer}` : ""}
+                          {ep.best_plan_name ? ` (${ep.best_plan_name})` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {!episodesLoading && episodes.length === 0 && sub && (
+                <p className={styles.note}>
+                  Your savings history will start building up here from your next price check.
+                </p>
               )}
 
               <button type="button" className={styles.logoutBtn} onClick={handleLogout}>

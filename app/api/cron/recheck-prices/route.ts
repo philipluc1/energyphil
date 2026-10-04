@@ -24,6 +24,7 @@ interface SubscriberWatchRow {
   anytime_kwh: number | null;
   controlled_load_kwh: number | null;
   baseline_total: number | null;
+  reference_total: number | null;
   last_notified_total: number | null;
 }
 
@@ -85,7 +86,7 @@ export async function GET(req: NextRequest) {
   const { data: subsData, error: subsErr } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, baseline_total, last_notified_total",
+      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, baseline_total, reference_total, last_notified_total",
     )
     .eq("status", "active")
     .eq("unsubscribed", false)
@@ -131,15 +132,41 @@ export async function GET(req: NextRequest) {
 
       if (sent) {
         subscribersNotified++;
+        const notifiedAt = new Date().toISOString();
         await supabaseAdmin
           .from("subscribers")
           .update({
             last_notified_total: best.bestTotal,
             last_notified_retailer: best.bestRetailer,
             last_notified_plan_name: best.bestPlanName,
-            last_notified_at: new Date().toISOString(),
+            last_notified_at: notifiedAt,
           })
           .eq("id", sub.id);
+
+        // Roll the savings-history episode over: close whatever was running
+        // and open a new one at today's (better) daily rate. Subscribers from
+        // before reference_total existed just won't get a new episode — no
+        // history to extend.
+        const billingDays = sub.billing_days ?? 91;
+        if (sub.reference_total !== null && billingDays > 0) {
+          await supabaseAdmin
+            .from("savings_episodes")
+            .update({ ended_at: notifiedAt })
+            .eq("subscriber_id", sub.id)
+            .is("ended_at", null);
+
+          const dailyRate = (sub.reference_total - best.bestTotal) / billingDays;
+          const { error: episodeErr } = await supabaseAdmin.from("savings_episodes").insert({
+            subscriber_id: sub.id,
+            email: sub.email,
+            started_at: notifiedAt,
+            daily_rate: dailyRate,
+            best_retailer: best.bestRetailer,
+            best_plan_name: best.bestPlanName,
+            best_total: best.bestTotal,
+          });
+          if (episodeErr) console.error("recheck-prices: failed to open savings episode", sub.id, episodeErr);
+        }
       }
     } catch (err) {
       console.error("recheck-prices: subscriber failed", sub.id, err);

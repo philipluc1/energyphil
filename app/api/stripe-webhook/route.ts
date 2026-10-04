@@ -58,28 +58,56 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        const { error } = await supabaseAdmin.from("subscribers").insert({
-          email: session.customer_email ?? session.customer_details?.email ?? "",
-          plan: plan.id,
-          status: "active",
-          amount_cents: session.amount_total ?? plan.priceCents,
-          currency: (session.currency ?? plan.currency).toLowerCase(),
-          stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
-          stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
-          stripe_checkout_session_id: session.id,
-          distributor: md.distributor || null,
-          billing_days: toNum(md.billingDays),
-          usage_mode: md.usageMode || null,
-          peak_kwh: toNum(md.peak),
-          shoulder_kwh: toNum(md.shoulder),
-          offpeak_kwh: toNum(md.offpeak),
-          anytime_kwh: toNum(md.anytime),
-          controlled_load_kwh: toNum(md.cl),
-          baseline_total: toNum(md.baselineTotal),
-          baseline_retailer: md.baselineRetailer || null,
-          baseline_plan_name: md.baselinePlanName || null,
-        });
+        const email = session.customer_email ?? session.customer_details?.email ?? "";
+        const billingDays = toNum(md.billingDays);
+        const baselineTotal = toNum(md.baselineTotal);
+        const referenceTotal = toNum(md.referenceTotal);
+
+        const { data: inserted, error } = await supabaseAdmin
+          .from("subscribers")
+          .insert({
+            email,
+            plan: plan.id,
+            status: "active",
+            amount_cents: session.amount_total ?? plan.priceCents,
+            currency: (session.currency ?? plan.currency).toLowerCase(),
+            stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+            stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
+            stripe_checkout_session_id: session.id,
+            distributor: md.distributor || null,
+            billing_days: billingDays,
+            usage_mode: md.usageMode || null,
+            peak_kwh: toNum(md.peak),
+            shoulder_kwh: toNum(md.shoulder),
+            offpeak_kwh: toNum(md.offpeak),
+            anytime_kwh: toNum(md.anytime),
+            controlled_load_kwh: toNum(md.cl),
+            baseline_total: baselineTotal,
+            baseline_retailer: md.baselineRetailer || null,
+            baseline_plan_name: md.baselinePlanName || null,
+            reference_total: referenceTotal,
+          })
+          .select("id")
+          .single();
         if (error) console.error("Failed to save subscriber", error);
+
+        // Open the first savings episode, if we have everything needed to
+        // price it — the real starting bill (referenceTotal), the plan we're
+        // matching them to now (baselineTotal), and how many days that spans.
+        // Older/incomplete signups just won't have savings history, which is
+        // fine — the account page only shows it when there's something to show.
+        if (inserted && referenceTotal !== null && baselineTotal !== null && billingDays && billingDays > 0) {
+          const dailyRate = (referenceTotal - baselineTotal) / billingDays;
+          const { error: episodeErr } = await supabaseAdmin.from("savings_episodes").insert({
+            subscriber_id: inserted.id,
+            email,
+            daily_rate: dailyRate,
+            best_retailer: md.baselineRetailer || null,
+            best_plan_name: md.baselinePlanName || null,
+            best_total: baselineTotal,
+          });
+          if (episodeErr) console.error("Failed to open savings episode", episodeErr);
+        }
         break;
       }
 

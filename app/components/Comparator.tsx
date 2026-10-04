@@ -12,6 +12,7 @@ import {
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
+import { periodBreakdown } from "@/lib/savings";
 import BillPhotoUpload from "./BillPhotoUpload";
 import ResultsChart, { ChartItem } from "./ResultsChart";
 import PricingSection from "./PricingSection";
@@ -36,8 +37,15 @@ function fmtUpdated(): string {
 
 type Mode = "simple" | "detailed";
 type LeadStatus = "idle" | "saving" | "saved" | "error";
+type Stage = "input" | "results";
+
+function scrollToTop() {
+  if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 export default function Comparator() {
+  const [stage, setStage] = useState<Stage>("input");
+  const [showFullList, setShowFullList] = useState(false);
   const [distributor, setDistributor] = useState<Distributor>("Citipower");
   const [days, setDays] = useState(91);
   const [mode, setMode] = useState<Mode>("simple");
@@ -174,6 +182,8 @@ export default function Comparator() {
       <SiteHeader active="check" />
 
       <div className={styles.wrap}>
+        {stage === "input" && (
+          <>
         <section className={styles.hero}>
           <h1>Check your bill</h1>
           <p className={styles.lede}>
@@ -380,28 +390,48 @@ export default function Comparator() {
           )}
         </div>
 
-        <section className={styles.sectionGap}>
-          <div className={styles.resultsHead}>
-            <h2>Your ranked results</h2>
-            {matches.length > 0 && (
-              <span className={styles.resultsSub}>
-                {matches.length} comparable plan{matches.length === 1 ? "" : "s"} for {distributor} · {days}-day period
-              </span>
-            )}
-          </div>
+        <div className={styles.advanceRow}>
+          <button
+            type="button"
+            className={styles.heroCta}
+            onClick={() => {
+              setStage("results");
+              scrollToTop();
+            }}
+          >
+            See my cheapest options →
+          </button>
+        </div>
+          </>
+        )}
+
+        {stage === "results" && (
+          <>
+        <section className={styles.resultsTopBar}>
+          <button
+            type="button"
+            className={styles.backLink}
+            onClick={() => {
+              setStage("input");
+              scrollToTop();
+            }}
+          >
+            ← Edit my details
+          </button>
+          {matches.length > 0 && (
+            <span className={styles.resultsSub}>
+              {matches.length} comparable plan{matches.length === 1 ? "" : "s"} for {distributor} · {days}-day period
+            </span>
+          )}
+        </section>
 
           {!top ? (
             <div className={styles.emptyState}>
-              No comparable plans yet — enter your usage above (or switch to detailed peak/off-peak entry) to see
-              ranked results.
+              No comparable plans yet — go back and enter your usage (or switch to detailed peak/off-peak entry) to
+              see ranked results.
             </div>
           ) : (
             <>
-              <div className={styles.chartCard}>
-                <div className={styles.chartTitle}>Your bill vs. the cheapest options</div>
-                <ResultsChart items={chartItems} />
-              </div>
-
               <div className={styles.bestCard}>
                 <span className={styles.bestTag}>Cheapest match</span>
                 <div className={styles.retailer}>
@@ -428,6 +458,33 @@ export default function Comparator() {
                     <div className={styles.l}>{bench - top.total >= 0 ? "lower" : "higher"}</div>
                   </div>
                 </div>
+
+                {bench - top.total > 0 && (
+                  <div className={styles.periodBreakdown}>
+                    <div className={styles.periodBreakdownLabel}>What that adds up to, if usage stays similar</div>
+                    <div className={styles.periodBreakdownRow}>
+                      {(() => {
+                        const bd = periodBreakdown(bench - top.total, days);
+                        return (
+                          <>
+                            <div className={styles.periodTile}>
+                              <div className={`${styles.periodTileV} mono`}>{fmtCurrency(bd.quarterly)}</div>
+                              <div className={styles.periodTileL}>per quarter</div>
+                            </div>
+                            <div className={styles.periodTile}>
+                              <div className={`${styles.periodTileV} mono`}>{fmtCurrency(bd.halfYearly)}</div>
+                              <div className={styles.periodTileL}>per half-year</div>
+                            </div>
+                            <div className={`${styles.periodTile} ${styles.periodTileHighlight}`}>
+                              <div className={`${styles.periodTileV} mono`}>{fmtCurrency(bd.annual)}</div>
+                              <div className={styles.periodTileL}>per year</div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
                 {RETAILER_LINKS[top.plan[0]] && (
                   <div className={styles.switchRow}>
                     <a
@@ -443,61 +500,76 @@ export default function Comparator() {
                 )}
               </div>
 
-              <div className={styles.planList}>
-                {rest.map((m, i) => {
-                  const mSave = bench - m.total;
-                  return (
-                    <div className={styles.planRow} key={m.plan[9] + m.plan[2] + i}>
-                      <div className={styles.left}>
-                        <span className={styles.rk}>#{i + 2}</span>
-                        <span className={styles.rname}>{m.plan[0]}</span>
-                        <span className={`${styles.offerTag} ${m.plan[3] === "MARKET" ? styles.offerMarket : styles.offerStanding}`}>
-                          {m.plan[3] === "MARKET" ? "Market" : "Standing"}
-                        </span>
-                        <div className={styles.pname}>{m.plan[2]}</div>
-                      </div>
-                      <div className={styles.right}>
-                        <div className={styles.tot}>{fmtCurrency(m.total)}</div>
-                        <div className={`${styles.sav} ${mSave < 0 ? styles.savNeg : ""}`}>
-                          {mSave >= 0 ? "-" : "+"}
-                          {fmtCurrency(Math.abs(mSave))}
+              <PricingSection
+                email={email}
+                onEmailChange={setEmail}
+                profile={{
+                  distributor,
+                  billingDays: days,
+                  usageMode: mode,
+                  peak: usagePeak,
+                  shoulder: usageShoulder,
+                  offpeak: usageOffpeak,
+                  anytime: usageAnytime,
+                  cl,
+                  baselineTotal: top ? top.total : null,
+                  baselineRetailer: top ? top.plan[0] : null,
+                  baselinePlanName: top ? top.plan[2] : null,
+                  referenceTotal: bench,
+                }}
+              />
+
+              <button type="button" className={styles.toggleDetailsBtn} onClick={() => setShowFullList((v) => !v)}>
+                {showFullList ? "Hide the full ranked list & chart ▴" : "See the full ranked list & chart ▾"}
+              </button>
+
+              {showFullList && (
+                <>
+                  <div className={styles.chartCard}>
+                    <div className={styles.chartTitle}>Your bill vs. the cheapest options</div>
+                    <ResultsChart items={chartItems} />
+                  </div>
+
+                  <div className={styles.planList}>
+                    {rest.map((m, i) => {
+                      const mSave = bench - m.total;
+                      return (
+                        <div className={styles.planRow} key={m.plan[9] + m.plan[2] + i}>
+                          <div className={styles.left}>
+                            <span className={styles.rk}>#{i + 2}</span>
+                            <span className={styles.rname}>{m.plan[0]}</span>
+                            <span
+                              className={`${styles.offerTag} ${m.plan[3] === "MARKET" ? styles.offerMarket : styles.offerStanding}`}
+                            >
+                              {m.plan[3] === "MARKET" ? "Market" : "Standing"}
+                            </span>
+                            <div className={styles.pname}>{m.plan[2]}</div>
+                          </div>
+                          <div className={styles.right}>
+                            <div className={styles.tot}>{fmtCurrency(m.total)}</div>
+                            <div className={`${styles.sav} ${mSave < 0 ? styles.savNeg : ""}`}>
+                              {mSave >= 0 ? "-" : "+"}
+                              {fmtCurrency(Math.abs(mSave))}
+                            </div>
+                            {RETAILER_LINKS[m.plan[0]] && (
+                              <a
+                                href={RETAILER_LINKS[m.plan[0]]}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={styles.rowSwitchLink}
+                              >
+                                Go to site →
+                              </a>
+                            )}
+                          </div>
                         </div>
-                        {RETAILER_LINKS[m.plan[0]] && (
-                          <a
-                            href={RETAILER_LINKS[m.plan[0]]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={styles.rowSwitchLink}
-                          >
-                            Go to site →
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </>
           )}
-        </section>
-
-        <PricingSection
-          email={email}
-          onEmailChange={setEmail}
-          profile={{
-            distributor,
-            billingDays: days,
-            usageMode: mode,
-            peak: usagePeak,
-            shoulder: usageShoulder,
-            offpeak: usageOffpeak,
-            anytime: usageAnytime,
-            cl,
-            baselineTotal: top ? top.total : null,
-            baselineRetailer: top ? top.plan[0] : null,
-            baselinePlanName: top ? top.plan[2] : null,
-          }}
-        />
 
         <div className={styles.leadCard}>
           <h3>Just want this result for your records?</h3>
@@ -535,6 +607,8 @@ export default function Comparator() {
             </p>
           )}
         </div>
+          </>
+        )}
 
         <footer className={styles.footer}>
           <div className={styles.fbrand}>VIC Energy Check</div>

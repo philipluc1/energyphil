@@ -34,8 +34,11 @@ export default async function DashboardPage() {
     );
   }
 
+  // Shared "now" so the leads and subscriber 30-day windows line up exactly.
+  const now = new Date();
+
   const leads = (data ?? []) as LeadRow[];
-  const stats = computeDashboardStats(leads);
+  const stats = computeDashboardStats(leads, now);
 
   // Subscribers table may not exist yet if schema.sql hasn't been re-run —
   // don't let that break the rest of the dashboard.
@@ -44,7 +47,7 @@ export default async function DashboardPage() {
     .select("id, created_at, email, plan, status, amount_cents, currency, current_period_end")
     .order("created_at", { ascending: false })
     .limit(2000);
-  const subscriberStats = computeSubscriberStats((subData ?? []) as SubscriberRow[]);
+  const subscriberStats = computeSubscriberStats((subData ?? []) as SubscriberRow[], now);
 
   return <DashboardCharts stats={stats} subscriberStats={subscriberStats} />;
 }

@@ -113,3 +113,44 @@ create policy "subscriber can view own record"
   for select
   to authenticated
   using ((select auth.email()) = email);
+
+-- The customer's REAL starting point for "how much have you saved" math —
+-- what they were actually paying (their entered bill, or the VDO benchmark
+-- if they left it blank) at the moment they subscribed. Kept separate from
+-- baseline_total above, which is the price of the plan we recommended to
+-- them and is only used by the recheck job to spot something EVEN cheaper
+-- later — baseline_total was never a record of what they used to pay.
+alter table public.subscribers add column if not exists reference_total numeric;
+
+-- Savings history. One row per "this was the cheapest plan we had this
+-- customer matched to, from this date until the next row starts" — written
+-- once at signup, and again every time the daily recheck job finds something
+-- cheaper (see app/api/cron/recheck-prices). Accumulated savings is then
+-- just: for each row, (days it was the current match) × (its daily saving
+-- rate vs reference_total), added up. This is an ESTIMATE shown to the
+-- customer as such — it assumes they switched to and stayed on whatever we
+-- last matched them to; we have no way to confirm they actually did.
+create table if not exists public.savings_episodes (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  subscriber_id uuid not null references public.subscribers(id) on delete cascade,
+  email text not null,                  -- denormalized for a simple RLS match, same pattern as subscribers
+  started_at timestamptz not null default now(),
+  ended_at timestamptz,                 -- null = this is the current, still-running episode
+  daily_rate numeric not null,          -- (reference_total - best_total) / billing_days, for this episode
+  best_retailer text,
+  best_plan_name text,
+  best_total numeric
+);
+
+alter table public.savings_episodes enable row level security;
+grant select on public.savings_episodes to authenticated;
+drop policy if exists "subscriber can view own savings episodes" on public.savings_episodes;
+create policy "subscriber can view own savings episodes"
+  on public.savings_episodes
+  for select
+  to authenticated
+  using ((select auth.email()) = email);
+-- No insert/update/delete policy — same locked-down-by-default pattern as
+-- subscribers; only the server's secret-key connection (checkout webhook,
+-- recheck cron) ever writes these rows.

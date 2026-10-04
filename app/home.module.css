@@ -1,0 +1,248 @@
+.hero {
+  position: relative;
+  padding: 48px 0 32px;
+  overflow: hidden;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  top: -120px;
+  right: -160px;
+  width: 440px;
+  height: 440px;
+  background: radial-gradient(circle, rgba(245, 166, 35, 0.18) 0%, rgba(245, 166, 35, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  bottom: -140px;
+  left: -140px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(14, 165, 160, 0.14) 0%, rgba(14, 165, 160, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroGrid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.15fr 0.95fr;
+  gap: 40px;
+  align-items: center;
+}
+@media (max-width: 860px) {
+  .heroGrid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--navy-accent-text);
+  background: var(--track);
+  border-radius: 100px;
+  padding: 6px 12px;
+  margin-bottom: 14px;
+}
+
+.heroCopy h1 {
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1.14;
+}
+
+/* --- proof card: visually echoes the "cheapest match" card on /check, so
+   the homepage promise and the real result feel like the same product. --- */
+.heroProof {
+  min-width: 0;
+}
+.proofCard {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  color: #fff;
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.proofCard::after {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 140px;
+  height: 140px;
+  background: var(--amber);
+  opacity: 0.16;
+  border-radius: 50%;
+}
+.proofTag {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 4px 10px;
+  border-radius: 100px;
+  position: relative;
+  z-index: 1;
+}
+.proofHeadline {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  font-family: "Archivo", sans-serif;
+  font-weight: 700;
+  font-size: 15.5px;
+  line-height: 1.4;
+}
+.proofTiles {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+.proofTile {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+}
+.proofTileHighlight {
+  background: rgba(240, 162, 2, 0.2);
+  border-color: rgba(240, 162, 2, 0.5);
+}
+.proofTileV {
+  font-family: "Archivo", sans-serif;
+  font-weight: 900;
+  font-size: 19px;
+}
+.proofTileHighlight .proofTileV {
+  color: var(--amber);
+}
+.proofTileL {
+  font-size: 10px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 3px;
+}
+.proofNote {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  opacity: 0.78;
+}
+@media (max-width: 380px) {
+  .proofTiles {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- how-it-works icons --- */
+.howIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--navy);
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.howIcon svg {
+  width: 19px;
+  height: 19px;
+}
+.howIconTeal {
+  background: var(--teal);
+  color: #fff;
+}
+.howIconAmber {
+  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
+  color: var(--navy-deep);
+}
+
+/* --- trust badge icons --- */
+.badgeIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--track);
+  color: var(--navy-accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.badgeIcon svg {
+  width: 16px;
+  height: 16px;
+}
+.badgeIconTeal {
+  background: rgba(14, 165, 160, 0.14);
+  color: var(--teal);
+}
+.badgeIconAmber {
+  background: rgba(245, 166, 35, 0.16);
+  color: #b4740f;
+}
+@media (prefers-color-scheme: dark) {
+  .badgeIconAmber {
+    color: var(--amber-light);
+  }
+}
+
+/* --- monitoring section wrapper --- */
+.monitoringPanel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 28px 24px;
+}
+
+/* --- "how it works" recap band --- */
+.howSummary {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, rgba(34, 48, 110, 0.06) 0%, rgba(14, 165, 160, 0.06) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 22px;
+}
+.howSummaryText {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--grey);
+  max-width: 560px;
+}
+.howSummaryText strong {
+  color: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  .howSummary {
+    background: linear-gradient(135deg, rgba(74, 98, 196, 0.1) 0%, rgba(45, 212, 199, 0.08) 100%);
+  }
+}

@@ -3,45 +3,51 @@
 
 :root {
   --ink: #12141c;
-  --bg: #eef1f6;
+  --bg: #eef0f8;
   --surface: #ffffff;
   --card: #ffffff;
-  --navy: #1b2a4a;
-  --navy-deep: #0e1626;
+  --navy: #22306e;
+  --navy-deep: #0a0f28;
   --navy-ink: #ffffff;
-  --navy-accent-text: #1b2a4a;
-  --amber: #f0a202;
-  --amber-ink: #12141c;
-  --good: #1f8a5a;
-  --good-bg: #e6f5ec;
+  --navy-accent-text: #2d3f9e;
+  --amber: #f5a623;
+  --amber-light: #ffd166;
+  --amber-ink: #171305;
+  --teal: #0ea5a0;
+  --teal-light: #5eead4;
+  --good: #16a34a;
+  --good-bg: #e6f8ec;
   --warn: #c2410c;
   --grey: #626c81;
   --grey-soft: #8a93a6;
-  --border: #d9dfea;
+  --border: #dbe1ee;
   --track: #e3e8f1;
-  --shadow: 0 1px 2px rgba(18, 20, 28, 0.06), 0 8px 24px rgba(18, 20, 28, 0.06);
+  --shadow: 0 1px 2px rgba(23, 33, 78, 0.07), 0 10px 28px rgba(23, 33, 78, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --ink: #eceff7;
-    --bg: #0d1220;
-    --surface: #151b2b;
-    --card: #161d30;
-    --navy: #3a5384;
-    --navy-deep: #0a0f1b;
+    --bg: #0a0e1c;
+    --surface: #131a2d;
+    --card: #141c32;
+    --navy: #4a62c4;
+    --navy-deep: #080c1c;
     --navy-ink: #eceff7;
-    --navy-accent-text: #93acdd;
-    --amber: #f0a202;
-    --amber-ink: #12141c;
-    --good: #3fcb8e;
-    --good-bg: #10291f;
+    --navy-accent-text: #9db2ff;
+    --amber: #f5a623;
+    --amber-light: #ffd166;
+    --amber-ink: #171305;
+    --teal: #2dd4c7;
+    --teal-light: #7bf1e4;
+    --good: #34d399;
+    --good-bg: #0f2a20;
     --warn: #fb9366;
     --grey: #a2acc2;
     --grey-soft: #7b849c;
     --border: #262f47;
     --track: #1e263b;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 28px rgba(0, 0, 0, 0.35);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 32px rgba(5, 8, 20, 0.45);
   }
 }
 
@@ -51,10 +57,26 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(1100px 560px at 8% -8%, rgba(34, 48, 110, 0.07), transparent 60%),
+    radial-gradient(900px 520px at 100% 0%, rgba(14, 165, 160, 0.06), transparent 60%),
+    radial-gradient(700px 420px at 50% 100%, rgba(245, 166, 35, 0.04), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: "Karla", -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background:
+      radial-gradient(1100px 560px at 8% -8%, rgba(74, 98, 196, 0.14), transparent 60%),
+      radial-gradient(900px 520px at 100% 0%, rgba(45, 212, 199, 0.1), transparent 60%),
+      radial-gradient(700px 420px at 50% 100%, rgba(245, 166, 35, 0.06), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+  }
 }
 
 h1,
@@ -73,4 +95,19 @@ h3 {
 ::selection {
   background: var(--amber);
   color: var(--amber-ink);
+}
+
+/* Scroll-in reveal — see app/components/ScrollReveal.tsx. Elements have
+   neither class until JS confirms it can animate them, so content is never
+   stuck invisible without JS. */
+.revealHidden {
+  opacity: 0;
+  transform: translateY(22px);
+}
+.revealVisible {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 0.7, 0.3, 1),
+    transform 0.65s cubic-bezier(0.22, 0.7, 0.3, 1);
 }

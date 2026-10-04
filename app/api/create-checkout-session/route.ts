@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
     baselineTotal: String(profile.baselineTotal ?? ""),
     baselineRetailer: String(profile.baselineRetailer ?? "").slice(0, 200),
     baselinePlanName: String(profile.baselinePlanName ?? "").slice(0, 200),
+    referenceTotal: String(profile.referenceTotal ?? ""),
   };
 
   const origin = req.nextUrl.origin;
