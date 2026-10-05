@@ -36,7 +36,7 @@ export default function CancellationPolicyPage() {
             </li>
             <li>
               Emailing us at{" "}
-              <a href="mailto:support@vicenergycheck.com.au">support@vicenergycheck.com.au</a> and asking us to
+              <a href="mailto:support@utilo.com.au">support@utilo.com.au</a> and asking us to
               cancel on your behalf.
             </li>
           </ul>
@@ -59,7 +59,7 @@ export default function CancellationPolicyPage() {
             The once-off plan is a single payment with ongoing monitoring and no renewal — there&apos;s no
             recurring charge to cancel. If you&apos;d like us to stop monitoring and remove your details anyway,
             just email us at{" "}
-            <a href="mailto:support@vicenergycheck.com.au">support@vicenergycheck.com.au</a> and we&apos;ll action
+            <a href="mailto:support@utilo.com.au">support@utilo.com.au</a> and we&apos;ll action
             it; see our <Link href="/privacy">Privacy Policy</Link> for how we handle data deletion requests.
           </p>
         </section>
@@ -72,7 +72,7 @@ export default function CancellationPolicyPage() {
             period you&apos;ve already paid for — see above for why: you keep the benefit for that whole period
             regardless of when within it you cancel. If something&apos;s gone wrong with your billing or you
             think you&apos;ve been charged in error, contact us at{" "}
-            <a href="mailto:support@vicenergycheck.com.au">support@vicenergycheck.com.au</a> and we&apos;ll sort
+            <a href="mailto:support@utilo.com.au">support@utilo.com.au</a> and we&apos;ll sort
             it out.
           </p>
         </section>

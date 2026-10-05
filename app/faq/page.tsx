@@ -4,7 +4,7 @@ import SiteHeader from "../components/SiteHeader";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 
-export const metadata = { title: "FAQ | VIC Energy Check" };
+export const metadata = { title: "FAQ | Utilo" };
 
 export default function FaqPage() {
   return (
@@ -47,7 +47,7 @@ export default function FaqPage() {
           </Link>
         </section>
         <footer className={styles.footer}>
-          <div className={styles.fbrand}>VIC Energy Check</div>
+          <div className={styles.fbrand}>Utilo</div>
           <p>
             <Link href="/">Home</Link> · <Link href="/pricing">Pricing</Link> · <Link href="/privacy">Privacy</Link> ·{" "}
             <Link href="/cancellation-policy">Cancellation</Link>

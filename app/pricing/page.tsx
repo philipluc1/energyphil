@@ -5,7 +5,7 @@ import SiteHeader from "../components/SiteHeader";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 
-export const metadata = { title: "Pricing | VIC Energy Check" };
+export const metadata = { title: "Pricing | Utilo" };
 
 export default function PricingPage() {
   return (
@@ -26,7 +26,7 @@ export default function PricingPage() {
           <Link href="/cancellation-policy">Cancellation policy</Link>
         </p>
         <footer className={styles.footer}>
-          <div className={styles.fbrand}>VIC Energy Check</div>
+          <div className={styles.fbrand}>Utilo</div>
           <p>
             <Link href="/">Home</Link> · <Link href="/faq">FAQ</Link> · <Link href="/privacy">Privacy</Link> ·{" "}
             <Link href="/cancellation-policy">Cancellation</Link>

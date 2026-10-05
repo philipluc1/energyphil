@@ -20,7 +20,7 @@ export default function SiteHeader({ active }: { active: "home" | "check" | "pri
             <BrandMark />
           </span>
           <span className={styles.mark}>
-            VIC Energy<span className={styles.accent}>Check</span>
+            Util<span className={styles.accent}>o</span>
           </span>
         </Link>
         <nav className={styles.navLinks}>

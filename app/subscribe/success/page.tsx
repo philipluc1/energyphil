@@ -47,7 +47,7 @@ export default async function SubscribeSuccessPage({
           </>
         )}
         <Link href="/" className={styles.backLink}>
-          ← Back to VIC Energy Check
+          ← Back to Utilo
         </Link>
       </div>
     </div>

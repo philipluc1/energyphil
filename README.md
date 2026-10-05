@@ -1,4 +1,4 @@
-# VIC Energy Check
+# Utilo
 
 Live Victorian residential electricity bill comparator. Checks a customer's usage
 against 135 current retail plans from 15 retailers (pulled from each retailer's
@@ -57,7 +57,7 @@ this feature quietly stays off and manual entry still works.
 
 The free comparator above always stays free with no sign-up. On top of it,
 customers can pay — monthly, quarterly, half-yearly, or a once-off payment —
-for ongoing monitoring: the promise is that VIC Energy Check keeps watching
+for ongoing monitoring: the promise is that Utilo keeps watching
 the market and alerts them when something cheaper appears, rather than them
 having to re-check manually.
 
@@ -67,7 +67,7 @@ having to re-check manually.
 - Checkout is Stripe Checkout (hosted payment page); card details never touch
   this app's own servers.
 - **Use a separate Stripe account for this business.** Stripe accounts are
-  tied to one registered business; mixing VIC Energy Check's payments into
+  tied to one registered business; mixing Utilo's payments into
   an existing account for an unrelated business (e.g. a different ABN/trading
   name) causes mismatched statement descriptors and MCC codes, muddies your
   own bookkeeping and tax reporting, and can trip Stripe's own compliance
@@ -194,3 +194,6 @@ npm run dev
 - `/api/cron/monthly-check` runs on the 1st (see `vercel.json`), records each active member's check and emails a short summary. Needs `RESEND_API_KEY`, `CRON_SECRET`, `SITE_URL`.
 - Bill reads are capped at 10 per member per day (`bill_reads`). The free manual check has no server cap; leads insert straight from the browser to Supabase.
 - Re-run `supabase/schema.sql` to create `bill_checks` and `bill_reads`.
+
+## After checkout
+Stripe redirects to `/api/welcome-link`, which confirms payment, signs the new member in with a one-time Supabase link, and lands them on `/welcome`. There they read their bill (skippable), then go to My Dashboard. In Supabase → Authentication → URL Configuration, add `https://YOUR-SITE/welcome` (or `https://YOUR-SITE/**`) to Redirect URLs.

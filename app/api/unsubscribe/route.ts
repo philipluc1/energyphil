@@ -5,9 +5,9 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // reply rather than a page component — there's nothing to review here, just
 // a one-click "stop these emails" that works from any mail client.
 function page(message: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>VIC Energy Check</title></head>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Utilo</title></head>
 <body style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 80px auto; text-align: center; color: #222; padding: 0 20px;">
-  <h2 style="margin-bottom: 4px;">VIC Energy<span style="color:#f0a202;">Check</span></h2>
+  <h2 style="margin-bottom: 4px;">Util<span style="color:#f0a202;">o</span></h2>
   <p style="color:#444; line-height: 1.5;">${message}</p>
 </body></html>`;
 }

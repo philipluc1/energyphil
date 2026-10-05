@@ -1177,7 +1177,7 @@ export default function Comparator() {
         )}
 
         <footer className={styles.footer}>
-          <div className={styles.fbrand}>VIC Energy Check</div>
+          <div className={styles.fbrand}>Utilo</div>
           <p>
             Independent comparison for Victorian households — not affiliated with the Victorian Government or any
             retailer. Rates come from retailers&apos; published data; estimates only, so confirm with the retailer

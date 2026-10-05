@@ -14,7 +14,7 @@ export default function PrivacyPolicyPage() {
           <h1>Privacy Policy</h1>
           <div className={styles.updated}>Last updated {LAST_UPDATED}</div>
           <p className={styles.lede}>
-            VIC Energy Check (&ldquo;we&rdquo;, &ldquo;us&rdquo;) is an independent electricity comparison service
+            Utilo (&ldquo;we&rdquo;, &ldquo;us&rdquo;) is an independent electricity comparison service
             for Victorian residential households. This page explains what we collect when you use the free
             comparison tool or subscribe to ongoing monitoring, why we collect it, and what we do — and don&apos;t
             do — with it.
@@ -117,7 +117,7 @@ export default function PrivacyPolicyPage() {
             <Link href="/account">their account page</Link> — see our{" "}
             <Link href="/cancellation-policy">Cancellation Policy</Link> for how that works. For anything else,
             contact us at{" "}
-            <a href="mailto:privacy@vicenergycheck.com.au">privacy@vicenergycheck.com.au</a>.
+            <a href="mailto:privacy@utilo.com.au">privacy@utilo.com.au</a>.
           </p>
         </section>
 

@@ -32,7 +32,7 @@ export default function DashboardLoginPage() {
     <div className={styles.loginWrap}>
       <form className={styles.loginCard} onSubmit={handleSubmit}>
         <div className={styles.loginBrand}>
-          VIC Energy<span className={styles.loginAccent}>Check</span>
+          Util<span className={styles.loginAccent}>o</span>
         </div>
         <p className={styles.loginSub}>Private dashboard — enter the password to continue.</p>
         <input

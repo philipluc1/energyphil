@@ -11,7 +11,7 @@ import "server-only";
 // test sends will only actually land in the inbox of the email you signed up
 // to Resend with — that's a Resend sandbox restriction, not a bug here.
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || "VIC Energy Check <onboarding@resend.dev>";
+const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || "Utilo <onboarding@resend.dev>";
 
 export const emailConfigured = Boolean(RESEND_API_KEY);
 

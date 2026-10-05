@@ -89,7 +89,7 @@ export default function DashboardCharts({
     <div className={styles.wrap}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          VIC Energy<span className={styles.accent}>Check</span>
+          Util<span className={styles.accent}>o</span>
           <span className={styles.brandSub}>Dashboard</span>
         </div>
         <button type="button" className={styles.logoutBtn} onClick={onLogout}>

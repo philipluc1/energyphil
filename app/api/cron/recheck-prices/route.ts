@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
             origin,
             "subscriber",
             sub.id,
-            "You're getting this because you're subscribed to VIC Energy Check's ongoing monitoring. This link won't cancel your plan — contact us for that.",
+            "You're getting this because you're subscribed to Utilo's ongoing monitoring. This link won't cancel your plan — contact us for that.",
           )}
         `,
       });
@@ -211,7 +211,7 @@ export async function GET(req: NextRequest) {
         to: lead.email,
         subject: "A cheaper electricity plan just showed up in your area",
         html: `
-          <p>When you checked your bill with VIC Energy Check, the best match was ${lead.best_retailer ?? "your previous result"}. We just found something cheaper:</p>
+          <p>When you checked your bill with Utilo, the best match was ${lead.best_retailer ?? "your previous result"}. We just found something cheaper:</p>
           <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${best.bestRetailer} — ${best.bestPlanName}</p>
           <p style="margin:0 0 16px;">Estimated <strong>${fmtCurrency(previousBest! - best.bestTotal)}</strong> cheaper, for the same billing period.</p>
           <p><a href="${origin}/check">See it and switch →</a></p>

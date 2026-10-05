@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
             currency: plan.currency,
             unit_amount: plan.priceCents,
             product_data: {
-              name: `VIC Energy Check — ${plan.name} monitoring`,
+              name: `Utilo — ${plan.name} monitoring`,
               description:
                 "Ongoing monitoring of Victorian electricity plans, with an alert whenever a cheaper deal appears.",
             },
@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
         },
       ],
       metadata,
-      success_url: `${origin}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
+      // Goes via /api/welcome-link, which signs the new member in and lands them on /welcome.
+      success_url: `${origin}/api/welcome-link?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/check#pricing`,
     });
 
