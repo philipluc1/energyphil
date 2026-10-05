@@ -1,8 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { PRICING_PLANS, fmtPrice, type PlanId } from "@/lib/pricingPlans";
+import type { PlanId } from "@/lib/pricingPlans";
+import PlanCards from "./PlanCards";
 import styles from "./Comparator.module.css";
+
+// Small consistent-stroke icons, matching the set on the homepage — kept
+// local here rather than shared so this component stays self-contained.
+function IconRefresh() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 11A8 8 0 0 0 6.3 6.3L4 8.6M4 13a8 8 0 0 0 13.7 4.7L20 15.4" />
+      <path d="M4 4v4.6h4.6M20 20v-4.6h-4.6" />
+    </svg>
+  );
+}
+function IconPortal() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 9h18M8 20v-11" />
+      <path d="M12 16v-4M16 16v-6" />
+    </svg>
+  );
+}
+function IconMail() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m4 7 8 6 8-6" />
+    </svg>
+  );
+}
 
 export interface SubscribeProfile {
   distributor: string;
@@ -21,6 +50,15 @@ export interface SubscribeProfile {
   // "how much have you saved", as opposed to baselineTotal above, which is
   // just the price of the plan being recommended.
   referenceTotal: number | null;
+  // Optional identity/property details — from the sign-up form or read off
+  // a photographed bill. Entirely optional; a blank subscribe flow still works.
+  customerName: string;
+  address: string;
+  suburb: string;
+  postcode: string;
+  hasSolar: boolean;
+  solarExportKwh: number;
+  homeProfile?: Record<string, unknown> | null;
 }
 
 export default function PricingSection({
@@ -67,10 +105,40 @@ export default function PricingSection({
         <h2>Stay on the cheapest plan — automatically</h2>
       </div>
       <p className={styles.pricingIntro}>
-        The comparison above is free, no sign-up, every time. If you&apos;d rather not keep checking yourself,
-        subscribe and we&apos;ll keep watching the market for you and email you the moment something cheaper shows
-        up. Pick how you&apos;d like to pay.
+        The comparison above is free, no sign-up, every time. <strong>Join and we do the monthly checks
+        for you</strong>. Upload a bill any time to sharpen the result.
       </p>
+
+      <div className={styles.pricingBenefits}>
+        <div className={styles.pricingBenefit}>
+          <div className={styles.pricingBenefitIcon}>
+            <IconRefresh />
+          </div>
+          <div>
+            <strong>We recheck for you</strong>
+            <p>No need to come back or re-upload a bill — we automatically compare your plan against the market
+            again and again.</p>
+          </div>
+        </div>
+        <div className={styles.pricingBenefit}>
+          <div className={`${styles.pricingBenefitIcon} ${styles.pricingBenefitIconTeal}`}>
+            <IconMail />
+          </div>
+          <div>
+            <strong>We tell you the moment it&apos;s worth switching</strong>
+            <p>One email, only when something genuinely cheaper turns up for your area — no noise in between.</p>
+          </div>
+        </div>
+        <div className={styles.pricingBenefit}>
+          <div className={`${styles.pricingBenefitIcon} ${styles.pricingBenefitIconAmber}`}>
+            <IconPortal />
+          </div>
+          <div>
+            <strong>Your own savings portal</strong>
+            <p>A private page just for you, showing your plan and exactly how much you&apos;ve saved so far.</p>
+          </div>
+        </div>
+      </div>
 
       <div className={styles.field + " " + styles.pricingEmailField}>
         <label htmlFor="subEmail">Your email</label>
@@ -83,26 +151,7 @@ export default function PricingSection({
         />
       </div>
 
-      <div className={styles.pricingGrid}>
-        {PRICING_PLANS.map((plan) => (
-          <div key={plan.id} className={styles.pricingCard}>
-            <div className={styles.pricingName}>{plan.name}</div>
-            <div className={styles.pricingPrice}>
-              {fmtPrice(plan.priceCents)}
-              <span className={styles.pricingCadence}>{plan.cadenceLabel}</span>
-            </div>
-            <div className={styles.pricingBlurb}>{plan.blurb}</div>
-            <button
-              type="button"
-              className={styles.pricingBtn}
-              onClick={() => handleChoose(plan.id)}
-              disabled={loadingPlan !== null}
-            >
-              {loadingPlan === plan.id ? "Redirecting…" : "Get started"}
-            </button>
-          </div>
-        ))}
-      </div>
+      <PlanCards onChoose={handleChoose} loadingPlan={loadingPlan} />
       <p className={styles.pricingReassure}>
         Independent of any government energy-comparison service — this is our own calculation, kept private to
         you and never sold or shared. Cancel monthly/quarterly/half-yearly plans anytime.

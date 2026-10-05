@@ -23,6 +23,7 @@ interface SubscriberWatchRow {
   offpeak_kwh: number | null;
   anytime_kwh: number | null;
   controlled_load_kwh: number | null;
+  solar_export_kwh: number | null;
   baseline_total: number | null;
   reference_total: number | null;
   last_notified_total: number | null;
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest) {
   const { data: subsData, error: subsErr } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, baseline_total, reference_total, last_notified_total",
+      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, baseline_total, reference_total, last_notified_total",
     )
     .eq("status", "active")
     .eq("unsubscribed", false)
@@ -107,6 +108,7 @@ export async function GET(req: NextRequest) {
         offpeak: sub.offpeak_kwh ?? 0,
         anytime: sub.anytime_kwh ?? 0,
         cl: sub.controlled_load_kwh ?? 0,
+        solarExportKwh: sub.solar_export_kwh ?? 0,
       });
       if (!best) continue;
 

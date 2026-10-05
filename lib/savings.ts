@@ -23,6 +23,9 @@ export function periodBreakdown(saveForPeriod: number, days: number): PeriodBrea
 
 export interface TypicalExample extends PeriodBreakdown {
   annualUsageKwh: number;
+  /** average yearly cost on the default offer vs the cheapest market plan */
+  annualBench: number;
+  annualBest: number;
 }
 
 /**
@@ -46,17 +49,27 @@ export function typicalHouseholdExample(): TypicalExample {
   };
 
   let totalSave = 0;
+  let totalBench = 0;
+  let totalBest = 0;
   let count = 0;
   for (const distributor of DISTRIBUTORS) {
     const bench = benchmarkBill(distributor, DAYS, null);
     const best = rankPlans(distributor, usage)[0];
     if (!best) continue;
     totalSave += Math.max(0, bench - best.total);
+    totalBench += bench;
+    totalBest += Math.min(bench, best.total);
     count++;
   }
   const avgQuarterlySave = count > 0 ? totalSave / count : 0;
 
-  return { ...periodBreakdown(avgQuarterlySave, DAYS), annualUsageKwh: ANNUAL_KWH };
+  const perYear = count > 0 ? 365 / DAYS / count : 0;
+  return {
+    ...periodBreakdown(avgQuarterlySave, DAYS),
+    annualUsageKwh: ANNUAL_KWH,
+    annualBench: totalBench * perYear,
+    annualBest: totalBest * perYear,
+  };
 }
 
 // --- Accumulated savings (subscriber account history) ---
@@ -91,4 +104,72 @@ export function accumulatedSavings(episodes: SavingsEpisode[], now: Date = new D
     if (!earliest || start < earliest) earliest = start;
   }
   return { total: Math.max(0, total), sinceDate: earliest ? earliest.toISOString() : null };
+}
+
+export interface MonthlySaving {
+  key: string; // "2026-10"
+  label: string; // "Oct 2026"
+  amount: number;
+  partial: boolean; // true for the current, still-running month
+  /** true when this month's amount comes from a saved check, not the running estimate */
+  measured?: boolean;
+}
+
+/** Splits the same episode-based estimate as accumulatedSavings() into
+ * calendar months (Melbourne-agnostic: UTC month boundaries are close enough
+ * for a daily-rate estimate). Newest month first; months with no
+ * overlapping episode are skipped only before the first episode starts. */
+export function monthlySavings(episodes: SavingsEpisode[], now: Date = new Date()): MonthlySaving[] {
+  if (episodes.length === 0) return [];
+  const starts = episodes.map((e) => new Date(e.startedAt).getTime());
+  const first = new Date(Math.min(...starts));
+  const out: MonthlySaving[] = [];
+  let cursor = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1));
+  while (cursor <= now) {
+    const next = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+    let amount = 0;
+    for (const ep of episodes) {
+      const s = Math.max(new Date(ep.startedAt).getTime(), cursor.getTime());
+      const e = Math.min(ep.endedAt ? new Date(ep.endedAt).getTime() : now.getTime(), next.getTime(), now.getTime());
+      if (e > s) amount += ((e - s) / 86_400_000) * ep.dailyRate;
+    }
+    out.push({
+      key: `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`,
+      label: cursor.toLocaleDateString("en-AU", { month: "short", year: "numeric", timeZone: "UTC" }),
+      amount: Math.max(0, amount),
+      partial: next > now,
+    });
+    cursor = next;
+  }
+  return out.reverse();
+}
+
+
+export interface SavedCheck {
+  month: string; // 'YYYY-MM-01'
+  billing_days: number;
+  saving: number; // for billing_days
+}
+
+/** Overlay saved monthly checks onto the estimate: a month with a saved check
+ * uses that check's daily saving × days in the month. Months that only have a
+ * check (no episodes yet) are added. Newest first, like monthlySavings(). */
+export function mergeChecks(estimated: MonthlySaving[], checks: SavedCheck[], now: Date = new Date()): MonthlySaving[] {
+  const byKey = new Map<string, MonthlySaving>(estimated.map((m) => [m.key, { ...m }]));
+  for (const c of checks) {
+    const key = c.month.slice(0, 7);
+    const [y, m] = key.split("-").map(Number);
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const amount = c.billing_days > 0 ? Math.max(0, (c.saving / c.billing_days) * daysInMonth) : 0;
+    const prev = byKey.get(key);
+    const partial = prev?.partial ?? (now.getUTCFullYear() === y && now.getUTCMonth() + 1 === m);
+    byKey.set(key, {
+      key,
+      label: new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-AU", { month: "short", year: "numeric", timeZone: "UTC" }),
+      amount,
+      partial,
+      measured: true,
+    });
+  }
+  return [...byKey.values()].sort((a, b) => (a.key < b.key ? 1 : -1));
 }

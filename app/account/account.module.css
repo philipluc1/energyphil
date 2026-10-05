@@ -11,6 +11,10 @@
   border-radius: 16px;
   box-shadow: var(--shadow);
   padding: 32px;
+  transition: max-width 0.15s;
+}
+.cardWide {
+  max-width: 640px;
 }
 .card h1 {
   font-size: 21px;
@@ -205,6 +209,59 @@
   text-align: right;
 }
 
+.tariffBox {
+  margin-bottom: 16px;
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.tariffLabel {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy-accent-text);
+}
+.tariffPlanName {
+  margin-top: 6px;
+  font-family: "Archivo", sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+}
+.tariffMeta {
+  font-size: 12px;
+  color: var(--grey-soft);
+  margin-top: 2px;
+}
+.tariffRows {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tariffRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+.tariffRowLabel {
+  color: var(--grey);
+}
+.tariffRowValue {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 600;
+  color: var(--ink);
+}
+.tariffNote {
+  font-size: 11px;
+  color: var(--grey-soft);
+  line-height: 1.5;
+  margin: 12px 0 0;
+}
+
 .logoutBtn {
   background: none;
   border: none;
@@ -216,4 +273,86 @@
   cursor: pointer;
   padding: 0;
   font-family: inherit;
+}
+.logoutBtnSpaced {
+  margin-top: 16px;
+}
+
+.footerLinks {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.footerLinks a {
+  font-size: 12px;
+  color: var(--grey-soft);
+  text-decoration: none;
+}
+.footerLinks a:hover {
+  color: var(--navy-accent-text);
+  text-decoration: underline;
+}
+
+.savingsMonthAmt {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 600;
+}
+.checkBox {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1.5px solid var(--amber);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.checkTitle {
+  font-family: "Archivo", sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+}
+.checkSub {
+  font-size: 12.5px;
+  color: var(--grey);
+  margin-top: 2px;
+}
+.checkBox .btnPrimary {
+  text-decoration: none;
+  display: inline-block;
+}
+.tariffBox summary {
+  cursor: pointer;
+  list-style: none;
+}
+.tariffBox summary::-webkit-details-marker {
+  display: none;
+}
+
+.chartBox {
+  margin-bottom: 16px;
+  padding: 16px 14px 10px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.chartTitle {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy-accent-text);
+  margin: 0 4px 4px;
+}
+.chartNote {
+  font-size: 11px;
+  color: var(--grey-soft);
+  text-align: center;
+  margin-top: 4px;
 }

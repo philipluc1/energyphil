@@ -154,3 +154,63 @@ create policy "subscriber can view own savings episodes"
 -- No insert/update/delete policy — same locked-down-by-default pattern as
 -- subscribers; only the server's secret-key connection (checkout webhook,
 -- recheck cron) ever writes these rows.
+
+-- Customer identity + property details — name/address so the sign-up and the
+-- bill-photo shortcut can pre-fill who this is for, and solar/postcode so the
+-- comparison and the portal can reflect a solar household correctly. Entirely
+-- optional on both tables: nothing here is required to get a free comparison,
+-- only collected when the customer (or their bill) actually supplies it. Same
+-- "add column if not exists" pattern as above — safe to re-run.
+alter table public.leads add column if not exists customer_name text;
+alter table public.leads add column if not exists address text;
+alter table public.leads add column if not exists suburb text;
+alter table public.leads add column if not exists postcode text;
+alter table public.leads add column if not exists has_solar boolean not null default false;
+alter table public.leads add column if not exists solar_export_kwh numeric;
+
+alter table public.subscribers add column if not exists customer_name text;
+alter table public.subscribers add column if not exists address text;
+alter table public.subscribers add column if not exists suburb text;
+alter table public.subscribers add column if not exists postcode text;
+alter table public.subscribers add column if not exists has_solar boolean not null default false;
+alter table public.subscribers add column if not exists solar_export_kwh numeric;
+
+-- Household profile (people, dwelling, heating, EV, solar size, ...) captured
+-- on /check, so usage can be estimated for their shape rather than a general average.
+alter table public.leads add column if not exists home_profile jsonb;
+alter table public.subscribers add column if not exists home_profile jsonb;
+
+-- One row per member per month per source: the saving found by that month's
+-- check. 'auto' = the monthly recheck job re-pricing their saved profile,
+-- 'manual' = they ran /check and saved it, 'bill' = saved after reading a bill.
+-- The My Dashboard chart prefers these over the running estimate.
+create table if not exists public.bill_checks (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  email text not null,
+  month date not null,                  -- first day of the month checked
+  source text not null,                 -- 'auto' | 'manual' | 'bill'
+  billing_days integer not null,
+  reference_total numeric not null,     -- what they pay now (or the VDO benchmark)
+  best_total numeric not null,
+  best_retailer text,
+  best_plan_name text,
+  saving numeric not null,              -- reference_total - best_total for billing_days
+  unique (email, month, source)
+);
+alter table public.bill_checks enable row level security;
+grant select on public.bill_checks to authenticated;
+drop policy if exists "member can view own checks" on public.bill_checks;
+create policy "member can view own checks"
+  on public.bill_checks for select to authenticated
+  using ((select auth.email()) = email);
+-- Writes happen only on the server (secret key).
+
+-- Bill photo/PDF reads, counted per member per day to cap AI cost.
+create table if not exists public.bill_reads (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  email text not null
+);
+alter table public.bill_reads enable row level security;
+create index if not exists bill_reads_email_created on public.bill_reads (email, created_at desc);

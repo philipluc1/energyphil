@@ -13,6 +13,7 @@ export interface WatchProfile {
   offpeak: number;
   anytime: number;
   cl: number;
+  solarExportKwh?: number;
 }
 
 export interface WatchResult {
@@ -29,6 +30,7 @@ export function computeBest(profile: WatchProfile): WatchResult | null {
     offpeak: profile.offpeak,
     anytime: profile.anytime,
     cl: profile.cl,
+    solarExportKwh: profile.solarExportKwh ?? 0,
   });
   const top = matches[0];
   if (!top) return null;

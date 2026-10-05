@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sanitizeExtractedBill } from "@/lib/billExtraction";
+import { requireActiveMember } from "@/lib/memberAccess";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
+// Each read costs us an AI call, so cap it per member per day.
+const MAX_READS_PER_DAY = 10;
 
 // Vision calls can take a few seconds; give it more room than the default.
 export const maxDuration = 30;
@@ -60,6 +65,30 @@ const TOOL_SCHEMA = {
         type: ["number", "null"],
         description: "Separately metered controlled load / off-peak hot water usage in kWh, if shown.",
       },
+      customer_name: {
+        type: ["string", "null"],
+        description: "The account holder's name as printed on the bill (e.g. next to 'Account name' or the mailing address block). Null if not visible.",
+      },
+      address: {
+        type: ["string", "null"],
+        description: "The supply address's street line (e.g. '12 Smith Street') — the property the electricity is supplied to, not a billing/mailing address if they differ. Null if not visible.",
+      },
+      suburb: {
+        type: ["string", "null"],
+        description: "The suburb of the supply address. Null if not visible.",
+      },
+      postcode: {
+        type: ["string", "null"],
+        description: "The 4-digit postcode of the supply address. Null if not visible.",
+      },
+      has_solar: {
+        type: "boolean",
+        description: "True if the bill shows any solar feed-in / solar export credit line item, even a small or zero-dollar one — this indicates the property has solar, regardless of the credit amount.",
+      },
+      solar_export_kwh: {
+        type: ["number", "null"],
+        description: "Total solar energy exported to the grid in kWh for this billing period, if a feed-in/export line item is shown. Null if there's no solar or the figure isn't shown.",
+      },
       warnings: {
         type: "array",
         items: { type: "string" },
@@ -72,6 +101,27 @@ const TOOL_SCHEMA = {
 };
 
 export async function POST(req: NextRequest) {
+  // Members only: every read costs us an AI call. Checked before anything else.
+  const member = await requireActiveMember(req.headers.get("authorization"));
+  if (!member.ok) {
+    return NextResponse.json({ ok: false, message: member.message }, { status: member.status });
+  }
+  if (supabaseAdmin) {
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("bill_reads")
+      .select("id", { count: "exact", head: true })
+      .eq("email", member.email)
+      .gte("created_at", since);
+    if ((count ?? 0) >= MAX_READS_PER_DAY) {
+      return NextResponse.json(
+        { ok: false, message: "You've hit today's limit of 10 bill reads. Try again tomorrow, or type the numbers in." },
+        { status: 429 },
+      );
+    }
+    await supabaseAdmin.from("bill_reads").insert({ email: member.email });
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -140,7 +190,9 @@ export async function POST(req: NextRequest) {
                   "rather than guessing if it isn't clearly shown, and note anything uncertain in warnings. " +
                   "Victorian distributor names can appear with extra wording (e.g. 'CitiPower', 'Jemena " +
                   "Electricity Networks') — map them to the closest of the five listed options, or null if it's " +
-                  "clearly a different network.",
+                  "clearly a different network. Also read the account holder's name and the supply address " +
+                  "(street/suburb/postcode) if printed, and check for any solar feed-in/export credit line — " +
+                  "set has_solar true whenever one appears, even if the credit is $0 or very small.",
               },
             ],
           },

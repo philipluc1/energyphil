@@ -1,8 +1,6 @@
 {
   "crons": [
-    {
-      "path": "/api/cron/recheck-prices",
-      "schedule": "0 19 * * *"
-    }
+    { "path": "/api/cron/recheck-prices", "schedule": "0 19 * * *" },
+    { "path": "/api/cron/monthly-check", "schedule": "0 21 1 * *" }
   ]
 }

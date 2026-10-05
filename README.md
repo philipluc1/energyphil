@@ -8,10 +8,25 @@ Consumer Data Right feed) and ranks the cheapest matches.
 
 - `/` — the home page: what the service does, how it works, independence/privacy
   reassurance, and a teaser of the paid monitoring plans. Links through to `/check`.
-- `/check` — the actual tool: upload or type in your bill, see ranked results, then
-  (optionally) subscribe to ongoing monitoring or leave your email for a one-off copy.
+- `/check` — the actual tool: a 4-step wizard (address → billing period → usage →
+  solar) that sets your network from your postcode (always overridable), then shows
+  ranked results including solar feed-in credit and controlled load. Upload/photo a
+  bill to autofill any step, or just type it in. Ends with (optionally) subscribing
+  to ongoing monitoring or leaving your email for a one-off copy.
 - `/account` — customer self-service: sign in (passwordless — see "Customer accounts"
-  below), see which plan you're on, and manage/cancel billing.
+  below), see which plan you're on and its full rate breakdown ("your tariff"),
+  savings history, written energy-saving tips, and manage/cancel billing.
+- `/default-offer` — evergreen explainer: what the Victorian Default Offer (VDO) is,
+  why market offers change constantly, and the current VDO reference rates by
+  network (pulled from the same `lib/plans.ts` data as everything else).
+- `/privacy` — Privacy Policy.
+- `/cancellation-policy` — Cancellation Policy: cancel anytime, keep full benefit
+  through the already-paid period, no prorated refund. **Note:** the webhook code
+  already treats a Stripe subscription as active until Stripe actually ends it at
+  period end — but this only happens if the Stripe Dashboard's Customer Portal
+  (Settings → Billing → Customer portal) is configured for "cancel at period end"
+  rather than "cancel immediately". That's a one-time setting only you can toggle
+  in your own Stripe account.
 - `/dashboard` — private analytics, for you, not customers (see below).
 
 ## Stack
@@ -168,3 +183,14 @@ npm run dev
    Authentication > URL Configuration and add `https://<your-site>/account`
    to Redirect URLs. In Stripe, go to Settings > Billing > Customer portal
    and click Activate. See "Customer accounts" above for more.
+
+## Free manual check vs member bill reading
+- `/check` is free: address → home profile → estimated usage (vs the typical ~4,000 kWh household), priced against every plan and the Victorian Default Offer at the household's own usage.
+- Bill photo/PDF reading costs an Anthropic API call, so `/api/extract-bill` requires a logged-in member with an `active` subscription (checked server-side in `lib/memberAccess.ts`).
+- Re-run `supabase/schema.sql` in Supabase to add the `home_profile` columns.
+
+## Monthly checks, emails and limits
+- `bill_checks` stores one saved check per member per month (auto, manual or from a bill). My Dashboard's monthly chart uses them; other months stay estimates.
+- `/api/cron/monthly-check` runs on the 1st (see `vercel.json`), records each active member's check and emails a short summary. Needs `RESEND_API_KEY`, `CRON_SECRET`, `SITE_URL`.
+- Bill reads are capped at 10 per member per day (`bill_reads`). The free manual check has no server cap; leads insert straight from the browser to Supabase.
+- Re-run `supabase/schema.sql` to create `bill_checks` and `bill_reads`.

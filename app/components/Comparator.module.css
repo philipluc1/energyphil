@@ -1,5 +1,5 @@
 .wrap {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 0 20px;
 }
@@ -25,7 +25,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
   gap: 12px;
 }
@@ -57,6 +57,18 @@
 
 .hero {
   padding: 40px 0 24px;
+}
+.residentialTag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy-accent-text);
+  background: var(--track);
+  border-radius: 100px;
+  padding: 5px 11px;
+  margin-bottom: 12px;
 }
 .hero h1 {
   font-size: 30px;
@@ -222,6 +234,55 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+.stepIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--navy);
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+.stepIcon svg {
+  width: 19px;
+  height: 19px;
+}
+.stepIconTeal {
+  background: var(--teal);
+  color: #fff;
+}
+.stepIconAmber {
+  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
+  color: var(--navy-deep);
+}
+.stepIconGood {
+  background: var(--good);
+  color: #fff;
+}
+.stepHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.stepHead .stepLabel {
+  margin-bottom: 2px;
+}
+.stepHeadText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stepSub {
+  font-size: 12.5px;
+  color: var(--grey-soft);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .helper {
   font-size: 12.5px;
@@ -390,6 +451,127 @@
 }
 .advanceRow .heroCta {
   margin-top: 0;
+}
+
+/* --- input-stage wizard: step progress + back/continue nav --- */
+.wizardSteps {
+  display: flex;
+  align-items: center;
+  margin-top: 24px;
+}
+.wizardStepItem {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.wizardDotGroup {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.wizardDot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 800;
+  font-family: "Archivo", sans-serif;
+  background: var(--track);
+  color: var(--grey-soft);
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.wizardDotActive {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  color: var(--navy-ink);
+  border-color: var(--navy);
+}
+.wizardDotDone {
+  background: var(--good-bg);
+  color: var(--good);
+  border-color: var(--good);
+}
+.wizardDotLabel {
+  font-size: 11.5px;
+  color: var(--grey-soft);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wizardDotLabelActive {
+  color: var(--navy-accent-text);
+}
+.wizardDotLine {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  margin: 0 10px;
+}
+@media (max-width: 460px) {
+  .wizardDotLabel {
+    display: none;
+  }
+  .wizardDotLine {
+    margin: 0 6px;
+  }
+}
+
+.wizardNav {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wizardNav .heroCta {
+  margin-top: 0;
+}
+.wizardBackBtn {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--grey);
+  cursor: pointer;
+  font-family: inherit;
+}
+.wizardBackBtn:hover {
+  border-color: var(--navy-accent-text);
+  color: var(--navy-accent-text);
+}
+
+/* --- 12-month forecast chart --- */
+.forecastIntro {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  color: var(--grey);
+  line-height: 1.5;
+  max-width: 560px;
+}
+.forecastCallout {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--grey);
+  line-height: 1.5;
+}
+.forecastCallout strong {
+  color: var(--amber-ink);
+  font-weight: 800;
+}
+@media (prefers-color-scheme: dark) {
+  .forecastCallout strong {
+    color: var(--amber-light);
+  }
 }
 
 .resultsTopBar {
@@ -626,15 +808,30 @@
   flex-direction: column;
   gap: 8px;
 }
+.planRowWrap {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
 .planRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: none;
+  border-radius: 0;
   padding: 10px 14px;
   background: var(--surface);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: background 0.12s;
+}
+.planRow:hover {
+  background: var(--track);
 }
 .planRow .left {
   min-width: 0;
@@ -652,10 +849,22 @@
 .planRow .pname {
   font-size: 12px;
   color: var(--grey);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.planRow .pname .pnameText {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 320px;
+  min-width: 0;
+}
+.rateHint {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-accent-text);
 }
 .planRow .right {
   text-align: right;
@@ -674,9 +883,14 @@
 .savNeg {
   color: var(--warn) !important;
 }
+.planRowExpanded {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
 .rowSwitchLink {
   display: inline-block;
-  margin-top: 4px;
+  margin-top: 10px;
   font-size: 11.5px;
   font-weight: 600;
   color: var(--navy-accent-text);
@@ -684,6 +898,122 @@
 }
 .rowSwitchLink:hover {
   text-decoration: underline;
+}
+
+.rateToggleBtn {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.rateToggleBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.rateBreakdown {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bestCard .rateBreakdown {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 4px 12px;
+}
+.planRowExpanded .rateBreakdown {
+  margin-top: 10px;
+}
+.rateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  font-size: 12.5px;
+}
+.bestCard .rateRow {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.bestCard .rateRow:last-child {
+  border-bottom: none;
+}
+.planRowExpanded .rateRow {
+  border-bottom: 1px solid var(--border);
+}
+.planRowExpanded .rateRow:last-child {
+  border-bottom: none;
+}
+.rateLabel {
+  color: inherit;
+  opacity: 0.75;
+}
+.planRowExpanded .rateLabel {
+  color: var(--grey);
+  opacity: 1;
+}
+.rateValue {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 600;
+}
+
+.mt16 {
+  margin-top: 16px;
+}
+.noTopMargin {
+  margin-top: 0;
+}
+
+.solarBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+  margin-left: 6px;
+  vertical-align: middle;
+  background: rgba(245, 166, 35, 0.16);
+  color: #b4740f;
+  white-space: nowrap;
+}
+.bestCard .solarBadge {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--amber-light);
+}
+@media (prefers-color-scheme: dark) {
+  .solarBadge {
+    color: var(--amber-light);
+  }
+}
+
+.evBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+  margin-left: 6px;
+  vertical-align: middle;
+  background: rgba(14, 165, 160, 0.16);
+  color: var(--teal);
+  white-space: nowrap;
+}
+.bestCard .evBadge {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--teal-light);
 }
 .offerTag {
   font-size: 10px;
@@ -803,6 +1133,60 @@
   max-width: 580px;
   line-height: 1.55;
 }
+.pricingIntro strong {
+  color: var(--ink);
+}
+
+.pricingBenefits {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 780px) {
+  .pricingBenefits {
+    grid-template-columns: 1fr;
+  }
+}
+.pricingBenefit {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.pricingBenefit strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.pricingBenefit p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--grey);
+  line-height: 1.5;
+}
+.pricingBenefitIcon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--navy);
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pricingBenefitIcon svg {
+  width: 18px;
+  height: 18px;
+}
+.pricingBenefitIconTeal {
+  background: var(--teal);
+  color: #fff;
+}
+.pricingBenefitIconAmber {
+  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
+  color: var(--navy-deep);
+}
 .pricingEmailField {
   margin-top: 18px;
   max-width: 320px;
@@ -820,7 +1204,10 @@
 }
 @media (max-width: 480px) {
   .pricingGrid {
-    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .pricingCard {
+    padding: 12px 10px;
   }
 }
 .pricingCard {
@@ -894,10 +1281,25 @@
 
 .brandLink {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 9px;
   text-decoration: none;
   color: inherit;
+}
+.brandMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
+  color: var(--navy-deep);
+  flex-shrink: 0;
+}
+.brandMark svg {
+  width: 15px;
+  height: 15px;
 }
 .navLinks {
   display: flex;
@@ -918,6 +1320,34 @@
 }
 .navLink:hover {
   color: #fff;
+}
+/* The brand mark + wordmark + 3-item nav can overflow a narrow phone
+   viewport at full size — tighten everything down proportionally rather
+   than letting it wrap or clip off-screen. */
+@media (max-width: 440px) {
+  .bar {
+    padding: 10px 14px;
+    gap: 6px;
+  }
+  .mark {
+    font-size: 14.5px;
+  }
+  .brandMark {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+  }
+  .brandMark svg {
+    width: 12px;
+    height: 12px;
+  }
+  .navLinks {
+    gap: 10px;
+  }
+  .navLink,
+  .navLinkActive {
+    font-size: 11.5px;
+  }
 }
 
 .heroCta {
@@ -1046,4 +1476,48 @@
   font-size: 13px;
   color: var(--ink);
   margin-bottom: 8px;
+}
+
+/* Profile step: button-group choices + estimate tiles */
+.profileField { margin-top: 16px; }
+.profileLabel { font-size: 13px; font-weight: 700; margin-bottom: 7px; color: var(--ink); }
+.choiceRow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.choiceRow + .choiceRow { margin-top: 8px; }
+.choiceBtn {
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: 9px;
+  padding: 8px 13px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.choiceBtn:hover { border-color: var(--amber); }
+.choiceBtnActive { background: var(--amber); border-color: var(--amber); color: var(--amber-ink); }
+.estTiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.estTile { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; }
+.estV { font-weight: 700; font-size: 17px; }
+.estL { font-size: 11.5px; color: var(--grey); margin-top: 3px; }
+.saveCheck { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px; font-size:13.5px; font-weight:600; } .saveCheck a { color: var(--navy-accent-text); }
+
+/* Five nav items: on phones, brand on the first row and the nav on its own
+   full-width row beneath, so nothing is clipped or squeezed. */
+@media (max-width: 640px) {
+  .bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .navLinks {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .navLink,
+  .navLinkActive {
+    font-size: 13px;
+  }
 }

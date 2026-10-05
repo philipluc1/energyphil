@@ -1,0 +1,159 @@
+/* Shared layout for the long-form info/policy pages (Victorian Default
+   Offer, Privacy Policy, Cancellation Policy) — a narrower reading column
+   than the comparator's 900px, since this is prose rather than a tool. */
+.wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+.hero {
+  padding: 40px 0 8px;
+}
+.eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy-accent-text);
+  background: var(--track);
+  border-radius: 100px;
+  padding: 5px 11px;
+  margin-bottom: 12px;
+}
+.hero h1 {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.18;
+}
+.updated {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--grey-soft);
+}
+.lede {
+  margin: 14px 0 0;
+  font-size: 15px;
+  color: var(--grey);
+  line-height: 1.6;
+}
+
+.section {
+  margin-top: 30px;
+}
+.section h2 {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.section p {
+  font-size: 14px;
+  color: var(--grey);
+  line-height: 1.65;
+  margin: 0 0 12px;
+}
+.section p:last-child {
+  margin-bottom: 0;
+}
+.section ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.section li {
+  font-size: 14px;
+  color: var(--grey);
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+.section strong {
+  color: var(--ink);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 22px 24px;
+  margin-top: 16px;
+}
+
+.calloutGood {
+  margin-top: 16px;
+  background: var(--good-bg);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+  border-radius: 12px;
+  padding: 16px 18px;
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+.calloutGood strong {
+  color: var(--good);
+}
+
+.rateTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.rateTable th,
+.rateTable td {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.rateTable th {
+  font-family: "Archivo", sans-serif;
+  font-weight: 700;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--grey-soft);
+}
+.rateTable td.num,
+.rateTable th.num {
+  font-family: "IBM Plex Mono", monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+.tableNote {
+  font-size: 11.5px;
+  color: var(--grey-soft);
+  margin-top: 10px;
+  line-height: 1.5;
+}
+@media (max-width: 560px) {
+  .rateTable {
+    font-size: 11.5px;
+  }
+  .rateTable th,
+  .rateTable td {
+    padding: 7px 6px;
+  }
+}
+
+.ctaRow {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+}
+
+.policyNav {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.policyNav a {
+  color: var(--navy-accent-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.policyNav a:hover {
+  text-decoration: underline;
+}

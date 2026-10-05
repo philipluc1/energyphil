@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import styles from "./Comparator.module.css";
 
@@ -31,12 +33,35 @@ async function resizeImage(file: File): Promise<Blob> {
 }
 
 type Status = "idle" | "reading" | "error";
+type Access = "checking" | "member" | "locked";
 
 export default function BillPhotoUpload({ onApply }: { onApply: (bill: ExtractedBill) => void }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [access, setAccess] = useState<Access>("checking");
+
+  // UI hint only — the server re-checks membership on every upload.
+  useEffect(() => {
+    if (!supabase) {
+      Promise.resolve().then(() => setAccess("locked"));
+      return;
+    }
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data }) => {
+      const email = data.session?.user?.email;
+      if (!email) return !cancelled && setAccess("locked");
+      const res = await fetch("/api/member-status", {
+        headers: { authorization: `Bearer ${data.session?.access_token}` },
+      }).catch(() => null);
+      const body = res ? await res.json().catch(() => null) : null;
+      if (!cancelled) setAccess(body?.member ? "member" : "locked");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleFile(file: File) {
     setStatus("reading");
@@ -51,7 +76,12 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
       const form = new FormData();
       form.append("photo", toSend, isPdf ? "bill.pdf" : "bill.jpg");
 
-      const res = await fetch("/api/extract-bill", { method: "POST", body: form });
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+      const res = await fetch("/api/extract-bill", {
+        method: "POST",
+        body: form,
+        headers: session ? { authorization: `Bearer ${session.access_token}` } : undefined,
+      });
       const body = await res.json().catch(() => ({ ok: false, message: "Something went wrong reading that file." }));
 
       if (!body.ok) {
@@ -74,14 +104,28 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
     if (file) handleFile(file);
   }
 
+  if (access === "checking") return null;
+  if (access === "locked") {
+    return (
+      <div className={styles.photoCard}>
+        <div className={styles.stepLabel}>
+          <span className={styles.photoBolt}>🔒</span> Bill reading is for members
+        </div>
+        <p className={styles.helper}>
+          Members can snap a bill photo or PDF and we fill it in. Everyone can use the free check below.
+          Already a member? <Link href="/account">Log in</Link>.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.photoCard}>
       <div className={styles.stepLabel}>
         <span className={styles.photoBolt}>⚡</span> Got your bill handy?
       </div>
       <p className={styles.helper}>
-        Snap a photo, or upload a photo or PDF, and we&apos;ll read the numbers off it for you — you&apos;ll
-        still get to check everything below before we calculate anything.
+        Snap a photo or upload a PDF and we&apos;ll fill it in. You can check everything before we calculate.
       </p>
 
       <div className={styles.photoActions}>

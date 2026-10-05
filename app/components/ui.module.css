@@ -1,0 +1,36 @@
+/* Tags: small coloured labels used on pricing, steps and the hero. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 7px 12px;
+  border-radius: 100px;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.amber { background: linear-gradient(135deg, #ffd166, #f5a623); color: #1c1403; box-shadow: 0 4px 14px rgba(245, 166, 35, 0.4); }
+.green { background: #16a34a; color: #fff; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); }
+.teal { background: #0ea5a0; color: #fff; }
+.navy { background: var(--track); color: var(--navy-accent-text); }
+.glass { background: rgba(255, 255, 255, 0.12); color: #fff; border: 1px solid rgba(255, 255, 255, 0.22); backdrop-filter: blur(6px); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+/* a slow light sweep draws the eye to the highlighted tags only */
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: sweep 3.8s ease-in-out infinite;
+}
+@keyframes sweep {
+  0%, 55% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shine::after { animation: none; display: none; }
+}

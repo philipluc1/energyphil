@@ -4,8 +4,11 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
 import { findPlan, fmtPrice } from "@/lib/pricingPlans";
-import { accumulatedSavings } from "@/lib/savings";
+import { accumulatedSavings, mergeChecks, monthlySavings, type SavedCheck } from "@/lib/savings";
+import { findPlanRow, planRateRows } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
+import EnergyTips from "../components/EnergyTips";
+import SavingsChart from "../components/SavingsChart";
 import styles from "./account.module.css";
 
 // Passwordless sign-in: there's no separate "create an account" step — the
@@ -22,6 +25,15 @@ interface SubscriberSummary {
   currency: string;
   current_period_end: string | null;
   created_at: string;
+  // Added for the "your tariff" card below — the plan this subscriber was
+  // last matched to, and the network/solar context needed to price it the
+  // same way /check does.
+  distributor: string | null;
+  baseline_retailer: string | null;
+  baseline_plan_name: string | null;
+  billing_days: number | null;
+  has_solar: boolean | null;
+  solar_export_kwh: number | null;
 }
 
 interface EpisodeRow {
@@ -69,6 +81,7 @@ export default function AccountPage() {
 
   const [episodes, setEpisodes] = useState<EpisodeRow[]>([]);
   const [episodesLoading, setEpisodesLoading] = useState(false);
+  const [checks, setChecks] = useState<SavedCheck[]>([]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -102,13 +115,15 @@ export default function AccountPage() {
       setSubError("");
       const { data, error } = await supabase!
         .from("subscribers")
-        .select("plan, status, amount_cents, currency, current_period_end, created_at")
+        .select(
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh",
+        )
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (cancelled) return;
       if (error) {
-        setSubError("Couldn't load your account — please try refreshing.");
+        setSubError("Couldn't load your dashboard — please try refreshing.");
       } else {
         setSub(data as SubscriberSummary | null);
       }
@@ -144,6 +159,21 @@ export default function AccountPage() {
       } else {
         setEpisodes((data ?? []) as EpisodeRow[]);
       }
+      const { data: chk } = await supabase!
+        .from("bill_checks")
+        .select("month, billing_days, saving, source")
+        .order("month", { ascending: true });
+      if (!cancelled) {
+        // One check per month: prefer a bill-based or manual check over the automatic one.
+        const rank: Record<string, number> = { bill: 3, manual: 2, auto: 1 };
+        const best = new Map<string, { c: SavedCheck; r: number }>();
+        for (const row of (chk ?? []) as (SavedCheck & { source: string })[]) {
+          const key = row.month.slice(0, 7);
+          const r = rank[row.source] ?? 0;
+          if (!best.has(key) || best.get(key)!.r < r) best.set(key, { c: row, r });
+        }
+        setChecks([...best.values()].map((v) => v.c));
+      }
       setEpisodesLoading(false);
     }
 
@@ -159,6 +189,31 @@ export default function AccountPage() {
         episodes.map((ep) => ({ startedAt: ep.started_at, endedAt: ep.ended_at, dailyRate: ep.daily_rate })),
       ),
     [episodes],
+  );
+
+  const months = useMemo(
+    () =>
+      mergeChecks(
+        monthlySavings(
+          episodes.map((ep) => ({ startedAt: ep.started_at, endedAt: ep.ended_at, dailyRate: ep.daily_rate })),
+        ),
+        checks,
+      ),
+    [episodes, checks],
+  );
+
+  // The exact plan row for "your tariff" below — looked up fresh from the
+  // current rate card each render, so if a retailer has changed its rates
+  // since this subscriber's last check, the breakdown reflects that rather
+  // than a stale snapshot. Null means the plan name/retailer/network combo
+  // we matched them to no longer appears (retired or renamed since).
+  const tariffPlan = useMemo(() => {
+    if (!sub?.baseline_retailer || !sub?.baseline_plan_name || !sub?.distributor) return null;
+    return findPlanRow(sub.baseline_retailer, sub.baseline_plan_name, sub.distributor);
+  }, [sub]);
+  const tariffRows = useMemo(
+    () => (tariffPlan ? planRateRows(tariffPlan, sub?.has_solar ? sub?.solar_export_kwh ?? 0 : 0) : []),
+    [tariffPlan, sub],
   );
 
   async function handleSendLink(e: FormEvent) {
@@ -220,8 +275,8 @@ export default function AccountPage() {
     <>
       <SiteHeader active="account" />
       <div className={styles.wrap}>
-        <div className={styles.card}>
-          <h1>Your account</h1>
+        <div className={`${styles.card} ${stage === "signedIn" ? styles.cardWide : ""}`}>
+          <h1>My Dashboard</h1>
 
           {!supabaseConfigured && <p className={styles.note}>Accounts aren&apos;t switched on yet — check back soon.</p>}
 
@@ -230,12 +285,11 @@ export default function AccountPage() {
           {supabaseConfigured && stage === "signedOut" && (
             <>
               <p className={styles.lede}>
-                Enter your email and we&apos;ll send you a one-click link to sign in — no password needed. First
-                time here? This creates your account too.
+                Enter your email and we&apos;ll send a sign-in link. No password.
               </p>
               {linkSent ? (
                 <p className={styles.success}>
-                  Check your inbox — we&apos;ve sent a sign-in link to <strong>{loginEmail}</strong>.
+                  Link sent to <strong>{loginEmail}</strong> — check your inbox.
                 </p>
               ) : (
                 <form className={styles.form} onSubmit={handleSendLink}>
@@ -259,14 +313,43 @@ export default function AccountPage() {
             <>
               <p className={styles.signedInAs}>Signed in as {userEmail}</p>
 
+              <div className={styles.savingsBox}>
+                <div className={styles.savingsLabel}>Saved so far</div>
+                <div className={styles.savingsTotal}>{episodesLoading ? "…" : fmtDollars(accumulated.total)}</div>
+                {accumulated.sinceDate && (
+                  <div className={styles.savingsSince}>Since {fmtDate(accumulated.sinceDate)} · estimate</div>
+                )}
+              </div>
+
+              <div className={styles.chartBox}>
+                <div className={styles.chartTitle}>Savings by month</div>
+                {!episodesLoading && months.length === 0 ? (
+                  <p className={styles.note}>Your monthly savings will show here.</p>
+                ) : (
+                  <SavingsChart months={months} />
+                )}
+                {months.some((m) => m.partial) && <div className={styles.chartNote}>Faded column = month in progress</div>}
+                {months.length > 0 && <div className={styles.chartNote}>Months with a saved check use it. Others are estimates.</div>}
+              </div>
+
+              <div className={styles.checkBox}>
+                <div>
+                  <div className={styles.checkTitle}>Check this month&apos;s bill</div>
+                  <div className={styles.checkSub}>Upload a photo or PDF — takes a minute.</div>
+                </div>
+                <Link href="/check" className={styles.btnPrimary}>
+                  Upload bill
+                </Link>
+              </div>
+
               {subLoading && <p className={styles.note}>Loading your plan…</p>}
               {subError && <p className={styles.error}>{subError}</p>}
 
               {!subLoading && !subError && !sub && (
                 <div className={styles.planBox}>
-                  <p>You&apos;re not currently subscribed to ongoing monitoring.</p>
+                  <p>You&apos;re not subscribed yet.</p>
                   <Link href="/check#pricing" className={styles.linkBtn}>
-                    See monitoring plans →
+                    See plans →
                   </Link>
                 </div>
               )}
@@ -282,56 +365,58 @@ export default function AccountPage() {
                     </span>
                   </div>
                   {sub.current_period_end && (
-                    <div className={styles.renewNote}>Renews {fmtDate(sub.current_period_end)}</div>
+                    <div className={styles.renewNote}>
+                      {sub.status === "active" ? "Renews" : "Ends"} {fmtDate(sub.current_period_end)}
+                    </div>
                   )}
                   <button type="button" className={styles.btnPrimary} onClick={handleManageBilling} disabled={portalLoading}>
-                    {portalLoading ? "Opening…" : "Manage billing"}
+                    {portalLoading ? "Opening…" : "Manage or cancel"}
                   </button>
                   {portalError && <p className={styles.error}>{portalError}</p>}
                 </div>
               )}
 
-              {episodesLoading && <p className={styles.note}>Loading your savings history…</p>}
-
-              {!episodesLoading && episodes.length > 0 && (
-                <div className={styles.savingsBox}>
-                  <div className={styles.savingsLabel}>Savings so far</div>
-                  <div className={styles.savingsTotal}>{fmtDollars(accumulated.total)}</div>
-                  {accumulated.sinceDate && (
-                    <div className={styles.savingsSince}>Estimated since {fmtDate(accumulated.sinceDate)}</div>
+              {!subLoading && sub && sub.baseline_retailer && sub.baseline_plan_name && (
+                <details className={styles.tariffBox}>
+                  <summary className={styles.tariffLabel}>Your matched plan &amp; rates</summary>
+                  {tariffPlan ? (
+                    <>
+                      <div className={styles.tariffPlanName}>
+                        {sub.baseline_retailer} — {sub.baseline_plan_name}
+                      </div>
+                      <div className={styles.tariffMeta}>{sub.distributor} network</div>
+                      <div className={styles.tariffRows}>
+                        {tariffRows.map((r) => (
+                          <div className={styles.tariffRow} key={r.label}>
+                            <span className={styles.tariffRowLabel}>{r.label}</span>
+                            <span className={styles.tariffRowValue}>{r.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className={styles.tariffNote}>Matched at your last check. Confirm against your bill.</p>
+                    </>
+                  ) : (
+                    <p className={styles.note}>
+                      {sub.baseline_retailer} — {sub.baseline_plan_name} is no longer listed. Upload a new bill for
+                      today&apos;s rates.
+                    </p>
                   )}
-                  <p className={styles.savingsCaveat}>
-                    An estimate, not a guarantee — based on you switching to the plan we matched you to each
-                    time, and staying on it. We can&apos;t see whether you actually switched.
-                  </p>
-
-                  <div className={styles.savingsHistoryLabel}>History</div>
-                  <ul className={styles.savingsHistoryList}>
-                    {[...episodes].reverse().map((ep, i) => (
-                      <li key={ep.started_at} className={styles.savingsHistoryItem}>
-                        <span className={styles.savingsHistoryDate}>{fmtDate(ep.started_at)}</span>
-                        <span className={styles.savingsHistoryText}>
-                          {i === episodes.length - 1 ? "Started monitoring" : "Found something cheaper"}
-                          {ep.best_retailer ? ` — ${ep.best_retailer}` : ""}
-                          {ep.best_plan_name ? ` (${ep.best_plan_name})` : ""}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                </details>
               )}
 
-              {!episodesLoading && episodes.length === 0 && sub && (
-                <p className={styles.note}>
-                  Your savings history will start building up here from your next price check.
-                </p>
-              )}
+              <EnergyTips />
 
-              <button type="button" className={styles.logoutBtn} onClick={handleLogout}>
+              <button type="button" className={`${styles.logoutBtn} ${styles.logoutBtnSpaced}`} onClick={handleLogout}>
                 Log out
               </button>
             </>
           )}
+
+          <div className={styles.footerLinks}>
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/cancellation-policy">Cancellation Policy</Link>
+            <Link href="/default-offer">About the VDO</Link>
+          </div>
         </div>
       </div>
     </>

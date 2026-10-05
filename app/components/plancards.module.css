@@ -1,0 +1,46 @@
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: stretch; margin-top: 22px; }
+@media (max-width: 960px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+
+.card {
+  position: relative; display: flex; flex-direction: column;
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px;
+  padding: 22px 20px 20px;
+  transition: transform 0.25s cubic-bezier(0.22, 0.7, 0.3, 1), box-shadow 0.25s, border-color 0.25s;
+}
+.card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--navy-accent-text); }
+.featured {
+  border-color: var(--amber); border-width: 2px;
+  background: linear-gradient(180deg, rgba(245, 166, 35, 0.12), var(--surface) 55%);
+  box-shadow: 0 14px 40px rgba(245, 166, 35, 0.22);
+}
+@media (min-width: 961px) { .featured { transform: translateY(-10px); } .featured:hover { transform: translateY(-14px); } }
+
+.tagRow { height: 28px; display: flex; align-items: center; }
+.name { margin-top: 10px; font-family: "Archivo", sans-serif; font-weight: 800; font-size: 17px; }
+
+.priceRow { display: flex; align-items: baseline; gap: 10px; margin-top: 14px; min-height: 52px; }
+.price { font-family: "Archivo", sans-serif; font-weight: 900; font-size: 52px; line-height: 1; letter-spacing: -0.03em; }
+.anchor { font-size: 17px; font-weight: 700; color: var(--grey-soft); text-decoration: line-through; text-decoration-thickness: 2px; }
+.cadence { margin-top: 8px; font-size: 13.5px; color: var(--grey); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.save { background: var(--good-bg); color: var(--good); font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 100px; }
+.perMonth { margin-top: 6px; font-size: 14px; color: var(--ink); min-height: 21px; }
+
+.features { list-style: none; margin: 16px 0 20px; padding: 14px 0 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 9px; flex: 1; }
+.features li { font-size: 13.5px; padding-left: 24px; position: relative; line-height: 1.4; }
+.features li::before {
+  content: ""; position: absolute; left: 0; top: 1px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--good-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4.5 8.3 2.3 2.3 4.7-5' fill='none' stroke='%2316a34a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat;
+}
+
+.btn, .btnFeatured {
+  display: block; width: 100%; text-align: center; text-decoration: none; cursor: pointer; font-family: inherit;
+  border-radius: 12px; padding: 13px 16px; font-size: 15px; font-weight: 800; border: none;
+  transition: transform 0.15s, filter 0.15s;
+}
+.btn { background: var(--navy); color: #fff; }
+.btnFeatured { background: linear-gradient(135deg, #ffd166, #f5a623); color: #1c1403; box-shadow: 0 6px 18px rgba(245, 166, 35, 0.4); }
+.btn:hover, .btnFeatured:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.btn:disabled, .btnFeatured:disabled { opacity: 0.6; cursor: default; }
+.btn:focus-visible, .btnFeatured:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .card, .btn, .btnFeatured { transition: none; } }

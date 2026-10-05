@@ -12,6 +12,15 @@ export interface ExtractedBill {
   shoulderKwh: number | null;
   offpeakKwh: number | null;
   controlledLoadKwh: number | null;
+  // Account holder's name and supply address, read straight off the bill —
+  // used to pre-fill the sign-up form, never required to see a comparison.
+  customerName: string | null;
+  address: string | null;
+  suburb: string | null;
+  postcode: string | null;
+  // True if the bill shows any solar feed-in credit line, even a small one.
+  hasSolar: boolean;
+  solarExportKwh: number | null;
   warnings: string[];
 }
 
@@ -48,6 +57,9 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
   const billingDaysRaw = toPositiveInt(r.billing_days);
   const billingDays = billingDaysRaw !== null && billingDaysRaw >= 1 && billingDaysRaw <= 366 ? billingDaysRaw : null;
 
+  const postcodeRaw = typeof r.postcode === "string" ? r.postcode.trim() : "";
+  const postcode = /^\d{4}$/.test(postcodeRaw) ? postcodeRaw : null;
+
   return {
     isElectricityBill: r.is_electricity_bill === true,
     distributor,
@@ -60,6 +72,12 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     shoulderKwh: toFiniteNumber(r.shoulder_kwh),
     offpeakKwh: toFiniteNumber(r.offpeak_kwh),
     controlledLoadKwh: toFiniteNumber(r.controlled_load_kwh),
+    customerName: typeof r.customer_name === "string" ? r.customer_name.slice(0, 120) : null,
+    address: typeof r.address === "string" ? r.address.slice(0, 200) : null,
+    suburb: typeof r.suburb === "string" ? r.suburb.slice(0, 80) : null,
+    postcode,
+    hasSolar: r.has_solar === true,
+    solarExportKwh: toFiniteNumber(r.solar_export_kwh),
     warnings,
   };
 }

@@ -22,6 +22,15 @@ function getPeriodEnd(sub: Stripe.Subscription): number | null {
   return typeof itemLevel?.current_period_end === "number" ? itemLevel.current_period_end : null;
 }
 
+function parseJson(v: string | undefined): unknown {
+  if (!v) return null;
+  try {
+    return JSON.parse(v);
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!stripe || !webhookSecret) {
@@ -86,6 +95,13 @@ export async function POST(req: NextRequest) {
             baseline_retailer: md.baselineRetailer || null,
             baseline_plan_name: md.baselinePlanName || null,
             reference_total: referenceTotal,
+            customer_name: md.customerName || null,
+            address: md.address || null,
+            suburb: md.suburb || null,
+            postcode: md.postcode || null,
+            has_solar: md.hasSolar === "true",
+            solar_export_kwh: toNum(md.solarExportKwh),
+            home_profile: parseJson(md.homeProfile),
           })
           .select("id")
           .single();
