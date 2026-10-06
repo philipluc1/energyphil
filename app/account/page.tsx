@@ -409,11 +409,15 @@ export default function AccountPage() {
                   <div className={styles.checkSub}>
                     {doneThisMonth
                       ? "We'll check again next month. Got a newer bill? Upload it below."
-                      : "Upload a photo or PDF below. It takes about a minute."}
+                      : sub && sub.status === "active"
+                        ? "Upload a photo or PDF below. It takes about a minute."
+                        : "Members get a bill read and a saved check every month. Start with the free check."}
                   </div>
                 </div>
                 {!doneThisMonth && (
-                  <a href="#read-bill" className={styles.btnPrimary}>Upload bill</a>
+                  sub && sub.status === "active"
+                    ? <a href="#read-bill" className={styles.btnPrimary}>Upload bill</a>
+                    : <Link href="/check" className={styles.btnPrimary}>Run a free check</Link>
                 )}
               </div>
 
@@ -447,6 +451,7 @@ export default function AccountPage() {
                 </div>
               )}
 
+              {sub && sub.status === "active" && (<>
               <div className={styles.savingsBox}>
                 <div className={styles.savingsLabel}>{switchedAt ? "Saved since you switched" : "What you'd save by switching"}</div>
                 <div className={styles.savingsTotal}>{episodesLoading ? "…" : fmtDollars(accumulated.total)}</div>
@@ -468,6 +473,8 @@ export default function AccountPage() {
                 {months.some((m) => m.partial) && <div className={styles.chartNote}>Faded column = month in progress</div>}
                 {months.length > 0 && <div className={styles.chartNote}>Months with a saved check use it. Others are estimates.</div>}
               </div>
+
+              </>)}
 
               {!subLoading && sub && <ProfilePanels d={sub} />}
 
