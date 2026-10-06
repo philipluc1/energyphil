@@ -356,3 +356,31 @@
   text-align: center;
   margin-top: 4px;
 }
+
+.inbox { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 8px 0; }
+.inbox h2 { font-size: 22px; font-weight: 900; margin: 0; }
+.inbox p { margin: 0; font-size: 14.5px; line-height: 1.5; }
+.inboxIcon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; background: rgba(13,148,136,0.14); color: #0d9488; }
+.inboxBtns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 6px 0; }
+.btnGhost { display: inline-flex; align-items: center; padding: 11px 18px; border-radius: 12px; border: 1px solid var(--border); font-weight: 700; font-size: 14px; text-decoration: none; color: inherit; }
+.inbox .linkBtn:disabled { opacity: 0.55; cursor: default; }
+.linkBtn { background: none; border: 0; padding: 4px; font: inherit; font-size: 14px; font-weight: 700; color: #0d9488; cursor: pointer; text-decoration: none; }
+.linkBtn:hover:not(:disabled) { text-decoration: underline; }
+.switchRow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 10px; font-size: 14px; }
+.switchRow input { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: inherit; margin-left: 4px; }
+
+/* ---- A little colour: each card gets a tint and a coloured edge so the
+   dashboard reads as distinct areas, not a stack of grey boxes. ---- */
+.toneAmber { background: linear-gradient(135deg, #fff7e0, #fff1c7); border-color: #f5a623; }
+.toneTeal { background: linear-gradient(135deg, #e6fbf8, #d6f5f0); border-left: 5px solid #0ea5a0; }
+.toneViolet { background: linear-gradient(135deg, #f1efff, #e7e3ff); border-left: 5px solid #7c6cf0; }
+.toneNavy { background: linear-gradient(135deg, #eef1fb, #e3e8fa); border-left: 5px solid #2d3f9e; }
+.savingsBox { background: linear-gradient(135deg, #0d6f78 0%, #131c57 60%, #22306e 100%); }
+.chartBox { border-left: 5px solid #f5a623; }
+.tariffBox { border-left: 5px solid #0ea5a0; }
+@media (prefers-color-scheme: dark) {
+  .toneAmber { background: rgba(245,166,35,0.12); }
+  .toneTeal { background: rgba(14,165,160,0.12); }
+  .toneViolet { background: rgba(124,108,240,0.14); }
+  .toneNavy { background: rgba(45,63,158,0.18); }
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendEmail, emailConfigured } from "@/lib/email";
+import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { computeBest, fmtCurrency } from "@/lib/priceWatch";
 import type { Distributor } from "@/lib/plans";
 
@@ -91,8 +91,10 @@ export async function GET(req: NextRequest) {
         const ok = await sendEmail({
           to: sub.email,
           subject: `Your ${monthName} electricity check`,
+          cta: { label: "Open My Dashboard", url: `${origin}/account` },
           html: `
             <p>We re-checked your plan against today's prices.</p>
+            <p style="margin:0 0 12px;padding:10px 12px;background:#fff7e0;border-radius:8px;">Switched recently? <a href="${origin}/account">Tell us the date on your dashboard</a> so your savings count from the right day.</p>
             <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${best.bestRetailer} — ${best.bestPlanName}</p>
             <p style="margin:0 0 16px;">${
               saving > 0
@@ -109,5 +111,6 @@ export async function GET(req: NextRequest) {
       errors++;
     }
   }
+  await sendHealthEmail("monthly check", { "checks saved": saved, "summaries emailed": emailed, errors });
   return NextResponse.json({ ok: true, saved, emailed, errors });
 }

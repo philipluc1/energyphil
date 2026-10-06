@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "pull-plans": "node scripts/pull-plans.mjs",
+    "pull-plans:dry": "node scripts/pull-plans.mjs --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.0",

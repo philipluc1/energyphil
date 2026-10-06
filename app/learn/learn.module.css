@@ -1,0 +1,41 @@
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips a { padding: 7px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 700; color: inherit; text-decoration: none; }
+.chips a:hover { border-color: var(--teal, #0d9488); }
+.block { padding: 36px 0 8px; scroll-margin-top: 80px; }
+.h3 { font-size: 18px; font-weight: 800; margin: 28px 0 10px; }
+.note { font-size: 14px; line-height: 1.55; color: var(--grey); margin: 12px 0 0; }
+.steps { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; counter-reset: s; }
+.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px 20px; line-height: 1.5; font-size: 15px; }
+.steps li::before { content: counter(s); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #0d9488; color: #fff; font-weight: 800; margin-bottom: 10px; }
+.tableWrap { overflow-x: auto; margin-top: 16px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px; }
+.table th, .table td { padding: 12px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); line-height: 1.45; }
+.table tbody th { font-weight: 800; width: 14%; }
+.table tr:last-child th, .table tr:last-child td { border-bottom: 0; }
+.us { background: rgba(13, 148, 136, 0.1); }
+.videoGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 18px; }
+.chartFrame { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 14px 10px 6px; }
+.pillRow { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.pill { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; color: inherit; }
+.pillOn { background: #0d9488; border-color: #0d9488; color: #fff; }
+.hist { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; font-size: 14px; color: var(--grey); }
+.hist b { color: inherit; margin-right: 6px; }
+.timeline { list-style: none; margin: 18px 0 0; padding: 0 0 0 22px; border-left: 3px solid var(--border); display: grid; gap: 18px; }
+.timeline li { position: relative; }
+.timeline li::before { content: ""; position: absolute; left: -30px; top: 4px; width: 13px; height: 13px; border-radius: 50%; background: #0d9488; border: 3px solid var(--bg, #fff); }
+.timeline li.exp::before { background: var(--bg, #fff); border-color: #0d9488; }
+.timeline li.exp { opacity: 0.85; }
+.when { display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #0d9488; }
+.timeline p { margin: 2px 0 0; font-size: 14px; color: var(--grey); line-height: 1.5; }
+.tips { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.tip { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; }
+.tip p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--grey); }
+@media (max-width: 760px) { .steps, .videoGrid { grid-template-columns: 1fr; } }
+.flowWrap { background: var(--navy-deep); color: #fff; border-radius: 22px; padding: 26px 22px 20px; margin: 18px 0 16px; }
+/* Colour by group: tips cycle through four tints. */
+.tips > :nth-child(4n+1) { background: linear-gradient(135deg, #e6fbf8, var(--surface) 70%); border-top: 4px solid #0ea5a0; }
+.tips > :nth-child(4n+2) { background: linear-gradient(135deg, #fff7e0, var(--surface) 70%); border-top: 4px solid #f5a623; }
+.tips > :nth-child(4n+3) { background: linear-gradient(135deg, #f1efff, var(--surface) 70%); border-top: 4px solid #7c6cf0; }
+.tips > :nth-child(4n+4) { background: linear-gradient(135deg, #eaf8ee, var(--surface) 70%); border-top: 4px solid #16a34a; }
+.steps li:nth-child(1) { border-top: 4px solid #0ea5a0; } .steps li:nth-child(2) { border-top: 4px solid #f5a623; } .steps li:nth-child(3) { border-top: 4px solid #7c6cf0; }
+.steps li:nth-child(2)::before { background: #f5a623; } .steps li:nth-child(3)::before { background: #7c6cf0; }

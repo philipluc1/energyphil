@@ -214,3 +214,13 @@ create table if not exists public.bill_reads (
 );
 alter table public.bill_reads enable row level security;
 create index if not exists bill_reads_email_created on public.bill_reads (email, created_at desc);
+
+-- 6 Oct 2026: members confirm when they actually switched, so the savings
+-- tally only counts from a real switch date (never from the sign-up date).
+alter table public.subscribers
+  add column if not exists switched_at timestamptz,
+  add column if not exists switched_to text;
+-- The daily job's drip sequence for free leads (0 = nothing sent yet).
+alter table public.leads
+  add column if not exists drip_step integer not null default 0,
+  add column if not exists drip_sent_at timestamptz;

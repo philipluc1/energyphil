@@ -65,10 +65,15 @@ export default function PricingSection({
   email,
   onEmailChange,
   profile,
+  yearlySaving = 0,
+  bestRetailer = "",
 }: {
   email: string;
   onEmailChange: (v: string) => void;
   profile: SubscribeProfile;
+  /** The yearly saving just shown, so the pitch can refer to it. */
+  yearlySaving?: number;
+  bestRetailer?: string;
 }) {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState("");
@@ -102,11 +107,25 @@ export default function PricingSection({
   return (
     <section id="pricing" className={styles.pricingSection}>
       <div className={styles.resultsHead}>
-        <h2>Stay on the cheapest plan — automatically</h2>
+        <h2>
+          {yearlySaving >= 20
+            ? `Keep that $${Math.round(yearlySaving).toLocaleString("en-AU")} a year? We'll check it every month for $7.`
+            : "Stay on the cheapest plan — automatically"}
+        </h2>
       </div>
       <p className={styles.pricingIntro}>
-        The comparison above is free, no sign-up, every time. <strong>Join and we do the monthly checks
-        for you</strong>. Upload a bill any time to sharpen the result.
+        {yearlySaving >= 20 ? (
+          <>
+            Retailers change prices all year, so a cheap plan doesn&apos;t stay cheap on its own. <strong>Join and we recheck{" "}
+            {bestRetailer ? `${bestRetailer} and every other plan on your network` : "every plan on your network"} each month</strong>, and email you
+            only when switching is worth it.
+          </>
+        ) : (
+          <>
+            The comparison above is free, no sign-up, every time. <strong>Join and we do the monthly checks for you</strong>. Upload a bill any time
+            to sharpen the result.
+          </>
+        )}
       </p>
 
       <div className={styles.pricingBenefits}>

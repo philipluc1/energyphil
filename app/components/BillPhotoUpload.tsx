@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { ExtractedBill } from "@/lib/billExtraction";
@@ -105,20 +104,6 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
   }
 
   if (access === "checking") return null;
-  if (access === "locked") {
-    return (
-      <div className={styles.photoCard}>
-        <div className={styles.stepLabel}>
-          <span className={styles.photoBolt}>🔒</span> Bill reading is for members
-        </div>
-        <p className={styles.helper}>
-          Members can snap a bill photo or PDF and we fill it in. Everyone can use the free check below.
-          Already a member? <Link href="/account">Log in</Link>.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.photoCard}>
       <div className={styles.stepLabel}>
@@ -126,6 +111,7 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
       </div>
       <p className={styles.helper}>
         Snap a photo or upload a PDF and we&apos;ll fill it in. You can check everything before we calculate.
+        {access === "member" ? "" : " Your first reads are free; members can read a bill any time and keep every month's result."}
       </p>
 
       <div className={styles.photoActions}>

@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripeClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { findPlan } from "@/lib/pricingPlans";
+import { sendEmail } from "@/lib/email";
 
 export const maxDuration = 30;
 
@@ -106,6 +107,26 @@ export async function POST(req: NextRequest) {
           .select("id")
           .single();
         if (error) console.error("Failed to save subscriber", error);
+
+        // Welcome email: what they get, and the two things to do first.
+        if (email) {
+          const origin = process.env.SITE_URL || new URL(req.url).origin;
+          await sendEmail({
+            to: email,
+            subject: "Welcome to Utilo. Here's what happens next",
+            cta: { label: "Open My Dashboard", url: `${origin}/account` },
+            html: `
+              <p>Thanks for joining. From now on we re-check your plan every morning and email you only when switching is worth it. On the 1st of each month you'll get a short summary.</p>
+              <p style="font-size:16px;font-weight:700;margin:18px 0 6px;">Two things to do now</p>
+              <ol style="margin:0 0 16px;padding-left:20px;line-height:1.6;">
+                <li><a href="${origin}/account">Read your latest bill</a> (photo or PDF) so your checks use real numbers.</li>
+                <li>Once you've switched, tell us the date on your dashboard so your savings count from the right day.</li>
+              </ol>
+              ${md.baselineRetailer ? `<p>Your best match at sign-up was <strong>${md.baselineRetailer}${md.baselinePlanName ? ` — ${md.baselinePlanName}` : ""}</strong>.</p>` : ""}
+              <p>Questions? Just reply to this email.</p>
+            `,
+          }).catch((e) => console.error("welcome email failed", e));
+        }
 
         // Open the first savings episode, if we have everything needed to
         // price it — the real starting bill (referenceTotal), the plan we're

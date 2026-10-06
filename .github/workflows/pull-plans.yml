@@ -1,0 +1,33 @@
+name: Pull retailer plans
+
+# Every day at 5:00am Melbourne time (18:00 UTC the day before during
+# daylight saving; 19:00 UTC otherwise — both are early morning in Melbourne).
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pull current plans from the retailers' CDR feeds
+        run: node scripts/pull-plans.mjs
+      - name: Commit if anything changed (Vercel deploys on push)
+        run: |
+          if git diff --quiet -- lib/plans.ts; then
+            echo "No price changes today."
+            exit 0
+          fi
+          git config user.name "utilo-bot"
+          git config user.email "bot@utilo.local"
+          git add lib/plans.ts data/
+          git commit -m "Daily plan pull: $(date -u +%Y-%m-%d)"
+          git push

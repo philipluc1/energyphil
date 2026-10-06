@@ -1,0 +1,20 @@
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
+.card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+.frame { position: relative; aspect-ratio: 16 / 9; background: #0a0f28; }
+.frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.poster {
+  position: absolute; inset: 0; width: 100%; border: 0; cursor: pointer; color: #fff; font-family: inherit;
+  background: radial-gradient(60% 70% at 20% 20%, rgba(245, 166, 35, 0.4), transparent 70%), radial-gradient(60% 70% at 90% 90%, rgba(14, 165, 160, 0.4), transparent 70%), linear-gradient(135deg, #22306e, #0a0f28);
+  display: flex; align-items: center; justify-content: center;
+}
+.poster:disabled { cursor: default; }
+.poster:focus-visible { outline: 3px solid var(--amber); outline-offset: -3px; }
+.play { width: 58px; height: 58px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); border: 1.5px solid rgba(255, 255, 255, 0.5); display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
+.poster:not(:disabled):hover .play { transform: scale(1.1); }
+.play svg { width: 24px; height: 24px; margin-left: 3px; }
+.len { position: absolute; right: 10px; bottom: 10px; font-size: 12px; font-weight: 700; background: rgba(0, 0, 0, 0.55); padding: 3px 8px; border-radius: 6px; }
+.soon { position: absolute; left: 10px; top: 10px; font-size: 12px; font-weight: 800; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); padding: 4px 10px; border-radius: 100px; }
+.body { padding: 16px 18px 20px; }
+.body h3 { font-size: 16.5px; font-weight: 800; letter-spacing: -0.01em; }
+.body p { margin: 6px 0 0; font-size: 14px; color: var(--grey); line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .card, .play { transition: none; } }

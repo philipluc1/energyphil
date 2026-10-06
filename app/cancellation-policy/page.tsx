@@ -1,8 +1,9 @@
 import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
 import styles from "../components/StaticPage.module.css";
+import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 
-const LAST_UPDATED = "5 October 2026";
+const LAST_UPDATED = "6 October 2026";
 
 export default function CancellationPolicyPage() {
   return (
@@ -78,6 +79,15 @@ export default function CancellationPolicyPage() {
         </section>
 
         <section className={styles.section}>
+          <h2>Prices and offers change</h2>
+          <p>
+            {PRICE_CHANGE_CLAUSE} Our results are estimates from retailers&apos; published rates on the day shown, and a
+            cheaper plan appearing after you switch is not a fault in the service and is not grounds for a refund.
+            Before switching, confirm the price and conditions with the retailer.
+          </p>
+        </section>
+
+        <section className={styles.section}>
           <h2>What happens to your data if you cancel</h2>
           <p>
             Cancelling your subscription stops billing and ongoing monitoring — it doesn&apos;t automatically
@@ -89,6 +99,7 @@ export default function CancellationPolicyPage() {
 
         <div className={styles.policyNav}>
           <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Service</Link>
           <Link href="/default-offer">About the Victorian Default Offer</Link>
           <Link href="/">Home</Link>
         </div>

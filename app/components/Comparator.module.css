@@ -1521,3 +1521,66 @@
     font-size: 13px;
   }
 }
+
+.resultHero { text-align: center; padding: 28px 20px; margin-bottom: 16px; border-radius: 22px; background: linear-gradient(135deg, #0f1b4d, #0d6f78); color: #fff; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.resultHeroLabel { font-size: 14px; font-weight: 700; opacity: 0.85; }
+.resultHeroNum { font-size: clamp(44px, 9vw, 68px); font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: #fbbf24; }
+.resultHeroSub { font-size: 15px; opacity: 0.9; margin-bottom: 10px; }
+.resultHeroBtn { display: inline-block; padding: 13px 26px; border-radius: 999px; background: #fbbf24; color: #1a1a1a; font-weight: 800; text-decoration: none; }
+.resultHeroBtn:hover { filter: brightness(1.05); }
+
+/* ---- Bolder header: big logo, slogan, pill nav and a call-to-action ---- */
+.top { background: radial-gradient(900px 140px at 12% -40%, rgba(45, 212, 191, 0.28), transparent 70%), radial-gradient(700px 120px at 95% 0%, rgba(251, 191, 36, 0.22), transparent 70%), linear-gradient(135deg, #131c57 0%, var(--navy-deep) 75%); }
+.top .bar { padding: 14px 20px; gap: 18px; }
+.brandLink { gap: 12px; }
+.brandMark { width: 46px; height: 46px; border-radius: 14px; box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.18), 0 8px 22px rgba(245, 166, 35, 0.45); animation: boltGlow 3.2s ease-in-out infinite; }
+.brandMark svg { width: 26px; height: 26px; }
+.brandText { display: flex; flex-direction: column; line-height: 1; gap: 5px; }
+.top .mark { font-size: 30px; font-weight: 900; letter-spacing: -0.03em; }
+.slogan { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #fbbf24; white-space: nowrap; }
+.navLinks { gap: 4px; margin-left: auto; padding: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); backdrop-filter: blur(6px); }
+.navLink, .navLinkActive { font-size: 14px; padding: 8px 15px; border-radius: 999px; border-bottom: 0; transition: background 0.2s, color 0.2s; }
+.navLink:hover { background: rgba(255, 255, 255, 0.12); }
+.navLinkActive { background: #fff; color: #131c57; border-bottom: 0; }
+.navCta { flex-shrink: 0; padding: 11px 20px; border-radius: 999px; font-size: 14.5px; font-weight: 900; text-decoration: none; color: #1a1a1a; background: linear-gradient(135deg, #fde68a, #fbbf24 55%, #f59e0b); box-shadow: 0 6px 20px rgba(245, 166, 35, 0.45); transition: transform 0.2s, box-shadow 0.2s; }
+.navCta:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(245, 166, 35, 0.55); }
+.navCtaOn { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55), 0 6px 20px rgba(245, 166, 35, 0.45); }
+@keyframes boltGlow { 0%, 100% { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.18), 0 8px 22px rgba(245, 166, 35, 0.4); } 50% { box-shadow: 0 0 0 8px rgba(251, 191, 36, 0.1), 0 8px 30px rgba(245, 166, 35, 0.65); } }
+@media (prefers-reduced-motion: reduce) { .brandMark { animation: none; } }
+@media (max-width: 860px) { .slogan { display: none; } }
+@media (max-width: 640px) {
+  .top .bar { flex-wrap: wrap; row-gap: 10px; padding: 10px 14px; }
+  .brandLink { order: 1; }
+  .navCta { order: 2; margin-left: auto; padding: 9px 16px; font-size: 13.5px; }
+  .navLinks { order: 3; width: 100%; margin-left: 0; justify-content: space-between; overflow-x: auto; }
+  .navLink, .navLinkActive { font-size: 13px; padding: 7px 12px; }
+  .brandMark { width: 38px; height: 38px; border-radius: 12px; }
+  .brandMark svg { width: 21px; height: 21px; }
+  .top .mark { font-size: 25px; }
+  .slogan { display: block; font-size: 9.5px; }
+}
+
+/* ---- Trust & flow batch ---- */
+.fresh { color: var(--grey); }
+.freshStale { color: #b45309; font-weight: 700; }
+.resultHeroKicker { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.8; }
+.resultHeroFine { font-size: 12px; opacity: 0.75; margin-top: 8px; max-width: 420px; line-height: 1.4; }
+.switchHelp { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 10px; font-size: 13.5px; }
+.switchHelp summary { cursor: pointer; font-weight: 800; color: #fbbf24; }
+.switchHelp ul { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.5; opacity: 0.95; }
+.restoredBar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; background: rgba(13,148,136,0.1); border: 1px solid rgba(13,148,136,0.3); font-size: 13.5px; }
+.restoredBar button { background: none; border: 0; font: inherit; font-weight: 800; color: #0d9488; cursor: pointer; text-decoration: underline; }
+.stickyBar { display: none; }
+@media (max-width: 640px) {
+  .stickyBar { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); opacity: 0.97; backdrop-filter: blur(8px); border-top: 1px solid var(--border); }
+  .stickyBtn { display: block; width: 100%; text-align: center; padding: 14px; border-radius: 999px; border: 0; font: inherit; font-size: 15px; font-weight: 900; color: #1a1a1a; background: linear-gradient(135deg, #fde68a, #fbbf24 55%, #f59e0b); box-shadow: 0 6px 20px rgba(245,166,35,0.45); text-decoration: none; cursor: pointer; }
+  .wrap { padding-bottom: 84px; }
+}
+.stayCard { margin-top: 14px; padding: 16px 18px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); display: grid; gap: 8px; font-size: 14.5px; line-height: 1.5; }
+.stayNum { color: #0d9488; font-weight: 700; }
+.stayNum b { font-size: 20px; font-weight: 900; }
+.stayNote { font-size: 13px; color: var(--grey); }
+/* Wizard steps: a coloured top edge per step so progress is visible at a glance. */
+.card { border-top: 5px solid var(--teal); }
+.stayCard { border-left: 5px solid #7c6cf0; background: linear-gradient(135deg, #f1efff, var(--surface) 60%); }
+.switchHelp summary { color: #5eead4; }

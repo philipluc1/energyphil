@@ -3,8 +3,10 @@ import { sanitizeExtractedBill } from "@/lib/billExtraction";
 import { requireActiveMember } from "@/lib/memberAccess";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-// Each read costs us an AI call, so cap it per member per day.
+// Each read costs us an AI call. Members get 10 a day; everyone else gets a
+// couple a day per connection, enough to try it for real before joining.
 const MAX_READS_PER_DAY = 10;
+const FREE_READS_PER_DAY = 2;
 
 // Vision calls can take a few seconds; give it more room than the default.
 export const maxDuration = 30;
@@ -101,25 +103,31 @@ const TOOL_SCHEMA = {
 };
 
 export async function POST(req: NextRequest) {
-  // Members only: every read costs us an AI call. Checked before anything else.
+  // Members get a generous daily cap; visitors get a free taste, capped per
+  // connection so the AI cost stays bounded. Both counted in bill_reads.
   const member = await requireActiveMember(req.headers.get("authorization"));
-  if (!member.ok) {
-    return NextResponse.json({ ok: false, message: member.message }, { status: member.status });
-  }
+  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  const key = member.ok ? member.email : `ip:${ip}`;
+  const cap = member.ok ? MAX_READS_PER_DAY : FREE_READS_PER_DAY;
   if (supabaseAdmin) {
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
     const { count } = await supabaseAdmin
       .from("bill_reads")
       .select("id", { count: "exact", head: true })
-      .eq("email", member.email)
+      .eq("email", key)
       .gte("created_at", since);
-    if ((count ?? 0) >= MAX_READS_PER_DAY) {
+    if ((count ?? 0) >= cap) {
       return NextResponse.json(
-        { ok: false, message: "You've hit today's limit of 10 bill reads. Try again tomorrow, or type the numbers in." },
+        {
+          ok: false,
+          message: member.ok
+            ? `You've hit today's limit of ${MAX_READS_PER_DAY} bill reads. Try again tomorrow, or type the numbers in.`
+            : `That's today's ${FREE_READS_PER_DAY} free bill reads. Members can read up to ${MAX_READS_PER_DAY} a day, or type the numbers in below.`,
+        },
         { status: 429 },
       );
     }
-    await supabaseAdmin.from("bill_reads").insert({ email: member.email });
+    await supabaseAdmin.from("bill_reads").insert({ email: key });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

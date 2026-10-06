@@ -7,6 +7,7 @@ import ScrollReveal from "./components/ScrollReveal";
 import Tag from "./components/Tag";
 import CountUp from "./components/CountUp";
 import ImageSlot from "./components/ImageSlot";
+import { DATA_FACTS } from "@/lib/dataPolicy";
 import styles from "./components/Comparator.module.css";
 import home from "./home.module.css";
 
@@ -94,7 +95,7 @@ export default function Home() {
             <div className={`${home.heroStats} ${home.rise}`} style={{ "--d": "480ms" } as CSSProperties}>
               <div>
                 <strong><CountUp value={PLAN_COUNT} /></strong>
-                <span>live plans</span>
+                <span>current plans</span>
               </div>
               <div>
                 <strong><CountUp value={RETAILER_COUNT} /></strong>
@@ -140,23 +141,72 @@ export default function Home() {
           </ScrollReveal>
           <div className={home.stepGrid}>
             {[
-              { img: "step-home.jpg", alt: "Tapping answers about your home", icon: <IconHome />, tag: <Tag tone="green">Free</Tag>, h: "Tell us about your home", p: "Who lives there, how you heat it, whether you have solar or an EV. Just tap the answers." },
-              { img: "step-save.jpg", alt: "Savings shown on a phone", icon: <IconChart />, tag: <Tag tone="green">Free</Tag>, h: "See what you could save", p: `We compare ${PLAN_COUNT} current plans from ${RETAILER_COUNT} retailers and show your saving per quarter, half-year and year.` },
-              { img: "step-watch.jpg", alt: "A notification that a cheaper plan was found", icon: <IconBell />, tag: <Tag tone="amber" shine>Members</Tag>, h: "Switch, or let us keep watching", p: "Go straight to the retailer if you like what you see. Or join and we'll check every month for you." },
+              { img: "step-home.jpg", alt: "Tapping answers about your home", icon: <IconHome />, tag: <Tag tone="green">Free</Tag>, href: "/learn#how", h: "Tell us about your home", p: "Who lives there, how you heat it, whether you have solar or an EV. Just tap the answers." },
+              { img: "step-save.jpg", alt: "Savings shown on a phone", icon: <IconChart />, tag: <Tag tone="green">Free</Tag>, href: "/learn#charts", h: "See what you could save", p: `We compare ${PLAN_COUNT} current plans from ${RETAILER_COUNT} retailers and show your saving per quarter, half-year and year.` },
+              { img: "step-watch.jpg", alt: "A notification that a cheaper plan was found", icon: <IconBell />, tag: <Tag tone="amber" shine>Members</Tag>, href: "/learn#compare", h: "Switch, or let us keep watching", p: "Go straight to the retailer if you like what you see. Or join and we'll check every month for you." },
             ].map((st, i) => (
               <ScrollReveal key={st.h} delayMs={i * 120} className={home.stepCard}>
+                <Link href={st.href} className={home.stepLink} aria-label={`${st.h}: learn more`}>
                 <ImageSlot src={`/images/${st.img}`} alt={st.alt} ratio="16 / 10" icon={st.icon} className={home.stepImg} />
                 <div className={home.stepBody}>
                   {st.tag}
                   <h3>{st.h}</h3>
                   <p>{st.p}</p>
+                  <span className={home.stepMore}>Learn more →</span>
                 </div>
+                </Link>
               </ScrollReveal>
             ))}
           </div>
           <p className={home.dataNote}>Plan prices last updated {fmtUpdated()}.</p>
         </section>
 
+      </div>
+
+      {/* ---- Story bands: one idea each, lots of air ---- */}
+      <section className={`${home.band} ${home.bandLight}`}>
+        <ScrollReveal className={home.bandInner}>
+          <h2 className={home.bandTitle}>One number. Yours.</h2>
+          <p className={home.bandText}>Not a list of 135 plans to sort through. We do that part and show what it means for your home.</p>
+          <div className={home.bandFigure}>
+            <span className={home.bandBig}>
+              <CountUp value={Math.round(example.annualBench - example.annualBest)} prefix="$" />
+            </span>
+            <span className={home.bandBigLabel}>a year, for a typical home</span>
+          </div>
+        </ScrollReveal>
+      </section>
+
+      <section className={`${home.band} ${home.bandDark}`}>
+        <ScrollReveal className={home.bandInner}>
+          <h2 className={home.bandTitle}>No bill required.</h2>
+          <p className={home.bandText}>A few taps about your home is enough for a good estimate. Add a bill later if you want it sharper.</p>
+          <div className={home.tapRow}>
+            {["3 people", "House", "Gas heating", "Air-con", "Solar 6.6 kW", "Home some of the day"].map((t, i) => (
+              <span key={t} className={home.tap} style={{ animationDelay: `${i * 90}ms` }}>{t}</span>
+            ))}
+          </div>
+        </ScrollReveal>
+      </section>
+
+      <section className={`${home.band} ${home.bandLight}`}>
+        <ScrollReveal className={home.bandInner}>
+          <h2 className={home.bandTitle}>We keep checking.</h2>
+          <p className={home.bandText}>Prices move all year. Members are re-priced every morning and told only when switching is worth it.</p>
+          <div className={home.pulseRow}>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <span key={i} className={i === 11 ? home.pulseOn : home.pulse} style={{ animationDelay: `${i * 60}ms` }} />
+            ))}
+            <span className={home.pulseLabel}>12 months, checked daily</span>
+          </div>
+          <p className={home.bandFoot}>
+            Prices come straight from each retailer&apos;s public data feed, last pulled {DATA_FACTS.lastPull}.{" "}
+            <Link href="/learn#data">How we get and price them</Link>
+          </p>
+        </ScrollReveal>
+      </section>
+
+      <div className={styles.wrap}>
         <section className={home.section}>
           <ScrollReveal className={home.closing}>
             <div className={home.closingText}>
@@ -181,9 +231,9 @@ export default function Home() {
             Independent comparison for Victorian households — not affiliated with the Victorian Government or any
             retailer. Rates come from retailers&apos; published data; estimates only, so confirm with the retailer
             before switching.{" "}
-            <Link href="/pricing">Pricing</Link> · <Link href="/faq">FAQ</Link> ·{" "}
+            <Link href="/pricing">Pricing</Link> · <Link href="/learn">Learn</Link> · <Link href="/ev">EV calculator</Link> · <Link href="/faq">FAQ</Link> ·{" "}
             <Link href="/default-offer">About the VDO</Link> · <Link href="/privacy">Privacy</Link> ·{" "}
-            <Link href="/cancellation-policy">Cancellation</Link>
+            <Link href="/cancellation-policy">Cancellation</Link> · <Link href="/terms">Terms</Link>
           </p>
         </footer>
       </div>

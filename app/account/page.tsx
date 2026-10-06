@@ -9,6 +9,10 @@ import { findPlanRow, planRateRows } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
 import EnergyTips from "../components/EnergyTips";
 import SavingsChart from "../components/SavingsChart";
+import FunEquivalents from "../components/FunEquivalents";
+import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+import BillPhotoUpload from "../components/BillPhotoUpload";
+import type { ExtractedBill } from "@/lib/billExtraction";
 import styles from "./account.module.css";
 
 // Passwordless sign-in: there's no separate "create an account" step — the
@@ -34,6 +38,8 @@ interface SubscriberSummary {
   billing_days: number | null;
   has_solar: boolean | null;
   solar_export_kwh: number | null;
+  switched_at: string | null;
+  switched_to: string | null;
 }
 
 interface EpisodeRow {
@@ -72,8 +78,12 @@ export default function AccountPage() {
   const [linkSent, setLinkSent] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [sending, setSending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
   const [sub, setSub] = useState<SubscriberSummary | null>(null);
+  const [billMsg, setBillMsg] = useState("");
+  const [switchDate, setSwitchDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [switchBusy, setSwitchBusy] = useState(false);
   const [subLoading, setSubLoading] = useState(false);
   const [subError, setSubError] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
@@ -116,7 +126,7 @@ export default function AccountPage() {
       const { data, error } = await supabase!
         .from("subscribers")
         .select(
-          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh",
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to",
         )
         .order("created_at", { ascending: false })
         .limit(1)
@@ -183,14 +193,28 @@ export default function AccountPage() {
     };
   }, [stage]);
 
+  // Only count savings from the day the member says they switched. Before
+  // that, the figure is what they *would* have saved, and is labelled so.
+  const switchedAt = sub?.switched_at ?? null;
+  const countedEpisodes = useMemo(
+    () =>
+      switchedAt
+        ? episodes
+            .filter((ep) => !ep.ended_at || ep.ended_at > switchedAt)
+            .map((ep) => (ep.started_at < switchedAt ? { ...ep, started_at: switchedAt } : ep))
+        : episodes,
+    [episodes, switchedAt],
+  );
   const accumulated = useMemo(
     () =>
       accumulatedSavings(
-        episodes.map((ep) => ({ startedAt: ep.started_at, endedAt: ep.ended_at, dailyRate: ep.daily_rate })),
+        countedEpisodes.map((ep) => ({ startedAt: ep.started_at, endedAt: ep.ended_at, dailyRate: ep.daily_rate })),
       ),
-    [episodes],
+    [countedEpisodes],
   );
 
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const doneThisMonth = checks.some((c) => c.month.startsWith(thisMonth));
   const months = useMemo(
     () =>
       mergeChecks(
@@ -216,8 +240,14 @@ export default function AccountPage() {
     [tariffPlan, sub],
   );
 
-  async function handleSendLink(e: FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  async function handleSendLink(e?: FormEvent) {
+    e?.preventDefault();
     if (!supabase) return;
     setSending(true);
     setLoginError("");
@@ -231,6 +261,7 @@ export default function AccountPage() {
       return;
     }
     setLinkSent(true);
+    setCooldown(30);
   }
 
   async function handleLogout() {
@@ -240,6 +271,37 @@ export default function AccountPage() {
     setEpisodes([]);
     setLinkSent(false);
     setLoginEmail("");
+  }
+
+  async function confirmSwitch(switched: boolean) {
+    if (!supabase) return;
+    setSwitchBusy(true);
+    const { data } = await supabase.auth.getSession();
+    const res = await fetch("/api/confirm-switch", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ switched, date: switchDate }),
+    }).catch(() => null);
+    const body = await res?.json().catch(() => null);
+    setSwitchBusy(false);
+    if (body?.ok) setSub((p) => (p ? { ...p, switched_at: body.switched_at, switched_to: body.switched_to } : p));
+  }
+
+  async function handleBill(bill: ExtractedBill) {
+    setBillMsg("Working out your best plan…");
+    const { data } = await supabase!.auth.getSession();
+    const res = await fetch("/api/apply-bill", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify(bill),
+    }).catch(() => null);
+    const body = await res?.json().catch(() => null);
+    if (body?.ok) {
+      setBillMsg(`Best match: ${body.retailer} — ${body.plan}. Reloading your dashboard…`);
+      setTimeout(() => window.location.reload(), 1500);
+    } else {
+      setBillMsg(body?.message || "We couldn't use that bill.");
+    }
   }
 
   async function handleManageBilling() {
@@ -288,9 +350,22 @@ export default function AccountPage() {
                 Enter your email and we&apos;ll send a sign-in link. No password.
               </p>
               {linkSent ? (
-                <p className={styles.success}>
-                  Link sent to <strong>{loginEmail}</strong> — check your inbox.
-                </p>
+                <div className={styles.inbox}>
+                  <div className={styles.inboxIcon} aria-hidden="true">✉</div>
+                  <h2>Check your inbox</h2>
+                  <p>
+                    We sent a sign-in link to <strong>{loginEmail}</strong>. Open it on this device and you&apos;re in.
+                  </p>
+                  <div className={styles.inboxBtns}>
+                    <a className={styles.btnPrimary} href="https://mail.google.com" target="_blank" rel="noopener noreferrer">Open Gmail</a>
+                    <a className={styles.btnGhost} href="https://outlook.live.com/mail" target="_blank" rel="noopener noreferrer">Open Outlook</a>
+                  </div>
+                  <p className={styles.note}>Nothing there? Check spam or promotions.</p>
+                  <button type="button" className={styles.linkBtn} disabled={sending || cooldown > 0} onClick={() => handleSendLink()}>
+                    {sending ? "Sending…" : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend the link"}
+                  </button>
+                  <button type="button" className={styles.linkBtn} onClick={() => setLinkSent(false)}>Use a different email</button>
+                </div>
               ) : (
                 <form className={styles.form} onSubmit={handleSendLink}>
                   <input
@@ -313,12 +388,59 @@ export default function AccountPage() {
             <>
               <p className={styles.signedInAs}>Signed in as {userEmail}</p>
 
+              <div className={`${styles.checkBox} ${styles.toneAmber}`}>
+                <div>
+                  <div className={styles.checkTitle}>{doneThisMonth ? "This month's check is done" : "Next step: check this month's bill"}</div>
+                  <div className={styles.checkSub}>
+                    {doneThisMonth
+                      ? "We'll check again next month. Got a newer bill? Upload it below."
+                      : "Upload a photo or PDF below. It takes about a minute."}
+                  </div>
+                </div>
+                {!doneThisMonth && (
+                  <a href="#read-bill" className={styles.btnPrimary}>Upload bill</a>
+                )}
+              </div>
+
+              {sub && sub.status === "active" && sub.baseline_retailer && (
+                <div className={`${styles.planBox} ${styles.toneTeal}`}>
+                  {switchedAt ? (
+                    <>
+                      <div className={styles.planName}>You switched to {sub.switched_to ?? sub.baseline_retailer}</div>
+                      <p className={styles.note}>On {fmtDate(switchedAt)}. Savings count from that day.</p>
+                      <p className={styles.note}>{PRICE_CHANGE_CLAUSE} We won&apos;t suggest another move in the first two months unless it&apos;s a big one.</p>
+                      <button type="button" className={styles.linkBtn} disabled={switchBusy} onClick={() => confirmSwitch(false)}>
+                        That&apos;s wrong, I haven&apos;t switched
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className={styles.planName}>Did you switch to {sub.baseline_retailer}?</div>
+                      <p className={styles.note}>We only count savings from the day you actually switch.</p>
+                      <div className={styles.switchRow}>
+                        <label>
+                          Switched on{" "}
+                          <input type="date" value={switchDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setSwitchDate(e.target.value)} />
+                        </label>
+                        <button type="button" className={styles.btnPrimary} disabled={switchBusy} onClick={() => confirmSwitch(true)}>
+                          {switchBusy ? "Saving…" : "Yes, I switched"}
+                        </button>
+                        <Link href="/check" className={styles.linkBtn}>Not yet, show me the plan</Link>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className={styles.savingsBox}>
-                <div className={styles.savingsLabel}>Saved so far</div>
+                <div className={styles.savingsLabel}>{switchedAt ? "Saved since you switched" : "What you'd save by switching"}</div>
                 <div className={styles.savingsTotal}>{episodesLoading ? "…" : fmtDollars(accumulated.total)}</div>
                 {accumulated.sinceDate && (
-                  <div className={styles.savingsSince}>Since {fmtDate(accumulated.sinceDate)} · estimate</div>
+                  <div className={styles.savingsSince}>
+                    {switchedAt ? `Since ${fmtDate(switchedAt)}` : `If you'd switched on ${fmtDate(accumulated.sinceDate)}`} · estimate
+                  </div>
                 )}
+                {!episodesLoading && <FunEquivalents dollars={accumulated.total} dark />}
               </div>
 
               <div className={styles.chartBox}>
@@ -330,16 +452,6 @@ export default function AccountPage() {
                 )}
                 {months.some((m) => m.partial) && <div className={styles.chartNote}>Faded column = month in progress</div>}
                 {months.length > 0 && <div className={styles.chartNote}>Months with a saved check use it. Others are estimates.</div>}
-              </div>
-
-              <div className={styles.checkBox}>
-                <div>
-                  <div className={styles.checkTitle}>Check this month&apos;s bill</div>
-                  <div className={styles.checkSub}>Upload a photo or PDF — takes a minute.</div>
-                </div>
-                <Link href="/check" className={styles.btnPrimary}>
-                  Upload bill
-                </Link>
               </div>
 
               {subLoading && <p className={styles.note}>Loading your plan…</p>}
@@ -355,7 +467,7 @@ export default function AccountPage() {
               )}
 
               {!subLoading && sub && (
-                <div className={styles.planBox}>
+                <div className={`${styles.planBox} ${styles.toneNavy}`}>
                   <div className={styles.planName}>{findPlan(sub.plan)?.name ?? sub.plan}</div>
                   <div className={styles.planMeta}>
                     {sub.amount_cents !== null ? fmtPrice(sub.amount_cents) : "—"}
@@ -373,6 +485,15 @@ export default function AccountPage() {
                     {portalLoading ? "Opening…" : "Manage or cancel"}
                   </button>
                   {portalError && <p className={styles.error}>{portalError}</p>}
+                </div>
+              )}
+
+              {!subLoading && sub && sub.status === "active" && (
+                <div className={`${styles.planBox} ${styles.toneViolet}`} id="read-bill">
+                  <div className={styles.planName}>Read a new bill</div>
+                  <p className={styles.note}>Take a photo or upload a PDF. We&apos;ll update your numbers and recheck your plan.</p>
+                  {billMsg && <p className={styles.note}>{billMsg}</p>}
+                  <BillPhotoUpload onApply={handleBill} />
                 </div>
               )}
 
@@ -414,7 +535,7 @@ export default function AccountPage() {
 
           <div className={styles.footerLinks}>
             <Link href="/privacy">Privacy Policy</Link>
-            <Link href="/cancellation-policy">Cancellation Policy</Link>
+            <Link href="/cancellation-policy">Cancellation Policy</Link> · <Link href="/terms">Terms</Link>
             <Link href="/default-offer">About the VDO</Link>
           </div>
         </div>

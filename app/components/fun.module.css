@@ -1,0 +1,10 @@
+.wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0 12px; }
+.lead { font-size: 13px; font-weight: 700; opacity: 0.8; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); font-size: 14px; animation: pop 0.5s cubic-bezier(.2,1.4,.4,1) both; }
+.chip b { font-size: 16px; color: #fbbf24; }
+.emoji { font-size: 18px; }
+.dark .chip { background: rgba(13,148,136,0.1); border-color: rgba(13,148,136,0.25); }
+.dark .chip b { color: #0d9488; }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(0.85); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .chip { animation: none; } }

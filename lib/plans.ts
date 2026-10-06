@@ -50,7 +50,11 @@ export function computeBill(plan: PlanRow, u: UsageInput): number | null {
   if (pAnytime !== null) {
     variable = pAnytime * totalUsage;
   } else if (pPeak !== null) {
-    variable = pPeak * u.peak + (pShoulder ?? 0) * u.shoulder + (pOffpeak ?? 0) * u.offpeak;
+    // Two-rate plans publish no shoulder rate: everything outside the peak
+    // window is off-peak, so shoulder kWh is charged at the off-peak rate
+    // (never free). Falls back to peak if no off-peak rate is published.
+    const shoulderRate = pShoulder ?? pOffpeak ?? pPeak;
+    variable = pPeak * u.peak + shoulderRate * u.shoulder + (pOffpeak ?? 0) * u.offpeak;
   } else {
     variable = 0;
   }

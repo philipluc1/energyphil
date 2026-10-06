@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { totalEvFriendly } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
+import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 
@@ -31,12 +32,16 @@ export default function FaqPage() {
               <p>No. We&apos;re an independent, privately run service, not affiliated with the Victorian Government or Victorian Energy Compare. Our results come from each retailer&apos;s published prices.</p>
             </details>
             <details className={home.faqItem}>
+              <summary>I switched, and now something cheaper has appeared. Did I waste my time?</summary>
+              <p>No. {PRICE_CHANGE_CLAUSE} Members are only alerted when a new plan beats their current one by about $50 a year or more, and not at all in the first two months after a switch unless the saving is large.</p>
+            </details>
+            <details className={home.faqItem}>
               <summary>What happens to my details?</summary>
               <p>We only use them to work out your result. We never sell or share them. <Link href="/privacy">Read our privacy policy</Link>.</p>
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;ve got an EV. Does that matter?</summary>
-              <p>It does. {totalEvFriendly()} plans have free or very cheap overnight rates, which suits home charging. We flag them in your results.</p>
+              <p>It does. {totalEvFriendly()} plans have free or very cheap overnight rates, which suits home charging. We flag them in your results. Try the <Link href="/ev">EV charging calculator</Link> to see what a charge costs.</p>
             </details>
           </div>
         </section>
@@ -50,7 +55,7 @@ export default function FaqPage() {
           <div className={styles.fbrand}>Utilo</div>
           <p>
             <Link href="/">Home</Link> · <Link href="/pricing">Pricing</Link> · <Link href="/privacy">Privacy</Link> ·{" "}
-            <Link href="/cancellation-policy">Cancellation</Link>
+            <Link href="/cancellation-policy">Cancellation</Link> · <Link href="/terms">Terms</Link>
           </p>
         </footer>
       </div>

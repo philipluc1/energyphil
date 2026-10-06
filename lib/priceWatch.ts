@@ -37,14 +37,15 @@ export function computeBest(profile: WatchProfile): WatchResult | null {
   return { bestTotal: top.total, bestRetailer: top.plan[0], bestPlanName: top.plan[2] };
 }
 
-// Minimum improvement (dollars, for the whole billing period) before it's
-// worth emailing someone — filters out noise from rounding-level
-// recalculations rather than a genuinely better deal. Tune freely.
-const MIN_IMPROVEMENT = 3;
+import { WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 
-export function isMeaningfullyCheaper(newBest: number, previousBest: number | null): boolean {
+/** Worth telling someone only if the new plan beats the previous one by at
+ *  least WORTH_SWITCHING_PER_YEAR, scaled from the billing period. Filters
+ *  rounding noise and the churn of small weekly repricing. */
+export function isMeaningfullyCheaper(newBest: number, previousBest: number | null, billingDays = 91): boolean {
   if (previousBest === null || !Number.isFinite(previousBest)) return false;
-  return previousBest - newBest >= MIN_IMPROVEMENT;
+  const days = billingDays > 0 ? billingDays : 91;
+  return ((previousBest - newBest) / days) * 365 >= WORTH_SWITCHING_PER_YEAR;
 }
 
 export function fmtCurrency(n: number): string {

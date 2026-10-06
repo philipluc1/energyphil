@@ -30,6 +30,12 @@ import ResultsChart, { ChartItem } from "./ResultsChart";
 import ForecastChart, { buildForecastSeries } from "./ForecastChart";
 import PricingSection from "./PricingSection";
 import SaveCheck from "./SaveCheck";
+import FunEquivalents from "./FunEquivalents";
+import HowWeWorkedItOut from "./HowWeWorkedItOut";
+import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+
+const RETAILERS = Array.from(new Set(PLANS.map((p) => p[0]))).sort();
+import { useEffect } from "react";
 import SiteHeader from "./SiteHeader";
 import styles from "./Comparator.module.css";
 
@@ -41,6 +47,9 @@ function fmtCurrency(n: number): string {
 function fmtPct(n: number): string {
   return (n * 100).toLocaleString("en-AU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
 }
+const PRICE_AGE_DAYS = Math.floor((Date.now() - new Date(PLAN_DATA_DATE + "T00:00:00").getTime()) / 86_400_000);
+const PRICES_STALE = PRICE_AGE_DAYS > 60;
+
 function fmtUpdated(): string {
   return new Date(PLAN_DATA_DATE + "T00:00:00").toLocaleDateString("en-AU", {
     day: "numeric",
@@ -189,6 +198,60 @@ export default function Comparator() {
   const [wantsAlerts, setWantsAlerts] = useState(false);
   const [leadStatus, setLeadStatus] = useState<LeadStatus>("idle");
   const [scanBanner, setScanBanner] = useState<{ retailer: string | null; warnings: string[] } | null>(null);
+  const [currentRetailer, setCurrentRetailer] = useState("");
+  const [restored, setRestored] = useState(false);
+
+  // Remember the check in this browser, so a refresh or a return visit
+  // doesn't start from scratch. Nothing leaves the device.
+  const SAVE_KEY = "utilo.check.v1";
+  useEffect(() => {
+    let raw: string | null = null;
+    try { raw = window.localStorage.getItem(SAVE_KEY); } catch { raw = null; }
+    if (!raw) return;
+    // Applied on the next tick so the first paint matches the server's.
+    const t = setTimeout(() => {
+      try {
+        const d = JSON.parse(raw as string);
+        if (d.distributor) setDistributor(d.distributor);
+        if (typeof d.postcode === "string") setPostcode(d.postcode);
+        if (typeof d.days === "number") setDays(d.days);
+        if (d.mode) setMode(d.mode);
+        if (typeof d.anytime === "number") setAnytime(d.anytime);
+        if (typeof d.peak === "number") setPeak(d.peak);
+        if (typeof d.shoulder === "number") setShoulder(d.shoulder);
+        if (typeof d.offpeak === "number") setOffpeak(d.offpeak);
+        if (typeof d.cl === "number") setCl(d.cl);
+        if (typeof d.showCl === "boolean") setShowCl(d.showCl);
+        if (d.profile) setProfile({ ...DEFAULT_PROFILE, ...d.profile });
+        if (d.usageSource) setUsageSource(d.usageSource);
+        if (typeof d.hasSolar === "boolean") setHasSolar(d.hasSolar);
+        if (typeof d.solarExportRaw === "string") setSolarExportRaw(d.solarExportRaw);
+        if (typeof d.currentBillRaw === "string") setCurrentBillRaw(d.currentBillRaw);
+        if (typeof d.email === "string") setEmail(d.email);
+        if (typeof d.currentRetailer === "string") setCurrentRetailer(d.currentRetailer);
+        if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
+        setRestored(true);
+      } catch {
+        /* ignore a bad saved value */
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SAVE_KEY,
+        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer }),
+      );
+    } catch {
+      /* storage unavailable */
+    }
+  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer]);
+
+  function startFresh() {
+    try { window.localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+    window.location.reload();
+  }
 
   // Best-effort network guess whenever a 4-digit postcode is entered — run
   // directly from the input's onChange (a real user event) rather than an
@@ -259,6 +322,10 @@ export default function Comparator() {
     if (bill.billingDays === null) warnings.push("Couldn't find your billing period length — please check Step 3.");
     if (!hasUsage) warnings.push("Couldn't find your usage figures — please check Step 3.");
 
+    if (bill.retailerName) {
+      const hit = RETAILERS.find((r) => bill.retailerName!.toLowerCase().includes(r.toLowerCase().split(" ")[0]));
+      if (hit) setCurrentRetailer(hit);
+    }
     setScanBanner({ retailer: bill.retailerName, warnings });
   }
 
@@ -292,6 +359,10 @@ export default function Comparator() {
   );
   const totalInDist = useMemo(() => PLANS.filter((p) => p[1] === distributor).length, [distributor]);
   const haveBill = currentBill !== null && !Number.isNaN(currentBill);
+  const retailerBest = useMemo(
+    () => (currentRetailer ? matches.find((m) => m.plan[0] === currentRetailer) ?? null : null),
+    [matches, currentRetailer],
+  );
   // Benchmark: what they pay now if given, else the Victorian Default Offer
   // priced at THIS household's usage (not the generic typical-household figure).
   const bench = haveBill ? (currentBill as number) : vdoBillForUsage(distributor, usage);
@@ -379,30 +450,18 @@ export default function Comparator() {
       <div className={styles.wrap}>
         {stage === "input" && (
           <>
+            {restored && (
+              <div className={styles.restoredBar}>
+                <span>We&apos;ve filled in your last answers.</span>
+                <button type="button" onClick={startFresh}>Start fresh</button>
+              </div>
+            )}
         <section className={styles.hero}>
-          <span className={styles.residentialTag}>For Victorian residential households</span>
           <h1>Check your plan</h1>
           <p className={styles.lede}>
-            Answer a few quick questions about your home. Free, no sign-up.
+            Got a bill? Snap it and we&apos;ll read it. No bill? Answer a few quick questions about your home. Free either way,
+            no sign-up.
           </p>
-          <div className={styles.trustRow}>
-            <div className={styles.trustChip}>
-              <span className={styles.num}>{PLAN_COUNT}</span>
-              <span className={styles.lbl}>live plans</span>
-            </div>
-            <div className={styles.trustChip}>
-              <span className={styles.num}>15</span>
-              <span className={styles.lbl}>retailers</span>
-            </div>
-            <div className={styles.trustChip}>
-              <span className={styles.num}>5</span>
-              <span className={styles.lbl}>VIC networks</span>
-            </div>
-            <div className={styles.trustChip}>
-              <span className={styles.num}>{fmtUpdated()}</span>
-              <span className={styles.lbl}>data pulled</span>
-            </div>
-          </div>
         </section>
 
         <BillPhotoUpload onApply={handleBillExtracted} />
@@ -545,6 +604,21 @@ export default function Comparator() {
             <p className={styles.helper}>
               Not sure? It&apos;s listed on your bill as &ldquo;Distributor&rdquo;.
             </p>
+
+            <div className={`${styles.stepLabel} ${styles.mt16}`}>Who&apos;s your retailer now? <span className={styles.unitNote}>(optional)</span></div>
+            <div className={styles.choiceRow}>
+              {RETAILERS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={`${styles.choiceBtn} ${r === currentRetailer ? styles.choiceBtnActive : ""}`}
+                  onClick={() => setCurrentRetailer(r === currentRetailer ? "" : r)}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <p className={styles.helper}>We&apos;ll show their best plan for you next to the overall winner.</p>
           </div>
         )}
 
@@ -899,6 +973,17 @@ export default function Comparator() {
             </button>
           )}
         </div>
+        <div className={styles.stickyBar}>
+          {inputStep < 3 ? (
+            <button type="button" className={styles.stickyBtn} onClick={() => { setInputStep((s) => nextInputStep(s)); scrollToTop(); }}>
+              Continue · step {inputStep} of 3 →
+            </button>
+          ) : (
+            <button type="button" className={styles.stickyBtn} onClick={() => { setStage("results"); scrollToTop(); }}>
+              See my savings →
+            </button>
+          )}
+        </div>
           </>
         )}
 
@@ -917,7 +1002,10 @@ export default function Comparator() {
           </button>
           {matches.length > 0 && (
             <span className={styles.resultsSub}>
-              {matches.length} comparable plan{matches.length === 1 ? "" : "s"} for {distributor} · {days}-day period
+              {matches.length} comparable plan{matches.length === 1 ? "" : "s"} for {distributor} · {days}-day period ·{" "}
+              <span className={PRICES_STALE ? styles.freshStale : styles.fresh} title={PRICES_STALE ? "These prices may be out of date" : "Retailers' published prices"}>
+                prices checked {fmtUpdated()}{PRICES_STALE ? " (may be out of date)" : ""}
+              </span>
             </span>
           )}
         </section>
@@ -929,7 +1017,65 @@ export default function Comparator() {
             </div>
           ) : (
             <>
-              <div className={styles.bestCard}>
+              {bench - top.total > 0 && (
+                <div className={styles.resultHero}>
+                  <span className={styles.resultHeroKicker}>{useEst ? "Estimated from your answers" : haveBill ? "Based on your bill" : "Based on your usage"}</span>
+                  <div className={styles.resultHeroLabel}>You could save about</div>
+                  <div className={styles.resultHeroNum}>${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}</div>
+                  <div className={styles.resultHeroSub}>
+                    a year with {top.plan[0]}, vs {haveBill ? "your current bill" : "the default offer"}
+                  </div>
+                  <FunEquivalents dollars={periodBreakdown(bench - top.total, days).annual} />
+                  {RETAILER_LINKS[top.plan[0]] ? (
+                    <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.resultHeroBtn}>
+                      See the plan →
+                    </a>
+                  ) : (
+                    <a href="#top-plan" className={styles.resultHeroBtn}>See the plan ↓</a>
+                  )}
+                  <span className={styles.resultHeroFine}>
+                    Excludes sign-up credits, conditional discounts and fees. Confirm with the retailer. {PRICE_CHANGE_CLAUSE}
+                  </span>
+                </div>
+              )}
+              {RETAILER_LINKS[top.plan[0]] && bench - top.total > 0 && (
+                <div className={styles.stickyBar}>
+                  <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.stickyBtn}>
+                    Switch with {top.plan[0]} · save ${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}/yr →
+                  </a>
+                </div>
+              )}
+              {retailerBest && top && (
+                <div className={styles.stayCard}>
+                  <div>
+                    <b>Staying with {currentRetailer}?</b> Their best plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at{" "}
+                    {fmtCurrency(retailerBest.total)} for {days} days.
+                  </div>
+                  <div className={styles.stayNum}>
+                    {retailerBest.total - top.total > 1 ? (
+                      <>
+                        <b>${Math.round(periodBreakdown(retailerBest.total - top.total, days).annual).toLocaleString("en-AU")}</b> a year more by moving to {top.plan[0]}
+                      </>
+                    ) : (
+                      <>Already the cheapest we found. No need to move.</>
+                    )}
+                  </div>
+                  {!haveBill && (
+                    <span className={styles.stayNote}>Enter your bill total to compare against what you pay now, not the default offer.</span>
+                  )}
+                </div>
+              )}
+              <HowWeWorkedItOut
+                plan={top.plan}
+                usage={usage}
+                bench={bench}
+                haveBill={haveBill}
+                distributor={distributor}
+                profile={useEst ? profile : null}
+                est={useEst ? est : null}
+                priceDate={fmtUpdated()}
+              />
+              <div className={styles.bestCard} id="top-plan">
                 <span className={styles.bestTag}>Cheapest match</span>
                 <div className={styles.retailer}>
                   {top.plan[0]}
@@ -1007,6 +1153,17 @@ export default function Comparator() {
                     <span className={styles.switchNote}>Opens {top.plan[0]}&apos;s site — look for &ldquo;{top.plan[2]}&rdquo;</span>
                   </div>
                 )}
+                <details className={styles.switchHelp}>
+                  <summary>Before you switch: what to expect</summary>
+                  <ul>
+                    <li><b>Have ready:</b> a recent bill (for your NMI and address), your ID, and a payment method.</li>
+                    <li><b>Takes about 10 minutes</b> online. The retailer will ask whether you own or rent, and whether you have solar.</li>
+                    <li><b>No interruption.</b> Your power stays on; only the company billing you changes. Nobody visits.</li>
+                    <li><b>Cooling-off:</b> you can cancel within 10 business days of agreeing, without penalty.</li>
+                    <li><b>Check the fine print:</b> contract length, any exit fee, whether the rate is fixed or variable, and the conditions on discounts.</li>
+                    <li><b>Final bill:</b> your old retailer sends one for the days up to the switch. Pay it as normal.</li>
+                  </ul>
+                </details>
               </div>
 
               {forecastData.length > 0 && (
@@ -1048,6 +1205,8 @@ export default function Comparator() {
               <PricingSection
                 email={email}
                 onEmailChange={setEmail}
+                yearlySaving={top && bench - top.total > 0 ? periodBreakdown(bench - top.total, days).annual : 0}
+                bestRetailer={top ? top.plan[0] : ""}
                 profile={{
                   distributor,
                   billingDays: days,
@@ -1144,7 +1303,7 @@ export default function Comparator() {
 
         <div className={styles.leadCard}>
           <h3>Want a copy of this result?</h3>
-          <p>We&apos;ll email it once. No obligation.</p>
+          <p>We&apos;ll email your result, plus a couple of short follow-ups over the next week. Unsubscribe any time.</p>
           <label className={styles.alertsCheckboxRow}>
             <input type="checkbox" checked={wantsAlerts} onChange={(e) => setWantsAlerts(e.target.checked)} />
             Also email me if a cheaper plan appears (unsubscribe anytime).

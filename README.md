@@ -37,9 +37,12 @@ Consumer Data Right feed) and ranks the cheapest matches.
   read anyone else's).
 - **Recharts** — the bill-vs-plans chart on the comparator, and the charts on
   `/dashboard`.
-- Plan data lives in `lib/plans.ts`, generated from a live CDR pull. Refreshing
-  it means re-running the pull and regenerating that file — see the project's
-  architecture notes for the pipeline.
+- Plan data lives in `lib/plans.ts`, generated from the retailers' public CDR
+  feeds by `scripts/pull-plans.mjs`. A GitHub Action
+  (`.github/workflows/pull-plans.yml`) runs it every morning and commits the
+  file when prices change, which makes Vercel redeploy. Run it yourself with
+  `npm run pull-plans:dry` (report only) or `npm run pull-plans`. Each pull
+  also saves a snapshot in `data/` so price history is kept.
 
 ## Photo / PDF bill reading
 
@@ -197,3 +200,10 @@ npm run dev
 
 ## After checkout
 Stripe redirects to `/api/welcome-link`, which confirms payment, signs the new member in with a one-time Supabase link, and lands them on `/welcome`. There they read their bill (skippable), then go to My Dashboard. In Supabase → Authentication → URL Configuration, add `https://YOUR-SITE/welcome` (or `https://YOUR-SITE/**`) to Redirect URLs.
+
+## Owner health email
+
+Set `ADMIN_EMAIL` in Vercel and each scheduled job (daily recheck, monthly
+check) sends you a short summary when it finishes: how many members were
+checked, how many emails went out, and whether anything failed. Nothing is
+sent if the variable is unset.

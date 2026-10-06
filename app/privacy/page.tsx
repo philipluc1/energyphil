@@ -115,7 +115,7 @@ export default function PrivacyPolicyPage() {
             You can ask us what personal information we hold about you, ask us to correct it, or ask us to delete
             it, at any time. Subscribers can also manage and cancel their own subscription directly from{" "}
             <Link href="/account">their account page</Link> — see our{" "}
-            <Link href="/cancellation-policy">Cancellation Policy</Link> for how that works. For anything else,
+            <Link href="/cancellation-policy">Cancellation Policy</Link> · <Link href="/terms">Terms</Link> for how that works. For anything else,
             contact us at{" "}
             <a href="mailto:privacy@utilo.com.au">privacy@utilo.com.au</a>.
           </p>
