@@ -4,6 +4,9 @@ export interface ExtractedBill {
   isElectricityBill: boolean;
   distributor: Distributor | null;
   retailerName: string | null;
+  nmi: string | null;
+  planName: string | null;
+  tariffType: string | null;
   billingDays: number | null;
   currentBill: number | null;
   usageMode: "simple" | "detailed" | null;
@@ -64,6 +67,9 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     isElectricityBill: r.is_electricity_bill === true,
     distributor,
     retailerName: typeof r.retailer_name === "string" ? r.retailer_name.slice(0, 80) : null,
+    nmi: typeof r.nmi === "string" && /^[A-Za-z0-9]{10,11}$/.test(r.nmi.trim()) ? r.nmi.trim().toUpperCase() : null,
+    planName: typeof r.plan_name === "string" ? r.plan_name.slice(0, 120) : null,
+    tariffType: typeof r.tariff_type === "string" ? r.tariff_type.slice(0, 20) : null,
     billingDays,
     currentBill: toFiniteNumber(r.current_bill_total),
     usageMode,

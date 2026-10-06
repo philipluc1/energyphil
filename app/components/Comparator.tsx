@@ -173,7 +173,6 @@ function scrollToTop() {
 export default function Comparator() {
   const [stage, setStage] = useState<Stage>("input");
   const [inputStep, setInputStep] = useState<InputStep>(1);
-  const [showFullList, setShowFullList] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
@@ -1045,36 +1044,6 @@ export default function Comparator() {
                   </a>
                 </div>
               )}
-              {retailerBest && top && (
-                <div className={styles.stayCard}>
-                  <div>
-                    <b>Staying with {currentRetailer}?</b> Their best plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at{" "}
-                    {fmtCurrency(retailerBest.total)} for {days} days.
-                  </div>
-                  <div className={styles.stayNum}>
-                    {retailerBest.total - top.total > 1 ? (
-                      <>
-                        <b>${Math.round(periodBreakdown(retailerBest.total - top.total, days).annual).toLocaleString("en-AU")}</b> a year more by moving to {top.plan[0]}
-                      </>
-                    ) : (
-                      <>Already the cheapest we found. No need to move.</>
-                    )}
-                  </div>
-                  {!haveBill && (
-                    <span className={styles.stayNote}>Enter your bill total to compare against what you pay now, not the default offer.</span>
-                  )}
-                </div>
-              )}
-              <HowWeWorkedItOut
-                plan={top.plan}
-                usage={usage}
-                bench={bench}
-                haveBill={haveBill}
-                distributor={distributor}
-                profile={useEst ? profile : null}
-                est={useEst ? est : null}
-                priceDate={fmtUpdated()}
-              />
               <div className={styles.bestCard} id="top-plan">
                 <span className={styles.bestTag}>Cheapest match</span>
                 <div className={styles.retailer}>
@@ -1140,32 +1109,25 @@ export default function Comparator() {
                     </div>
                   </div>
                 )}
-                {RETAILER_LINKS[top.plan[0]] && (
-                  <div className={styles.switchRow}>
-                    <a
-                      href={RETAILER_LINKS[top.plan[0]]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.switchBtn}
-                    >
-                      Switch with {top.plan[0]} →
-                    </a>
-                    <span className={styles.switchNote}>Opens {top.plan[0]}&apos;s site — look for &ldquo;{top.plan[2]}&rdquo;</span>
+                <div className={styles.getPlan}>
+                  <div className={styles.getPlanLogo} aria-hidden="true">{top.plan[0].split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
+                  <div className={styles.getPlanText}>
+                    <b>Get this plan from {top.plan[0]}</b>
+                    <span>
+                      {RETAILER_LINKS[top.plan[0]]
+                        ? `Opens ${top.plan[0]}'s website in a new tab. Look for "${top.plan[2]}". Their page has the full offer details, conditions and the Energy Fact Sheet.`
+                        : `Search for "${top.plan[2]}" on ${top.plan[0]}'s website for the full offer details and the Energy Fact Sheet.`}
+                    </span>
                   </div>
-                )}
-                <details className={styles.switchHelp}>
-                  <summary>Before you switch: what to expect</summary>
-                  <ul>
-                    <li><b>Have ready:</b> a recent bill (for your NMI and address), your ID, and a payment method.</li>
-                    <li><b>Takes about 10 minutes</b> online. The retailer will ask whether you own or rent, and whether you have solar.</li>
-                    <li><b>No interruption.</b> Your power stays on; only the company billing you changes. Nobody visits.</li>
-                    <li><b>Cooling-off:</b> you can cancel within 10 business days of agreeing, without penalty.</li>
-                    <li><b>Check the fine print:</b> contract length, any exit fee, whether the rate is fixed or variable, and the conditions on discounts.</li>
-                    <li><b>Final bill:</b> your old retailer sends one for the days up to the switch. Pay it as normal.</li>
-                  </ul>
-                </details>
+                  {RETAILER_LINKS[top.plan[0]] && (
+                    <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.switchBtn}>
+                      Go to {top.plan[0]} →
+                    </a>
+                  )}
+                </div>
               </div>
 
+              <div className={styles.chartPair}>
               {forecastData.length > 0 && (
                 <div className={styles.chartCard}>
                   <div className={styles.chartTitle}>Your 12-month forecast</div>
@@ -1191,55 +1153,59 @@ export default function Comparator() {
                 </div>
               )}
 
-              {top && (
-                <SaveCheck
-                  billingDays={days}
-                  referenceTotal={bench}
-                  bestTotal={top.total}
-                  bestRetailer={top.plan[0]}
-                  bestPlanName={top.plan[2]}
-                  source={haveBill ? "bill" : "manual"}
-                />
-              )}
+                <div className={styles.chartCard}>
+                  <div className={styles.chartTitle}>Your bill vs. the cheapest options</div>
+                  <ResultsChart items={chartItems} />
+                </div>
+              </div>
 
-              <PricingSection
-                email={email}
-                onEmailChange={setEmail}
-                yearlySaving={top && bench - top.total > 0 ? periodBreakdown(bench - top.total, days).annual : 0}
-                bestRetailer={top ? top.plan[0] : ""}
-                profile={{
-                  distributor,
-                  billingDays: days,
-                  usageMode: useEst ? "detailed" : mode,
-                  peak: usagePeak,
-                  shoulder: usageShoulder,
-                  offpeak: usageOffpeak,
-                  anytime: usageAnytime,
-                  cl: clKwh,
-                  baselineTotal: top ? top.total : null,
-                  baselineRetailer: top ? top.plan[0] : null,
-                  baselinePlanName: top ? top.plan[2] : null,
-                  referenceTotal: bench,
-                  customerName,
-                  address,
-                  suburb,
-                  postcode,
-                  hasSolar: hasSolarEff,
-                  solarExportKwh,
-                  homeProfile: useEst ? (profile as unknown as Record<string, unknown>) : null,
-                }}
-              />
-
-              <button type="button" className={styles.toggleDetailsBtn} onClick={() => setShowFullList((v) => !v)}>
-                {showFullList ? "Hide the full ranked list & chart ▴" : "See the full ranked list & chart ▾"}
-              </button>
-
-              {showFullList && (
-                <>
-                  <div className={styles.chartCard}>
-                    <div className={styles.chartTitle}>Your bill vs. the cheapest options</div>
-                    <ResultsChart items={chartItems} />
+              {retailerBest && top && (
+                <div className={styles.stayCard}>
+                  <div>
+                    <b>Staying with {currentRetailer}?</b> Their best plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at{" "}
+                    {fmtCurrency(retailerBest.total)} for {days} days.
                   </div>
+                  <div className={styles.stayNum}>
+                    {retailerBest.total - top.total > 1 ? (
+                      <>
+                        <b>${Math.round(periodBreakdown(retailerBest.total - top.total, days).annual).toLocaleString("en-AU")}</b> a year more by moving to {top.plan[0]}
+                      </>
+                    ) : (
+                      <>Already the cheapest we found. No need to move.</>
+                    )}
+                  </div>
+                  {!haveBill && (
+                    <span className={styles.stayNote}>Enter your bill total to compare against what you pay now, not the default offer.</span>
+                  )}
+                </div>
+              )}
+              <details className={styles.detailsBox}>
+                <summary>See the details: every plan, the maths and switching tips</summary>
+                <div className={styles.detailsInner}>
+              <HowWeWorkedItOut
+                plan={top.plan}
+                usage={usage}
+                bench={bench}
+                haveBill={haveBill}
+                distributor={distributor}
+                profile={useEst ? profile : null}
+                est={useEst ? est : null}
+                priceDate={fmtUpdated()}
+              />
+                <details className={styles.switchHelp}>
+                  <summary>Before you switch: what to expect</summary>
+                  <ul>
+                    <li><b>Have ready:</b> a recent bill (for your NMI and address), your ID, and a payment method.</li>
+                    <li><b>Takes about 10 minutes</b> online. The retailer will ask whether you own or rent, and whether you have solar.</li>
+                    <li><b>No interruption.</b> Your power stays on; only the company billing you changes. Nobody visits.</li>
+                    <li><b>Cooling-off:</b> you can cancel within 10 business days of agreeing, without penalty.</li>
+                    <li><b>Check the fine print:</b> contract length, any exit fee, whether the rate is fixed or variable, and the conditions on discounts.</li>
+                    <li><b>Final bill:</b> your old retailer sends one for the days up to the switch. Pay it as normal.</li>
+                  </ul>
+                </details>
+                  <div className={styles.chartTitle}>All {matches.length} comparable plans, cheapest first</div>
+
+                  
 
                   <div className={styles.planList}>
                     {rest.map((m, i) => {
@@ -1296,8 +1262,50 @@ export default function Comparator() {
                       );
                     })}
                   </div>
-                </>
+                
+              {top && (
+                <SaveCheck
+                  billingDays={days}
+                  referenceTotal={bench}
+                  bestTotal={top.total}
+                  bestRetailer={top.plan[0]}
+                  bestPlanName={top.plan[2]}
+                  source={haveBill ? "bill" : "manual"}
+                />
               )}
+
+                </div>
+              </details>
+
+              <PricingSection
+                email={email}
+                onEmailChange={setEmail}
+                yearlySaving={top && bench - top.total > 0 ? periodBreakdown(bench - top.total, days).annual : 0}
+                bestRetailer={top ? top.plan[0] : ""}
+                profile={{
+                  distributor,
+                  billingDays: days,
+                  usageMode: useEst ? "detailed" : mode,
+                  peak: usagePeak,
+                  shoulder: usageShoulder,
+                  offpeak: usageOffpeak,
+                  anytime: usageAnytime,
+                  cl: clKwh,
+                  baselineTotal: top ? top.total : null,
+                  baselineRetailer: top ? top.plan[0] : null,
+                  baselinePlanName: top ? top.plan[2] : null,
+                  referenceTotal: bench,
+                  customerName,
+                  address,
+                  suburb,
+                  postcode,
+                  hasSolar: hasSolarEff,
+                  solarExportKwh,
+                  homeProfile: useEst ? (profile as unknown as Record<string, unknown>) : null,
+                  currentRetailer,
+                }}
+              />
+
             </>
           )}
 

@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
             has_solar: md.hasSolar === "true",
             solar_export_kwh: toNum(md.solarExportKwh),
             home_profile: parseJson(md.homeProfile),
+            current_retailer: md.currentRetailer || null,
           })
           .select("id")
           .single();
@@ -113,8 +114,8 @@ export async function POST(req: NextRequest) {
           const origin = process.env.SITE_URL || new URL(req.url).origin;
           await sendEmail({
             to: email,
-            subject: "Welcome to Utilo. Here's what happens next",
-            cta: { label: "Open My Dashboard", url: `${origin}/account` },
+            subject: "Welcome to Utilo. Let's start saving",
+            cta: { label: "Upload my bill and see my dashboard", url: `${origin}/account` },
             html: `
               <p>Thanks for joining. From now on we re-check your plan every morning and email you only when switching is worth it. On the 1st of each month you'll get a short summary.</p>
               <p style="font-size:16px;font-weight:700;margin:18px 0 6px;">Two things to do now</p>

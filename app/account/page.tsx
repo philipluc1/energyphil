@@ -10,6 +10,7 @@ import SiteHeader from "../components/SiteHeader";
 import EnergyTips from "../components/EnergyTips";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
+import ProfilePanels from "../components/ProfilePanels";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import type { ExtractedBill } from "@/lib/billExtraction";
@@ -40,6 +41,20 @@ interface SubscriberSummary {
   solar_export_kwh: number | null;
   switched_at: string | null;
   switched_to: string | null;
+  customer_name: string | null;
+  address: string | null;
+  suburb: string | null;
+  postcode: string | null;
+  nmi: string | null;
+  current_retailer: string | null;
+  current_plan_name: string | null;
+  tariff_type: string | null;
+  usage_mode: string | null;
+  peak_kwh: number | null;
+  shoulder_kwh: number | null;
+  offpeak_kwh: number | null;
+  anytime_kwh: number | null;
+  controlled_load_kwh: number | null;
 }
 
 interface EpisodeRow {
@@ -126,7 +141,7 @@ export default function AccountPage() {
       const { data, error } = await supabase!
         .from("subscribers")
         .select(
-          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to",
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh",
         )
         .order("created_at", { ascending: false })
         .limit(1)
@@ -453,6 +468,8 @@ export default function AccountPage() {
                 {months.some((m) => m.partial) && <div className={styles.chartNote}>Faded column = month in progress</div>}
                 {months.length > 0 && <div className={styles.chartNote}>Months with a saved check use it. Others are estimates.</div>}
               </div>
+
+              {!subLoading && sub && <ProfilePanels d={sub} />}
 
               {subLoading && <p className={styles.note}>Loading your plan…</p>}
               {subError && <p className={styles.error}>{subError}</p>}

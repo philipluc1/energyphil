@@ -1,0 +1,109 @@
+"use client";
+
+import Link from "next/link";
+import styles from "./profilepanels.module.css";
+
+export interface ProfileData {
+  customer_name: string | null;
+  address: string | null;
+  suburb: string | null;
+  postcode: string | null;
+  distributor: string | null;
+  nmi: string | null;
+  current_retailer: string | null;
+  current_plan_name: string | null;
+  tariff_type: string | null;
+  usage_mode: string | null;
+  billing_days: number | null;
+  peak_kwh: number | null;
+  shoulder_kwh: number | null;
+  offpeak_kwh: number | null;
+  anytime_kwh: number | null;
+  controlled_load_kwh: number | null;
+  has_solar: boolean | null;
+  solar_export_kwh: number | null;
+  baseline_retailer: string | null;
+  baseline_plan_name: string | null;
+}
+
+const TARIFF_LABEL: Record<string, string> = {
+  single_rate: "Single rate",
+  time_of_use: "Time of use",
+  demand: "Demand",
+  flexible: "Flexible",
+};
+
+const kwh = (n: number | null | undefined) => (n === null || n === undefined ? null : `${Math.round(n).toLocaleString("en-AU")} kWh`);
+
+function Row({ label, value, hint }: { label: string; value: string | null; hint?: string }) {
+  return (
+    <div className={styles.row}>
+      <span className={styles.label}>{label}</span>
+      {value ? <span className={styles.value}>{value}</span> : <span className={styles.missing}>{hint ?? "Add from your next bill"}</span>}
+    </div>
+  );
+}
+
+/** "Your details" and "Usage & forecast" panels on the dashboard. Missing
+ *  values show a nudge to upload a bill, which is where they come from. */
+export default function ProfilePanels({ d }: { d: ProfileData }) {
+  const days = d.billing_days ?? 0;
+  const bands = (d.peak_kwh ?? 0) + (d.shoulder_kwh ?? 0) + (d.offpeak_kwh ?? 0);
+  const total = bands + (d.anytime_kwh ?? 0) + (d.controlled_load_kwh ?? 0);
+  const annual = days > 0 && total > 0 ? Math.round((total / days) * 365) : null;
+  const perDay = days > 0 && total > 0 ? (total / days).toFixed(1) : null;
+  const addr = [d.address, d.suburb, d.postcode].filter(Boolean).join(", ");
+  const tariff = d.tariff_type ? TARIFF_LABEL[d.tariff_type] ?? d.tariff_type : d.usage_mode === "detailed" ? "Time of use" : d.usage_mode === "simple" ? "Single rate" : null;
+
+  return (
+    <div className={styles.grid}>
+      <section className={`${styles.panel} ${styles.navy}`}>
+        <h3>Your details</h3>
+        <Row label="Name" value={d.customer_name} />
+        <Row label="Supply address" value={addr || null} />
+        <Row label="Network" value={d.distributor} hint="Set on the check page" />
+        <Row label="NMI" value={d.nmi} />
+        <Row label="Current retailer" value={d.current_retailer} hint="Tell us on the check page" />
+        <Row label="Current offer" value={d.current_plan_name} />
+        <Row label="Tariff type" value={tariff} />
+        <Row label="Solar" value={d.has_solar === null ? null : d.has_solar ? `Yes${d.solar_export_kwh ? `, ${kwh(d.solar_export_kwh)} exported per bill` : ""}` : "No"} />
+        <Row label="Best match found" value={d.baseline_retailer ? `${d.baseline_retailer}${d.baseline_plan_name ? ` — ${d.baseline_plan_name}` : ""}` : null} hint="Run a check" />
+        <p className={styles.note}>Most of this is read from your bill. <a href="#read-bill">Upload a newer one</a> to update it.</p>
+      </section>
+
+      <section className={`${styles.panel} ${styles.teal}`}>
+        <h3>Usage &amp; forecast</h3>
+        <div className={styles.stats}>
+          <div className={styles.stat}><b>{kwh(total) ?? "—"}</b><span>last bill{days ? ` (${days} days)` : ""}</span></div>
+          <div className={styles.stat}><b>{perDay ? `${perDay} kWh` : "—"}</b><span>per day</span></div>
+          <div className={styles.stat}><b>{annual ? kwh(annual) : "—"}</b><span>expected per year</span></div>
+        </div>
+        {bands > 0 && (
+          <div className={styles.bands}>
+            {[["Peak", d.peak_kwh], ["Shoulder", d.shoulder_kwh], ["Off-peak", d.offpeak_kwh], ["Controlled load", d.controlled_load_kwh]]
+              .filter(([, v]) => (v as number | null) && (v as number) > 0)
+              .map(([k, v]) => {
+                const pct = Math.round(((v as number) / total) * 100);
+                return (
+                  <div key={k as string} className={styles.band}>
+                    <span>{k as string}</span>
+                    <div className={styles.track}><div className={styles.fill} style={{ width: `${pct}%` }} /></div>
+                    <b>{pct}%</b>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+        <div className={styles.placeholder}>
+          <b>12-month usage forecast</b>
+          <span>Coming soon. Once we have two or more bills, we&apos;ll show your expected usage and cost month by month, with seasonal highs for heating and cooling.</span>
+        </div>
+        {total === 0 && (
+          <p className={styles.note}>
+            No usage on file yet. <a href="#read-bill">Upload a bill</a> or <Link href="/check">run the check</Link>.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}

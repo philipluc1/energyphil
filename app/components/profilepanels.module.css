@@ -1,0 +1,28 @@
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.panel { border-radius: 14px; padding: 18px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.panel h3 { margin: 0 0 6px; font-size: 16px; font-weight: 800; }
+.navy { background: linear-gradient(135deg, #eef1fb, #e3e8fa); border-left: 5px solid #2d3f9e; }
+.teal { background: linear-gradient(135deg, #e6fbf8, #d6f5f0); border-left: 5px solid #0ea5a0; }
+.row { display: grid; grid-template-columns: 120px 1fr; gap: 10px; font-size: 13.5px; line-height: 1.4; padding: 5px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.row:last-of-type { border-bottom: 0; }
+.label { color: var(--grey); }
+.value { font-weight: 700; word-break: break-word; }
+.missing { color: var(--grey); font-style: italic; opacity: 0.8; }
+.note { margin: 8px 0 0; font-size: 12.5px; color: var(--grey); }
+.note a { color: #0d9488; font-weight: 700; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: rgba(255,255,255,0.7); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-size: 18px; font-weight: 900; }
+.stat span { font-size: 11.5px; color: var(--grey); }
+.bands { display: grid; gap: 6px; margin-top: 4px; }
+.band { display: grid; grid-template-columns: 100px 1fr 40px; align-items: center; gap: 8px; font-size: 12.5px; }
+.band b { text-align: right; }
+.track { height: 10px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
+.fill { height: 100%; background: #0ea5a0; border-radius: 5px; }
+.placeholder { margin-top: 6px; padding: 14px; border-radius: 12px; border: 2px dashed rgba(14,165,160,0.45); background: rgba(255,255,255,0.5); display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.45; color: var(--grey); }
+.placeholder b { color: inherit; font-size: 14px; }
+@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr 1fr; } .row { grid-template-columns: 100px 1fr; } }
+@media (prefers-color-scheme: dark) {
+  .navy { background: rgba(45,63,158,0.18); } .teal { background: rgba(14,165,160,0.12); }
+  .stat, .placeholder { background: rgba(255,255,255,0.06); } .row { border-color: rgba(255,255,255,0.08); } .track { background: rgba(255,255,255,0.12); }
+}

@@ -224,3 +224,10 @@ alter table public.subscribers
 alter table public.leads
   add column if not exists drip_step integer not null default 0,
   add column if not exists drip_sent_at timestamptz;
+
+-- 7 Oct 2026: personal details shown on the dashboard, read from the bill.
+alter table public.subscribers
+  add column if not exists nmi text,
+  add column if not exists current_retailer text,
+  add column if not exists current_plan_name text,
+  add column if not exists tariff_type text;

@@ -7,3 +7,12 @@
 .cta { display: inline-block; text-decoration: none; background: linear-gradient(135deg, #ffd166, #f5a623); color: #1c1403; font-weight: 800; font-size: 16px; padding: 14px 24px; border-radius: 12px; box-shadow: 0 8px 22px rgba(245, 166, 35, 0.4); }
 .skip { font-size: 14px; color: var(--grey); }
 .card > div { width: 100%; }
+.steps { display: grid; gap: 10px; width: 100%; }
+.step { display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); }
+.step p { margin: 2px 0 0; font-size: 13.5px; color: var(--grey); line-height: 1.45; }
+.step b { font-size: 15px; }
+.stepNum { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; background: var(--border); }
+.stepNow { background: linear-gradient(135deg, #fff7e0, #fff1c7); border-color: #f5a623; }
+.stepNow .stepNum { background: #f5a623; color: #1c1403; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.ctaGhost { display: inline-block; text-decoration: none; font-weight: 800; font-size: 15px; padding: 12px 20px; border-radius: 12px; border: 2px solid #0d9488; color: #0d9488; }

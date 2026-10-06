@@ -90,16 +90,41 @@ export default function WelcomePage() {
       <div className={styles.wrap}>
         <div className={styles.card}>
           <Tag tone="green">Payment received</Tag>
-          <h1>Welcome. You&apos;re in.</h1>
+          <h1>Let&apos;s start saving.</h1>
 
           {stage === "setting-up" && <p className={styles.lede}>Setting up your membership…</p>}
 
           {(stage === "upload" || stage === "applying") && (
             <>
-              <p className={styles.lede}>One last step: read your latest bill so your monthly checks use your real numbers. It takes about a minute.</p>
+              <div className={styles.steps}>
+                <div className={`${styles.step} ${styles.stepNow}`}>
+                  <span className={styles.stepNum}>1</span>
+                  <div>
+                    <b>Upload your latest bill</b>
+                    <p>A photo or PDF. We read the numbers so your checks use what you really pay. About a minute.</p>
+                  </div>
+                </div>
+                <div className={styles.step}>
+                  <span className={styles.stepNum}>2</span>
+                  <div>
+                    <b>See your savings dashboard</b>
+                    <p>Your best plan, what you&apos;re saving, and a check every month from now on.</p>
+                  </div>
+                </div>
+                <div className={styles.step}>
+                  <span className={styles.stepNum}>3</span>
+                  <div>
+                    <b>Switch, then tell us the date</b>
+                    <p>Savings count from the day you switch. We&apos;ll email only when another move is worth it.</p>
+                  </div>
+                </div>
+              </div>
               {message && <p className={styles.warn}>{message}</p>}
               {stage === "applying" ? <p className={styles.lede}>Working out your best plan…</p> : <BillPhotoUpload onApply={handleBill} />}
-              <Link href="/account" className={styles.skip}>Skip for now, go to My Dashboard</Link>
+              <div className={styles.row}>
+                <Link href="/account" className={styles.ctaGhost}>Open my savings dashboard →</Link>
+                <span className={styles.skip}>You can upload a bill there any time.</span>
+              </div>
             </>
           )}
 
@@ -111,7 +136,7 @@ export default function WelcomePage() {
                   ? ` About ${money(result.saving)} cheaper than ${result.usedCurrentBill ? "what you pay now" : "the default offer"} for the same period.`
                   : " Your current plan is already as cheap as anything we found. We'll keep watching."}
               </p>
-              <Link href="/account" className={styles.cta}>Go to My Dashboard</Link>
+              <Link href="/account" className={styles.cta}>Open my savings dashboard →</Link>
             </>
           )}
 

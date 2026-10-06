@@ -1584,3 +1584,26 @@
 .card { border-top: 5px solid var(--teal); }
 .stayCard { border-left: 5px solid #7c6cf0; background: linear-gradient(135deg, #f1efff, var(--surface) 60%); }
 .switchHelp summary { color: #5eead4; }
+
+/* ---- Results reorder: retailer first, charts next, details folded, then pricing ---- */
+.bestCard .retailer { font-size: clamp(26px, 5vw, 36px); letter-spacing: -0.03em; }
+.getPlan { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: center; margin-top: 18px; padding: 16px 18px; border-radius: 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); }
+.getPlanLogo { width: 56px; height: 56px; border-radius: 14px; background: #fff; color: #131c57; font-weight: 900; font-size: 22px; display: grid; place-items: center; letter-spacing: -0.02em; }
+.getPlanText { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; line-height: 1.45; }
+.getPlanText b { font-size: 17px; }
+.getPlanText span { opacity: 0.85; }
+.getPlan .switchBtn { margin: 0; white-space: nowrap; }
+.chartPair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.chartPair > * { margin-top: 0 !important; min-width: 0; }
+.detailsBox { margin-top: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.detailsBox > summary { cursor: pointer; padding: 16px 18px; font-weight: 800; font-size: 15px; list-style: none; display: flex; gap: 8px; align-items: center; }
+.detailsBox > summary::before { content: "▸"; color: #0d9488; }
+.detailsBox[open] > summary::before { content: "▾"; }
+.detailsInner { padding: 0 18px 18px; display: grid; gap: 14px; }
+.detailsInner .switchHelp { border-top: 0; padding-top: 0; }
+.detailsInner .switchHelp summary { color: #0d9488; }
+@media (max-width: 760px) {
+  .chartPair { grid-template-columns: 1fr; }
+  .getPlan { grid-template-columns: 48px 1fr; }
+  .getPlan .switchBtn { grid-column: 1 / -1; text-align: center; }
+}

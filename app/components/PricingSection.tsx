@@ -59,6 +59,7 @@ export interface SubscribeProfile {
   hasSolar: boolean;
   solarExportKwh: number;
   homeProfile?: Record<string, unknown> | null;
+  currentRetailer?: string;
 }
 
 export default function PricingSection({

@@ -46,6 +46,19 @@ const TOOL_SCHEMA = {
         type: ["integer", "null"],
         description: "Number of days in the billing period shown on the bill.",
       },
+      nmi: {
+        type: ["string", "null"],
+        description: "The National Metering Identifier (NMI), a 10-11 character code, usually starting with 6 for Victoria. Null if not visible.",
+      },
+      plan_name: {
+        type: ["string", "null"],
+        description: "The name of the customer's current plan or offer as printed on the bill (e.g. 'Value Saver', 'Standing Offer'). Null if not shown.",
+      },
+      tariff_type: {
+        type: ["string", "null"],
+        enum: ["single_rate", "time_of_use", "demand", "flexible", null],
+        description: "How usage is charged: one flat rate (single_rate), peak/shoulder/off-peak bands (time_of_use), a demand charge (demand), or another structure (flexible).",
+      },
       current_bill_total: {
         type: ["number", "null"],
         description: "Total amount payable including GST, in AUD.",
