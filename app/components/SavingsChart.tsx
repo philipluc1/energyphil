@@ -15,8 +15,9 @@ function money(n: number): string {
 
 // One column per month, oldest → newest, with the dollar value labelled on
 // top of every column. The current (still-running) month is a lighter shade.
-export default function SavingsChart({ months }: { months: MonthlySaving[] }) {
-  const colors = PALETTE[useColorScheme()];
+export default function SavingsChart({ months, palette }: { months: MonthlySaving[]; palette?: (typeof PALETTE)["light"] }) {
+  const scheme = useColorScheme();
+  const colors = palette ?? PALETTE[scheme];
   const data = [...months].reverse().map((m) => ({
     label: m.label.replace(/ \d{4}$/, ""),
     amount: Math.round(m.amount * 100) / 100,

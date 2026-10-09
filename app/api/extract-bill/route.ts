@@ -118,6 +118,24 @@ const TOOL_SCHEMA = {
         type: ["number", "null"],
         description: "Total solar energy exported to the grid in kWh for this billing period, if a feed-in/export line item is shown. Null if there's no solar or the figure isn't shown.",
       },
+      price_type: {
+        type: ["string", "null"],
+        enum: ["fixed", "variable", null],
+        description:
+          "Whether the electricity prices on this plan are fixed or variable. 'fixed' if the bill says the rates are fixed, locked, a 'rate fix' or 'price guarantee', or guaranteed until a date. 'variable' if it says variable rates or that prices may change. Null if the bill doesn't say.",
+      },
+      price_fixed_until: { type: ["string", "null"], description: "If prices are fixed, the date they're fixed until, as YYYY-MM-DD. Null otherwise." },
+      rates_include_gst: {
+        type: ["boolean", "null"],
+        description: "True if the unit rates and supply charge printed on the bill include GST, false if they are shown excluding GST (GST added as a separate line). Null if unclear.",
+      },
+      supply_charge_cents_per_day: { type: ["number", "null"], description: "Electricity daily supply charge in cents per day, exactly as printed (e.g. 125.5). Null if not shown." },
+      anytime_rate_cents: { type: ["number", "null"], description: "Single/flat usage rate in cents per kWh as printed. If usage is stepped into blocks, the first block's rate. Null for time-of-use plans." },
+      peak_rate_cents: { type: ["number", "null"], description: "Peak usage rate in cents per kWh as printed. Null if not a time-of-use plan." },
+      shoulder_rate_cents: { type: ["number", "null"], description: "Shoulder usage rate in cents per kWh as printed, if shown." },
+      offpeak_rate_cents: { type: ["number", "null"], description: "Off-peak usage rate in cents per kWh as printed, if shown." },
+      controlled_load_rate_cents: { type: ["number", "null"], description: "Controlled load / dedicated circuit rate in cents per kWh as printed, if shown." },
+      solar_fit_cents: { type: ["number", "null"], description: "Solar feed-in tariff in cents per kWh as printed, if shown." },
       warnings: {
         type: "array",
         items: { type: "string" },

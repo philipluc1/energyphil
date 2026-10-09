@@ -255,3 +255,8 @@ create table if not exists public.waitlist (
 );
 alter table public.waitlist enable row level security;
 create index if not exists waitlist_email on public.waitlist (email);
+
+-- Current plan pricing read off the member's latest bill (Oct 2026).
+alter table subscribers add column if not exists current_rates jsonb;
+alter table subscribers add column if not exists current_price_type text;
+alter table subscribers add column if not exists current_price_fixed_until date;

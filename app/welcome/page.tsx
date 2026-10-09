@@ -52,9 +52,16 @@ export default function WelcomePage() {
         member = Boolean((await res?.json().catch(() => null))?.member);
         if (!member) await new Promise((r) => setTimeout(r, 1000));
       }
+      // Webhook still not landed? Ask the server to find the payment in Stripe directly.
+      if (!member && !cancelled) {
+        const res = await fetch("/api/sync-membership", { method: "POST", headers: { authorization: `Bearer ${session.access_token}` } }).catch(() => null);
+        const body = await res?.json().catch(() => null);
+        member = Boolean(body?.member || body?.created);
+        if (!member && body?.reason) setMessage(body.reason);
+      }
       if (cancelled) return;
       if (!member) {
-        setMessage("Your payment went through, but your membership is still being set up.");
+        setMessage((m) => m || "Your payment went through, but your membership is still being set up.");
         return setStage("error");
       }
 

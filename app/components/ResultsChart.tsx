@@ -14,17 +14,17 @@ export interface ChartItem {
 // page's --navy/--amber custom properties directly — we mirror the two
 // palettes from globals.css here and pick one by watching prefers-color-scheme.
 const PALETTE = {
-  light: { reference: "#8a93a6", referenceGood: "#16a34a", referenceBad: "#dc2626", plan: "#1b2a4a", cheapest: "#f0a202", text: "#12141c" },
-  dark: { reference: "#7b849c", referenceGood: "#22c55e", referenceBad: "#ef4444", plan: "#3a5384", cheapest: "#f0a202", text: "#eceff7" },
+  light: { reference: "#9aa3b5", referenceGood: "#16a34a", referenceBad: "#dc2626", plan: "#2b3a67", cheapest: "#f5a623", text: "#12141c" },
+  dark: { reference: "#7b849c", referenceGood: "#22c55e", referenceBad: "#ef4444", plan: "#3a5384", cheapest: "#f5a623", text: "#eceff7" },
 }
 
 function fmtCurrency(n: number): string {
   return "$" + n.toLocaleString("en-AU", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
-export default function ResultsChart({ items }: { items: ChartItem[] }) {
+export default function ResultsChart({ items, palette }: { items: ChartItem[]; palette?: (typeof PALETTE)["light"] }) {
   const scheme = useColorScheme();
-  const colors = PALETTE[scheme];
+  const colors = palette ?? PALETTE[scheme];
 
   if (items.length === 0) return null;
 

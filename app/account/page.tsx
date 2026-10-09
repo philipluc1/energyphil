@@ -10,16 +10,24 @@ import SiteHeader from "../components/SiteHeader";
 import EnergyTips from "../components/EnergyTips";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
+import DashTabs, { type TabDef } from "../components/DashTabs";
+import { RETAILER_LINKS } from "@/lib/retailerLinks";
+import { useCountUp } from "@/lib/useCountUp";
+import { useColorScheme } from "@/lib/useColorScheme";
+import { DASH_THEMES, DEFAULT_DASH_THEME, isDashTheme, type DashThemeId } from "@/lib/dashThemes";
 import ProfilePanels, { type ProfileData } from "../components/ProfilePanels";
-import LatestCheckCard, { type LatestCheck } from "../components/LatestCheckCard";
+import type { LatestCheck } from "../components/LatestCheckCard";
 import LearnCard from "../components/LearnCard";
-import MemberResult from "../components/MemberResult";
+import { VerdictCard, CompareSection, summariseComparison, type ComparisonInput, type Period } from "../components/DashboardComparison";
+import PlanBand from "../components/PlanBand";
+import PlanCards from "../components/PlanCards";
 import UpgradePlans from "../components/UpgradePlans";
 import type { Distributor } from "@/lib/plans";
 import { DEFAULT_PROFILE, estimateUsage } from "@/lib/profileUsage";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
-import type { ExtractedBill } from "@/lib/billExtraction";
+import type { CurrentRates, ExtractedBill } from "@/lib/billExtraction";
+import SwitchReminder from "../components/SwitchReminder";
 import styles from "./account.module.css";
 
 // Passwordless sign-in: there's no separate "create an account" step — the
@@ -72,6 +80,9 @@ interface SubscriberSummary {
   gas_best_total: number | null;
   gas_updated_at: string | null;
   reference_total: number | null;
+  current_rates?: CurrentRates | null;
+  current_price_type?: string | null;
+  current_price_fixed_until?: string | null;
 }
 
 interface EpisodeRow {
@@ -91,6 +102,16 @@ function fmtDate(iso: string): string {
 function fmtDollars(n: number): string {
   return "$" + n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+function fmtWhole(n: number): string {
+  return "$" + Math.round(n).toLocaleString("en-AU");
+}
+
+type Tab = "compare" | "home" | "savings" | "membership";
+// Old links (#read-bill, #join) still land on the right tab.
+const TAB_FROM_HASH: Record<string, Tab> = {
+  compare: "compare", home: "home", savings: "savings", "read-bill": "savings", membership: "membership", join: "membership",
+};
 
 function statusLabel(status: string): string {
   if (status === "active") return "Active";
@@ -119,12 +140,17 @@ export default function AccountPage() {
   // What a non-member told us in the free check, kept in this browser.
   const [localCheck, setLocalCheck] = useState<ProfileData | null>(null);
   const [latest, setLatest] = useState<LatestCheck | null>(null);
+  const [localPricing, setLocalPricing] = useState<{ planName: string | null; rates: CurrentRates | null; priceType: "fixed" | "variable" | null; fixedUntil: string | null } | null>(null);
   useEffect(() => {
     const t = setTimeout(() => {
       try {
         try {
           const r = JSON.parse(window.localStorage.getItem("utilo.result.v1") ?? "null");
           if (r && typeof r.bestTotal === "number") setLatest(r as LatestCheck);
+        } catch { /* none */ }
+        try {
+          const lp = JSON.parse(window.localStorage.getItem("utilo.pricing.v1") ?? "null");
+          if (lp && typeof lp === "object") setLocalPricing(lp);
         } catch { /* none */ }
         const raw = window.localStorage.getItem("utilo.check.v1");
         if (!raw) return;
@@ -164,6 +190,7 @@ export default function AccountPage() {
   }, []);
   const [subLoading, setSubLoading] = useState(false);
   const [subError, setSubError] = useState("");
+  const [syncReason, setSyncReason] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState("");
 
@@ -201,20 +228,41 @@ export default function AccountPage() {
     async function loadSubscription() {
       setSubLoading(true);
       setSubError("");
-      const { data, error } = await supabase!
-        .from("subscribers")
-        .select(
-          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total",
-        )
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const BASE_COLS =
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
+      const PRICING_COLS = ", current_rates, current_price_type, current_price_fixed_until";
+      const pick = (cols: string) =>
+        supabase!.from("subscribers").select(cols).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      let { data, error } = await pick(BASE_COLS + PRICING_COLS);
+      // Database without the newest pricing columns yet? Load everything else.
+      if (error && /column|schema cache/i.test(error.message ?? "")) ({ data, error } = await pick(BASE_COLS));
       if (cancelled) return;
       if (error) {
         setSubError("Couldn't load your dashboard — please try refreshing.");
-      } else {
-        setSub(data as SubscriberSummary | null);
+        setSubLoading(false);
+        return;
       }
+      let row = data as SubscriberSummary | null;
+      // No membership on file? Ask the server to check Stripe for a paid
+      // checkout and create it (covers a missed webhook), then reload once.
+      if (!row || row.status !== "active") {
+        const session = (await supabase!.auth.getSession()).data.session;
+        const res = await fetch("/api/sync-membership", { method: "POST", headers: { authorization: `Bearer ${session?.access_token ?? ""}` } }).catch(() => null);
+        const body = await res?.json().catch(() => null);
+        if (!cancelled && body?.reason) setSyncReason(body.reason);
+        if (!cancelled && !body?.ok && body?.message) setSyncReason(body.message);
+        if (!cancelled && body?.created) {
+          const again = await supabase!
+            .from("subscribers")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (again.data) row = again.data as SubscriberSummary;
+        }
+      }
+      if (cancelled) return;
+      setSub(row);
       setSubLoading(false);
     }
 
@@ -318,6 +366,92 @@ export default function AccountPage() {
     [tariffPlan, sub],
   );
 
+  const [tab, setTab] = useState<Tab>("compare");
+  // Colour theme: the default, or ?theme=slate|mint|brand to preview another.
+  const [themeId, setThemeId] = useState<DashThemeId>(DEFAULT_DASH_THEME);
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("theme");
+    if (isDashTheme(t)) { const h = setTimeout(() => setThemeId(t), 0); return () => clearTimeout(h); }
+  }, []);
+  const scheme = useColorScheme();
+  const themeMode = DASH_THEMES[themeId][scheme];
+  // The page background behind the dashboard follows the theme too.
+  useEffect(() => {
+    if (stage !== "signedIn") return;
+    const prev = document.body.style.background;
+    document.body.style.background = themeMode.pageBg;
+    document.body.style.backgroundAttachment = "fixed";
+    return () => { document.body.style.background = prev; };
+  }, [stage, themeMode]);
+  const [period, setPeriod] = useState<Period>("year");
+  const [showSwitchForm, setShowSwitchForm] = useState(false);
+  const isMember = !!sub && sub.status === "active";
+
+  function changeTab(t: Tab) {
+    setTab(t);
+    try { window.history.replaceState(null, "", `#${t}`); } catch { /* ignore */ }
+  }
+  // Follow #hash links (header pill, "Upload your bill", emails) to a tab.
+  useEffect(() => {
+    const apply = () => {
+      const t = TAB_FROM_HASH[window.location.hash.slice(1)];
+      if (!t) return;
+      setTab(t);
+      const bar = document.getElementById("dash-tabs");
+      const header = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+      if (bar) window.scrollTo({ top: bar.getBoundingClientRect().top + window.scrollY - header - 8, behavior: "smooth" });
+    };
+    const first = setTimeout(apply, 0);
+    window.addEventListener("hashchange", apply);
+    return () => { clearTimeout(first); window.removeEventListener("hashchange", apply); };
+  }, []);
+
+  // One comparison input for the whole dashboard, so the verdict, the table
+  // and the Savings tab always quote the same numbers.
+  const cmpInput: ComparisonInput | null = useMemo(() => {
+    if (isMember && sub!.distributor && sub!.billing_days) {
+      const fromBill = !!(sub!.nmi || sub!.current_plan_name);
+      return {
+        distributor: sub!.distributor as Distributor,
+        days: sub!.billing_days,
+        peak: sub!.peak_kwh ?? 0, shoulder: sub!.shoulder_kwh ?? 0, offpeak: sub!.offpeak_kwh ?? 0, anytime: sub!.anytime_kwh ?? 0, cl: sub!.controlled_load_kwh ?? 0,
+        solarExportKwh: sub!.has_solar ? sub!.solar_export_kwh ?? 0 : 0,
+        billTotal: fromBill ? sub!.reference_total : null,
+        currentRetailer: sub!.current_retailer, currentPlanName: sub!.current_plan_name,
+        source: fromBill ? "bill" : "answers",
+        nmi: sub!.nmi,
+        currentRates: sub!.current_rates ?? null,
+        currentPriceType: sub!.current_price_type === "fixed" || sub!.current_price_type === "variable" ? sub!.current_price_type : null,
+        currentFixedUntil: sub!.current_price_fixed_until ?? null,
+      };
+    }
+    if (!isMember && localCheck && localCheck.distributor && localCheck.billing_days) {
+      return {
+        distributor: localCheck.distributor as Distributor,
+        days: localCheck.billing_days,
+        peak: localCheck.peak_kwh ?? 0, shoulder: localCheck.shoulder_kwh ?? 0, offpeak: localCheck.offpeak_kwh ?? 0, anytime: localCheck.anytime_kwh ?? 0, cl: localCheck.controlled_load_kwh ?? 0,
+        solarExportKwh: localCheck.has_solar ? localCheck.solar_export_kwh ?? 0 : 0,
+        billTotal: latest && latest.haveBill ? latest.bench : null,
+        currentRetailer: localCheck.current_retailer, currentPlanName: localPricing?.planName ?? null,
+        source: localCheck.source ?? "answers",
+        currentRates: localPricing?.rates ?? null,
+        currentPriceType: localPricing?.priceType ?? null,
+        currentFixedUntil: localPricing?.fixedUntil ?? null,
+      };
+    }
+    return null;
+  }, [isMember, sub, localCheck, latest, localPricing]);
+  const summary = useMemo(() => (cmpInput ? summariseComparison(cmpInput) : null), [cmpInput]);
+  const savedShown = useCountUp(accumulated.total);
+  const firstName = ((isMember ? sub!.customer_name : localCheck?.customer_name) ?? "").trim().split(/\s+/)[0] || "";
+
+  const tabs: TabDef<Tab>[] = [
+    { id: "compare", label: "Compare" },
+    { id: "home", label: "My home" },
+    { id: "savings", label: "Savings", dot: isMember && !doneThisMonth },
+    { id: "membership", label: "Membership" },
+  ];
+
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
@@ -419,8 +553,11 @@ export default function AccountPage() {
     <>
       <SiteHeader active="account" />
       <div className={styles.wrap}>
-        <div className={`${styles.card} ${stage === "signedIn" ? styles.cardWide : ""}`}>
-          <h1>My Dashboard</h1>
+        <div
+          className={`${styles.card} ${stage === "signedIn" ? styles.cardDash : ""}`}
+          style={stage === "signedIn" ? (themeMode.vars as React.CSSProperties) : undefined}
+        >
+          {stage !== "signedIn" && <h1>My Dashboard</h1>}
 
           {!supabaseConfigured && <p className={styles.note}>Accounts aren&apos;t switched on yet — check back soon.</p>}
 
@@ -468,216 +605,287 @@ export default function AccountPage() {
 
           {supabaseConfigured && stage === "signedIn" && (
             <>
-              <p className={styles.signedInAs}>Signed in as {userEmail}</p>
-
-              <div className={`${styles.checkBox} ${styles.toneAmber}`}>
+              <div className={styles.dashHead}>
                 <div>
-                  <div className={styles.checkTitle}>{doneThisMonth ? "This month's check is done" : "Next step: check this month's bill"}</div>
-                  <div className={styles.checkSub}>
-                    {doneThisMonth
-                      ? "We'll check again next month. Got a newer bill? Upload it below."
-                      : sub && sub.status === "active"
-                        ? "Upload a photo or PDF below. It takes about a minute."
-                        : "Members get a bill read and a saved check every month. Start with the free check."}
-                  </div>
+                  <h1 className={styles.dashTitle}>{firstName ? `Hi ${firstName}` : "My Dashboard"}</h1>
+                  <p className={styles.signedInAs}>Signed in as {userEmail}</p>
                 </div>
-                {!doneThisMonth && (
-                  sub && sub.status === "active"
-                    ? <a href="#read-bill" className={styles.btnPrimary}>Upload bill</a>
-                    : <Link href="/check" className={styles.btnPrimary}>Run a free check</Link>
-                )}
-              </div>
-
-              {sub && sub.status === "active" && sub.distributor && sub.billing_days && (
-                <MemberResult
-                  distributor={sub.distributor as Distributor}
-                  days={sub.billing_days}
-                  peak={sub.peak_kwh ?? 0}
-                  shoulder={sub.shoulder_kwh ?? 0}
-                  offpeak={sub.offpeak_kwh ?? 0}
-                  anytime={sub.anytime_kwh ?? 0}
-                  cl={sub.controlled_load_kwh ?? 0}
-                  solarExportKwh={sub.has_solar ? sub.solar_export_kwh ?? 0 : 0}
-                  referenceTotal={sub.nmi || sub.current_plan_name ? sub.reference_total : null}
-                  source={sub.nmi || sub.current_plan_name ? "bill" : "answers"}
-                />
-              )}
-
-              {sub && sub.status === "active" && sub.baseline_retailer && (
-                <div className={`${styles.planBox} ${styles.toneTeal}`}>
-                  {switchedAt ? (
-                    <>
-                      <div className={styles.planName}>You switched to {sub.switched_to ?? sub.baseline_retailer}</div>
-                      <p className={styles.note}>On {fmtDate(switchedAt)}. Savings count from that day.</p>
-                      <p className={styles.note}>{PRICE_CHANGE_CLAUSE} We won&apos;t suggest another move in the first two months unless it&apos;s a big one.</p>
-                      <button type="button" className={styles.linkBtn} disabled={switchBusy} onClick={() => confirmSwitch(false)}>
-                        That&apos;s wrong, I haven&apos;t switched
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className={styles.planName}>Did you switch to {sub.baseline_retailer}?</div>
-                      <p className={styles.note}>We only count savings from the day you actually switch.</p>
-                      <div className={styles.switchRow}>
-                        <label>
-                          Switched on{" "}
-                          <input type="date" value={switchDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setSwitchDate(e.target.value)} />
-                        </label>
-                        <button type="button" className={styles.btnPrimary} disabled={switchBusy} onClick={() => confirmSwitch(true)}>
-                          {switchBusy ? "Saving…" : "Yes, I switched"}
-                        </button>
-                        <Link href="/check" className={styles.linkBtn}>Not yet, show me the plan</Link>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {sub && sub.status === "active" && (<>
-              <div className={styles.savingsBox}>
-                <div className={styles.savingsLabel}>{switchedAt ? "Saved since you switched" : "What you'd save by switching"}</div>
-                <div className={styles.savingsTotal}>{episodesLoading ? "…" : fmtDollars(accumulated.total)}</div>
-                {accumulated.sinceDate && (
-                  <div className={styles.savingsSince}>
-                    {switchedAt ? `Since ${fmtDate(switchedAt)}` : `If you'd switched on ${fmtDate(accumulated.sinceDate)}`} · estimate
-                  </div>
-                )}
-                {!episodesLoading && <FunEquivalents dollars={accumulated.total} dark />}
-              </div>
-
-              <div className={styles.chartBox}>
-                <div className={styles.chartTitle}>Savings by month</div>
-                {!episodesLoading && months.length === 0 ? (
-                  <p className={styles.note}>Your monthly savings will show here.</p>
+                {isMember ? (
+                  <a href="#membership" className={styles.memberPill}>{findPlan(sub!.plan)?.name ?? sub!.plan} member · Active</a>
                 ) : (
-                  <SavingsChart months={months} />
+                  !subLoading && <a href="#membership" className={styles.freePill}>Free account · See plans</a>
                 )}
-                {months.some((m) => m.partial) && <div className={styles.chartNote}>Faded column = month in progress</div>}
-                {months.length > 0 && <div className={styles.chartNote}>Months with a saved check use it. Others are estimates.</div>}
               </div>
-
-              </>)}
-
-              {!subLoading && sub && <ProfilePanels d={{ ...sub, source: sub.nmi || sub.current_plan_name ? "bill" : "answers" }} />}
-              {!subLoading && sub && sub.status === "active" && (
-                <UpgradePlans currentPlan={sub.plan} onChanged={(planId, cents) => setSub((p) => (p ? { ...p, plan: planId, amount_cents: cents } : p))} />
-              )}
-
-              {!subLoading && sub && sub.status === "active" && (
-                <div className={`${styles.planBox} ${styles.toneTeal}`}>
-                  <div className={styles.planName}>Gas</div>
-                  {sub.gas_zone && sub.gas_mj ? (
-                    <>
-                      <p className={styles.note}>
-                        {sub.gas_zone} · {Math.round(sub.gas_mj).toLocaleString("en-AU")} MJ over {sub.gas_billing_days ?? "?"} days
-                        {sub.gas_current_plan_name ? ` · now on "${sub.gas_current_plan_name}"` : ""}
-                      </p>
-                      {sub.gas_best_retailer && sub.gas_best_total !== null ? (
-                        <>
-                          <p className={styles.note}>
-                            Cheapest gas match: <strong>{sub.gas_best_retailer} — {sub.gas_best_plan_name}</strong> at {fmtDollars(sub.gas_best_total)} for the period
-                            {sub.gas_reference_total !== null && sub.gas_reference_total - sub.gas_best_total > 1
-                              ? `, about ${fmtDollars(sub.gas_reference_total - sub.gas_best_total)} less than your bill.`
-                              : "."}
-                          </p>
-                          {sub.gas_best_retailer === sub.baseline_retailer ? (
-                            <p className={styles.note}>Same retailer as your best electricity plan, so ask {sub.gas_best_retailer} about a dual-fuel discount.</p>
-                          ) : (
-                            <p className={styles.note}>
-                              Different retailer from your best electricity plan ({sub.baseline_retailer ?? "not set"}). That&apos;s fine: you can have gas and electricity with different companies. If you&apos;d rather keep one retailer, check whether their dual-fuel discount beats the gap.
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <p className={styles.note}>Your gas details are saved. The comparison switches on with our next gas price pull.</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className={styles.note}>
-                      No gas bill yet. Upload one below (a dual-fuel bill works too) or <Link href="/gas">run the free gas check</Link>.
-                    </p>
-                  )}
-                </div>
-              )}
-
 
               {subLoading && <p className={styles.note}>Loading your plan…</p>}
               {subError && <p className={styles.error}>{subError}</p>}
 
-              {!subLoading && !sub && latest && <LatestCheckCard c={latest} member={false} />}
-              {!subLoading && !sub && localCheck && <ProfilePanels d={localCheck} />}
-
-              {!subLoading && !subError && !sub && (
-                <div className={styles.planBox}>
-                  <p>You&apos;re not subscribed yet.</p>
-                  <Link href="/check#pricing" className={styles.linkBtn}>
-                    See plans →
-                  </Link>
+              {!subLoading && !isMember && syncReason && (
+                <div className={styles.syncNote}>
+                  <b>Already paid?</b> {syncReason}
+                  <button type="button" className={styles.linkBtn} onClick={() => window.location.reload()}>Check again</button>
                 </div>
               )}
 
-              {!subLoading && sub && (
-                <div className={`${styles.planBox} ${styles.toneNavy}`}>
-                  <div className={styles.planName}>{findPlan(sub.plan)?.name ?? sub.plan}</div>
-                  <div className={styles.planMeta}>
-                    {sub.amount_cents !== null ? fmtPrice(sub.amount_cents) : "—"}
-                    {" · "}
-                    <span className={sub.status === "active" ? styles.statusActive : styles.statusOther}>
-                      {statusLabel(sub.status)}
-                    </span>
-                  </div>
-                  {sub.current_period_end && (
-                    <div className={styles.renewNote}>
-                      {sub.status === "active" ? "Renews" : "Ends"} {fmtDate(sub.current_period_end)}
-                    </div>
-                  )}
-                  <button type="button" className={styles.btnPrimary} onClick={handleManageBilling} disabled={portalLoading}>
-                    {portalLoading ? "Opening…" : "Manage or cancel"}
-                  </button>
-                  {portalError && <p className={styles.error}>{portalError}</p>}
-                </div>
+              {/* Always on top: are you on the cheapest plan? */}
+              {!subLoading && cmpInput && (
+                <VerdictCard input={cmpInput} member={isMember} period={period} onPeriod={setPeriod} />
               )}
-
-              {!subLoading && sub && sub.status === "active" && (
-                <div className={`${styles.planBox} ${styles.toneViolet}`} id="read-bill">
-                  <div className={styles.planName}>Read a new bill</div>
-                  <p className={styles.note}>Take a photo or upload a PDF. We&apos;ll update your numbers and recheck your plan.</p>
-                  {billMsg && <p className={styles.note}>{billMsg}</p>}
-                  <BillPhotoUpload onApply={handleBill} />
-                </div>
-              )}
-
-              {!subLoading && sub && sub.baseline_retailer && sub.baseline_plan_name && (
-                <details className={styles.tariffBox}>
-                  <summary className={styles.tariffLabel}>Your matched plan &amp; rates</summary>
-                  {tariffPlan ? (
-                    <>
-                      <div className={styles.tariffPlanName}>
-                        {sub.baseline_retailer} — {sub.baseline_plan_name}
-                      </div>
-                      <div className={styles.tariffMeta}>{sub.distributor} network</div>
-                      <div className={styles.tariffRows}>
-                        {tariffRows.map((r) => (
-                          <div className={styles.tariffRow} key={r.label}>
-                            <span className={styles.tariffRowLabel}>{r.label}</span>
-                            <span className={styles.tariffRowValue}>{r.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <p className={styles.tariffNote}>Matched at your last check. Confirm against your bill.</p>
-                    </>
+              {!subLoading && !cmpInput && (
+                <section className={styles.emptyVerdict}>
+                  <span className={styles.stateLabel}>Are you on the cheapest plan?</span>
+                  <h2>{isMember ? "Upload a bill and we'll tell you." : "Run the free check and your answer lands here."}</h2>
+                  <p>It takes about two minutes. We compare every Victorian plan on your network against your usage.</p>
+                  {isMember ? (
+                    <a href="#savings" className={styles.btnPrimary}>Upload a bill</a>
                   ) : (
-                    <p className={styles.note}>
-                      {sub.baseline_retailer} — {sub.baseline_plan_name} is no longer listed. Upload a new bill for
-                      today&apos;s rates.
-                    </p>
+                    <Link href="/check" className={styles.btnPrimary}>Run a free check</Link>
                   )}
-                </details>
+                </section>
               )}
 
-              <LearnCard />
+              {!subLoading && (
+                <DashTabs tabs={tabs} active={tab} onChange={changeTab}>
+                  {tab === "compare" && (
+                    cmpInput ? (
+                      <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
+                    ) : (
+                      <div className={styles.panelCard}>
+                        <div className={styles.panelTitle}>Retailer comparison</div>
+                        <p className={styles.panelText}>Once we have your usage, every plan on your network shows here, cheapest first.</p>
+                      </div>
+                    )
+                  )}
 
-              <EnergyTips />
+                  {tab === "home" && (
+                    <>
+                      {isMember ? (
+                        <ProfilePanels d={{ ...sub!, source: sub!.nmi || sub!.current_plan_name ? "bill" : "answers" }} />
+                      ) : localCheck ? (
+                        <ProfilePanels d={localCheck} />
+                      ) : (
+                        <div className={styles.panelCard}>
+                          <div className={styles.panelTitle}>Your home</div>
+                          <p className={styles.panelText}>Your address, network, NMI, tariff and usage show here after your first check.</p>
+                          <Link href="/check" className={styles.btnPrimary}>Run a free check</Link>
+                        </div>
+                      )}
+
+                      <div className={styles.panelCard}>
+                        <div className={styles.panelTitle}>Gas</div>
+                        {isMember && sub!.gas_zone && sub!.gas_mj ? (
+                          <>
+                            <p className={styles.panelText}>
+                              {sub!.gas_zone} · {Math.round(sub!.gas_mj).toLocaleString("en-AU")} MJ over {sub!.gas_billing_days ?? "?"} days
+                              {sub!.gas_current_plan_name ? ` · now on "${sub!.gas_current_plan_name}"` : ""}
+                            </p>
+                            {sub!.gas_best_retailer && sub!.gas_best_total !== null ? (
+                              <>
+                                <p className={styles.panelText}>
+                                  Cheapest gas match: <strong>{sub!.gas_best_retailer} — {sub!.gas_best_plan_name}</strong> at {fmtDollars(sub!.gas_best_total)} for the period
+                                  {sub!.gas_reference_total !== null && sub!.gas_reference_total - sub!.gas_best_total > 1
+                                    ? `, about ${fmtDollars(sub!.gas_reference_total - sub!.gas_best_total)} less than your bill.`
+                                    : "."}
+                                </p>
+                                <p className={styles.panelText}>
+                                  {sub!.gas_best_retailer === sub!.baseline_retailer
+                                    ? `Same retailer as your best electricity plan, so ask ${sub!.gas_best_retailer} about a dual-fuel discount.`
+                                    : "A different retailer from your best electricity plan. That's fine: gas and electricity can be with different companies. If you'd rather keep one, check whether a dual-fuel discount beats the gap."}
+                                </p>
+                              </>
+                            ) : (
+                              <p className={styles.panelText}>Your gas details are saved. The comparison switches on with our next gas price pull.</p>
+                            )}
+                          </>
+                        ) : (
+                          <p className={styles.panelText}>
+                            No gas bill yet. {isMember ? <>Upload one in <a href="#savings">Savings</a> (a dual-fuel bill works too) or </> : null}
+                            <Link href="/gas">run the free gas check</Link>.
+                          </p>
+                        )}
+                      </div>
+
+                      {isMember && sub!.baseline_retailer && sub!.baseline_plan_name && (
+                        <details className={styles.panelCard}>
+                          <summary className={styles.panelSummary}>Rates for {sub!.baseline_retailer} — {sub!.baseline_plan_name}</summary>
+                          {tariffPlan ? (
+                            <>
+                              <div className={styles.tariffMeta}>{sub!.distributor} network</div>
+                              <div className={styles.tariffRows}>
+                                {tariffRows.map((r) => (
+                                  <div className={styles.tariffRow} key={r.label}>
+                                    <span className={styles.tariffRowLabel}>{r.label}</span>
+                                    <span className={styles.tariffRowValue}>{r.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className={styles.tariffNote}>Matched at your last check. Confirm against your bill.</p>
+                            </>
+                          ) : (
+                            <p className={styles.panelText}>That plan is no longer listed. Upload a new bill for today&apos;s rates.</p>
+                          )}
+                        </details>
+                      )}
+
+                      <EnergyTips />
+                    </>
+                  )}
+
+                  {tab === "savings" && (
+                    isMember ? (
+                      <>
+                        {/* One card that changes with where you are: not switched, switched, or on a good deal. */}
+                        <section className={`${styles.stateCard} ${switchedAt || summary?.verdict === "good" ? styles.stateGood : summary?.severe ? styles.stateSevere : styles.stateAct}`}>
+                          {switchedAt ? (
+                            <>
+                              <span className={styles.stateLabel}>Saved since you switched to {sub!.switched_to ?? sub!.baseline_retailer}</span>
+                              <div className={styles.stateBig}>{episodesLoading ? "…" : fmtDollars(savedShown)}</div>
+                              <p className={styles.stateSub}>Since {fmtDate(switchedAt)} · estimate, based on your usage and today&apos;s prices</p>
+                              {!episodesLoading && accumulated.total > 0 && <FunEquivalents dollars={accumulated.total} />}
+                              <p className={styles.stateFine}>{PRICE_CHANGE_CLAUSE} We won&apos;t suggest another move in the first two months unless it&apos;s a big one.</p>
+                              <button type="button" className={styles.linkBtn} disabled={switchBusy} onClick={() => confirmSwitch(false)}>
+                                That&apos;s wrong, I haven&apos;t switched
+                              </button>
+                            </>
+                          ) : summary && summary.verdict !== "good" && summary.savingYear > 0 ? (
+                            <>
+                              <span className={styles.stateLabel}>Your next move</span>
+                              <h2 className={styles.stateHead}>
+                                Switch to {summary.bestRetailer} and save about <span className={styles.stateAmt}>{fmtWhole(summary.savingYear)}</span> a year
+                              </h2>
+                              <p className={styles.stateSub}>
+                                Same figure as the top of your dashboard: {summary.bestPlan}, priced against {summary.haveBill ? "your last bill" : "the default offer"}.
+                                {!episodesLoading && accumulated.total > 0 && accumulated.sinceDate && (
+                                  <> Since we first spotted it on {fmtDate(accumulated.sinceDate)}, staying put has cost you about <b>{fmtDollars(accumulated.total)}</b>.</>
+                                )}
+                              </p>
+                              <div className={styles.stateActions}>
+                                {RETAILER_LINKS[summary.bestRetailer] && (
+                                  <a href={RETAILER_LINKS[summary.bestRetailer]} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>Go to {summary.bestRetailer} →</a>
+                                )}
+                                {!showSwitchForm && (
+                                  <button type="button" className={styles.btnGhost} onClick={() => setShowSwitchForm(true)}>I&apos;ve switched</button>
+                                )}
+                                <SwitchReminder retailer={summary.bestRetailer} plan={summary.bestPlan} savingYear={summary.savingYear} link={RETAILER_LINKS[summary.bestRetailer]} nmi={sub!.nmi} />
+                              </div>
+                              {showSwitchForm && (
+                                <div className={styles.switchRow}>
+                                  <label>
+                                    Switched on{" "}
+                                    <input type="date" value={switchDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setSwitchDate(e.target.value)} />
+                                  </label>
+                                  <button type="button" className={styles.btnPrimary} disabled={switchBusy} onClick={() => confirmSwitch(true)}>
+                                    {switchBusy ? "Saving…" : "Save"}
+                                  </button>
+                                  <button type="button" className={styles.linkBtn} onClick={() => setShowSwitchForm(false)}>Cancel</button>
+                                </div>
+                              )}
+                              <p className={styles.stateFine}>We only count savings from the day you actually switch.</p>
+                            </>
+                          ) : (
+                            <>
+                              <span className={styles.stateLabel}>Your next move</span>
+                              <h2 className={styles.stateHead}>Nothing to do. You&apos;re on a good deal.</h2>
+                              <p className={styles.stateSub}>We re-check every morning and email you only if something beats your plan by more than $50 a year.</p>
+                            </>
+                          )}
+                        </section>
+
+                        <section className={styles.panelCard} id="read-bill">
+                          <div className={styles.panelTitleRow}>
+                            <div className={styles.panelTitle}>This month&apos;s bill check</div>
+                            <span className={doneThisMonth ? styles.chipDone : styles.chipDue}>{doneThisMonth ? "✓ Done" : "Due"}</span>
+                          </div>
+                          <p className={styles.panelText}>
+                            {doneThisMonth
+                              ? "We'll check again next month. Got a newer bill? Upload it and we'll recheck straight away."
+                              : "Snap or upload your latest bill (electricity, gas or dual fuel). We'll update your numbers and recheck every plan."}
+                          </p>
+                          {billMsg && <p className={styles.panelText}><b>{billMsg}</b></p>}
+                          <BillPhotoUpload onApply={handleBill} />
+                        </section>
+
+                        <section className={styles.panelCard}>
+                          <div className={styles.panelTitle}>Savings by month</div>
+                          {!episodesLoading && months.length === 0 ? (
+                            <p className={styles.panelText}>Your monthly savings will show here.</p>
+                          ) : (
+                            <div data-noswipe><SavingsChart months={months} palette={themeMode.savings} /></div>
+                          )}
+                          {months.some((m) => m.partial) && <div className={styles.chartNote}>Faded column = month in progress</div>}
+                          {months.length > 0 && (
+                            <div className={styles.chartNote}>
+                              {switchedAt ? "Months with a saved check use it. Others are estimates." : "Before you switch, these show what switching would have saved."}
+                            </div>
+                          )}
+                        </section>
+                      </>
+                    ) : (
+                      <div className={styles.panelCard}>
+                        <div className={styles.panelTitle}>Track what you save</div>
+                        <p className={styles.panelText}>
+                          Members get a bill read every month, a running tally of what they&apos;ve saved since switching, and an email only when a move is worth it.
+                        </p>
+                        <div className={styles.stateActions}>
+                          <button type="button" className={styles.btnPrimary} onClick={() => changeTab("membership")}>See membership plans</button>
+                          <Link href="/check" className={styles.btnGhost}>Run another free check</Link>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {tab === "membership" && (
+                    <>
+                      {isMember ? (
+                        <>
+                          <section className={styles.panelCard}>
+                            <div className={styles.panelTitleRow}>
+                              <div>
+                                <div className={styles.panelTitle}>{findPlan(sub!.plan)?.name ?? sub!.plan} membership</div>
+                                <div className={styles.planMeta}>
+                                  {sub!.amount_cents !== null ? fmtPrice(sub!.amount_cents) : "—"}
+                                  {" · "}
+                                  <span className={styles.statusActive}>{statusLabel(sub!.status)}</span>
+                                  {sub!.current_period_end && <> · Renews {fmtDate(sub!.current_period_end)}</>}
+                                </div>
+                              </div>
+                              <button type="button" className={styles.btnGhost} onClick={handleManageBilling} disabled={portalLoading}>
+                                {portalLoading ? "Opening…" : "Manage or cancel"}
+                              </button>
+                            </div>
+                            {portalError && <p className={styles.error}>{portalError}</p>}
+                            <ul className={styles.perks}>
+                              <li>Every plan re-priced against yours every morning</li>
+                              <li>A bill read and saved check every month</li>
+                              <li>An email only when switching saves $50+ a year</li>
+                            </ul>
+                          </section>
+                          <UpgradePlans currentPlan={sub!.plan} onChanged={(planId, cents) => setSub((p) => (p ? { ...p, plan: planId, amount_cents: cents } : p))} />
+                        </>
+                      ) : (
+                        <>
+                          {sub && (
+                            <section className={styles.panelCard}>
+                              <div className={styles.panelTitle}>{findPlan(sub.plan)?.name ?? sub.plan} membership</div>
+                              <div className={styles.planMeta}><span className={styles.statusOther}>{statusLabel(sub.status)}</span></div>
+                              <button type="button" className={styles.btnGhost} onClick={handleManageBilling} disabled={portalLoading}>
+                                {portalLoading ? "Opening…" : "Manage billing"}
+                              </button>
+                            </section>
+                          )}
+                          <PlanBand
+                            id="join"
+                            title="Want this checked for you every month?"
+                            intro={<>Members get the comparison re-run every morning, a bill read every month, and an email only when switching is worth it.</>}
+                            cards={<PlanCards href="/check#pricing" cta="Join" dark />}
+                          />
+                        </>
+                      )}
+                      <LearnCard />
+                    </>
+                  )}
+                </DashTabs>
+              )}
 
               <button type="button" className={`${styles.logoutBtn} ${styles.logoutBtnSpaced}`} onClick={handleLogout}>
                 Log out

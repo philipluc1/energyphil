@@ -1,7 +1,6 @@
 
-.card { border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; border: 1px solid var(--border); border-left: 5px solid #7c6cf0; background: linear-gradient(135deg, #f1efff, #e7e3ff); display: flex; flex-direction: column; gap: 8px; }
+.card { border-radius: 18px; padding: 20px; margin-bottom: 14px; border: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
 .title { font-weight: 800; font-size: 16px; }
 .next { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--grey); }
 .links { display: flex; flex-wrap: wrap; gap: 8px; }
 .links a { padding: 7px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; font-weight: 700; text-decoration: none; color: inherit; }
-@media (prefers-color-scheme: dark) { .card { background: rgba(124,108,240,0.14); } }

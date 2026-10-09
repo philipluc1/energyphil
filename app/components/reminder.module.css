@@ -1,0 +1,26 @@
+.trigger, .triggerDark { display: inline-flex; align-items: center; gap: 7px; padding: 11px 18px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.trigger { background: var(--surface); color: inherit; border: 1px solid var(--border); }
+.triggerDark { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.55); }
+.trigger:hover { border-color: var(--grey-soft); }
+.triggerDark:hover { background: rgba(255,255,255,0.1); }
+
+.box { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); display: flex; flex-direction: column; gap: 10px; animation: pop 0.25s ease both; }
+.boxDark { background: rgba(255,255,255,0.97); color: #12141c; border-color: transparent; }
+@keyframes pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; }
+.close { border: 0; background: transparent; font-size: 22px; line-height: 1; cursor: pointer; color: #8a93a6; padding: 0 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.chip, .chipOn { padding: 8px 13px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid #dde3ee; background: #fff; color: #12141c; }
+.chipOn { background: #22306e; border-color: #22306e; color: #fff; }
+.pick { display: flex; flex-direction: column; gap: 2px; font-size: 11px; font-weight: 700; color: #8a93a6; }
+.pick input { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 10px; border: 1px solid #dde3ee; background: #fff; color: #12141c; }
+.sum { margin: 0; font-size: 13px; color: #5f6b82; line-height: 1.45; }
+.cals { display: flex; flex-wrap: wrap; gap: 8px; }
+.cal { padding: 10px 14px; border-radius: 12px; font: inherit; font-size: 13.5px; font-weight: 800; text-decoration: none; cursor: pointer; border: 1px solid #dde3ee; background: #f4f6fb; color: #12141c; }
+.cal:hover { background: #e9edf6; }
+.done { margin: 0; font-size: 13px; font-weight: 700; color: #15803d; }
+@media (prefers-color-scheme: dark) {
+  .box:not(.boxDark) { color: var(--ink); }
+  .box:not(.boxDark) .sum { color: var(--grey); }
+}
+@media (prefers-reduced-motion: reduce) { .box { animation: none; } }

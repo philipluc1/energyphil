@@ -122,6 +122,18 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", sub.id);
     if (error) console.error("apply-bill: update failed", error);
+    // Current plan pricing, saved separately so a database that hasn't had
+    // the newest columns added yet still takes the update above.
+    const pt = b?.priceType === "fixed" || b?.priceType === "variable" ? b.priceType : null;
+    const { error: ratesErr } = await supabaseAdmin
+      .from("subscribers")
+      .update({
+        current_rates: cleanRates(b?.currentRates),
+        current_price_type: pt,
+        current_price_fixed_until: typeof b?.priceFixedUntil === "string" ? b.priceFixedUntil.slice(0, 10) : null,
+      })
+      .eq("id", sub.id);
+    if (ratesErr) console.warn("apply-bill: pricing columns not saved (run supabase/schema.sql)", ratesErr.message);
   }
 
   const now = new Date();
@@ -152,4 +164,18 @@ export async function POST(req: NextRequest) {
     saving: reference - top.total,
     usedCurrentBill: currentBill !== null,
   });
+}
+
+/** Client-sent rates are untrusted: keep only the known keys, as plausible numbers. */
+function cleanRates(v: unknown): Record<string, number | null> | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  const out: Record<string, number | null> = {};
+  let any = false;
+  for (const k of ["supply", "anytime", "peak", "shoulder", "offpeak", "cl", "solarFit"]) {
+    const n = typeof r[k] === "number" && Number.isFinite(r[k]) && (r[k] as number) > 0 && (r[k] as number) < 6 ? (r[k] as number) : null;
+    out[k] = n;
+    if (n !== null) any = true;
+  }
+  return any ? out : null;
 }

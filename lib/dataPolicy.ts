@@ -27,3 +27,8 @@ export const DATA_FACTS = {
     "We price every plan the same way: daily supply charge × days, plus each rate × the kWh used in that time band, plus controlled load, minus any solar credit. Nothing is weighted or sponsored.",
   notIncluded: "Sign-up credits, conditional discounts, exit fees, concessions and rebates. We tell you to confirm with the retailer before switching.",
 };
+
+/** When the verdict turns red rather than a warm "you could pay less":
+ *  the cheapest plan saves at least this much a year, or this share of the bill. */
+export const OVERPRICED_PER_YEAR = 300;
+export const OVERPRICED_SHARE = 0.2;

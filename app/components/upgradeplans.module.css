@@ -1,4 +1,4 @@
-.box { border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; border: 1px solid var(--border); border-left: 5px solid #2d3f9e; background: linear-gradient(135deg, #eef1fb, #e3e8fa); display: flex; flex-direction: column; gap: 10px; }
+.box { border-radius: 18px; padding: 20px; margin-bottom: 14px; border: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; gap: 10px; }
 .title { font-weight: 800; font-size: 16px; }
 .sub { margin: 0; font-size: 13.5px; color: var(--grey); line-height: 1.5; }
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -10,6 +10,5 @@
 .badge { margin-top: auto; padding: 6px 10px; border-radius: 999px; background: #f5a623; color: #1c1403; font-size: 12px; font-weight: 800; }
 .btn { margin-top: auto; padding: 9px 12px; border-radius: 10px; border: 0; background: var(--navy); color: #fff; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
 .btn:disabled { opacity: 0.5; cursor: default; }
-.msg { margin: 0; font-size: 13.5px; font-weight: 700; color: #0d9488; }
+.msg { margin: 0; font-size: 13.5px; font-weight: 700; color: var(--navy-accent-text); }
 @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
-@media (prefers-color-scheme: dark) { .box { background: rgba(45,63,158,0.18); } }

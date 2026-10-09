@@ -288,6 +288,13 @@ export default function Comparator() {
   const clKwh = useEst ? est.cl : cl;
 
   function handleBillExtracted(bill: ExtractedBill) {
+    // The current plan's rates and fixed/variable terms, for the dashboard.
+    try {
+      window.localStorage.setItem(
+        "utilo.pricing.v1",
+        JSON.stringify({ planName: bill.planName ?? null, rates: bill.currentRates ?? null, priceType: bill.priceType ?? null, fixedUntil: bill.priceFixedUntil ?? null }),
+      );
+    } catch { /* ignore */ }
     // Gas on the bill (gas-only or dual): keep it for the gas check.
     if (bill.gasMj) {
       try {

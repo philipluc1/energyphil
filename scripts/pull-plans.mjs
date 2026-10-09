@@ -21,6 +21,9 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PLANS_TS = path.join(ROOT, "lib", "plans.ts");
 const GAS_TS = path.join(ROOT, "lib", "gasPlans.ts");
+const TERMS_TS = path.join(ROOT, "lib", "planTerms.ts");
+// "Retailer|Plan name" for every plan whose CDR contract says isFixed: true.
+const FIXED = new Set();
 const DATA_DIR = path.join(ROOT, "data");
 const DRY = process.argv.includes("--dry-run");
 const ALL = process.argv.includes("--all");
@@ -140,12 +143,17 @@ export function parsePlan(detail) {
   if (period.rateBlockUType === "singleRate" || period.singleRate) {
     anytime = firstRate(period.singleRate?.rates);
   } else if (period.rateBlockUType === "timeOfUseRates" || period.timeOfUseRates) {
+    // Some plans list a short free or cheap window (e.g. "free 11am-2pm") as
+    // a second band of the same type. Pricing all of that band's usage at the
+    // free rate would overstate savings, so when a type appears twice we keep
+    // the higher rate (the conservative choice).
+    const keep = (prev, r) => (prev === null ? r : r === null ? prev : Math.max(prev, r));
     for (const t of period.timeOfUseRates ?? []) {
       const r = firstRate(t.rates);
       const type = String(t.type ?? "").toUpperCase();
-      if (type === "PEAK" && peak === null) peak = r;
-      else if (type === "SHOULDER" && shoulder === null) shoulder = r;
-      else if ((type === "OFF_PEAK" || type === "OFFPEAK") && offpeak === null) offpeak = r;
+      if (type === "PEAK") peak = keep(peak, r);
+      else if (type.startsWith("SHOULDER")) shoulder = keep(shoulder, r);
+      else if (type === "OFF_PEAK" || type === "OFFPEAK" || type === "SOLAR_SPONGE") offpeak = keep(offpeak, r);
     }
   } else {
     return null; // demand tariffs and anything else we can't price fairly
@@ -181,6 +189,7 @@ async function pullRetailer(cdrCode, retailerName, log) {
     if (!rates) continue;
     const name = String(detail.displayName ?? p.displayName ?? p.planId).replace(/\s+/g, " ").trim();
     const offerType = String(p.type ?? detail.type ?? "MARKET").toUpperCase() === "STANDING" ? "STANDING" : "MARKET";
+    if (detail.electricityContract?.isFixed === true) FIXED.add(`${retailerName}|${name}`);
     for (const d of vicDistributors(detail.geography ? detail : p)) {
       rows.push([retailerName, d, name, offerType, rates.supply, rates.anytime, rates.peak, rates.shoulder, rates.offpeak, rates.cl, rates.solarFit]);
     }
@@ -239,6 +248,12 @@ async function main() {
     `export const PLANS: PlanRow[] = ${JSON.stringify(unique)};\n` +
     after;
   fs.writeFileSync(PLANS_TS, out);
+  // Fixed vs variable prices, from each plan's CDR isFixed flag.
+  const termsSrc = fs.readFileSync(TERMS_TS, "utf8")
+    .replace(/export const PLAN_TERMS_DATE: string \| null = .*?;/, `export const PLAN_TERMS_DATE: string | null = "${today}";`)
+    .replace(/export const FIXED_PLAN_KEYS: string\[\] = \[.*?\];/s, `export const FIXED_PLAN_KEYS: string[] = ${JSON.stringify([...FIXED].sort())};`);
+  fs.writeFileSync(TERMS_TS, termsSrc);
+  log(`${FIXED.size} fixed-price plans.`);
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(DATA_DIR, `plans-${today}.json`), JSON.stringify({ pulled: today, rows: unique }, null, 0));
   // Gas file: same shape, only rewritten when the pull found something.

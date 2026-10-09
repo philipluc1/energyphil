@@ -1,0 +1,25 @@
+/* Sticky tab bar */
+.bar { position: sticky; top: 0; z-index: 20; margin: 6px -4px 16px; padding: 8px 4px 6px; background: var(--bg); }
+.track { position: relative; display: grid; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(10,15,40,0.05); }
+.track { background: var(--surface); }
+.indicator { position: absolute; top: 4px; bottom: 4px; left: 4px; border-radius: 10px; background: var(--navy); transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+.tab, .tabOn { position: relative; z-index: 1; padding: 11px 6px; border: 0; background: transparent; font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer; border-radius: 10px; color: var(--grey); transition: color 0.25s; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.tab:hover { color: var(--text, inherit); }
+.tabOn { color: var(--tab-fg, #fff); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 2px var(--surface); }
+.tabOn .dot { box-shadow: none; }
+.dots { display: none; justify-content: center; gap: 5px; margin-top: 7px; }
+.page, .pageOn { width: 6px; height: 6px; border-radius: 3px; background: var(--border); transition: width 0.3s, background 0.3s; }
+.pageOn { width: 16px; background: var(--navy); }
+
+/* Panel slide-in */
+.panel { animation: inRight 0.38s cubic-bezier(0.22, 1, 0.36, 1) both; touch-action: pan-y; min-height: 40vh; }
+.fromLeft { animation-name: inLeft; }
+@keyframes inRight { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes inLeft { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 640px) {
+  .tab, .tabOn { font-size: 12.5px; padding: 10px 0; gap: 4px; }
+  .dots { display: flex; }
+}
+@media (prefers-reduced-motion: reduce) { .panel { animation: none; } .indicator { transition: none; } }

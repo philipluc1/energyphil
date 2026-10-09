@@ -78,7 +78,7 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
   return (
     <div className={styles.grid}>
       <section className={`${styles.panel} ${styles.navy}`}>
-        <h3>Your details</h3>
+        <h3>Your plan &amp; home</h3>
         <Row label="Name" value={d.customer_name} />
         <Row label="Supply address" value={addr || null} />
         <Row label="Network" value={d.distributor} hint="Set on the check page" />
@@ -102,7 +102,7 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
       </section>
 
       <section className={`${styles.panel} ${styles.teal}`}>
-        <h3>Usage &amp; forecast</h3>
+        <h3>Your consumption</h3>
         <div className={styles.stats}>
           <div className={styles.stat}><b>{kwh(total) ?? "—"}</b><span>{d.source === "answers" ? "estimated" : "last bill"}{days ? ` (${days} days)` : ""}</span></div>
           <div className={styles.stat}><b>{perDay ? `${perDay} kWh` : "—"}</b><span>per day</span></div>

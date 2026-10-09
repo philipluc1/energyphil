@@ -170,10 +170,10 @@ export interface PlanRateRow {
   value: string;
 }
 
-function fmtRateCents(v: number): string {
+export function fmtRateCents(v: number): string {
   return (v * 100).toLocaleString("en-AU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "c/kWh";
 }
-function fmtRatePerDay(v: number): string {
+export function fmtRatePerDay(v: number): string {
   return "$" + v.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "/day";
 }
 

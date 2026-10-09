@@ -2,16 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripeClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { findPlan } from "@/lib/pricingPlans";
-import { sendEmail } from "@/lib/email";
+import { createMembershipFromSession } from "@/lib/membership";
 
 export const maxDuration = 30;
 
-function toNum(v: string | undefined): number | null {
-  if (v === undefined || v === "") return null;
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? n : null;
-}
 
 // Stripe's API has, over past versions, located a subscription's current
 // billing-period end either directly on the subscription or on its first
@@ -23,14 +17,6 @@ function getPeriodEnd(sub: Stripe.Subscription): number | null {
   return typeof itemLevel?.current_period_end === "number" ? itemLevel.current_period_end : null;
 }
 
-function parseJson(v: string | undefined): unknown {
-  if (!v) return null;
-  try {
-    return JSON.parse(v);
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -61,91 +47,8 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const md = session.metadata ?? {};
-        const plan = findPlan(md.planId ?? "");
-        if (!plan) {
-          console.error("Checkout completed with unrecognized planId metadata:", md.planId);
-          break;
-        }
-
-        const email = session.customer_email ?? session.customer_details?.email ?? "";
-        const billingDays = toNum(md.billingDays);
-        const baselineTotal = toNum(md.baselineTotal);
-        const referenceTotal = toNum(md.referenceTotal);
-
-        const { data: inserted, error } = await supabaseAdmin
-          .from("subscribers")
-          .insert({
-            email,
-            plan: plan.id,
-            status: "active",
-            amount_cents: session.amount_total ?? plan.priceCents,
-            currency: (session.currency ?? plan.currency).toLowerCase(),
-            stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
-            stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
-            stripe_checkout_session_id: session.id,
-            distributor: md.distributor || null,
-            billing_days: billingDays,
-            usage_mode: md.usageMode || null,
-            peak_kwh: toNum(md.peak),
-            shoulder_kwh: toNum(md.shoulder),
-            offpeak_kwh: toNum(md.offpeak),
-            anytime_kwh: toNum(md.anytime),
-            controlled_load_kwh: toNum(md.cl),
-            baseline_total: baselineTotal,
-            baseline_retailer: md.baselineRetailer || null,
-            baseline_plan_name: md.baselinePlanName || null,
-            reference_total: referenceTotal,
-            customer_name: md.customerName || null,
-            address: md.address || null,
-            suburb: md.suburb || null,
-            postcode: md.postcode || null,
-            has_solar: md.hasSolar === "true",
-            solar_export_kwh: toNum(md.solarExportKwh),
-            home_profile: parseJson(md.homeProfile),
-            current_retailer: md.currentRetailer || null,
-          })
-          .select("id")
-          .single();
-        if (error) console.error("Failed to save subscriber", error);
-
-        // Welcome email: what they get, and the two things to do first.
-        if (email) {
-          const origin = process.env.SITE_URL || new URL(req.url).origin;
-          await sendEmail({
-            to: email,
-            subject: "Welcome to Utilo. Let's start saving",
-            cta: { label: "Upload my bill and see my dashboard", url: `${origin}/account` },
-            html: `
-              <p>Thanks for joining. From now on we re-check your plan every morning and email you only when switching is worth it. On the 1st of each month you'll get a short summary.</p>
-              <p style="font-size:16px;font-weight:700;margin:18px 0 6px;">Two things to do now</p>
-              <ol style="margin:0 0 16px;padding-left:20px;line-height:1.6;">
-                <li><a href="${origin}/account">Read your latest bill</a> (photo or PDF) so your checks use real numbers.</li>
-                <li>Once you've switched, tell us the date on your dashboard so your savings count from the right day.</li>
-              </ol>
-              ${md.baselineRetailer ? `<p>Your best match at sign-up was <strong>${md.baselineRetailer}${md.baselinePlanName ? ` — ${md.baselinePlanName}` : ""}</strong>.</p>` : ""}
-              <p>Questions? Just reply to this email.</p>
-            `,
-          }).catch((e) => console.error("welcome email failed", e));
-        }
-
-        // Open the first savings episode, if we have everything needed to
-        // price it — the real starting bill (referenceTotal), the plan we're
-        // matching them to now (baselineTotal), and how many days that spans.
-        // Older/incomplete signups just won't have savings history, which is
-        // fine — the account page only shows it when there's something to show.
-        if (inserted && referenceTotal !== null && baselineTotal !== null && billingDays && billingDays > 0) {
-          const dailyRate = (referenceTotal - baselineTotal) / billingDays;
-          const { error: episodeErr } = await supabaseAdmin.from("savings_episodes").insert({
-            subscriber_id: inserted.id,
-            email,
-            daily_rate: dailyRate,
-            best_retailer: md.baselineRetailer || null,
-            best_plan_name: md.baselinePlanName || null,
-            best_total: baselineTotal,
-          });
-          if (episodeErr) console.error("Failed to open savings episode", episodeErr);
-        }
+        const origin = process.env.SITE_URL || new URL(req.url).origin;
+        await createMembershipFromSession(session, origin);
         break;
       }
 

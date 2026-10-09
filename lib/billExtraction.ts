@@ -30,7 +30,42 @@ export interface ExtractedBill {
   // True if the bill shows any solar feed-in credit line, even a small one.
   hasSolar: boolean;
   solarExportKwh: number | null;
+  /** Current plan's rates in GST-inclusive dollars (supply per day, usage per kWh), as read off the bill. */
+  currentRates: CurrentRates | null;
+  priceType: "fixed" | "variable" | null;
+  priceFixedUntil: string | null;
   warnings: string[];
+}
+
+export interface CurrentRates {
+  supply: number | null;
+  anytime: number | null;
+  peak: number | null;
+  shoulder: number | null;
+  offpeak: number | null;
+  cl: number | null;
+  solarFit: number | null;
+}
+
+/** Bill rates arrive in cents as printed; convert to GST-inclusive dollars
+ *  (the same units as lib/plans.ts) and drop anything implausible. */
+function readRates(r: Record<string, unknown>): CurrentRates | null {
+  const gst = r.rates_include_gst === false ? 1.1 : 1;
+  const cents = (k: string, max: number, withGst = true) => {
+    const n = toFiniteNumber(r[k]);
+    if (n === null || n <= 0 || n > max) return null;
+    return Math.round((n / 100) * (withGst ? gst : 1) * 1e5) / 1e5;
+  };
+  const rates: CurrentRates = {
+    supply: cents("supply_charge_cents_per_day", 500),
+    anytime: cents("anytime_rate_cents", 120),
+    peak: cents("peak_rate_cents", 120),
+    shoulder: cents("shoulder_rate_cents", 120),
+    offpeak: cents("offpeak_rate_cents", 120),
+    cl: cents("controlled_load_rate_cents", 120),
+    solarFit: cents("solar_fit_cents", 60, false),
+  };
+  return Object.values(rates).some((v) => v !== null) ? rates : null;
 }
 
 function toFiniteNumber(v: unknown): number | null {
@@ -96,6 +131,9 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     postcode,
     hasSolar: r.has_solar === true,
     solarExportKwh: toFiniteNumber(r.solar_export_kwh),
+    currentRates: readRates(r),
+    priceType: r.price_type === "fixed" || r.price_type === "variable" ? r.price_type : null,
+    priceFixedUntil: typeof r.price_fixed_until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.price_fixed_until) ? r.price_fixed_until : null,
     warnings,
   };
 }
