@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PLAN_DISPLAY, PRICING_PLANS, fmtPrice, savePct, type PlanId } from "@/lib/pricingPlans";
 import Tag from "./Tag";
 import styles from "./plancards.module.css";
+import ScrollReveal from "./ScrollReveal";
 
 /** The four membership plans. Pass `onChoose` to make the buttons start checkout
  * (results page), or `href` to link them somewhere (pricing page). */
@@ -10,20 +11,22 @@ export default function PlanCards({
   loadingPlan = null,
   href,
   cta = "Get started",
+  dark = false,
 }: {
   onChoose?: (id: PlanId) => void;
   loadingPlan?: PlanId | null;
   href?: string;
   cta?: string;
+  dark?: boolean;
 }) {
   return (
-    <div className={styles.grid}>
-      {PRICING_PLANS.map((plan) => {
+    <div className={`${styles.grid} ${dark ? styles.dark : ""}`}>
+      {PRICING_PLANS.map((plan, i) => {
         const d = PLAN_DISPLAY[plan.id];
         const save = savePct(plan);
         const recurring = plan.mode === "subscription";
         return (
-          <div key={plan.id} className={`${styles.card} ${d.featured ? styles.featured : ""}`}>
+          <ScrollReveal key={plan.id} delayMs={i * 90} className={`${styles.card} ${d.featured ? styles.featured : ""}`}>
             <div className={styles.tagRow}>
               {d.tag && (
                 <Tag tone={d.tag.tone} shine={d.featured || d.tag.tone === "green"}>
@@ -69,7 +72,7 @@ export default function PlanCards({
                 {loadingPlan === plan.id ? "Redirecting…" : cta}
               </button>
             )}
-          </div>
+          </ScrollReveal>
         );
       })}
     </div>

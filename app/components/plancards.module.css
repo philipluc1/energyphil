@@ -44,3 +44,15 @@
 .btn:disabled, .btnFeatured:disabled { opacity: 0.6; cursor: default; }
 .btn:focus-visible, .btnFeatured:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .card, .btn, .btnFeatured { transition: none; } }
+
+/* On the dark membership band: glass cards, white featured card. */
+.dark .card { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.16); color: #fff; backdrop-filter: blur(6px); }
+.dark .card:hover { border-color: rgba(255,255,255,0.4); box-shadow: 0 16px 40px rgba(0,0,0,0.35); }
+.dark .cadence, .dark .perMonth, .dark .anchor { color: rgba(255,255,255,0.75); }
+.dark .features { border-top-color: rgba(255,255,255,0.14); }
+.dark .btn { background: #fff; color: #131c57; }
+.dark .featured { background: #fff; color: #131c57; border-color: #fbbf24; box-shadow: 0 0 0 6px rgba(251,191,36,0.18), 0 24px 60px rgba(245,166,35,0.35); animation: glow 3s ease-in-out infinite; }
+.dark .featured .cadence, .dark .featured .perMonth, .dark .featured .anchor { color: #5b6378; }
+.dark .featured .features { border-top-color: #e6e9f2; }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 6px rgba(251,191,36,0.18), 0 24px 60px rgba(245,166,35,0.35); } 50% { box-shadow: 0 0 0 10px rgba(251,191,36,0.1), 0 24px 70px rgba(245,166,35,0.55); } }
+@media (prefers-reduced-motion: reduce) { .dark .featured { animation: none; } }

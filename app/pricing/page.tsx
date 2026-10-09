@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PlanCards from "../components/PlanCards";
+import PlanBand from "../components/PlanBand";
 import Tag from "../components/Tag";
 import SiteHeader from "../components/SiteHeader";
 import styles from "../components/Comparator.module.css";
@@ -20,7 +21,11 @@ export default function PricingPage() {
             a running tally of what you&apos;ve saved, and bill reading from a photo or PDF.
           </p>
         </section>
-        <PlanCards href="/check" cta="Start free check" />
+        <PlanBand
+          title="One membership. Electricity and gas. Checked every morning."
+          intro={<>Pick how often you want to pay. Every plan includes the same checking; the longer ones just cost less per month.</>}
+          cards={<PlanCards href="/check" cta="Start free check" dark />}
+        />
         <p className={home.dataNote}>
           Joining happens right after your free check, so we can match you to the right plan.{" "}
           <Link href="/cancellation-policy">Cancellation policy</Link>

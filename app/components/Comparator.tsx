@@ -201,6 +201,8 @@ export default function Comparator() {
   const [leadStatus, setLeadStatus] = useState<LeadStatus>("idle");
   const [scanBanner, setScanBanner] = useState<{ retailer: string | null; warnings: string[] } | null>(null);
   const [currentRetailer, setCurrentRetailer] = useState("");
+  // Which period the result numbers and charts are shown for.
+  const [period, setPeriod] = useState<"month" | "quarter" | "year">("quarter");
   const [restored, setRestored] = useState(false);
 
   // Remember the check in this browser, so a refresh or a return visit
@@ -387,6 +389,10 @@ export default function Comparator() {
   // Benchmark: what they pay now if given, else the Victorian Default Offer
   // priced at THIS household's usage (not the generic typical-household figure).
   const bench = haveBill ? (currentBill as number) : vdoBillForUsage(distributor, usage);
+  const PERIOD_DAYS = { month: 365 / 12, quarter: 365 / 4, year: 365 } as const;
+  const PERIOD_LABEL = { month: "a month", quarter: "a quarter", year: "a year" } as const;
+  // Scale from the entered billing period to the chosen display period.
+  const k = days > 0 ? PERIOD_DAYS[period] / days : 1;
 
   // Keep the latest result in this browser so the dashboard can show it
   // (and so a member's details are ready if they join).
@@ -470,23 +476,21 @@ export default function Comparator() {
 
   const chartItems: ChartItem[] = top
     ? [
+        ...matches.slice(0, 5).map((m, i) => ({
+          label: m.plan[0],
+          sublabel: m.plan[2],
+          value: m.total * k,
+          kind: (i === 0 ? "cheapest" : "plan") as ChartItem["kind"],
+        })),
         {
-          label: hasCurrentBill ? "Your bill" : "VDO benchmark",
-          sublabel: hasCurrentBill
-            ? "What you told us you're paying now"
-            : "Essential Services Commission benchmark",
-          value: bench,
+          label: hasCurrentBill ? "Your bill" : "Default offer (VDO)",
+          sublabel: hasCurrentBill ? "What you told us you're paying now" : "Essential Services Commission benchmark",
+          value: bench * k,
           // Green when what they pay now already beats the cheapest plan we
           // found, red when they're paying more than they need to. Grey for
           // an estimate against the default offer.
           kind: hasCurrentBill ? (bench <= top.total + 1 ? "referenceGood" : "referenceBad") : "reference",
         },
-        ...matches.slice(0, 5).map((m, i) => ({
-          label: m.plan[0],
-          sublabel: m.plan[2],
-          value: m.total,
-          kind: (i === 0 ? "cheapest" : "plan") as ChartItem["kind"],
-        })),
       ]
     : [];
 
@@ -1094,8 +1098,30 @@ export default function Comparator() {
                   </a>
                 </div>
               )}
+              {haveBill && bench - top.total <= 0 && (
+                <div className={`${styles.resultHero} ${styles.resultHeroGood}`}>
+                  <span className={styles.resultHeroKicker}>Based on your bill</span>
+                  <div className={styles.resultHeroLabel}>Good news</div>
+                  <div className={styles.resultHeroNum}>You&apos;re on a good deal</div>
+                  <div className={styles.resultHeroSub}>
+                    Nothing we found beats what you pay now by enough to bother. Members get told the moment that changes.
+                  </div>
+                </div>
+              )}
+              {haveBill && (
+                <div className={styles.billNudge}>
+                  <b>Based on one bill.</b> Prices are exact for today. Members get every plan re-priced each morning and a saved result every month, so the
+                  answer stays current.
+                </div>
+              )}
+              {!haveBill && (
+                <div className={styles.billNudge}>
+                  <b>This is an estimate.</b> Prices are exact, but your usage is a typical figure for a home like yours. Snap your bill at the top of the
+                  page for your real numbers.
+                </div>
+              )}
               <div className={styles.bestCard} id="top-plan">
-                <span className={styles.bestTag}>Cheapest match</span>
+                <span className={styles.bestTag}>{bench - top.total > 0 ? "Yes, you'd save with" : haveBill ? "Closest to what you pay" : "Cheapest we found"}</span>
                 <div className={styles.retailer}>
                   {top.plan[0]}
                   <span className={`${styles.offerTag} ${top.plan[3] === "MARKET" ? styles.offerMarket : styles.offerStanding}`}>
@@ -1105,17 +1131,24 @@ export default function Comparator() {
                   {solarExportKwh > 0 && top.plan[10] !== null && <SolarBadge />}
                 </div>
                 <div className={styles.plan}>{top.plan[2]}</div>
+                <div className={styles.periodToggle} role="tablist" aria-label="Show figures per">
+                  {(["month", "quarter", "year"] as const).map((pp) => (
+                    <button key={pp} type="button" role="tab" aria-selected={period === pp} className={period === pp ? styles.periodOn : styles.periodBtn} onClick={() => setPeriod(pp)}>
+                      {pp === "month" ? "Monthly" : pp === "quarter" ? "Quarterly" : "Yearly"}
+                    </button>
+                  ))}
+                </div>
                 <div className={styles.nums}>
                   <div className={styles.numBlock}>
-                    <div className={`${styles.v} mono`}>{fmtCurrency(top.total)}</div>
-                    <div className={styles.l}>this period</div>
+                    <div className={`${styles.v} mono`}>{fmtCurrency(top.total * k)}</div>
+                    <div className={styles.l}>{PERIOD_LABEL[period]} on this plan</div>
                   </div>
                   <div className={`${styles.numBlock} ${styles.save}`}>
                     <div className={`${styles.v} mono`}>
-                      {fmtCurrency(Math.abs(bench - top.total))}
+                      {fmtCurrency(Math.abs(bench - top.total) * k)}
                     </div>
                     <div className={styles.l}>
-                      {bench - top.total >= 0 ? "you'd save" : "extra cost"} vs {haveBill ? "your bill" : "the default offer"}
+                      {bench - top.total >= 0 ? "you'd save" : "extra cost"} {PERIOD_LABEL[period]} vs {haveBill ? "your bill" : "the default offer"}
                     </div>
                   </div>
                   <div className={`${styles.numBlock} ${styles.save}`}>
@@ -1133,32 +1166,9 @@ export default function Comparator() {
                 </button>
                 {expandedKey === "best" && <RateBreakdown plan={top.plan} solarExportKwh={solarExportKwh} />}
 
-                {bench - top.total > 0 && (
-                  <div className={styles.periodBreakdown}>
-                    <div className={styles.periodBreakdownLabel}>What that adds up to, if usage stays similar</div>
-                    <div className={styles.periodBreakdownRow}>
-                      {(() => {
-                        const bd = periodBreakdown(bench - top.total, days);
-                        return (
-                          <>
-                            <div className={styles.periodTile}>
-                              <div className={`${styles.periodTileV} mono`}>{fmtCurrency(bd.quarterly)}</div>
-                              <div className={styles.periodTileL}>per quarter</div>
-                            </div>
-                            <div className={styles.periodTile}>
-                              <div className={`${styles.periodTileV} mono`}>{fmtCurrency(bd.halfYearly)}</div>
-                              <div className={styles.periodTileL}>per half-year</div>
-                            </div>
-                            <div className={`${styles.periodTile} ${styles.periodTileHighlight}`}>
-                              <div className={`${styles.periodTileV} mono`}>{fmtCurrency(bd.annual)}</div>
-                              <div className={styles.periodTileL}>per year</div>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
+                <p className={styles.scaleNote}>
+                  From your {days}-day period, scaled to {PERIOD_LABEL[period]}. Usage changes with the seasons, so a year is the fairest view.
+                </p>
                 <div className={styles.getPlan}>
                   <div className={styles.getPlanLogo} aria-hidden="true">{top.plan[0].split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
                   <div className={styles.getPlanText}>
@@ -1209,22 +1219,6 @@ export default function Comparator() {
                 </div>
               </div>
 
-              {haveBill && bench - top.total <= 0 && (
-                <div className={`${styles.resultHero} ${styles.resultHeroGood}`}>
-                  <span className={styles.resultHeroKicker}>Based on your bill</span>
-                  <div className={styles.resultHeroLabel}>Good news</div>
-                  <div className={styles.resultHeroNum}>You&apos;re on a good deal</div>
-                  <div className={styles.resultHeroSub}>
-                    Nothing we found beats what you pay now by enough to bother. Members get told the moment that changes.
-                  </div>
-                </div>
-              )}
-              {!haveBill && (
-                <div className={styles.billNudge}>
-                  <b>This is an estimate.</b> Prices are exact, but your usage is a typical figure for a home like yours. Snap your bill at the top of the
-                  page for your real numbers.
-                </div>
-              )}
               {retailerBest && top && (
                 <div className={styles.stayCard}>
                   <div>
