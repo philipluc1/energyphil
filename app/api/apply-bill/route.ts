@@ -3,6 +3,7 @@ import { requireActiveMember } from "@/lib/memberAccess";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { DISTRIBUTORS, rankPlans, type Distributor, type UsageInput } from "@/lib/plans";
 import { vdoBillForUsage } from "@/lib/profileUsage";
+import { GAS_ZONES, gasBenchmark, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 
 // After a member's bill has been read, store its figures on their membership
 // (so the monthly checks use real numbers) and record this month's check.
@@ -15,6 +16,52 @@ export async function POST(req: NextRequest) {
   if (!supabaseAdmin) return NextResponse.json({ ok: false, message: "Not available yet." });
 
   const b = await req.json().catch(() => null);
+  const memberEmail = member.email;
+
+  // Gas, when the bill has it (gas-only or dual). Saved on the membership and
+  // priced against the gas plans we hold. Victoria has no gas default offer,
+  // so the reference is the gas charges on the bill itself.
+  async function applyGas(): Promise<{ retailer: string; plan: string; saving: number } | null> {
+    const zone = GAS_ZONES.includes(b?.gasDistributor) ? (b.gasDistributor as GasZone) : null;
+    const gDays = num(b?.gasBillingDays) ?? num(b?.billingDays);
+    const mj = num(b?.gasMj);
+    const gTotal = num(b?.gasBillTotal);
+    if (!zone || !gDays || !mj) return null;
+    const ranked = rankGasPlans(zone, { days: gDays, mj });
+    const best = ranked[0] ?? null;
+    const bench = gasBenchmark(zone, { days: gDays, mj }, gTotal);
+    const { data: subG } = await supabaseAdmin!
+      .from("subscribers").select("id").eq("email", memberEmail).eq("status", "active")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (subG) {
+      await supabaseAdmin!.from("subscribers").update({
+        gas_zone: zone,
+        gas_billing_days: Math.round(gDays),
+        gas_mj: mj,
+        gas_reference_total: gTotal,
+        gas_current_plan_name: str(b?.gasPlanName, 120),
+        gas_best_retailer: best ? best.plan[0] : null,
+        gas_best_plan_name: best ? best.plan[2] : null,
+        gas_best_total: best ? best.total : null,
+        gas_updated_at: new Date().toISOString(),
+      }).eq("id", subG.id);
+    }
+    if (!best || !bench) return null;
+    return { retailer: best.plan[0], plan: best.plan[2], saving: bench.value - best.total };
+  }
+
+  if (b?.fuel === "gas") {
+    const gas = await applyGas();
+    if (!gas) {
+      return NextResponse.json({
+        ok: true, fuel: "gas", retailer: "", plan: "", saving: 0, usedCurrentBill: true,
+        message: "Saved your gas details. Gas plan comparison switches on once our gas price data is loaded.",
+      });
+    }
+    return NextResponse.json({ ok: true, fuel: "gas", retailer: gas.retailer, plan: gas.plan, saving: gas.saving, usedCurrentBill: num(b?.gasBillTotal) !== null });
+  }
+  const gasResult = b?.fuel === "dual" ? await applyGas() : null;
+
   const distributor = DISTRIBUTORS.includes(b?.distributor) ? (b.distributor as Distributor) : null;
   const days = num(b?.billingDays);
   if (!distributor || !days || days < 1 || days > 366) {
@@ -96,6 +143,8 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
+    fuel: gasResult ? "dual" : "electricity",
+    gas: gasResult,
     retailer: top.plan[0],
     plan: top.plan[2],
     bestTotal: top.total,

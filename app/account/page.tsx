@@ -10,7 +10,8 @@ import SiteHeader from "../components/SiteHeader";
 import EnergyTips from "../components/EnergyTips";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
-import ProfilePanels from "../components/ProfilePanels";
+import ProfilePanels, { type ProfileData } from "../components/ProfilePanels";
+import { DEFAULT_PROFILE, estimateUsage } from "@/lib/profileUsage";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import type { ExtractedBill } from "@/lib/billExtraction";
@@ -55,6 +56,16 @@ interface SubscriberSummary {
   offpeak_kwh: number | null;
   anytime_kwh: number | null;
   controlled_load_kwh: number | null;
+  home_profile: Record<string, unknown> | null;
+  gas_zone: string | null;
+  gas_billing_days: number | null;
+  gas_mj: number | null;
+  gas_reference_total: number | null;
+  gas_current_plan_name: string | null;
+  gas_best_retailer: string | null;
+  gas_best_plan_name: string | null;
+  gas_best_total: number | null;
+  gas_updated_at: string | null;
 }
 
 interface EpisodeRow {
@@ -99,6 +110,47 @@ export default function AccountPage() {
   const [billMsg, setBillMsg] = useState("");
   const [switchDate, setSwitchDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [switchBusy, setSwitchBusy] = useState(false);
+  // What a non-member told us in the free check, kept in this browser.
+  const [localCheck, setLocalCheck] = useState<ProfileData | null>(null);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem("utilo.check.v1");
+        if (!raw) return;
+        const d = JSON.parse(raw);
+        const profile = { ...DEFAULT_PROFILE, ...(d.profile ?? {}) };
+        const days = typeof d.days === "number" ? d.days : 91;
+        const est = d.usageSource === "bill" ? null : estimateUsage(profile, days);
+        setLocalCheck({
+          customer_name: d.customerName || null,
+          address: d.address || null,
+          suburb: d.suburb || null,
+          postcode: d.postcode || null,
+          distributor: d.distributor || null,
+          nmi: null,
+          current_retailer: d.currentRetailer || null,
+          current_plan_name: null,
+          tariff_type: null,
+          usage_mode: est ? "detailed" : d.mode || null,
+          billing_days: days,
+          peak_kwh: est ? est.peak : d.mode === "detailed" ? d.peak ?? null : null,
+          shoulder_kwh: est ? est.shoulder : d.mode === "detailed" ? d.shoulder ?? null : null,
+          offpeak_kwh: est ? est.offpeak : d.mode === "detailed" ? d.offpeak ?? null : null,
+          anytime_kwh: est ? 0 : d.mode === "simple" ? d.anytime ?? null : null,
+          controlled_load_kwh: est ? est.cl : d.cl ?? null,
+          has_solar: est ? profile.hasSolar : typeof d.hasSolar === "boolean" ? d.hasSolar : null,
+          solar_export_kwh: est ? est.solarExportKwh : null,
+          baseline_retailer: null,
+          baseline_plan_name: null,
+          home_profile: est ? profile : null,
+          source: est ? "answers" : "bill",
+        });
+      } catch {
+        /* nothing saved */
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
   const [subLoading, setSubLoading] = useState(false);
   const [subError, setSubError] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
@@ -141,7 +193,7 @@ export default function AccountPage() {
       const { data, error } = await supabase!
         .from("subscribers")
         .select(
-          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh",
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at",
         )
         .order("created_at", { ascending: false })
         .limit(1)
@@ -312,7 +364,11 @@ export default function AccountPage() {
     }).catch(() => null);
     const body = await res?.json().catch(() => null);
     if (body?.ok) {
-      setBillMsg(`Best match: ${body.retailer} — ${body.plan}. Reloading your dashboard…`);
+      setBillMsg(
+        body.fuel === "gas"
+          ? body.retailer ? `Best gas match: ${body.retailer} — ${body.plan}. Reloading…` : `${body.message ?? "Gas details saved."} Reloading…`
+          : `Best match: ${body.retailer} — ${body.plan}${body.gas?.retailer ? `; gas: ${body.gas.retailer}` : ""}. Reloading your dashboard…`,
+      );
       setTimeout(() => window.location.reload(), 1500);
     } else {
       setBillMsg(body?.message || "We couldn't use that bill.");
@@ -476,10 +532,49 @@ export default function AccountPage() {
 
               </>)}
 
-              {!subLoading && sub && <ProfilePanels d={sub} />}
+              {!subLoading && sub && <ProfilePanels d={{ ...sub, source: sub.nmi || sub.current_plan_name ? "bill" : "answers" }} />}
+              {!subLoading && sub && sub.status === "active" && (
+                <div className={`${styles.planBox} ${styles.toneTeal}`}>
+                  <div className={styles.planName}>Gas</div>
+                  {sub.gas_zone && sub.gas_mj ? (
+                    <>
+                      <p className={styles.note}>
+                        {sub.gas_zone} · {Math.round(sub.gas_mj).toLocaleString("en-AU")} MJ over {sub.gas_billing_days ?? "?"} days
+                        {sub.gas_current_plan_name ? ` · now on "${sub.gas_current_plan_name}"` : ""}
+                      </p>
+                      {sub.gas_best_retailer && sub.gas_best_total !== null ? (
+                        <>
+                          <p className={styles.note}>
+                            Cheapest gas match: <strong>{sub.gas_best_retailer} — {sub.gas_best_plan_name}</strong> at {fmtDollars(sub.gas_best_total)} for the period
+                            {sub.gas_reference_total !== null && sub.gas_reference_total - sub.gas_best_total > 1
+                              ? `, about ${fmtDollars(sub.gas_reference_total - sub.gas_best_total)} less than your bill.`
+                              : "."}
+                          </p>
+                          {sub.gas_best_retailer === sub.baseline_retailer ? (
+                            <p className={styles.note}>Same retailer as your best electricity plan, so ask {sub.gas_best_retailer} about a dual-fuel discount.</p>
+                          ) : (
+                            <p className={styles.note}>
+                              Different retailer from your best electricity plan ({sub.baseline_retailer ?? "not set"}). That&apos;s fine: you can have gas and electricity with different companies. If you&apos;d rather keep one retailer, check whether their dual-fuel discount beats the gap.
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className={styles.note}>Your gas details are saved. The comparison switches on with our next gas price pull.</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className={styles.note}>
+                      No gas bill yet. Upload one below (a dual-fuel bill works too) or <Link href="/gas">run the free gas check</Link>.
+                    </p>
+                  )}
+                </div>
+              )}
+
 
               {subLoading && <p className={styles.note}>Loading your plan…</p>}
               {subError && <p className={styles.error}>{subError}</p>}
+
+              {!subLoading && !sub && localCheck && <ProfilePanels d={localCheck} />}
 
               {!subLoading && !subError && !sub && (
                 <div className={styles.planBox}>

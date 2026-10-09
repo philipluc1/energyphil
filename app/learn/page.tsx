@@ -56,6 +56,7 @@ export default function LearnPage() {
             <a href="#save">Ways to save</a>
             <a href="#data">Our data</a>
             <Link href="/ev">EV calculator</Link>
+            <Link href="/gas">Gas check</Link>
           </div>
         </section>
 

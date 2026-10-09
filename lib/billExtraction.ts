@@ -2,6 +2,12 @@ import { DISTRIBUTORS, Distributor } from "./plans";
 
 export interface ExtractedBill {
   isElectricityBill: boolean;
+  fuel: "electricity" | "gas" | "dual" | null;
+  gasDistributor: string | null;
+  gasBillingDays: number | null;
+  gasMj: number | null;
+  gasBillTotal: number | null;
+  gasPlanName: string | null;
   distributor: Distributor | null;
   retailerName: string | null;
   nmi: string | null;
@@ -65,6 +71,12 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
 
   return {
     isElectricityBill: r.is_electricity_bill === true,
+    fuel: r.fuel === "electricity" || r.fuel === "gas" || r.fuel === "dual" ? r.fuel : null,
+    gasDistributor: ["Australian Gas Networks", "Multinet", "AusNet Services"].includes(r.gas_distributor as string) ? (r.gas_distributor as string) : null,
+    gasBillingDays: (() => { const d = toPositiveInt(r.gas_billing_days); return d !== null && d >= 1 && d <= 366 ? d : null; })(),
+    gasMj: toFiniteNumber(r.gas_mj),
+    gasBillTotal: toFiniteNumber(r.gas_bill_total),
+    gasPlanName: typeof r.gas_plan_name === "string" ? r.gas_plan_name.slice(0, 120) : null,
     distributor,
     retailerName: typeof r.retailer_name === "string" ? r.retailer_name.slice(0, 80) : null,
     nmi: typeof r.nmi === "string" && /^[A-Za-z0-9]{10,11}$/.test(r.nmi.trim()) ? r.nmi.trim().toUpperCase() : null,

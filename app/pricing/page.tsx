@@ -16,7 +16,7 @@ export default function PricingPage() {
           <Tag tone="amber" shine>Cancel any time</Tag>
           <h1>Keep an eye on it for $7 a month.</h1>
           <p className={styles.lede}>
-            The check is always free. Members get a check every month, an email when something cheaper appears,
+            The check is always free, for electricity and gas. Members get a check every month, an email when something cheaper appears,
             a running tally of what you&apos;ve saved, and bill reading from a photo or PDF.
           </p>
         </section>

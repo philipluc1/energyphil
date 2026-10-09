@@ -1,0 +1,15 @@
+.box { border-radius: 18px; padding: 18px 20px; background: linear-gradient(135deg, #e6fbf8, #d6f5f0); border: 1px solid rgba(14,165,160,0.35); display: flex; flex-direction: column; gap: 10px; }
+.compact { padding: 14px 16px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 15px; }
+.pill { padding: 5px 11px; border-radius: 999px; background: #0d9488; color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.form { display: flex; flex-direction: column; gap: 8px; }
+.lbl { font-size: 13.5px; color: var(--grey); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.states { display: flex; gap: 6px; }
+.state, .stateOn { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; color: inherit; }
+.stateOn { background: #0d9488; border-color: #0d9488; color: #fff; }
+.row input { flex: 1; min-width: 180px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font: inherit; background: var(--surface); color: inherit; }
+.btn { padding: 10px 16px; border-radius: 10px; border: 0; background: linear-gradient(135deg, #ffd166, #f5a623); color: #1c1403; font: inherit; font-weight: 800; cursor: pointer; }
+.ok { margin: 0; font-weight: 700; color: #0d9488; }
+.err { font-size: 13px; color: #b45309; }
+@media (prefers-color-scheme: dark) { .box { background: rgba(14,165,160,0.12); } }

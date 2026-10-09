@@ -31,7 +31,7 @@ export default function TermsPage() {
         <section className={styles.section}>
           <h2>1. What Utilo is</h2>
           <p>
-            Utilo is an independent comparison and monitoring service for Victorian residential electricity. We are not an energy
+            Utilo is an independent comparison and monitoring service for Victorian residential electricity and gas, with other states to follow. We are not an energy
             retailer, we don&apos;t sell energy, and we are not affiliated with the Victorian Government, Victorian Energy Compare, the
             Essential Services Commission or any retailer. Utilo is operated by [YOUR COMPANY NAME] (ABN [YOUR ABN]).
           </p>

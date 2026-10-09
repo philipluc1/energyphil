@@ -24,6 +24,26 @@ export interface ProfileData {
   solar_export_kwh: number | null;
   baseline_retailer: string | null;
   baseline_plan_name: string | null;
+  home_profile?: Record<string, unknown> | null;
+  /** Where the figures came from: a read bill, or the answers in the check. */
+  source?: "bill" | "answers";
+}
+
+const HEATING: Record<string, string> = { gas_none: "Gas or none", reverse_cycle: "Reverse-cycle", resistive: "Electric heaters" };
+const HOTWATER: Record<string, string> = { gas_solar: "Gas or solar", electric_controlled: "Electric (controlled load)", electric_general: "Electric", heat_pump: "Heat pump" };
+const DAYTIME: Record<string, string> = { away: "Out most days", some: "Home some of the day", home: "Home most days" };
+
+function homeWords(h: Record<string, unknown>): { label: string; value: string }[] {
+  const out: { label: string; value: string }[] = [];
+  if (typeof h.people === "number") out.push({ label: "People", value: `${h.people}${h.people >= 6 ? "+" : ""}` });
+  if (typeof h.dwelling === "string") out.push({ label: "Home type", value: h.dwelling.charAt(0).toUpperCase() + h.dwelling.slice(1) });
+  if (typeof h.heating === "string") out.push({ label: "Heating", value: HEATING[h.heating] ?? h.heating });
+  if (typeof h.cooling === "boolean") out.push({ label: "Air-con", value: h.cooling ? "Yes" : "No" });
+  if (typeof h.hotWater === "string") out.push({ label: "Hot water", value: HOTWATER[h.hotWater] ?? h.hotWater });
+  if (h.pool === true) out.push({ label: "Pool", value: "Yes" });
+  if (h.ev === true) out.push({ label: "EV", value: h.evCharging === "overnight" ? "Charged overnight" : "Charged any time" });
+  if (typeof h.daytimeHome === "string") out.push({ label: "During the day", value: DAYTIME[h.daytimeHome] ?? h.daytimeHome });
+  return out;
 }
 
 const TARIFF_LABEL: Record<string, string> = {
@@ -68,13 +88,23 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
         <Row label="Tariff type" value={tariff} />
         <Row label="Solar" value={d.has_solar === null ? null : d.has_solar ? `Yes${d.solar_export_kwh ? `, ${kwh(d.solar_export_kwh)} exported per bill` : ""}` : "No"} />
         <Row label="Best match found" value={d.baseline_retailer ? `${d.baseline_retailer}${d.baseline_plan_name ? ` — ${d.baseline_plan_name}` : ""}` : null} hint="Run a check" />
-        <p className={styles.note}>Most of this is read from your bill. <a href="#read-bill">Upload a newer one</a> to update it.</p>
+        {d.home_profile && homeWords(d.home_profile).length > 0 && (
+          <>
+            <h4 className={styles.sub}>Your home</h4>
+            {homeWords(d.home_profile).map((r) => <Row key={r.label} label={r.label} value={r.value} />)}
+          </>
+        )}
+        <p className={styles.note}>
+          {d.source === "answers"
+            ? <>From your answers in the check. {d.baseline_retailer ? <a href="#read-bill">Read a bill</a> : <Link href="/check">Read a bill on the check page</Link>} to add your NMI, current offer and real usage.</>
+            : <>Most of this is read from your bill. <a href="#read-bill">Upload a newer one</a> to update it.</>}
+        </p>
       </section>
 
       <section className={`${styles.panel} ${styles.teal}`}>
         <h3>Usage &amp; forecast</h3>
         <div className={styles.stats}>
-          <div className={styles.stat}><b>{kwh(total) ?? "—"}</b><span>last bill{days ? ` (${days} days)` : ""}</span></div>
+          <div className={styles.stat}><b>{kwh(total) ?? "—"}</b><span>{d.source === "answers" ? "estimated" : "last bill"}{days ? ` (${days} days)` : ""}</span></div>
           <div className={styles.stat}><b>{perDay ? `${perDay} kWh` : "—"}</b><span>per day</span></div>
           <div className={styles.stat}><b>{annual ? kwh(annual) : "—"}</b><span>expected per year</span></div>
         </div>

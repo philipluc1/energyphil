@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PLANS_TS = path.join(ROOT, "lib", "plans.ts");
+const GAS_TS = path.join(ROOT, "lib", "gasPlans.ts");
 const DATA_DIR = path.join(ROOT, "data");
 const DRY = process.argv.includes("--dry-run");
 const ALL = process.argv.includes("--all");
@@ -53,6 +54,55 @@ const VIC = [
   ["Jemena", ["jemena"]],
   ["AusNet Services", ["ausnet"]],
 ];
+
+// Victoria's gas networks, matched against the feed's distributor names.
+const GAS_ZONES = [
+  ["Australian Gas Networks", ["australian gas", "agn"]],
+  ["Multinet", ["multinet"]],
+  ["AusNet Services", ["ausnet"]],
+];
+function gasZones(plan) {
+  const text = (plan.geography?.distributors ?? []).join(" ").toLowerCase();
+  return GAS_ZONES.filter(([, words]) => words.some((w) => text.includes(w))).map(([name]) => name);
+}
+
+/** Gas: daily supply plus stepped usage blocks in $/MJ. */
+export function parseGasPlan(detail) {
+  const c = detail.gasContract;
+  if (!c) return null;
+  const period = (c.tariffPeriod ?? [])[0];
+  if (!period) return null;
+  const supply = num(period.dailySupplyCharges ?? period.dailySupplyCharge);
+  const rates = period.singleRate?.rates;
+  if (supply === null || !Array.isArray(rates) || !rates.length) return null;
+  const perDay = String(rates[0].period ?? "P1D").toUpperCase().startsWith("P1D");
+  const blocks = rates.map((r) => ({ upTo: r.volume === undefined || r.volume === null ? null : Number(r.volume), rate: num(r.unitPrice) }));
+  if (blocks.some((b) => b.rate === null)) return null;
+  // Rates are per MJ; a few feeds quote per kWh — convert (1 kWh = 3.6 MJ).
+  const unit = String(rates[0].measureUnit ?? "MJ").toUpperCase();
+  if (unit === "KWH") for (const b of blocks) { b.rate = b.rate / 3.6; if (b.upTo !== null) b.upTo = b.upTo * 3.6; }
+  blocks[blocks.length - 1].upTo = null;
+  return { supply, blocks, perDay };
+}
+
+async function pullGasRetailer(cdrCode, retailerName, log) {
+  const base = `https://cdr.energymadeeasy.gov.au/${cdrCode}/cds-au/v1/energy/plans`;
+  const list = await getJson(`${base}?fuelType=GAS&type=ALL&effective=CURRENT&page-size=1000`, 1);
+  const plans = (list.data?.plans ?? []).filter((p) => String(p.customerType ?? "RESIDENTIAL").toUpperCase() === "RESIDENTIAL" && gasZones(p).length > 0);
+  const rows = [];
+  for (const p of plans) {
+    await sleep(1000);
+    let detail;
+    try { detail = (await getJson(`${base}/${encodeURIComponent(p.planId)}`, 3)).data; } catch (e) { log(`  ${retailerName} gas: skipped ${p.planId} (${e.message})`); continue; }
+    const g = parseGasPlan(detail);
+    if (!g) continue;
+    const name = String(detail.displayName ?? p.displayName ?? p.planId).replace(/\s+/g, " ").trim();
+    const offerType = String(p.type ?? detail.type ?? "MARKET").toUpperCase() === "STANDING" ? "STANDING" : "MARKET";
+    for (const z of gasZones(detail.geography ? detail : p)) rows.push([retailerName, z, name, offerType, g.supply, g.blocks, g.perDay]);
+  }
+  log(`  ${retailerName} gas: ${plans.length} VIC residential plans listed, ${rows.length} rows priced`);
+  return rows;
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -149,6 +199,14 @@ async function main() {
   log(`Pulling ${targets.length} retailers${DRY ? " (dry run)" : ""}…`);
 
   const results = await Promise.allSettled(targets.map(([code, name]) => pullRetailer(code, name, log)));
+  const gasResults = await Promise.allSettled(targets.map(([code, name]) => pullGasRetailer(code, name, log)));
+  const gasRows = [];
+  gasResults.forEach((r, i) => { if (r.status === "fulfilled") gasRows.push(...r.value); else log(`  ${targets[i][1]} gas: FAILED (${r.reason?.message ?? r.reason})`); });
+  const gasSeen = new Set();
+  const gasUnique = gasRows.filter((r) => { const k = `${r[0]}|${r[1]}|${r[2]}`; if (gasSeen.has(k)) return false; gasSeen.add(k); return true; });
+  gasUnique.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]) || a[2].localeCompare(b[2]));
+  log(`${gasUnique.length} gas plan rows.`);
+
   const rows = [];
   let failed = 0;
   results.forEach((r, i) => {
@@ -183,7 +241,16 @@ async function main() {
   fs.writeFileSync(PLANS_TS, out);
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(DATA_DIR, `plans-${today}.json`), JSON.stringify({ pulled: today, rows: unique }, null, 0));
-  log(`Wrote lib/plans.ts and data/plans-${today}.json`);
+  // Gas file: same shape, only rewritten when the pull found something.
+  if (gasUnique.length > 0) {
+    const g = fs.readFileSync(GAS_TS, "utf8");
+    const out2 = g
+      .replace(/export const GAS_PLAN_DATA_DATE = ".*?";/, `export const GAS_PLAN_DATA_DATE = "${today}";`)
+      .replace(/export const GAS_PLANS: GasPlanRow\[\] = \[.*?\];/s, `export const GAS_PLANS: GasPlanRow[] = ${JSON.stringify(gasUnique)};`);
+    fs.writeFileSync(GAS_TS, out2);
+    fs.writeFileSync(path.join(DATA_DIR, `gas-plans-${today}.json`), JSON.stringify({ pulled: today, rows: gasUnique }));
+  }
+  log(`Wrote lib/plans.ts, lib/gasPlans.ts and data/*-${today}.json`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {

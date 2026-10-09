@@ -231,3 +231,27 @@ alter table public.subscribers
   add column if not exists current_retailer text,
   add column if not exists current_plan_name text,
   add column if not exists tariff_type text;
+
+-- 8 Oct 2026: gas. Stored per member alongside electricity; Victoria has no
+-- default offer for gas, so the reference is the member's own gas bill.
+alter table public.subscribers
+  add column if not exists gas_zone text,
+  add column if not exists gas_billing_days integer,
+  add column if not exists gas_mj numeric,
+  add column if not exists gas_reference_total numeric,
+  add column if not exists gas_current_plan_name text,
+  add column if not exists gas_best_retailer text,
+  add column if not exists gas_best_plan_name text,
+  add column if not exists gas_best_total numeric,
+  add column if not exists gas_updated_at timestamptz;
+
+-- 9 Oct 2026: interest from outside Victoria, for the NSW / SA / QLD rollout.
+create table if not exists public.waitlist (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  email text not null,
+  state text not null,               -- 'NSW' | 'SA' | 'QLD' | 'Other'
+  postcode text
+);
+alter table public.waitlist enable row level security;
+create index if not exists waitlist_email on public.waitlist (email);

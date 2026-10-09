@@ -8,6 +8,7 @@ import Tag from "./components/Tag";
 import CountUp from "./components/CountUp";
 import ImageSlot from "./components/ImageSlot";
 import { DATA_FACTS } from "@/lib/dataPolicy";
+import StateWaitlist from "./components/StateWaitlist";
 import styles from "./components/Comparator.module.css";
 import home from "./home.module.css";
 
@@ -73,6 +74,7 @@ export default function Home() {
         <div className={home.heroInner}>
           <div className={home.heroText}>
             <div className={`${home.chips} ${home.rise}`} style={{ "--d": "0ms" } as CSSProperties}>
+              <Tag tone="teal">Victoria</Tag>
               <Tag tone="amber" shine>Free check</Tag>
               <Tag tone="glass" dot>About 2 minutes</Tag>
               <Tag tone="glass">No sign-up</Tag>
@@ -82,6 +84,7 @@ export default function Home() {
             </h1>
             <p className={`${home.heroLede} ${home.rise}`} style={{ "--d": "240ms" } as CSSProperties}>
               Tell us about your home. We&apos;ll find the cheapest Victorian plan for you and show what you&apos;d save.
+              <span className={home.rollout}>Victoria now. NSW, SA and Queensland next.</span>
             </p>
             <div className={`${home.heroActions} ${home.rise}`} style={{ "--d": "360ms" } as CSSProperties}>
               <Link href="/check" className={home.ctaBig}>
@@ -207,6 +210,10 @@ export default function Home() {
       </section>
 
       <div className={styles.wrap}>
+        <section className={home.section} id="waitlist">
+          <StateWaitlist />
+        </section>
+
         <section className={home.section}>
           <ScrollReveal className={home.closing}>
             <div className={home.closingText}>
@@ -228,10 +235,10 @@ export default function Home() {
         <footer className={styles.footer}>
           <div className={styles.fbrand}>Utilo</div>
           <p>
-            Independent comparison for Victorian households — not affiliated with the Victorian Government or any
-            retailer. Rates come from retailers&apos; published data; estimates only, so confirm with the retailer
+            Independent comparison for Victorian households, with NSW, SA and Queensland to follow — not affiliated with
+            the Victorian Government or any retailer. Rates come from retailers&apos; published data; estimates only, so confirm with the retailer
             before switching.{" "}
-            <Link href="/pricing">Pricing</Link> · <Link href="/learn">Learn</Link> · <Link href="/ev">EV calculator</Link> · <Link href="/faq">FAQ</Link> ·{" "}
+            <Link href="/pricing">Pricing</Link> · <Link href="/learn">Learn</Link> · <Link href="/gas">Gas check</Link> · <Link href="/ev">EV calculator</Link> · <Link href="/faq">FAQ</Link> ·{" "}
             <Link href="/default-offer">About the VDO</Link> · <Link href="/privacy">Privacy</Link> ·{" "}
             <Link href="/cancellation-policy">Cancellation</Link> · <Link href="/terms">Terms</Link>
           </p>

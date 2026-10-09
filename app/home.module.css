@@ -471,3 +471,4 @@
 @media (prefers-reduced-motion: reduce) { .tap, .pulse, .pulseOn, .flowLine { animation: none; stroke-dashoffset: 0; opacity: 1; } .flowDot { display: none; } }
 .bandFoot { margin-top: 26px; font-size: 14px; opacity: 0.75; }
 .bandFoot a { color: inherit; font-weight: 800; }
+.rollout { display: block; margin-top: 10px; font-size: 14px; font-weight: 700; color: #5eead4; }

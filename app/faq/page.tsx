@@ -24,6 +24,10 @@ export default function FaqPage() {
               <p>Yes. The check is free and you don&apos;t need an account. Members pay a small fee for extras like monthly checks and bill reading.</p>
             </details>
             <details className={home.faqItem}>
+              <summary>I&apos;m not in Victoria. Can I use it?</summary>
+              <p>Not yet. We&apos;re starting with Victoria, then rolling out to New South Wales, South Australia and Queensland. Leave your email on the <Link href="/#waitlist">home page</Link> and we&apos;ll tell you when your state opens.</p>
+            </details>
+            <details className={home.faqItem}>
               <summary>Do I need my bill?</summary>
               <p>No. We estimate your usage from your answers. If you have a bill handy, you can type in the numbers for a sharper result.</p>
             </details>

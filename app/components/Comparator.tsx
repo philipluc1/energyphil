@@ -32,10 +32,12 @@ import PricingSection from "./PricingSection";
 import SaveCheck from "./SaveCheck";
 import FunEquivalents from "./FunEquivalents";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
+import StateWaitlist from "./StateWaitlist";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 
 const RETAILERS = Array.from(new Set(PLANS.map((p) => p[0]))).sort();
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import SiteHeader from "./SiteHeader";
 import styles from "./Comparator.module.css";
 
@@ -171,6 +173,7 @@ function scrollToTop() {
 }
 
 export default function Comparator() {
+  const router = useRouter();
   const [stage, setStage] = useState<Stage>("input");
   const [inputStep, setInputStep] = useState<InputStep>(1);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -228,6 +231,9 @@ export default function Comparator() {
         if (typeof d.currentBillRaw === "string") setCurrentBillRaw(d.currentBillRaw);
         if (typeof d.email === "string") setEmail(d.email);
         if (typeof d.currentRetailer === "string") setCurrentRetailer(d.currentRetailer);
+        if (typeof d.customerName === "string") setCustomerName(d.customerName);
+        if (typeof d.address === "string") setAddress(d.address);
+        if (typeof d.suburb === "string") setSuburb(d.suburb);
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
         setRestored(true);
       } catch {
@@ -240,12 +246,12 @@ export default function Comparator() {
     try {
       window.localStorage.setItem(
         SAVE_KEY,
-        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer }),
+        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb }),
       );
     } catch {
       /* storage unavailable */
     }
-  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer]);
+  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb]);
 
   function startFresh() {
     try { window.localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
@@ -280,6 +286,19 @@ export default function Comparator() {
   const clKwh = useEst ? est.cl : cl;
 
   function handleBillExtracted(bill: ExtractedBill) {
+    // Gas on the bill (gas-only or dual): keep it for the gas check.
+    if (bill.gasMj) {
+      try {
+        window.localStorage.setItem(
+          "utilo.gas.v1",
+          JSON.stringify({ zone: bill.gasDistributor ?? "Australian Gas Networks", days: bill.gasBillingDays ?? bill.billingDays ?? 91, mj: Math.round(bill.gasMj), billRaw: bill.gasBillTotal ? String(bill.gasBillTotal) : "", planName: bill.gasPlanName ?? "" }),
+        );
+      } catch { /* ignore */ }
+    }
+    if (bill.fuel === "gas") {
+      router.push("/gas");
+      return;
+    }
     if (bill.distributor) {
       setDistributor(bill.distributor);
       setPostcodeGuessed(false);
@@ -325,6 +344,7 @@ export default function Comparator() {
       const hit = RETAILERS.find((r) => bill.retailerName!.toLowerCase().includes(r.toLowerCase().split(" ")[0]));
       if (hit) setCurrentRetailer(hit);
     }
+    if (bill.fuel === "dual" && bill.gasMj) warnings.push("We also read the gas part of this bill. See your gas result on the gas check page after this.");
     setScanBanner({ retailer: bill.retailerName, warnings });
   }
 
@@ -456,14 +476,16 @@ export default function Comparator() {
               </div>
             )}
         <section className={styles.hero}>
+          <span className={styles.residentialTag}>Victorian homes · NSW, SA, QLD coming</span>
           <h1>Check your plan</h1>
           <p className={styles.lede}>
             Got a bill? Snap it and we&apos;ll read it. No bill? Answer a few quick questions about your home. Free either way,
-            no sign-up.
+            no sign-up. Gas bill? <Link href="/gas">Check gas</Link>.
           </p>
         </section>
 
         <BillPhotoUpload onApply={handleBillExtracted} />
+        {inputStep === 1 && <StateWaitlist compact />}
 
         {scanBanner && (
           <div className={styles.scanBanner}>

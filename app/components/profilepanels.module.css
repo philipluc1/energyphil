@@ -26,3 +26,4 @@
   .navy { background: rgba(45,63,158,0.18); } .teal { background: rgba(14,165,160,0.12); }
   .stat, .placeholder { background: rgba(255,255,255,0.06); } .row { border-color: rgba(255,255,255,0.08); } .track { background: rgba(255,255,255,0.12); }
 }
+.sub { margin: 10px 0 2px; font-size: 13px; font-weight: 800; color: var(--grey); text-transform: none; }

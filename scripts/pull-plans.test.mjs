@@ -8,3 +8,7 @@ const single = { electricityContract: { tariffPeriod: [{ rateBlockUType: "single
 assert.deepEqual(parsePlan(single), { supply: 1.1658, anytime: 0.2907, peak: null, shoulder: null, offpeak: null, cl: null, solarFit: null });
 assert.equal(parsePlan({ electricityContract: { tariffPeriod: [{ rateBlockUType: "demandCharges", dailySupplyCharges: "1" }] } }), null);
 console.log("parser ok");
+import { parseGasPlan } from "./pull-plans.mjs";
+const gas = { gasContract: { tariffPeriod: [{ dailySupplyCharges: "0.85", singleRate: { rates: [{ unitPrice: "0.0412", volume: 50, period: "P1D", measureUnit: "MJ" }, { unitPrice: "0.0318", period: "P1D", measureUnit: "MJ" }] } }] } };
+assert.deepEqual(parseGasPlan(gas), { supply: 0.85, blocks: [{ upTo: 50, rate: 0.0412 }, { upTo: null, rate: 0.0318 }], perDay: true });
+console.log("gas parser ok");

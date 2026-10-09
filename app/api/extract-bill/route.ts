@@ -23,15 +23,29 @@ const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 
 const TOOL_SCHEMA = {
   name: "extract_bill_fields",
-  description: "Extract structured billing data from a photo of an Australian residential electricity bill.",
+  description: "Extract structured billing data from a photo of an Australian residential electricity, gas or dual-fuel bill.",
   input_schema: {
     type: "object" as const,
     properties: {
       is_electricity_bill: {
         type: "boolean",
         description:
-          "True only if the image clearly shows a residential electricity bill (not a gas bill, receipt, or unrelated photo).",
+          "True if the image shows a residential electricity bill, or a dual-fuel bill that includes electricity. False for a gas-only bill, receipt or unrelated photo.",
       },
+      fuel: {
+        type: ["string", "null"],
+        enum: ["electricity", "gas", "dual", null],
+        description: "Which fuel the bill covers: electricity only, gas only, or dual (both on one bill).",
+      },
+      gas_distributor: {
+        type: ["string", "null"],
+        enum: ["Australian Gas Networks", "Multinet", "AusNet Services", null],
+        description: "For a bill with gas: the gas distribution network named on it, mapped to one of these three Victorian networks. Null if not shown.",
+      },
+      gas_billing_days: { type: ["integer", "null"], description: "For a bill with gas: days in the gas billing period." },
+      gas_mj: { type: ["number", "null"], description: "For a bill with gas: total gas usage for the period in megajoules (MJ). Convert from kWh if needed (1 kWh = 3.6 MJ)." },
+      gas_bill_total: { type: ["number", "null"], description: "For a bill with gas: the gas charges for the period including GST, in AUD. On a dual bill, the gas portion only." },
+      gas_plan_name: { type: ["string", "null"], description: "For a bill with gas: the gas plan or offer name printed on the bill." },
       distributor: {
         type: ["string", "null"],
         enum: ["Citipower", "Powercor", "United Energy", "Jemena", "AusNet Services", null],
@@ -206,14 +220,15 @@ export async function POST(req: NextRequest) {
               {
                 type: "text",
                 text:
-                  `This is a ${isPdf ? "PDF" : "photo"} of an Australian residential electricity bill. Read it ` +
+                  `This is a ${isPdf ? "PDF" : "photo"} of an Australian residential energy bill (electricity, gas or both). Read it ` +
                   "carefully and call extract_bill_fields with your best-effort reading. Leave a field null " +
                   "rather than guessing if it isn't clearly shown, and note anything uncertain in warnings. " +
                   "Victorian distributor names can appear with extra wording (e.g. 'CitiPower', 'Jemena " +
                   "Electricity Networks') — map them to the closest of the five listed options, or null if it's " +
                   "clearly a different network. Also read the account holder's name and the supply address " +
                   "(street/suburb/postcode) if printed, and check for any solar feed-in/export credit line — " +
-                  "set has_solar true whenever one appears, even if the credit is $0 or very small.",
+                  "set has_solar true whenever one appears, even if the credit is $0 or very small. If the bill includes gas, fill the gas_* fields " +
+                  "(usage in MJ, days, gas charges, gas network) and set fuel accordingly.",
               },
             ],
           },
@@ -252,11 +267,11 @@ export async function POST(req: NextRequest) {
 
   const extracted = sanitizeExtractedBill(toolUse.input);
 
-  if (!extracted.isElectricityBill) {
+  if (!extracted.isElectricityBill && extracted.fuel !== "gas") {
     return NextResponse.json(
       {
         ok: false,
-        message: "That doesn't look like an electricity bill — try another file, or enter your details manually below.",
+        message: "That doesn't look like an energy bill — try another file, or enter your details manually below.",
       },
       { status: 200 },
     );
