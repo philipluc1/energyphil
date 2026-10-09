@@ -382,9 +382,34 @@ export default function Comparator() {
     () => (currentRetailer ? matches.find((m) => m.plan[0] === currentRetailer) ?? null : null),
     [matches, currentRetailer],
   );
+
+
   // Benchmark: what they pay now if given, else the Victorian Default Offer
   // priced at THIS household's usage (not the generic typical-household figure).
   const bench = haveBill ? (currentBill as number) : vdoBillForUsage(distributor, usage);
+
+  // Keep the latest result in this browser so the dashboard can show it
+  // (and so a member's details are ready if they join).
+  const topForSave = matches[0];
+  useEffect(() => {
+    if (stage !== "results" || !topForSave) return;
+    try {
+      window.localStorage.setItem(
+        "utilo.result.v1",
+        JSON.stringify({
+          savedAt: new Date().toISOString(),
+          distributor,
+          days,
+          haveBill,
+          bench,
+          bestRetailer: topForSave.plan[0],
+          bestPlan: topForSave.plan[2],
+          bestTotal: topForSave.total,
+          source: useEst ? "answers" : haveBill ? "bill" : "manual",
+        }),
+      );
+    } catch { /* ignore */ }
+  }, [stage, topForSave, distributor, days, haveBill, bench, useEst]);
 
   const potentialWithTou = useMemo(
     () => PLANS.filter((p) => p[1] === distributor && p[6] !== null).length,
@@ -451,7 +476,10 @@ export default function Comparator() {
             ? "What you told us you're paying now"
             : "Essential Services Commission benchmark",
           value: bench,
-          kind: "reference",
+          // Green when what they pay now already beats the cheapest plan we
+          // found, red when they're paying more than they need to. Grey for
+          // an estimate against the default offer.
+          kind: hasCurrentBill ? (bench <= top.total + 1 ? "referenceGood" : "referenceBad") : "reference",
         },
         ...matches.slice(0, 5).map((m, i) => ({
           label: m.plan[0],
@@ -1039,8 +1067,8 @@ export default function Comparator() {
           ) : (
             <>
               {bench - top.total > 0 && (
-                <div className={styles.resultHero}>
-                  <span className={styles.resultHeroKicker}>{useEst ? "Estimated from your answers" : haveBill ? "Based on your bill" : "Based on your usage"}</span>
+                <div className={`${styles.resultHero} ${haveBill ? styles.resultHeroBad : ""}`}>
+                  <span className={styles.resultHeroKicker}>{useEst ? "Estimated from your answers" : haveBill ? "Based on your bill: you're paying more than you need to" : "Based on your usage"}</span>
                   <div className={styles.resultHeroLabel}>You could save about</div>
                   <div className={styles.resultHeroNum}>${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}</div>
                   <div className={styles.resultHeroSub}>
@@ -1181,6 +1209,22 @@ export default function Comparator() {
                 </div>
               </div>
 
+              {haveBill && bench - top.total <= 0 && (
+                <div className={`${styles.resultHero} ${styles.resultHeroGood}`}>
+                  <span className={styles.resultHeroKicker}>Based on your bill</span>
+                  <div className={styles.resultHeroLabel}>Good news</div>
+                  <div className={styles.resultHeroNum}>You&apos;re on a good deal</div>
+                  <div className={styles.resultHeroSub}>
+                    Nothing we found beats what you pay now by enough to bother. Members get told the moment that changes.
+                  </div>
+                </div>
+              )}
+              {!haveBill && (
+                <div className={styles.billNudge}>
+                  <b>This is an estimate.</b> Prices are exact, but your usage is a typical figure for a home like yours. Snap your bill at the top of the
+                  page for your real numbers.
+                </div>
+              )}
               {retailerBest && top && (
                 <div className={styles.stayCard}>
                   <div>

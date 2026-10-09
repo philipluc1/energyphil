@@ -111,7 +111,7 @@ export default function PricingSection({
         <h2>
           {yearlySaving >= 20
             ? `Keep that $${Math.round(yearlySaving).toLocaleString("en-AU")} a year? We'll check it every month for $7.`
-            : "Stay on the cheapest plan — automatically"}
+            : "We keep comparing, so you don't have to"}
         </h2>
       </div>
       <p className={styles.pricingIntro}>
@@ -135,9 +135,8 @@ export default function PricingSection({
             <IconRefresh />
           </div>
           <div>
-            <strong>We recheck for you</strong>
-            <p>No need to come back or re-upload a bill — we automatically compare your plan against the market
-            again and again.</p>
+            <strong>We keep comparing</strong>
+            <p>Every morning we price every plan on your network against yours. No need to come back or re-check anything yourself.</p>
           </div>
         </div>
         <div className={styles.pricingBenefit}>

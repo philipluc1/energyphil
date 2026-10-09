@@ -9,6 +9,7 @@ import CountUp from "./components/CountUp";
 import ImageSlot from "./components/ImageSlot";
 import { DATA_FACTS } from "@/lib/dataPolicy";
 import StateWaitlist from "./components/StateWaitlist";
+import PlanCards from "./components/PlanCards";
 import styles from "./components/Comparator.module.css";
 import home from "./home.module.css";
 
@@ -210,6 +211,17 @@ export default function Home() {
       </section>
 
       <div className={styles.wrap}>
+        <section className={home.section} id="pricing">
+          <ScrollReveal>
+            <h2 className={home.h2}>Keep it checked, for the price of a coffee</h2>
+            <p className={home.sub}>
+              The check is free and the first bill reads are free. Members get a bill read and a saved result every month, an email only when
+              switching is worth it, and a running tally of what they&apos;ve saved.
+            </p>
+          </ScrollReveal>
+          <PlanCards href="/check" cta="Start free check" />
+        </section>
+
         <section className={home.section} id="waitlist">
           <StateWaitlist />
         </section>

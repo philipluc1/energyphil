@@ -11,6 +11,8 @@ import EnergyTips from "../components/EnergyTips";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
 import ProfilePanels, { type ProfileData } from "../components/ProfilePanels";
+import LatestCheckCard, { type LatestCheck } from "../components/LatestCheckCard";
+import LearnCard from "../components/LearnCard";
 import { DEFAULT_PROFILE, estimateUsage } from "@/lib/profileUsage";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
@@ -112,9 +114,14 @@ export default function AccountPage() {
   const [switchBusy, setSwitchBusy] = useState(false);
   // What a non-member told us in the free check, kept in this browser.
   const [localCheck, setLocalCheck] = useState<ProfileData | null>(null);
+  const [latest, setLatest] = useState<LatestCheck | null>(null);
   useEffect(() => {
     const t = setTimeout(() => {
       try {
+        try {
+          const r = JSON.parse(window.localStorage.getItem("utilo.result.v1") ?? "null");
+          if (r && typeof r.bestTotal === "number") setLatest(r as LatestCheck);
+        } catch { /* none */ }
         const raw = window.localStorage.getItem("utilo.check.v1");
         if (!raw) return;
         const d = JSON.parse(raw);
@@ -140,8 +147,8 @@ export default function AccountPage() {
           controlled_load_kwh: est ? est.cl : d.cl ?? null,
           has_solar: est ? profile.hasSolar : typeof d.hasSolar === "boolean" ? d.hasSolar : null,
           solar_export_kwh: est ? est.solarExportKwh : null,
-          baseline_retailer: null,
-          baseline_plan_name: null,
+          baseline_retailer: (() => { try { return JSON.parse(window.localStorage.getItem("utilo.result.v1") ?? "null")?.bestRetailer ?? null; } catch { return null; } })(),
+          baseline_plan_name: (() => { try { return JSON.parse(window.localStorage.getItem("utilo.result.v1") ?? "null")?.bestPlan ?? null; } catch { return null; } })(),
           home_profile: est ? profile : null,
           source: est ? "answers" : "bill",
         });
@@ -574,6 +581,7 @@ export default function AccountPage() {
               {subLoading && <p className={styles.note}>Loading your plan…</p>}
               {subError && <p className={styles.error}>{subError}</p>}
 
+              {!subLoading && !sub && latest && <LatestCheckCard c={latest} member={false} />}
               {!subLoading && !sub && localCheck && <ProfilePanels d={localCheck} />}
 
               {!subLoading && !subError && !sub && (
@@ -643,6 +651,8 @@ export default function AccountPage() {
                   )}
                 </details>
               )}
+
+              <LearnCard />
 
               <EnergyTips />
 

@@ -7,15 +7,15 @@ export interface ChartItem {
   label: string;
   sublabel: string;
   value: number;
-  kind: "reference" | "cheapest" | "plan";
+  kind: "reference" | "cheapest" | "plan" | "referenceGood" | "referenceBad";
 }
 
 // Recharts fills are plain SVG attributes, not CSS, so they can't read the
 // page's --navy/--amber custom properties directly — we mirror the two
 // palettes from globals.css here and pick one by watching prefers-color-scheme.
 const PALETTE = {
-  light: { reference: "#8a93a6", plan: "#1b2a4a", cheapest: "#f0a202", text: "#12141c" },
-  dark: { reference: "#7b849c", plan: "#3a5384", cheapest: "#f0a202", text: "#eceff7" },
+  light: { reference: "#8a93a6", referenceGood: "#16a34a", referenceBad: "#dc2626", plan: "#1b2a4a", cheapest: "#f0a202", text: "#12141c" },
+  dark: { reference: "#7b849c", referenceGood: "#22c55e", referenceBad: "#ef4444", plan: "#3a5384", cheapest: "#f0a202", text: "#eceff7" },
 }
 
 function fmtCurrency(n: number): string {

@@ -1607,3 +1607,8 @@
   .getPlan { grid-template-columns: 48px 1fr; }
   .getPlan .switchBtn { grid-column: 1 / -1; text-align: center; }
 }
+
+.resultHeroBad { background: linear-gradient(135deg, #7f1d1d, #b45309); }
+.resultHeroGood { background: linear-gradient(135deg, #14532d, #0d6f78); }
+.resultHeroGood .resultHeroNum { font-size: clamp(30px, 6vw, 46px); color: #86efac; }
+.billNudge { margin-top: 14px; padding: 12px 16px; border-radius: 14px; background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,0.4); font-size: 14px; line-height: 1.5; }
