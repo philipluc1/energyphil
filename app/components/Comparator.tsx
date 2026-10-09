@@ -33,6 +33,9 @@ import SaveCheck from "./SaveCheck";
 import FunEquivalents from "./FunEquivalents";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
 import StateWaitlist from "./StateWaitlist";
+import YourRates from "./YourRates";
+import w from "./wizard.module.css";
+import { EMPTY_RATES_FORM, costFromRates, ratesFromForm, ratesToForm, type RatesForm } from "@/lib/currentRates";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 
 const RETAILERS = Array.from(new Set(PLANS.map((p) => p[0]))).sort();
@@ -156,9 +159,9 @@ type InputStep = 1 | 2 | 3;
 type UsageSource = "estimate" | "bill";
 const INPUT_STEPS: InputStep[] = [1, 2, 3];
 const INPUT_STEP_LABELS: Record<InputStep, string> = {
-  1: "Address",
+  1: "Where you live",
   2: "Your home",
-  3: "Usage",
+  3: "Your bill",
 };
 
 function nextInputStep(s: InputStep): InputStep {
@@ -201,6 +204,10 @@ export default function Comparator() {
   const [leadStatus, setLeadStatus] = useState<LeadStatus>("idle");
   const [scanBanner, setScanBanner] = useState<{ retailer: string | null; warnings: string[] } | null>(null);
   const [currentRetailer, setCurrentRetailer] = useState("");
+  // The rates on their current plan, typed from the bill (or read off it).
+  const [ratesForm, setRatesForm] = useState<RatesForm>(EMPTY_RATES_FORM);
+  const [showRates, setShowRates] = useState(false);
+  const patchRates = (patch: Partial<RatesForm>) => setRatesForm((f) => ({ ...f, ...patch }));
   // Which period the result numbers and charts are shown for.
   const [period, setPeriod] = useState<"month" | "quarter" | "year">("quarter");
   const [restored, setRestored] = useState(false);
@@ -208,10 +215,16 @@ export default function Comparator() {
   // Remember the check in this browser, so a refresh or a return visit
   // doesn't start from scratch. Nothing leaves the device.
   const SAVE_KEY = "utilo.check.v1";
+  // Don't save until the saved answers have been read back, or the first
+  // save (with empty defaults) would overwrite them.
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     let raw: string | null = null;
     try { raw = window.localStorage.getItem(SAVE_KEY); } catch { raw = null; }
-    if (!raw) return;
+    if (!raw) {
+      const t0 = setTimeout(() => setHydrated(true), 0);
+      return () => clearTimeout(t0);
+    }
     // Applied on the next tick so the first paint matches the server's.
     const t = setTimeout(() => {
       try {
@@ -237,23 +250,44 @@ export default function Comparator() {
         if (typeof d.address === "string") setAddress(d.address);
         if (typeof d.suburb === "string") setSuburb(d.suburb);
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
+        if (d.ratesForm && typeof d.ratesForm === "object") setRatesForm({ ...EMPTY_RATES_FORM, ...d.ratesForm });
         setRestored(true);
       } catch {
         /* ignore a bad saved value */
       }
+      setHydrated(true);
     }, 0);
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {
+    if (!hydrated) return;
     try {
       window.localStorage.setItem(
         SAVE_KEY,
-        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb }),
+        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm }),
       );
     } catch {
       /* storage unavailable */
     }
-  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb]);
+  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, hydrated]);
+
+  // Current plan pricing for the dashboard ("Your rates vs the cheapest").
+  useEffect(() => {
+    if (!hydrated) return;
+    const rates = ratesFromForm(ratesForm);
+    try {
+      if (!rates && !ratesForm.planName && ratesForm.priceType === "unsure") return;
+      window.localStorage.setItem(
+        "utilo.pricing.v1",
+        JSON.stringify({
+          planName: ratesForm.planName || null,
+          rates,
+          priceType: ratesForm.priceType === "unsure" ? null : ratesForm.priceType,
+          fixedUntil: ratesForm.priceType === "fixed" && ratesForm.fixedUntil ? ratesForm.fixedUntil : null,
+        }),
+      );
+    } catch { /* storage unavailable */ }
+  }, [ratesForm, hydrated]);
 
   function startFresh() {
     try { window.localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
@@ -288,13 +322,15 @@ export default function Comparator() {
   const clKwh = useEst ? est.cl : cl;
 
   function handleBillExtracted(bill: ExtractedBill) {
-    // The current plan's rates and fixed/variable terms, for the dashboard.
-    try {
-      window.localStorage.setItem(
-        "utilo.pricing.v1",
-        JSON.stringify({ planName: bill.planName ?? null, rates: bill.currentRates ?? null, priceType: bill.priceType ?? null, fixedUntil: bill.priceFixedUntil ?? null }),
-      );
-    } catch { /* ignore */ }
+    // The current plan's rates and fixed/variable terms: shown in step 3 to check, and saved for the dashboard.
+    setRatesForm(
+      ratesToForm(bill.currentRates ?? null, {
+        planName: bill.planName ?? "",
+        priceType: bill.priceType ?? "unsure",
+        fixedUntil: bill.priceFixedUntil ?? "",
+      }),
+    );
+    if (bill.currentRates) setShowRates(true);
     // Gas on the bill (gas-only or dual): keep it for the gas check.
     if (bill.gasMj) {
       try {
@@ -357,7 +393,7 @@ export default function Comparator() {
     setScanBanner({ retailer: bill.retailerName, warnings });
   }
 
-  const currentBill = currentBillRaw === "" ? null : parseFloat(currentBillRaw);
+  const typedBill = currentBillRaw === "" ? null : parseFloat(currentBillRaw);
   const usagePeak = useEst ? est.peak : mode === "detailed" ? peak : 0;
   const usageShoulder = useEst ? est.shoulder : mode === "detailed" ? shoulder : 0;
   const usageOffpeak = useEst ? est.offpeak : mode === "detailed" ? offpeak : 0;
@@ -371,6 +407,11 @@ export default function Comparator() {
     cl: clKwh,
     solarExportKwh,
   };
+  // Their own plan priced from the rates they typed. Used as "what you pay
+  // now" when they didn't type a bill total.
+  const myRates = useMemo(() => ratesFromForm(ratesForm), [ratesForm]);
+  const ratesCost = costFromRates(myRates, usage);
+  const currentBill = typedBill !== null && !Number.isNaN(typedBill) ? typedBill : ratesCost.ok ? Math.round(ratesCost.total * 100) / 100 : null;
 
   const matches = useMemo(
     () =>
@@ -576,18 +617,15 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>1</span> Your address
+                  <span className={styles.stepNum}>1</span> Where do you live?
                 </div>
-                <span className={styles.stepSub}>Sets your network automatically</span>
+                <span className={styles.stepSub}>Your postcode tells us your power network, which decides the prices you can get.</span>
               </div>
             </div>
-            <p className={`${styles.helper} ${styles.noTopMargin}`}>
-              Your postcode sets your network.
-            </p>
             <div className={styles.fieldGrid}>
               <div className={styles.field}>
                 <label htmlFor="custName">
-                  Your name <span className={styles.unitNote}>(optional)</span>
+                  First name <span className={styles.unitNote}>(optional, so we can say hi)</span>
                 </label>
                 <input
                   id="custName"
@@ -635,7 +673,7 @@ export default function Comparator() {
               <div className={`${styles.scanBanner} ${styles.mt16}`}>
                 <div className={styles.scanBannerHead}>
                   <span>
-                    Network set to <strong>{distributor}</strong>. Wrong? Pick another below.
+                    ✓ You&apos;re on the <strong>{distributor}</strong> network. If your bill says otherwise, pick it below.
                   </span>
                 </div>
               </div>
@@ -662,10 +700,10 @@ export default function Comparator() {
               ))}
             </div>
             <p className={styles.helper}>
-              Not sure? It&apos;s listed on your bill as &ldquo;Distributor&rdquo;.
+              The network owns the poles and wires. Your bill lists it as &ldquo;Distributor&rdquo;. You can&apos;t choose it, but it changes prices.
             </p>
 
-            <div className={`${styles.stepLabel} ${styles.mt16}`}>Who&apos;s your retailer now? <span className={styles.unitNote}>(optional)</span></div>
+            <div className={`${styles.stepLabel} ${styles.mt16}`}>Who do you pay for electricity now? <span className={styles.unitNote}>(optional)</span></div>
             <div className={styles.choiceRow}>
               {RETAILERS.map((r) => (
                 <button
@@ -678,7 +716,7 @@ export default function Comparator() {
                 </button>
               ))}
             </div>
-            <p className={styles.helper}>We&apos;ll show their best plan for you next to the overall winner.</p>
+            <p className={styles.helper}>We&apos;ll also show their best plan for you, in case you&apos;d rather stay.</p>
           </div>
         )}
 
@@ -690,14 +728,14 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>2</span> Your home
+                  <span className={styles.stepNum}>2</span> Tell us about your home
                 </div>
-                <span className={styles.stepSub}>So we price plans against how you use power, not an average home</span>
+                <span className={styles.stepSub}>Tap what fits best. Rough answers are fine; it helps us match plans to how you use power.</span>
               </div>
             </div>
 
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>People living here</div>
+              <div className={styles.profileLabel}>👥 How many people live here?</div>
               <Choice
                 value={profile.people}
                 onChange={(v) => patchProfile({ people: v })}
@@ -705,7 +743,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Home type</div>
+              <div className={styles.profileLabel}>🏠 What kind of home is it?</div>
               <Choice
                 value={profile.dwelling}
                 onChange={(v) => patchProfile({ dwelling: v })}
@@ -717,7 +755,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Who&apos;s home during the day?</div>
+              <div className={styles.profileLabel}>☀️ Is anyone home during the day?</div>
               <Choice
                 value={profile.daytimeHome}
                 onChange={(v) => patchProfile({ daytimeHome: v })}
@@ -729,19 +767,19 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Heating</div>
+              <div className={styles.profileLabel}>🔥 How do you heat your home?</div>
               <Choice
                 value={profile.heating}
                 onChange={(v) => patchProfile({ heating: v })}
                 options={[
-                  { value: "gas_none", label: "Gas / none" },
-                  { value: "reverse_cycle", label: "Reverse-cycle A/C" },
+                  { value: "gas_none", label: "Gas, or no heating" },
+                  { value: "reverse_cycle", label: "Split system / reverse-cycle" },
                   { value: "resistive", label: "Electric heaters" },
                 ]}
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Air-con for cooling</div>
+              <div className={styles.profileLabel}>❄️ Do you use air-con to cool down?</div>
               <Choice
                 value={profile.cooling}
                 onChange={(v) => patchProfile({ cooling: v })}
@@ -752,20 +790,20 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Hot water</div>
+              <div className={styles.profileLabel}>🚿 How is your water heated?</div>
               <Choice
                 value={profile.hotWater}
                 onChange={(v) => patchProfile({ hotWater: v })}
                 options={[
                   { value: "gas_solar", label: "Gas / solar" },
-                  { value: "electric_controlled", label: "Electric, off-peak meter" },
-                  { value: "electric_general", label: "Electric, normal meter" },
+                  { value: "electric_controlled", label: "Electric, on a separate off-peak meter" },
+                  { value: "electric_general", label: "Electric, not sure / normal meter" },
                   { value: "heat_pump", label: "Heat pump" },
                 ]}
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Pool or spa</div>
+              <div className={styles.profileLabel}>🏊 Pool or spa?</div>
               <Choice
                 value={profile.pool}
                 onChange={(v) => patchProfile({ pool: v })}
@@ -776,7 +814,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Electric vehicle</div>
+              <div className={styles.profileLabel}>🚗 Do you charge an electric car at home?</div>
               <Choice
                 value={profile.ev}
                 onChange={(v) => patchProfile({ ev: v })}
@@ -797,7 +835,7 @@ export default function Comparator() {
               )}
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Rooftop solar</div>
+              <div className={styles.profileLabel}>🔆 Do you have rooftop solar?</div>
               <Choice
                 value={profile.hasSolar}
                 onChange={(v) => patchProfile({ hasSolar: v })}
@@ -832,165 +870,228 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>3</span> Your usage
+                  <span className={styles.stepNum}>3</span> Your bill
                 </div>
-                <span className={styles.stepSub}>Estimated from your home, or typed from a bill</span>
+                <span className={styles.stepSub}>A few numbers from your bill make this exact. No bill? We&apos;ll estimate.</span>
               </div>
-            </div>
-            <div className={styles.modeToggle}>
-              <button
-                type="button"
-                className={useEst ? styles.modeToggleActive : ""}
-                onClick={() => setUsageSource("estimate")}
-              >
-                Estimate from my home
-              </button>
-              <button
-                type="button"
-                className={!useEst ? styles.modeToggleActive : ""}
-                onClick={() => setUsageSource("bill")}
-              >
-                Enter from my bill
-              </button>
             </div>
 
-            <div className={`${styles.fieldGrid} ${styles.sectionGap}`}>
-              <div className={styles.field}>
-                <label htmlFor="days">Period to compare (days)</label>
-                <input
-                  id="days"
-                  type="number"
-                  min={1}
-                  max={366}
-                  value={days}
-                  onChange={(e) => setDays(Math.max(1, parseFloat(e.target.value) || 91))}
-                />
-                <span className={styles.unitNote}>usually ~90 for a quarterly bill</span>
+            {/* Q: bill or estimate */}
+            <section className={w.q}>
+              <div className={w.qHead}>
+                <span className={w.qNum}>1</span>
+                <div>
+                  <h3 className={w.qTitle}>Do you have a recent electricity bill?</h3>
+                  <p className={w.qSub}>Paper, PDF or the app all work. It only takes a couple of minutes.</p>
+                </div>
               </div>
-              <div className={styles.field}>
-                <label htmlFor="currentBill">
-                  What you pay now <span className={styles.unitNote}>(optional)</span>
+              <div className={w.big}>
+                <button type="button" className={!useEst ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("bill")}>
+                  <span className={w.bigIcon} aria-hidden="true">📄</span>
+                  <span><b>Yes, I have a bill</b>I&apos;ll copy a few numbers from it. Most accurate.</span>
+                  <span className={w.tick} aria-hidden="true">✓</span>
+                </button>
+                <button type="button" className={useEst ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("estimate")}>
+                  <span className={w.bigIcon} aria-hidden="true">🏠</span>
+                  <span><b>No, estimate it for me</b>We&apos;ll use your answers about your home.</span>
+                  <span className={w.tick} aria-hidden="true">✓</span>
+                </button>
+              </div>
+            </section>
+
+            {/* Q: how long is the bill */}
+            <section className={w.q}>
+              <div className={w.qHead}>
+                <span className={w.qNum}>2</span>
+                <div>
+                  <h3 className={w.qTitle}>{useEst ? "How often do you get a bill?" : "How long does your bill cover?"}</h3>
+                  <p className={w.qSub}>{useEst ? "So we show costs for the same period." : "Look for the billing period, e.g. “1 Jul to 30 Sep”."}</p>
+                </div>
+              </div>
+              <div className={w.pills}>
+                {([[30, "Monthly"], [61, "Every 2 months"], [91, "Quarterly"]] as [number, string][]).map(([d, l]) => (
+                  <button key={d} type="button" className={days === d ? w.pillOn : w.pill} onClick={() => setDays(d)}>{l}</button>
+                ))}
+                <label className={w.inline} style={{ marginTop: 0 }}>
+                  or
+                  <input
+                    className={w.daysInput}
+                    type="number"
+                    min={1}
+                    max={366}
+                    value={days}
+                    onChange={(e) => setDays(Math.max(1, parseFloat(e.target.value) || 91))}
+                    aria-label="Days in the bill"
+                  />
+                  days
                 </label>
-                <input
-                  id="currentBill"
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  placeholder="e.g. 425.31"
-                  value={currentBillRaw}
-                  onChange={(e) => setCurrentBillRaw(e.target.value)}
-                />
-                <span className={styles.unitNote}>$ for that period. Blank = compare to the default offer.</span>
               </div>
-            </div>
+            </section>
 
             {useEst ? (
-              <div className={styles.sectionGap}>
-                <div className={styles.estTiles}>
-                  <div className={styles.estTile}>
-                    <div className={`${styles.estV} mono`}>~{est.totalKwh.toLocaleString("en-AU")}</div>
-                    <div className={styles.estL}>kWh over {days} days</div>
+              <>
+                <section className={w.q}>
+                  <div className={w.qHead}>
+                    <span className={w.qNum}>3</span>
+                    <div>
+                      <h3 className={w.qTitle}>Here&apos;s what we think your home uses</h3>
+                      <p className={w.qSub}>From your answers in step 2. Change those and this updates.</p>
+                    </div>
                   </div>
-                  <div className={styles.estTile}>
-                    <div className={`${styles.estV} mono`}>~{est.annualKwh.toLocaleString("en-AU")}</div>
-                    <div className={styles.estL}>kWh a year from the grid</div>
+                  <div className={w.estimate}>
+                    <div className={w.estBig}>
+                      About <b>{(est.annualKwh / 365).toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh a day</b>, or ~{est.totalKwh.toLocaleString("en-AU")} kWh a bill.
+                    </div>
+                    <div className={w.bars}>
+                      <div className={w.barRow}>
+                        <span>Your home</span>
+                        <span className={w.barTrack}><span className={w.barFill} style={{ display: "block", width: `${Math.min(100, (est.annualKwh / Math.max(est.annualKwh, TYPICAL_ANNUAL_KWH)) * 100)}%` }} /></span>
+                        <b>{est.annualKwh.toLocaleString("en-AU")}</b>
+                      </div>
+                      <div className={w.barRow}>
+                        <span>Typical home</span>
+                        <span className={w.barTrack}><span className={`${w.barFill} ${w.barFillTypical}`} style={{ display: "block", width: `${Math.min(100, (TYPICAL_ANNUAL_KWH / Math.max(est.annualKwh, TYPICAL_ANNUAL_KWH)) * 100)}%` }} /></span>
+                        <b>{TYPICAL_ANNUAL_KWH.toLocaleString("en-AU")}</b>
+                      </div>
+                    </div>
+                    <span className={w.rateHint}>
+                      kWh a year from the grid.{" "}
+                      {est.annualKwh > TYPICAL_ANNUAL_KWH * 1.1
+                        ? `About ${Math.round((est.annualKwh / TYPICAL_ANNUAL_KWH - 1) * 100)}% more than a typical Victorian home.`
+                        : est.annualKwh < TYPICAL_ANNUAL_KWH * 0.9
+                          ? `About ${Math.round((1 - est.annualKwh / TYPICAL_ANNUAL_KWH) * 100)}% less than a typical Victorian home.`
+                          : "Close to a typical Victorian home."}{" "}
+                      It&apos;s an estimate, so a bill gives a sharper answer.
+                    </span>
                   </div>
-                  <div className={styles.estTile}>
-                    <div className={`${styles.estV} mono`}>{TYPICAL_ANNUAL_KWH.toLocaleString("en-AU")}</div>
-                    <div className={styles.estL}>typical household</div>
+                </section>
+
+                <section className={w.q}>
+                  <div className={w.qHead}>
+                    <span className={w.qNum}>4</span>
+                    <div>
+                      <h3 className={w.qTitle}>Roughly what do you pay? <span className={w.opt}>(optional)</span></h3>
+                      <p className={w.qSub}>For one bill. Leave it blank and we&apos;ll compare against the Victorian Default Offer.</p>
+                    </div>
                   </div>
-                </div>
-                <p className={styles.helper}>
-                  {est.annualKwh > TYPICAL_ANNUAL_KWH * 1.1
-                    ? `Your home likely uses about ${Math.round((est.annualKwh / TYPICAL_ANNUAL_KWH - 1) * 100)}% more than the typical household.`
-                    : est.annualKwh < TYPICAL_ANNUAL_KWH * 0.9
-                      ? `Your home likely uses about ${Math.round((1 - est.annualKwh / TYPICAL_ANNUAL_KWH) * 100)}% less than the typical household.`
-                      : "Your home looks close to the typical household."}{" "}
-                  This is an estimate from your answers, not meter data. Enter your bill for exact figures.
-                </p>
-              </div>
+                  <div className={w.money}>
+                    <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 425" value={currentBillRaw} onChange={(e) => setCurrentBillRaw(e.target.value)} aria-label="What you pay per bill" />
+                  </div>
+                  {!showRates ? (
+                    <button type="button" className={w.extraBtn} onClick={() => setShowRates(true)}>+ I know my rates (c/kWh)</button>
+                  ) : (
+                    <div style={{ marginTop: 14 }}>
+                      <YourRates form={ratesForm} onChange={patchRates} split={false} showCl={false} showSolar={profile.hasSolar} cost={ratesCost} billTotal={typedBill !== null && !Number.isNaN(typedBill) ? typedBill : null} />
+                    </div>
+                  )}
+                </section>
+              </>
             ) : (
               <>
-                <div className={styles.sectionGap}>
-                  <div className={styles.modeToggle}>
-                    <button
-                      type="button"
-                      className={mode === "simple" ? styles.modeToggleActive : ""}
-                      onClick={() => setMode("simple")}
-                    >
-                      Total usage only
-                    </button>
-                    <button
-                      type="button"
-                      className={mode === "detailed" ? styles.modeToggleActive : ""}
-                      onClick={() => setMode("detailed")}
-                    >
-                      Peak / off-peak
-                    </button>
-                  </div>
-                </div>
-                {mode === "simple" ? (
-                  <div className={`${styles.fieldGrid} ${styles.sectionGap}`}>
-                    <div className={styles.field}>
-                      <label htmlFor="anytime">Total usage (kWh)</label>
-                      <input id="anytime" type="number" min={0} value={anytime} onChange={(e) => setAnytime(parseFloat(e.target.value) || 0)} />
+                <section className={w.q}>
+                  <div className={w.qHead}>
+                    <span className={w.qNum}>3</span>
+                    <div>
+                      <h3 className={w.qTitle}>What was the total? <span className={w.opt}>(optional)</span></h3>
+                      <p className={w.qSub}>&ldquo;Total amount due&rdquo; or &ldquo;New charges&rdquo;, including GST. Skip it if you enter your rates below.</p>
                     </div>
                   </div>
-                ) : (
-                  <div className={`${styles.fieldGrid} ${styles.sectionGap}`}>
-                    <div className={styles.field}>
-                      <label htmlFor="peak">Peak (kWh)</label>
-                      <input id="peak" type="number" min={0} value={peak} onChange={(e) => setPeak(parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div className={styles.field}>
-                      <label htmlFor="shoulder">Shoulder (kWh)</label>
-                      <input id="shoulder" type="number" min={0} value={shoulder} onChange={(e) => setShoulder(parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div className={styles.field}>
-                      <label htmlFor="offpeak">Off-peak (kWh)</label>
-                      <input id="offpeak" type="number" min={0} value={offpeak} onChange={(e) => setOffpeak(parseFloat(e.target.value) || 0)} />
+                  <div className={w.money}>
+                    <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 425.31" value={currentBillRaw} onChange={(e) => setCurrentBillRaw(e.target.value)} aria-label="Bill total" />
+                  </div>
+                </section>
+
+                <section className={w.q}>
+                  <div className={w.qHead}>
+                    <span className={w.qNum}>4</span>
+                    <div>
+                      <h3 className={w.qTitle}>How much electricity did you use?</h3>
+                      <p className={w.qSub}>Shown in kWh in the usage or charges section. If your bill splits it by time of day, pick &ldquo;Split by time&rdquo;.</p>
                     </div>
                   </div>
-                )}
-                <button type="button" className={styles.clToggle} onClick={() => setShowCl((v) => !v)}>
-                  {showCl ? "- Hide controlled load" : "+ Controlled load / off-peak hot water"}
-                </button>
-                {showCl && (
-                  <div className={`${styles.fieldGrid} ${styles.sectionGap}`}>
-                    <div className={styles.field}>
-                      <label htmlFor="cl">Controlled load (kWh)</label>
-                      <input id="cl" type="number" min={0} value={cl} onChange={(e) => setCl(parseFloat(e.target.value) || 0)} />
+                  <div className={w.pills}>
+                    <button type="button" className={mode === "simple" ? w.pillOn : w.pill} onClick={() => setMode("simple")}>One total</button>
+                    <button type="button" className={mode === "detailed" ? w.pillOn : w.pill} onClick={() => setMode("detailed")}>Split by time (peak / off-peak)</button>
+                  </div>
+                  {mode === "simple" ? (
+                    <div className={w.usageGrid}>
+                      <label className={w.rate} htmlFor="anytime">
+                        <span className={w.rateLabel}>Total usage</span>
+                        <span className={w.suffixWrap}>
+                          <input id="anytime" type="number" inputMode="decimal" min={0} value={anytime} onChange={(e) => setAnytime(parseFloat(e.target.value) || 0)} />
+                          <span className={w.suffix}>kWh</span>
+                        </span>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className={w.usageGrid}>
+                      {([["peak", "Peak", peak, setPeak], ["shoulder", "Shoulder (if listed)", shoulder, setShoulder], ["offpeak", "Off-peak", offpeak, setOffpeak]] as [string, string, number, (n: number) => void][]).map(([id, label, val, set]) => (
+                        <label className={w.rate} htmlFor={id} key={id}>
+                          <span className={w.rateLabel}>{label}</span>
+                          <span className={w.suffixWrap}>
+                            <input id={id} type="number" inputMode="decimal" min={0} value={val} onChange={(e) => set(parseFloat(e.target.value) || 0)} />
+                            <span className={w.suffix}>kWh</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" className={w.extraBtn} onClick={() => setShowCl((v) => !v)}>
+                    {showCl ? "− No separate hot-water meter" : "+ I have a separate off-peak hot-water meter (controlled load)"}
+                  </button>
+                  {showCl && (
+                    <div className={w.usageGrid}>
+                      <label className={w.rate} htmlFor="cl">
+                        <span className={w.rateLabel}>Controlled load</span>
+                        <span className={w.suffixWrap}>
+                          <input id="cl" type="number" inputMode="decimal" min={0} value={cl} onChange={(e) => setCl(parseFloat(e.target.value) || 0)} />
+                          <span className={w.suffix}>kWh</span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                  {hasSolarEff && (
+                    <div className={w.usageGrid}>
+                      <label className={w.rate} htmlFor="solarExport">
+                        <span className={w.rateLabel}>Solar sent to the grid</span>
+                        <span className={w.suffixWrap}>
+                          <input id="solarExport" type="number" inputMode="decimal" min={0} placeholder="e.g. 450" value={solarExportRaw} onChange={(e) => setSolarExportRaw(e.target.value)} />
+                          <span className={w.suffix}>kWh</span>
+                        </span>
+                        <span className={w.rateHint}>Usually labelled &ldquo;exported&rdquo; or &ldquo;feed-in&rdquo;.</span>
+                      </label>
+                    </div>
+                  )}
+                  {showUnlock && (
+                    <p className={w.skip}>Tip: a peak / off-peak split lets us price up to {matches.length + potentialWithTou} plans instead of {matches.length}.</p>
+                  )}
+                </section>
+
+                <section className={w.q}>
+                  <div className={w.qHead}>
+                    <span className={w.qNum}>5</span>
+                    <div>
+                      <h3 className={w.qTitle}>Your rates <span className={w.opt}>(recommended)</span></h3>
+                      <p className={w.qSub}>The prices on your current plan. They let us price your plan exactly and show it next to the cheapest on your dashboard.</p>
                     </div>
                   </div>
-                )}
-                {hasSolarEff && (
-                  <div className={`${styles.fieldGrid} ${styles.sectionGap}`}>
-                    <div className={styles.field}>
-                      <label htmlFor="solarExport">Solar exported (kWh)</label>
-                      <input
-                        id="solarExport"
-                        type="number"
-                        min={0}
-                        placeholder="e.g. 450"
-                        value={solarExportRaw}
-                        onChange={(e) => setSolarExportRaw(e.target.value)}
-                      />
-                      <span className={styles.unitNote}>On your bill as &ldquo;exported&rdquo;.</span>
-                    </div>
-                  </div>
-                )}
+                  <YourRates
+                    form={ratesForm}
+                    onChange={patchRates}
+                    split={mode === "detailed"}
+                    showCl={showCl}
+                    showSolar={hasSolarEff}
+                    cost={ratesCost}
+                    billTotal={typedBill !== null && !Number.isNaN(typedBill) ? typedBill : null}
+                  />
+                </section>
               </>
             )}
 
             <div className={styles.counterStrip}>
               <span className={styles.count}>{matches.length}</span>
-              <span className={styles.txt}>of {totalInDist} plans on this network priced for you</span>
+              <span className={styles.txt}>of {totalInDist} plans on your network will be priced for you</span>
             </div>
-            {!useEst && showUnlock && (
-              <div className={styles.unlockHint}>
-                Peak / off-peak figures could unlock up to {matches.length + potentialWithTou} plans instead of {matches.length}.
-              </div>
-            )}
           </div>
         )}
 
@@ -1018,7 +1119,7 @@ export default function Comparator() {
                 scrollToTop();
               }}
             >
-              Continue →
+              Next →
             </button>
           ) : (
             <button
@@ -1036,7 +1137,7 @@ export default function Comparator() {
         <div className={styles.stickyBar}>
           {inputStep < 3 ? (
             <button type="button" className={styles.stickyBtn} onClick={() => { setInputStep((s) => nextInputStep(s)); scrollToTop(); }}>
-              Continue · step {inputStep} of 3 →
+              Next · step {inputStep} of 3 →
             </button>
           ) : (
             <button type="button" className={styles.stickyBtn} onClick={() => { setStage("results"); scrollToTop(); }}>
