@@ -1,0 +1,20 @@
+.card { border-radius: 16px; padding: 20px; margin-bottom: 16px; color: #fff; display: flex; flex-direction: column; gap: 14px; background: radial-gradient(600px 300px at 100% 0%, rgba(14,165,160,0.45), transparent 60%), linear-gradient(135deg, #1b2a6b 0%, #0d6f78 100%); }
+.good { background: radial-gradient(600px 300px at 100% 0%, rgba(134,239,172,0.35), transparent 60%), linear-gradient(135deg, #14532d, #0d6f78); }
+.bad { background: radial-gradient(600px 300px at 100% 0%, rgba(251,191,36,0.35), transparent 60%), linear-gradient(135deg, #7f1d1d, #b45309); }
+.head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.kicker { display: inline-block; padding: 5px 11px; border-radius: 999px; background: #5eead4; color: #0a2a2a; font-size: 12px; font-weight: 800; }
+.retailer { font-size: clamp(26px, 5vw, 34px); font-weight: 900; letter-spacing: -0.03em; margin-top: 8px; }
+.plan { opacity: 0.85; font-size: 14px; }
+.toggle { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(255,255,255,0.14); align-self: flex-start; }
+.btn, .on { padding: 7px 13px; border-radius: 999px; border: 0; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; background: transparent; color: rgba(255,255,255,0.85); }
+.on { background: #fff; color: #0d6f78; }
+.nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tile { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); border-top: 4px solid #5eead4; display: flex; flex-direction: column; gap: 2px; }
+.tile b { font-size: 22px; font-weight: 900; }
+.tile span { font-size: 12px; opacity: 0.85; }
+.tileSave { border-top-color: #fbbf24; background: rgba(251,191,36,0.14); }
+.tileSave b { color: #fbbf24; }
+.chart { background: var(--surface); color: var(--ink); border-radius: 14px; padding: 12px 8px 4px; }
+.note { margin: 0; font-size: 12.5px; opacity: 0.8; }
+.go { align-self: flex-start; padding: 11px 20px; border-radius: 999px; background: #fbbf24; color: #1a1a1a; font-weight: 800; text-decoration: none; }
+@media (max-width: 640px) { .nums { grid-template-columns: 1fr; } }

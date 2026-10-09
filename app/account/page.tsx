@@ -13,6 +13,9 @@ import FunEquivalents from "../components/FunEquivalents";
 import ProfilePanels, { type ProfileData } from "../components/ProfilePanels";
 import LatestCheckCard, { type LatestCheck } from "../components/LatestCheckCard";
 import LearnCard from "../components/LearnCard";
+import MemberResult from "../components/MemberResult";
+import UpgradePlans from "../components/UpgradePlans";
+import type { Distributor } from "@/lib/plans";
 import { DEFAULT_PROFILE, estimateUsage } from "@/lib/profileUsage";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
@@ -68,6 +71,7 @@ interface SubscriberSummary {
   gas_best_plan_name: string | null;
   gas_best_total: number | null;
   gas_updated_at: string | null;
+  reference_total: number | null;
 }
 
 interface EpisodeRow {
@@ -200,7 +204,7 @@ export default function AccountPage() {
       const { data, error } = await supabase!
         .from("subscribers")
         .select(
-          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at",
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total",
         )
         .order("created_at", { ascending: false })
         .limit(1)
@@ -484,6 +488,21 @@ export default function AccountPage() {
                 )}
               </div>
 
+              {sub && sub.status === "active" && sub.distributor && sub.billing_days && (
+                <MemberResult
+                  distributor={sub.distributor as Distributor}
+                  days={sub.billing_days}
+                  peak={sub.peak_kwh ?? 0}
+                  shoulder={sub.shoulder_kwh ?? 0}
+                  offpeak={sub.offpeak_kwh ?? 0}
+                  anytime={sub.anytime_kwh ?? 0}
+                  cl={sub.controlled_load_kwh ?? 0}
+                  solarExportKwh={sub.has_solar ? sub.solar_export_kwh ?? 0 : 0}
+                  referenceTotal={sub.nmi || sub.current_plan_name ? sub.reference_total : null}
+                  source={sub.nmi || sub.current_plan_name ? "bill" : "answers"}
+                />
+              )}
+
               {sub && sub.status === "active" && sub.baseline_retailer && (
                 <div className={`${styles.planBox} ${styles.toneTeal}`}>
                   {switchedAt ? (
@@ -540,6 +559,10 @@ export default function AccountPage() {
               </>)}
 
               {!subLoading && sub && <ProfilePanels d={{ ...sub, source: sub.nmi || sub.current_plan_name ? "bill" : "answers" }} />}
+              {!subLoading && sub && sub.status === "active" && (
+                <UpgradePlans currentPlan={sub.plan} onChanged={(planId, cents) => setSub((p) => (p ? { ...p, plan: planId, amount_cents: cents } : p))} />
+              )}
+
               {!subLoading && sub && sub.status === "active" && (
                 <div className={`${styles.planBox} ${styles.toneTeal}`}>
                   <div className={styles.planName}>Gas</div>

@@ -27,12 +27,15 @@ export default function WelcomePage() {
   const [stage, setStage] = useState<Stage>("setting-up");
   const [result, setResult] = useState<Result | null>(null);
   const [message, setMessage] = useState("");
+  // Which setup step we're on, for the animated "please wait" list.
+  const [setupStep, setSetupStep] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
       if (!supabase) return !cancelled && setStage("no-session");
       // The sign-in link puts tokens in the URL; the client picks them up asynchronously.
+      setSetupStep(1);
       let session = (await supabase.auth.getSession()).data.session;
       for (let i = 0; i < 6 && !session; i++) {
         await new Promise((r) => setTimeout(r, 500));
@@ -41,6 +44,7 @@ export default function WelcomePage() {
       if (cancelled) return;
       if (!session) return setStage("no-session");
 
+      setSetupStep(2);
       // The payment webhook can land a moment after the redirect: wait for the membership row.
       let member = false;
       for (let i = 0; i < 12 && !member && !cancelled; i++) {
@@ -54,6 +58,8 @@ export default function WelcomePage() {
         return setStage("error");
       }
 
+      setSetupStep(3);
+      await new Promise((r) => setTimeout(r, 700));
       // Already read a bill? Straight to the dashboard.
       const { data: existing } = await supabase.from("bill_checks").select("id").eq("source", "bill").limit(1);
       if (cancelled) return;
@@ -92,7 +98,24 @@ export default function WelcomePage() {
           <Tag tone="green">Payment received</Tag>
           <h1>Let&apos;s start saving.</h1>
 
-          {stage === "setting-up" && <p className={styles.lede}>Setting up your membership…</p>}
+          {stage === "setting-up" && (
+            <div className={styles.setup} aria-live="polite">
+              <div className={styles.spinner} aria-hidden="true"><span /></div>
+              <p className={styles.lede}>Starting your membership. This takes a few seconds, please don&apos;t close the page.</p>
+              <ol className={styles.setupList}>
+                {["Payment received", "Signing you in", "Creating your membership", "Opening your dashboard"].map((label, i) => {
+                  const n = i;
+                  const state = n < setupStep ? "done" : n === setupStep ? "now" : "todo";
+                  return (
+                    <li key={label} className={styles[state]}>
+                      <span className={styles.dot}>{state === "done" ? "✓" : ""}</span>
+                      {label}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
 
           {(stage === "upload" || stage === "applying") && (
             <>
