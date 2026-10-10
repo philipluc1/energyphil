@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { PLAN_DISPLAY, PRICING_PLANS, fmtPrice, savePct, type PlanId } from "@/lib/pricingPlans";
+import { PLAN_DISPLAY, PLANS_ON_SALE, fmtPrice, savePct, type PlanId } from "@/lib/pricingPlans";
 import Tag from "./Tag";
 import styles from "./plancards.module.css";
 import ScrollReveal from "./ScrollReveal";
 
-/** The four membership plans. Pass `onChoose` to make the buttons start checkout
+/** The membership plans on sale. Pass `onChoose` to make the buttons start checkout
  * (results page), or `href` to link them somewhere (pricing page). */
 export default function PlanCards({
   onChoose,
@@ -21,7 +21,7 @@ export default function PlanCards({
 }) {
   return (
     <div className={`${styles.grid} ${dark ? styles.dark : ""}`}>
-      {PRICING_PLANS.map((plan, i) => {
+      {PLANS_ON_SALE.map((plan, i) => {
         const d = PLAN_DISPLAY[plan.id];
         const save = savePct(plan);
         const recurring = plan.mode === "subscription";

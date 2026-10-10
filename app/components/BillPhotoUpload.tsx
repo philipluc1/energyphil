@@ -110,7 +110,7 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
         <span className={styles.photoBolt}>⚡</span> Got your bill handy?
       </div>
       <p className={styles.helper}>
-        Snap a photo or upload a PDF and we&apos;ll fill it in. You can check everything before we calculate.
+        Snap a photo, upload the PDF, or screenshot your plan in your retailer&apos;s app. We read your usage <b>and the rates you actually pay</b>, so the answer is exact. You can check everything before we calculate.
         {access === "member" ? "" : " Your first reads are free; members can read a bill any time and keep every month's result."}
       </p>
 
@@ -129,7 +129,7 @@ export default function BillPhotoUpload({ onApply }: { onApply: (bill: Extracted
           onClick={() => fileInputRef.current?.click()}
           disabled={status === "reading"}
         >
-          Upload a photo or PDF
+          Upload bill, PDF or screenshot
         </button>
       </div>
 

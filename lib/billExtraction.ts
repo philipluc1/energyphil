@@ -34,6 +34,8 @@ export interface ExtractedBill {
   currentRates: CurrentRates | null;
   priceType: "fixed" | "variable" | null;
   priceFixedUntil: string | null;
+  /** When a discount or benefit period ends, if the bill says. */
+  discountEndsAt: string | null;
   warnings: string[];
 }
 
@@ -51,17 +53,17 @@ export interface CurrentRates {
  *  (the same units as lib/plans.ts) and drop anything implausible. */
 function readRates(r: Record<string, unknown>): CurrentRates | null {
   const gst = r.rates_include_gst === false ? 1.1 : 1;
-  const cents = (k: string, max: number, withGst = true) => {
+  const cents = (k: string, max: number, withGst = true, allowZero = false) => {
     const n = toFiniteNumber(r[k]);
-    if (n === null || n <= 0 || n > max) return null;
+    if (n === null || (n === 0 && !allowZero) || n > max) return null;
     return Math.round((n / 100) * (withGst ? gst : 1) * 1e5) / 1e5;
   };
   const rates: CurrentRates = {
     supply: cents("supply_charge_cents_per_day", 500),
     anytime: cents("anytime_rate_cents", 120),
-    peak: cents("peak_rate_cents", 120),
-    shoulder: cents("shoulder_rate_cents", 120),
-    offpeak: cents("offpeak_rate_cents", 120),
+    peak: cents("peak_rate_cents", 120, true, true),
+    shoulder: cents("shoulder_rate_cents", 120, true, true),
+    offpeak: cents("offpeak_rate_cents", 120, true, true),
     cl: cents("controlled_load_rate_cents", 120),
     solarFit: cents("solar_fit_cents", 60, false),
   };
@@ -134,6 +136,7 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     currentRates: readRates(r),
     priceType: r.price_type === "fixed" || r.price_type === "variable" ? r.price_type : null,
     priceFixedUntil: typeof r.price_fixed_until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.price_fixed_until) ? r.price_fixed_until : null,
+    discountEndsAt: typeof r.discount_ends === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.discount_ends) ? r.discount_ends : null,
     warnings,
   };
 }

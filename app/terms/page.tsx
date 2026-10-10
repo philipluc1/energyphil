@@ -68,8 +68,9 @@ export default function TermsPage() {
         <section className={styles.section}>
           <h2>5. Membership</h2>
           <p>
-            Membership is a paid subscription billed through Stripe at the price shown when you join. It renews automatically
-            until you cancel, which you can do at any time from My Dashboard. Cancelling stops future charges; you keep access to
+            Membership is billed through Stripe at the price shown when you join. Monthly, quarterly and half-yearly memberships
+            renew automatically until you cancel, which you can do at any time from My Dashboard. The once-off membership is a
+            single payment and never renews. Cancelling stops future charges; you keep access to
             the end of the period you&apos;ve paid for. Refund rules are in the{" "}
             <Link href="/cancellation-policy">Cancellation Policy</Link>. Bill reading is limited to a fair number of reads a day.
           </p>

@@ -17,9 +17,9 @@ export function planPriceType(retailer: string, planName: string): PriceType {
   return /rate ?fix|fixed|price ?lock|locked|guarantee/i.test(planName) ? "fixed" : "variable";
 }
 
-export const PRICE_TYPE_LABEL: Record<PriceType, string> = { fixed: "Fixed", variable: "Variable" };
+export const PRICE_TYPE_LABEL: Record<PriceType, string> = { fixed: "🔒 Fixed", variable: "Can change" };
 
 export const PRICE_TYPE_HELP: Record<PriceType, string> = {
-  variable: "Variable: the retailer can change your rates with notice. In Victoria most do it once a year, around 1 July.",
+  variable: "Prices can change: the retailer can change your rates with notice (most plans work like this). In Victoria it usually happens once a year, around 1 July.",
   fixed: "Fixed: your rates are locked for a set period (usually 1–2 years). Check the end date, because the rates can jump when it ends.",
 };

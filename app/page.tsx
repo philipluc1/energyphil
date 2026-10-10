@@ -85,7 +85,7 @@ export default function Home() {
               Are you paying too much for electricity?
             </h1>
             <p className={`${home.heroLede} ${home.rise}`} style={{ "--d": "240ms" } as CSSProperties}>
-              Tell us about your home. We&apos;ll find the cheapest Victorian plan for you and show what you&apos;d save.
+              Snap your bill, or answer a few quick questions. We&apos;ll find the cheapest Victorian plan for you and show what you&apos;d save.
               <span className={home.rollout}>Victoria now. NSW, SA and Queensland next.</span>
             </p>
             <div className={`${home.heroActions} ${home.rise}`} style={{ "--d": "360ms" } as CSSProperties}>
@@ -146,7 +146,7 @@ export default function Home() {
           </ScrollReveal>
           <div className={home.stepGrid}>
             {[
-              { img: "step-home.jpg", alt: "Tapping answers about your home", icon: <IconHome />, tag: <Tag tone="green">Free</Tag>, href: "/learn#how", h: "Tell us about your home", p: "Who lives there, how you heat it, whether you have solar or an EV. Just tap the answers." },
+              { img: "step-home.jpg", alt: "Tapping answers about your home", icon: <IconHome />, tag: <Tag tone="green">Free</Tag>, href: "/learn#how", h: "Snap your bill", p: "A photo, PDF or app screenshot gives the exact answer. No bill handy? Tap a few answers about your home instead." },
               { img: "step-save.jpg", alt: "Savings shown on a phone", icon: <IconChart />, tag: <Tag tone="green">Free</Tag>, href: "/learn#charts", h: "See what you could save", p: `We compare ${PLAN_COUNT} current plans from ${RETAILER_COUNT} retailers and show your saving per quarter, half-year and year.` },
               { img: "step-watch.jpg", alt: "A notification that a cheaper plan was found", icon: <IconBell />, tag: <Tag tone="amber" shine>Members</Tag>, href: "/learn#compare", h: "Switch, or let us keep watching", p: "Go straight to the retailer if you like what you see. Or join and we'll check every month for you." },
             ].map((st, i) => (
@@ -163,7 +163,7 @@ export default function Home() {
               </ScrollReveal>
             ))}
           </div>
-          <p className={home.dataNote}>Plan prices last updated {fmtUpdated()}.</p>
+          <p className={home.dataNote}>Plan prices checked {fmtUpdated()}.</p>
         </section>
 
       </div>
@@ -184,8 +184,8 @@ export default function Home() {
 
       <section className={`${home.band} ${home.bandDark}`}>
         <ScrollReveal className={home.bandInner}>
-          <h2 className={home.bandTitle}>No bill required.</h2>
-          <p className={home.bandText}>A few taps about your home is enough for a good estimate. Add a bill later if you want it sharper.</p>
+          <h2 className={home.bandTitle}>No bill handy? Start anyway.</h2>
+          <p className={home.bandText}>A few taps about your home gives a good estimate. Snap your bill when you can for the exact answer, using the rates you really pay.</p>
           <div className={home.tapRow}>
             {["3 people", "House", "Gas heating", "Air-con", "Solar 6.6 kW", "Home some of the day"].map((t, i) => (
               <span key={t} className={home.tap} style={{ animationDelay: `${i * 90}ms` }}>{t}</span>
@@ -205,7 +205,7 @@ export default function Home() {
             <span className={home.pulseLabel}>12 months, checked daily</span>
           </div>
           <p className={home.bandFoot}>
-            Prices come straight from each retailer&apos;s public data feed, last pulled {DATA_FACTS.lastPull}.{" "}
+            Prices come straight from each retailer&apos;s public data feed, checked {DATA_FACTS.lastPull}.{" "}
             <Link href="/learn#data">How we get and price them</Link>
           </p>
         </ScrollReveal>

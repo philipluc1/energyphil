@@ -7,6 +7,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // couple a day per connection, enough to try it for real before joining.
 const MAX_READS_PER_DAY = 10;
 const FREE_READS_PER_DAY = 2;
+// Total free (visitor) reads per day across the whole site. Raise it as traffic grows.
+const FREE_READS_ALL_VISITORS_PER_DAY = Number(process.env.FREE_READS_PER_DAY_TOTAL ?? 300);
 
 // Vision calls can take a few seconds; give it more room than the default.
 export const maxDuration = 30;
@@ -23,14 +25,14 @@ const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 
 const TOOL_SCHEMA = {
   name: "extract_bill_fields",
-  description: "Extract structured billing data from a photo of an Australian residential electricity, gas or dual-fuel bill.",
+  description: "Extract structured billing data from a photo, PDF or screenshot of an Australian residential electricity, gas or dual-fuel bill, or a screenshot of the customer's plan and rates in their retailer's app or online account.",
   input_schema: {
     type: "object" as const,
     properties: {
       is_electricity_bill: {
         type: "boolean",
         description:
-          "True if the image shows a residential electricity bill, or a dual-fuel bill that includes electricity. False for a gas-only bill, receipt or unrelated photo.",
+          "True if the image shows a residential electricity bill, a dual-fuel bill that includes electricity, or a retailer app/account screen showing the customer's electricity plan, rates or usage. False for a gas-only bill, receipt or unrelated photo.",
       },
       fuel: {
         type: ["string", "null"],
@@ -125,6 +127,10 @@ const TOOL_SCHEMA = {
           "Whether the electricity prices on this plan are fixed or variable. 'fixed' if the bill says the rates are fixed, locked, a 'rate fix' or 'price guarantee', or guaranteed until a date. 'variable' if it says variable rates or that prices may change. Null if the bill doesn't say.",
       },
       price_fixed_until: { type: ["string", "null"], description: "If prices are fixed, the date they're fixed until, as YYYY-MM-DD. Null otherwise." },
+      discount_ends: {
+        type: ["string", "null"],
+        description: "If the bill says a discount, pay-on-time discount, sign-up credit or 'benefit period' ends on a date, that date as YYYY-MM-DD. Null if not shown.",
+      },
       rates_include_gst: {
         type: ["boolean", "null"],
         description: "True if the unit rates and supply charge printed on the bill include GST, false if they are shown excluding GST (GST added as a separate line). Null if unclear.",
@@ -151,28 +157,45 @@ export async function POST(req: NextRequest) {
   // Members get a generous daily cap; visitors get a free taste, capped per
   // connection so the AI cost stays bounded. Both counted in bill_reads.
   const member = await requireActiveMember(req.headers.get("authorization"));
-  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  const rawIp = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  // IPv6 users can rotate addresses inside their /64, so count the /64.
+  const ip = rawIp.includes(":") ? rawIp.split(":").slice(0, 4).join(":") + "::/64" : rawIp;
   const key = member.ok ? member.email : `ip:${ip}`;
   const cap = member.ok ? MAX_READS_PER_DAY : FREE_READS_PER_DAY;
-  if (supabaseAdmin) {
-    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-    const { count } = await supabaseAdmin
+  // Without the database we can't count, so only members (who need it anyway) get through.
+  if (!supabaseAdmin) {
+    return NextResponse.json({ ok: false, message: "Photo reading isn't available right now. Type the numbers in below." }, { status: 503 });
+  }
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  // Record first, then count (this read included), so a burst of parallel
+  // uploads can't all slip under the limit.
+  await supabaseAdmin.from("bill_reads").insert({ email: key });
+  const { count } = await supabaseAdmin
+    .from("bill_reads")
+    .select("id", { count: "exact", head: true })
+    .eq("email", key)
+    .gte("created_at", since);
+  if ((count ?? 0) > cap) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: member.ok
+          ? `You've hit today's limit of ${MAX_READS_PER_DAY} bill reads. Try again tomorrow, or type the numbers in.`
+          : `That's today's ${FREE_READS_PER_DAY} free bill reads. Members can read up to ${MAX_READS_PER_DAY} a day, or type the numbers in below.`,
+      },
+      { status: 429 },
+    );
+  }
+  // A ceiling on free reads across everyone, so AI costs can't run away.
+  if (!member.ok) {
+    const { count: allFree } = await supabaseAdmin
       .from("bill_reads")
       .select("id", { count: "exact", head: true })
-      .eq("email", key)
+      .like("email", "ip:%")
       .gte("created_at", since);
-    if ((count ?? 0) >= cap) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: member.ok
-            ? `You've hit today's limit of ${MAX_READS_PER_DAY} bill reads. Try again tomorrow, or type the numbers in.`
-            : `That's today's ${FREE_READS_PER_DAY} free bill reads. Members can read up to ${MAX_READS_PER_DAY} a day, or type the numbers in below.`,
-        },
-        { status: 429 },
-      );
+    if ((allFree ?? 0) > FREE_READS_ALL_VISITORS_PER_DAY) {
+      return NextResponse.json({ ok: false, message: "Free photo reading is busy today. Type the numbers in below, or try tomorrow." }, { status: 429 });
     }
-    await supabaseAdmin.from("bill_reads").insert({ email: key });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

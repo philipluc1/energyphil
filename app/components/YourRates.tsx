@@ -91,6 +91,16 @@ export default function YourRates({
         )}
       </div>
 
+      <div className={styles.subQ}>
+        <span className={styles.subQLabel}>Does a discount or &ldquo;benefit period&rdquo; end soon? <span className={styles.opt}>(optional)</span></span>
+        <span className={styles.rateHint}>
+          Many plans are only cheap for the first year. If your bill or welcome pack gives an end date, add it and members get a reminder a month before.
+        </span>
+        <label className={styles.inline}>
+          Ends on <input type="date" value={form.discountEnds} onChange={(e) => onChange({ discountEnds: e.target.value })} />
+        </label>
+      </div>
+
       <label className={styles.rate} htmlFor="r-plan">
         <span className={styles.rateLabel}>Plan name <span className={styles.opt}>(optional)</span></span>
         <input id="r-plan" type="text" placeholder="e.g. Value Saver" value={form.planName} onChange={(e) => onChange({ planName: e.target.value })} />
@@ -106,6 +116,8 @@ export default function YourRates({
             <>Your rates add up to <b>{fmt(cost.total)}</b> but your bill says {fmt(billTotal)}. Discounts, credits or a typo usually explain it. We&apos;ll use your bill total.</>
           )}
         </div>
+      ) : cost.reason === "needCl" ? (
+        <div className={`${styles.checkBox} ${styles.checkWarn}`}>You have a separate hot-water meter. Add its controlled-load rate so we can price your plan.</div>
       ) : cost.reason === "needSplit" ? (
         <div className={`${styles.checkBox} ${styles.checkWarn}`}>Your plan has peak and off-peak rates. Pick &ldquo;Split by time&rdquo; above and enter your peak and off-peak kWh so we can price it.</div>
       ) : null}

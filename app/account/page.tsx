@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
 import { findPlan, fmtPrice } from "@/lib/pricingPlans";
 import { accumulatedSavings, mergeChecks, monthlySavings, type SavedCheck } from "@/lib/savings";
-import { findPlanRow, planRateRows } from "@/lib/plans";
+import { RETAILER_COUNT, findPlanRow, planRateRows } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
 import EnergyTips from "../components/EnergyTips";
 import SavingsChart from "../components/SavingsChart";
@@ -83,6 +83,7 @@ interface SubscriberSummary {
   current_rates?: CurrentRates | null;
   current_price_type?: string | null;
   current_price_fixed_until?: string | null;
+  discount_ends_at?: string | null;
 }
 
 interface EpisodeRow {
@@ -140,6 +141,7 @@ export default function AccountPage() {
   // What a non-member told us in the free check, kept in this browser.
   const [localCheck, setLocalCheck] = useState<ProfileData | null>(null);
   const [latest, setLatest] = useState<LatestCheck | null>(null);
+  const [localEv, setLocalEv] = useState(false);
   const [localPricing, setLocalPricing] = useState<{ planName: string | null; rates: CurrentRates | null; priceType: "fixed" | "variable" | null; fixedUntil: string | null } | null>(null);
   useEffect(() => {
     const t = setTimeout(() => {
@@ -156,6 +158,7 @@ export default function AccountPage() {
         if (!raw) return;
         const d = JSON.parse(raw);
         const profile = { ...DEFAULT_PROFILE, ...(d.profile ?? {}) };
+        setLocalEv(profile.ev === true);
         const days = typeof d.days === "number" ? d.days : 91;
         const est = d.usageSource === "bill" ? null : estimateUsage(profile, days);
         setLocalCheck({
@@ -176,7 +179,7 @@ export default function AccountPage() {
           anytime_kwh: est ? 0 : d.mode === "simple" ? d.anytime ?? null : null,
           controlled_load_kwh: est ? est.cl : d.cl ?? null,
           has_solar: est ? profile.hasSolar : typeof d.hasSolar === "boolean" ? d.hasSolar : null,
-          solar_export_kwh: est ? est.solarExportKwh : null,
+          solar_export_kwh: est ? est.solarExportKwh : d.hasSolar && parseFloat(d.solarExportRaw) > 0 ? parseFloat(d.solarExportRaw) : null,
           baseline_retailer: (() => { try { return JSON.parse(window.localStorage.getItem("utilo.result.v1") ?? "null")?.bestRetailer ?? null; } catch { return null; } })(),
           baseline_plan_name: (() => { try { return JSON.parse(window.localStorage.getItem("utilo.result.v1") ?? "null")?.bestPlan ?? null; } catch { return null; } })(),
           home_profile: est ? profile : null,
@@ -230,7 +233,7 @@ export default function AccountPage() {
       setSubError("");
       const BASE_COLS =
           "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
-      const PRICING_COLS = ", current_rates, current_price_type, current_price_fixed_until";
+      const PRICING_COLS = ", current_rates, current_price_type, current_price_fixed_until, discount_ends_at";
       const pick = (cols: string) =>
         supabase!.from("subscribers").select(cols).order("created_at", { ascending: false }).limit(1).maybeSingle();
       let { data, error } = await pick(BASE_COLS + PRICING_COLS);
@@ -385,6 +388,31 @@ export default function AccountPage() {
   }, [stage, themeMode]);
   const [period, setPeriod] = useState<Period>("year");
   const [showSwitchForm, setShowSwitchForm] = useState(false);
+  // Deal end dates (discount / benefit period, fixed price), editable on the Savings tab.
+  const [dealForm, setDealForm] = useState<{ discount: string; fixed: string } | null>(null);
+  const [dealMsg, setDealMsg] = useState("");
+  const [dealBusy, setDealBusy] = useState(false);
+
+  async function saveDealDates() {
+    if (!supabase || !dealForm) return;
+    setDealBusy(true);
+    setDealMsg("");
+    const { data } = await supabase.auth.getSession();
+    const res = await fetch("/api/deal-dates", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ discountEndsAt: dealForm.discount || null, fixedUntil: dealForm.fixed || null }),
+    }).catch(() => null);
+    const body = await res?.json().catch(() => null);
+    setDealBusy(false);
+    if (body?.ok) {
+      setSub((p) => (p ? { ...p, discount_ends_at: body.discountEndsAt, current_price_fixed_until: body.fixedUntil, ...(body.fixedUntil ? { current_price_type: "fixed" } : {}) } : p));
+      setDealForm(null);
+      setDealMsg("Saved. We'll email you a month before.");
+    } else {
+      setDealMsg(body?.message ?? "Couldn't save that.");
+    }
+  }
   const isMember = !!sub && sub.status === "active";
 
   function changeTab(t: Tab) {
@@ -410,7 +438,9 @@ export default function AccountPage() {
   // and the Savings tab always quote the same numbers.
   const cmpInput: ComparisonInput | null = useMemo(() => {
     if (isMember && sub!.distributor && sub!.billing_days) {
-      const fromBill = !!(sub!.nmi || sub!.current_plan_name);
+      // Any stored reference_total is a real bill (typed, read or priced from
+      // their rates); without one we compare against the default offer.
+      const fromBill = (sub!.reference_total ?? 0) > 0;
       return {
         distributor: sub!.distributor as Distributor,
         days: sub!.billing_days,
@@ -423,6 +453,7 @@ export default function AccountPage() {
         currentRates: sub!.current_rates ?? null,
         currentPriceType: sub!.current_price_type === "fixed" || sub!.current_price_type === "variable" ? sub!.current_price_type : null,
         currentFixedUntil: sub!.current_price_fixed_until ?? null,
+        ev: (sub!.home_profile as { ev?: unknown } | null)?.ev === true,
       };
     }
     if (!isMember && localCheck && localCheck.distributor && localCheck.billing_days) {
@@ -437,10 +468,11 @@ export default function AccountPage() {
         currentRates: localPricing?.rates ?? null,
         currentPriceType: localPricing?.priceType ?? null,
         currentFixedUntil: localPricing?.fixedUntil ?? null,
+        ev: localEv,
       };
     }
     return null;
-  }, [isMember, sub, localCheck, latest, localPricing]);
+  }, [isMember, sub, localCheck, latest, localPricing, localEv]);
   const summary = useMemo(() => (cmpInput ? summariseComparison(cmpInput) : null), [cmpInput]);
   const savedShown = useCountUp(accumulated.total);
   const firstName = ((isMember ? sub!.customer_name : localCheck?.customer_name) ?? "").trim().split(/\s+/)[0] || "";
@@ -635,7 +667,7 @@ export default function AccountPage() {
                 <section className={styles.emptyVerdict}>
                   <span className={styles.stateLabel}>Are you on the cheapest plan?</span>
                   <h2>{isMember ? "Upload a bill and we'll tell you." : "Run the free check and your answer lands here."}</h2>
-                  <p>It takes about two minutes. We compare every Victorian plan on your network against your usage.</p>
+                  <p>It takes about two minutes. We compare the published plans of {RETAILER_COUNT} retailers on your network against your usage.</p>
                   {isMember ? (
                     <a href="#savings" className={styles.btnPrimary}>Upload a bill</a>
                   ) : (
@@ -652,7 +684,7 @@ export default function AccountPage() {
                     ) : (
                       <div className={styles.panelCard}>
                         <div className={styles.panelTitle}>Retailer comparison</div>
-                        <p className={styles.panelText}>Once we have your usage, every plan on your network shows here, cheapest first.</p>
+                        <p className={styles.panelText}>Once we have your usage, every plan we track on your network shows here, cheapest first.</p>
                       </div>
                     )
                   )}
@@ -791,6 +823,52 @@ export default function AccountPage() {
                           )}
                         </section>
 
+                        <ValueTally sub={sub!} saved={switchedAt ? accumulated.total : 0} switched={!!switchedAt} />
+
+                        <section className={styles.panelCard}>
+                          <div className={styles.panelTitleRow}>
+                            <div className={styles.panelTitle}>Price changes we&apos;re watching for you</div>
+                            {!dealForm && (
+                              <button type="button" className={styles.btnGhost} onClick={() => setDealForm({ discount: sub!.discount_ends_at ?? "", fixed: sub!.current_price_fixed_until ?? "" })}>
+                                Add or edit dates
+                              </button>
+                            )}
+                          </div>
+                          <p className={styles.panelText}>These are the moments people end up paying more. We email you a month before each one.</p>
+                          <ul className={styles.watchList}>
+                            {[
+                              { label: "Your discount or benefit period ends", date: sub!.discount_ends_at ?? null, empty: "Not set. Many plans are only cheap for the first year." },
+                              { label: "Your fixed price ends", date: sub!.current_price_fixed_until ?? null, empty: "Not set (most plans are variable)." },
+                              { label: "Yearly price changes in Victoria", date: nextJulyFirst(), empty: "" },
+                            ].map((w) => (
+                              <li key={w.label}>
+                                <span className={styles.watchLabel}>{w.label}</span>
+                                {w.date ? (
+                                  <span className={styles.watchDate}>
+                                    {fmtDate(w.date)} <em className={daysUntil(w.date) <= 30 ? styles.chipDue : styles.chipDone}>{daysUntil(w.date) < 0 ? "passed" : `in ${daysUntil(w.date)} days`}</em>
+                                  </span>
+                                ) : (
+                                  <span className={styles.watchEmpty}>{w.empty}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                          {dealForm && (
+                            <div className={styles.switchRow}>
+                              <label>
+                                Discount ends <input type="date" value={dealForm.discount} onChange={(e) => setDealForm((f) => (f ? { ...f, discount: e.target.value } : f))} />
+                              </label>
+                              <label>
+                                Fixed price ends <input type="date" value={dealForm.fixed} onChange={(e) => setDealForm((f) => (f ? { ...f, fixed: e.target.value } : f))} />
+                              </label>
+                              <button type="button" className={styles.btnPrimary} disabled={dealBusy} onClick={saveDealDates}>{dealBusy ? "Saving…" : "Save"}</button>
+                              <button type="button" className={styles.linkBtn} onClick={() => setDealForm(null)}>Cancel</button>
+                            </div>
+                          )}
+                          {dealMsg && <p className={styles.panelText}><b>{dealMsg}</b></p>}
+                          <p className={styles.stateFine}>Not sure of the dates? They&apos;re usually on your welcome pack or in your retailer&apos;s app. A new bill read fills them in when they&apos;re printed.</p>
+                        </section>
+
                         <section className={styles.panelCard} id="read-bill">
                           <div className={styles.panelTitleRow}>
                             <div className={styles.panelTitle}>This month&apos;s bill check</div>
@@ -838,6 +916,7 @@ export default function AccountPage() {
                     <>
                       {isMember ? (
                         <>
+                          <ValueTally sub={sub!} saved={switchedAt ? accumulated.total : 0} switched={!!switchedAt} />
                           <section className={styles.panelCard}>
                             <div className={styles.panelTitleRow}>
                               <div>
@@ -901,5 +980,65 @@ export default function AccountPage() {
         </div>
       </div>
     </>
+  );
+}
+
+/** Days from today until an ISO date (negative if passed). */
+function daysUntil(iso: string): number {
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - today.getTime()) / 86_400_000);
+}
+
+/** The next 1 July: when Victorian retailers usually change prices. */
+function nextJulyFirst(): string {
+  const now = new Date();
+  const y = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+  return `${y}-07-01`;
+}
+
+/** What membership has cost so far (from the plan and start date). */
+function paidSoFar(sub: SubscriberSummary): number {
+  const plan = findPlan(sub.plan);
+  const cents = sub.amount_cents ?? plan?.priceCents ?? 0;
+  if (!plan || plan.mode === "payment" || !plan.intervalCount) return cents / 100;
+  const start = new Date(sub.created_at);
+  const now = new Date();
+  const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) - (now.getDate() < start.getDate() ? 1 : 0);
+  const periods = Math.max(0, Math.floor(months / plan.intervalCount)) + 1;
+  return (periods * cents) / 100;
+}
+
+/** "Saved vs paid": the membership's value, in the customer's own numbers. */
+function ValueTally({ sub, saved, switched }: { sub: SubscriberSummary; saved: number; switched: boolean }) {
+  const paid = paidSoFar(sub);
+  const ahead = saved - paid;
+  const max = Math.max(saved, paid, 1);
+  const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
+  return (
+    <section className={styles.panelCard}>
+      <div className={styles.panelTitle}>Your membership so far</div>
+      <div className={styles.tally}>
+        <div className={styles.tallyRow}>
+          <span>Saved by switching</span>
+          <span className={styles.tallyTrack}><span className={styles.tallySaved} style={{ width: `${(saved / max) * 100}%` }} /></span>
+          <b>{money(saved)}</b>
+        </div>
+        <div className={styles.tallyRow}>
+          <span>Membership paid</span>
+          <span className={styles.tallyTrack}><span className={styles.tallyPaid} style={{ width: `${(paid / max) * 100}%` }} /></span>
+          <b>{money(paid)}</b>
+        </div>
+      </div>
+      <p className={styles.panelText}>
+        {!switched
+          ? "Savings start counting the day you switch. Tell us the date on the Savings tab once you've moved."
+          : ahead >= 0
+            ? `You're about ${money(ahead)} ahead after paying for membership.`
+            : `Not ahead yet: savings build up month by month after you switch.`}{" "}
+        Savings are estimates from your usage and today&apos;s prices.
+      </p>
+    </section>
   );
 }

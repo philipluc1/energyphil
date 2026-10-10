@@ -2,11 +2,16 @@ import { computeDashboardStats, computeSubscriberStats, LeadRow, SubscriberRow }
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import DashboardCharts from "./DashboardCharts";
 import styles from "./dashboard.module.css";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { DASH_COOKIE, dashCookieValid } from "@/lib/dashAuth";
 
 // Always hit the database fresh — this is a live admin view, never cached.
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  // Second check alongside middleware.ts, so the leads list is never served without the password.
+  if (!(await dashCookieValid((await cookies()).get(DASH_COOKIE)?.value))) redirect("/dashboard/login");
   if (!supabaseAdmin) {
     return (
       <div className={styles.wrap}>

@@ -15,7 +15,7 @@ export default function PricingPage() {
       <div className={styles.wrap}>
         <section className={home.pageHead}>
           <Tag tone="amber" shine>Cancel any time</Tag>
-          <h1>Keep an eye on it for $7 a month.</h1>
+          <h1>Keep an eye on it for $39 a year.</h1>
           <p className={styles.lede}>
             The check is always free, for electricity and gas. Members get a check every month, an email when something cheaper appears,
             a running tally of what you&apos;ve saved, and bill reading from a photo or PDF.
@@ -23,7 +23,7 @@ export default function PricingPage() {
         </section>
         <PlanBand
           title="One membership. Electricity and gas. Checked every morning."
-          intro={<>Pick how often you want to pay. Every plan includes the same checking; the longer ones just cost less per month.</>}
+          intro={<>Same checking either way. Yearly works out at $3.25 a month; monthly lets you try it first.</>}
           cards={<PlanCards href="/check" cta="Start free check" dark />}
         />
         <p className={home.dataNote}>

@@ -18,17 +18,19 @@ export interface RatesForm {
   exGst: boolean;   // true when the bill shows rates excluding GST
   priceType: PriceTypeAnswer;
   fixedUntil: string; // YYYY-MM-DD
+  discountEnds: string; // YYYY-MM-DD, when a discount / benefit period ends
   planName: string;
 }
 
 export const EMPTY_RATES_FORM: RatesForm = {
   supply: "", anytime: "", peak: "", shoulder: "", offpeak: "", cl: "", fit: "",
-  exGst: false, priceType: "unsure", fixedUntil: "", planName: "",
+  exGst: false, priceType: "unsure", fixedUntil: "", discountEnds: "", planName: "",
 };
 
-function centsToDollars(raw: string, max: number, gst: number): number | null {
+function centsToDollars(raw: string, max: number, gst: number, allowZero = false): number | null {
+  if (raw.trim() === "") return null;
   const n = parseFloat(raw);
-  if (!Number.isFinite(n) || n <= 0 || n > max) return null;
+  if (!Number.isFinite(n) || n < 0 || (n === 0 && !allowZero) || n > max) return null;
   return Math.round((n / 100) * gst * 1e5) / 1e5;
 }
 
@@ -38,9 +40,9 @@ export function ratesFromForm(f: RatesForm): CurrentRates | null {
   const r: CurrentRates = {
     supply: centsToDollars(f.supply, 500, gst),
     anytime: centsToDollars(f.anytime, 120, gst),
-    peak: centsToDollars(f.peak, 120, gst),
-    shoulder: centsToDollars(f.shoulder, 120, gst),
-    offpeak: centsToDollars(f.offpeak, 120, gst),
+    peak: centsToDollars(f.peak, 120, gst, true),
+    shoulder: centsToDollars(f.shoulder, 120, gst, true),
+    offpeak: centsToDollars(f.offpeak, 120, gst, true),
     cl: centsToDollars(f.cl, 120, gst),
     solarFit: centsToDollars(f.fit, 60, 1),
   };
@@ -62,7 +64,7 @@ export function ratesToForm(r: CurrentRates | null, extra?: Partial<RatesForm>):
 
 export type RatesCostResult =
   | { ok: true; total: number }
-  | { ok: false; reason: "incomplete" | "needSplit" };
+  | { ok: false; reason: "incomplete" | "needSplit" | "needCl" };
 
 /** What their own plan costs for this usage, priced from the rates they typed. */
 export function costFromRates(r: CurrentRates | null, usage: UsageInput): RatesCostResult {
@@ -70,6 +72,7 @@ export function costFromRates(r: CurrentRates | null, usage: UsageInput): RatesC
   const hasSingle = r.anytime !== null;
   const hasTou = r.peak !== null && r.offpeak !== null;
   if (!hasSingle && !hasTou) return { ok: false, reason: "incomplete" };
+  if (usage.cl > 0 && r.cl === null) return { ok: false, reason: "needCl" };
   const row: PlanRow = ["Your plan", "", "Your plan", "MARKET", r.supply, hasSingle ? r.anytime : null, hasSingle ? null : r.peak, hasSingle ? null : r.shoulder, hasSingle ? null : r.offpeak, r.cl, r.solarFit];
   const total = computeBill(row, usage);
   if (total === null) return { ok: false, reason: hasTou && !hasSingle ? "needSplit" : "incomplete" };

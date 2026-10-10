@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BIG_SAVING_PER_YEAR, PRICE_CHANGE_CLAUSE, QUIET_DAYS_AFTER_SWITCH } from "@/lib/dataPolicy";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
+import { esc, sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { computeBest, isMeaningfullyCheaper, fmtCurrency } from "@/lib/priceWatch";
 import type { Distributor } from "@/lib/plans";
+import { rejectUnlessCron } from "@/lib/cronAuth";
 
 // Vercel Cron (see vercel.json) hits this once a day. It re-prices every
 // saved profile against today's lib/plans.ts data and emails anyone for whom
@@ -14,6 +15,7 @@ import type { Distributor } from "@/lib/plans";
 export const maxDuration = 60;
 
 interface SubscriberWatchRow {
+  home_profile?: unknown;
   id: string;
   email: string;
   status: string;
@@ -32,6 +34,8 @@ interface SubscriberWatchRow {
 }
 
 interface LeadWatchRow {
+  home_profile?: unknown;
+  solar_export_kwh?: number | null;
   id: string;
   email: string;
   distributor: string | null;
@@ -62,13 +66,8 @@ export async function GET(req: NextRequest) {
   // Vercel sends an Authorization header matching CRON_SECRET when that env
   // var is set (see vercel.json) — set CRON_SECRET in Vercel before relying
   // on this in production so random visitors to the URL can't trigger it.
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
-    }
-  }
+  const denied = rejectUnlessCron(req);
+  if (denied) return denied;
 
   if (!supabaseAdmin) {
     return NextResponse.json({ ok: false, message: "Supabase not configured — nothing to recheck." });
@@ -89,7 +88,7 @@ export async function GET(req: NextRequest) {
   const { data: subsData, error: subsErr } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, baseline_total, reference_total, last_notified_total, switched_at",
+      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, baseline_total, reference_total, last_notified_total, switched_at, home_profile",
     )
     .eq("status", "active")
     .eq("unsubscribed", false)
@@ -111,6 +110,7 @@ export async function GET(req: NextRequest) {
         anytime: sub.anytime_kwh ?? 0,
         cl: sub.controlled_load_kwh ?? 0,
         solarExportKwh: sub.solar_export_kwh ?? 0,
+        ev: hasEv(sub.home_profile),
       });
       if (!best) continue;
 
@@ -127,18 +127,18 @@ export async function GET(req: NextRequest) {
       const sent = await sendEmail({
         to: sub.email,
         subject: "A cheaper electricity plan just showed up for you",
-        cta: { label: "See the comparison", url: `${origin}/check` },
+        cta: { label: "See it on your dashboard", url: `${origin}/account#compare` },
         html: `
-          <p>Good news — while keeping an eye on the market for you, we found a plan that's now cheaper than what you were last on:</p>
-          <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${best.bestRetailer} — ${best.bestPlanName}</p>
-          <p style="margin:0 0 16px;">Estimated <strong>${fmtCurrency(previousBest! - best.bestTotal)}</strong> cheaper than your last checked plan, for the same billing period.</p>
-          <p><a href="${origin}/check">See the full comparison and how to switch →</a></p>
+          <p>Good news: while keeping an eye on the market for you, we found a plan that beats the one we last recommended.</p>
+          <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${esc(best.bestRetailer)} (${esc(best.bestPlanName)})</p>
+          <p style="margin:0 0 16px;">About <strong>${fmtCurrency(((previousBest! - best.bestTotal) * 365) / days)} a year</strong> cheaper than our last pick for you.</p>
+          <p><a href="${origin}/account#compare">See every plan and how to switch →</a></p>
           <p style="color:#666;font-size:13px;">${PRICE_CHANGE_CLAUSE}</p>
           ${unsubscribeFooter(
             origin,
             "subscriber",
             sub.id,
-            "You're getting this because you're subscribed to Utilo's ongoing monitoring. This link won't cancel your plan — contact us for that.",
+            "You're getting this because you're subscribed to Utilo's ongoing monitoring. This link won't cancel your membership; you can manage or cancel it any time from your dashboard.",
           )}
         `,
       });
@@ -168,7 +168,8 @@ export async function GET(req: NextRequest) {
             .eq("subscriber_id", sub.id)
             .is("ended_at", null);
 
-          const dailyRate = (sub.reference_total - best.bestTotal) / billingDays;
+          // Never negative: a plan that costs more than their bill isn't a saving.
+          const dailyRate = Math.max(0, (sub.reference_total - best.bestTotal) / billingDays);
           const { error: episodeErr } = await supabaseAdmin.from("savings_episodes").insert({
             subscriber_id: sub.id,
             email: sub.email,
@@ -191,7 +192,7 @@ export async function GET(req: NextRequest) {
   const { data: leadsData, error: leadsErr } = await supabaseAdmin
     .from("leads")
     .select(
-      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, best_retailer, best_total, last_notified_total",
+      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, best_retailer, best_total, last_notified_total, home_profile",
     )
     .eq("wants_price_alerts", true)
     .eq("unsubscribed", false)
@@ -212,6 +213,8 @@ export async function GET(req: NextRequest) {
         offpeak: lead.offpeak_kwh ?? 0,
         anytime: lead.anytime_kwh ?? 0,
         cl: lead.controlled_load_kwh ?? 0,
+        solarExportKwh: lead.solar_export_kwh ?? 0,
+        ev: hasEv(lead.home_profile),
       });
       if (!best) continue;
 
@@ -223,9 +226,9 @@ export async function GET(req: NextRequest) {
         subject: "A cheaper electricity plan just showed up in your area",
         cta: { label: "See it and switch", url: `${origin}/check` },
         html: `
-          <p>When you checked your bill with Utilo, the best match was ${lead.best_retailer ?? "your previous result"}. We just found something cheaper:</p>
-          <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${best.bestRetailer} — ${best.bestPlanName}</p>
-          <p style="margin:0 0 16px;">Estimated <strong>${fmtCurrency(previousBest! - best.bestTotal)}</strong> cheaper, for the same billing period.</p>
+          <p>When you checked your plan with Utilo, the best match was ${esc(lead.best_retailer ?? "your previous result")}. We just found something cheaper:</p>
+          <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${esc(best.bestRetailer)} (${esc(best.bestPlanName)})</p>
+          <p style="margin:0 0 16px;">About <strong>${fmtCurrency(((previousBest! - best.bestTotal) * 365) / (lead.billing_days ?? 91))} a year</strong> cheaper than that earlier match.</p>
           <p><a href="${origin}/check">See it and switch →</a></p>
           <p style="color:#666;font-size:13px;">${PRICE_CHANGE_CLAUSE}</p>
           <p>Want us to keep doing this automatically from now on, instead of waiting for an email like this one?
@@ -252,12 +255,76 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // --- Deal-ending alerts: a month before a member's discount / benefit
+  // period or fixed price ends, tell them and show today's cheapest plan.
+  // Separate query so a database without these columns yet doesn't stop the rest.
+  let dealAlerts = 0;
+  const { data: dealSubs, error: dealErr } = await supabaseAdmin
+    .from("subscribers")
+    .select("id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, home_profile, discount_ends_at, current_price_fixed_until, deal_alert_sent_for")
+    .eq("status", "active")
+    .eq("unsubscribed", false)
+    .or("discount_ends_at.not.is.null,current_price_fixed_until.not.is.null");
+  if (dealErr) console.error("recheck-prices: deal dates not loaded (run supabase/schema.sql?)", dealErr.message);
+  for (const sub of (dealSubs ?? []) as DealRow[]) {
+    try {
+      const due = [
+        { date: sub.discount_ends_at, what: "discount (or benefit period)" },
+        { date: sub.current_price_fixed_until, what: "fixed price" },
+      ]
+        .filter((d): d is { date: string; what: string } => !!d.date)
+        .map((d) => ({ ...d, days: Math.round((new Date(`${d.date}T00:00:00Z`).getTime() - Date.now()) / 86_400_000) }))
+        .filter((d) => d.days >= 0 && d.days <= DEAL_WARNING_DAYS && d.date !== sub.deal_alert_sent_for)
+        .sort((x, y) => x.days - y.days)[0];
+      if (!due) continue;
+      const best = sub.distributor
+        ? computeBest({
+            distributor: sub.distributor as Distributor,
+            billingDays: sub.billing_days ?? 91,
+            peak: sub.peak_kwh ?? 0,
+            shoulder: sub.shoulder_kwh ?? 0,
+            offpeak: sub.offpeak_kwh ?? 0,
+            anytime: sub.anytime_kwh ?? 0,
+            cl: sub.controlled_load_kwh ?? 0,
+            solarExportKwh: sub.solar_export_kwh ?? 0,
+            ev: hasEv(sub.home_profile),
+          })
+        : null;
+      const when = new Date(`${due.date}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "UTC" });
+      const days = sub.billing_days ?? 91;
+      const yearly = best && sub.reference_total ? ((sub.reference_total - best.bestTotal) * 365) / days : null;
+      const sent = await sendEmail({
+        to: sub.email,
+        subject: `Your ${due.what} ends on ${when}`,
+        cta: { label: "See your options", url: `${origin}/account#compare` },
+        html: `
+          <p>Heads up: your electricity ${esc(due.what)} ends on <strong>${esc(when)}</strong> (in ${due.days} days). Prices often go up when that happens.</p>
+          ${best ? `<p style="font-size:18px;font-weight:700;margin:16px 0 4px;">Cheapest for you today: ${esc(best.bestRetailer)} (${esc(best.bestPlanName)})</p>` : ""}
+          ${yearly !== null && yearly >= 50 ? `<p style="margin:0 0 16px;">About <strong>${fmtCurrency(yearly)} a year</strong> less than your last bill, before your current deal ends.</p>` : ""}
+          <p>Now is a good time to compare and, if it's worth it, switch or ask your retailer to match it.</p>
+          <p><a href="${origin}/account#compare">See every plan on your dashboard →</a></p>
+          ${unsubscribeFooter(origin, "subscriber", sub.id, "You're getting this because you're a Utilo member and told us when your deal ends.")}
+        `,
+      });
+      if (sent) {
+        dealAlerts++;
+        await supabaseAdmin.from("subscribers").update({ deal_alert_sent_for: due.date }).eq("id", sub.id);
+      }
+    } catch (err) {
+      console.error("recheck-prices: deal alert failed", sub.id, err);
+      errors++;
+    }
+  }
+
   // --- Follow-up sequence for free leads: day 1, day 3, day 7 after their check ---
   // Skips anyone who has since subscribed or unsubscribed.
   let dripSent = 0;
   const { data: dripLeads, error: dripErr } = await supabaseAdmin
     .from("leads")
-    .select("id, email, created_at, drip_step, best_retailer, best_plan_name, estimated_saving, billing_days")
+    .select("id, email, created_at, drip_step, best_retailer, best_plan_name, estimated_saving, billing_days, wants_price_alerts")
+    // Everyone who asked gets their result (step 0). Follow-ups (steps 1-2)
+    // only go to people who ticked the box (Spam Act consent).
+    .or("wants_price_alerts.eq.true,drip_step.eq.0")
     .eq("unsubscribed", false)
     .lt("drip_step", 3)
     .lte("created_at", new Date(Date.now() - 1 * 86_400_000).toISOString())
@@ -281,9 +348,15 @@ export async function GET(req: NextRequest) {
       }
       const ageDays = (Date.now() - new Date(lead.created_at).getTime()) / 86_400_000;
       const step = lead.drip_step; // 0, 1 or 2 → next email is DRIP_DAYS[step]
+      if (step >= 1 && !lead.wants_price_alerts) {
+        await supabaseAdmin.from("leads").update({ drip_step: 3 }).eq("id", lead.id);
+        continue;
+      }
       if (ageDays < DRIP_DAYS[step]) continue;
-      const yearly = lead.estimated_saving && lead.billing_days ? (lead.estimated_saving / lead.billing_days) * 365 : null;
-      const plan = lead.best_retailer ? `${lead.best_retailer}${lead.best_plan_name ? ` — ${lead.best_plan_name}` : ""}` : "the plan we found";
+      const rawYearly = lead.estimated_saving && lead.billing_days ? (lead.estimated_saving / lead.billing_days) * 365 : null;
+      // No "you're losing $X a week" emails to people already on a good deal.
+      const yearly = rawYearly !== null && rawYearly >= 1 ? rawYearly : null;
+      const plan = lead.best_retailer ? esc(`${lead.best_retailer}${lead.best_plan_name ? ` (${lead.best_plan_name})` : ""}`) : "the plan we found";
       const emails = [
         {
           subject: yearly ? `Your result: about ${fmtCurrency(yearly)} a year` : "Your Utilo result",
@@ -298,7 +371,7 @@ export async function GET(req: NextRequest) {
           subject: "Prices move. We can keep watching for you",
           html: `
             <p>Retailers change their plans through the year, so a plan that's cheapest today may not be in a few months.</p>
-            <p>Members get a check every morning, an email only when it's worth switching, bill reading from a photo, and a running tally of what they've saved. From $7 a month, cancel any time.</p>
+            <p>Members get a check every morning, an email only when it's worth switching, bill reading from a photo, and a running tally of what they've saved. $39 a year (or $7 month to month), cancel any time.</p>
             <p><a href="${origin}/pricing">See what members get →</a></p>`,
         },
         {
@@ -335,12 +408,35 @@ export async function GET(req: NextRequest) {
     "members alerted": subscribersNotified,
     "free users alerted": leadsNotified,
     "follow-up emails sent": dripSent,
+    "deal-ending alerts": dealAlerts,
     errors,
   });
-  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, errors });
+  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, errors });
+}
+
+/** Warn this many days before a discount or fixed price ends. */
+const DEAL_WARNING_DAYS = 30;
+
+interface DealRow {
+  id: string;
+  email: string;
+  distributor: string | null;
+  billing_days: number | null;
+  peak_kwh: number | null;
+  shoulder_kwh: number | null;
+  offpeak_kwh: number | null;
+  anytime_kwh: number | null;
+  controlled_load_kwh: number | null;
+  solar_export_kwh: number | null;
+  reference_total: number | null;
+  home_profile: unknown;
+  discount_ends_at: string | null;
+  current_price_fixed_until: string | null;
+  deal_alert_sent_for: string | null;
 }
 
 interface DripLeadRow {
+  wants_price_alerts?: boolean;
   id: string;
   email: string;
   created_at: string;
@@ -350,3 +446,9 @@ interface DripLeadRow {
   estimated_saving: number | null;
   billing_days: number | null;
 }
+
+/** True when the saved home answers say they charge an EV at home. */
+function hasEv(profile: unknown): boolean {
+  return !!profile && typeof profile === "object" && (profile as { ev?: unknown }).ev === true;
+}
+

@@ -20,7 +20,7 @@ export default function GasPage() {
           <h1>Check your gas plan</h1>
           <p className={styles.lede}>
             Three numbers from your gas bill: the network, the days, and the megajoules. We price every gas plan we hold for your network and show the
-            cheapest. Got electricity too? Do both and we&apos;ll show the combined saving on your dashboard.
+            cheapest. Got electricity too? Check that as well; members see both on their dashboard.
           </p>
         </section>
         <GasCheck />

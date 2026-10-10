@@ -21,9 +21,10 @@ function getPeriodEnd(sub: Stripe.Subscription): number | null {
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!stripe || !webhookSecret) {
-    // Not configured yet — acknowledge so Stripe doesn't retry forever, but
-    // do nothing; there's nowhere to write the result.
-    return NextResponse.json({ received: true, note: "webhook not configured" }, { status: 200 });
+    // Not configured: answer with an error so Stripe keeps retrying (for up to
+    // 3 days) and the event isn't lost once the secret is added.
+    console.error("Stripe webhook: STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET missing");
+    return NextResponse.json({ error: "webhook not configured" }, { status: 500 });
   }
 
   const sig = req.headers.get("stripe-signature");
@@ -39,24 +40,39 @@ export async function POST(req: NextRequest) {
   }
 
   if (!supabaseAdmin) {
-    console.error("Stripe webhook received but SUPABASE_SECRET_KEY isn't configured — nothing saved:", event.type);
-    return NextResponse.json({ received: true, note: "supabase not configured" }, { status: 200 });
+    console.error("Stripe webhook received but SUPABASE_SECRET_KEY isn't configured:", event.type);
+    return NextResponse.json({ error: "database not configured" }, { status: 500 });
   }
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
         const origin = process.env.SITE_URL || new URL(req.url).origin;
-        await createMembershipFromSession(session, origin);
+        const r = await createMembershipFromSession(session, origin);
+        // A failed save must be retried, or a paying customer is never recognised.
+        if (!r.ok) throw new Error(`membership not saved: ${r.message ?? "unknown"}`);
         break;
       }
 
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
+        // Events can arrive out of order, so read the subscription's current
+        // state from Stripe rather than trusting this (possibly stale) copy.
+        const stale = event.data.object as Stripe.Subscription;
+        let sub: Stripe.Subscription = stale;
+        try {
+          sub = await stripe.subscriptions.retrieve(stale.id);
+        } catch {
+          /* deleted subscriptions may not be retrievable; fall back to the event */
+        }
         const status =
-          event.type === "customer.subscription.deleted" ? "canceled" : sub.status === "active" ? "active" : "past_due";
+          sub.status === "canceled" || sub.status === "incomplete_expired" || (event.type === "customer.subscription.deleted" && sub === stale)
+            ? "canceled"
+            : sub.status === "active" || sub.status === "trialing"
+              ? "active"
+              : "past_due";
         const periodEnd = getPeriodEnd(sub);
 
         const { error } = await supabaseAdmin
@@ -66,7 +82,7 @@ export async function POST(req: NextRequest) {
             current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
           })
           .eq("stripe_subscription_id", sub.id);
-        if (error) console.error("Failed to update subscriber status", error);
+        if (error) throw error;
         break;
       }
 
@@ -74,9 +90,10 @@ export async function POST(req: NextRequest) {
         break;
     }
   } catch (err) {
-    // Log and still acknowledge receipt — returning an error here makes
-    // Stripe retry the same event indefinitely, which won't fix a code bug.
-    console.error("Stripe webhook handler error", err);
+    // Tell Stripe it failed so it retries; a lost "cancelled" or "paid" event
+    // would leave the membership wrong indefinitely.
+    console.error("Stripe webhook handler error", event.type, err);
+    return NextResponse.json({ error: "handler failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

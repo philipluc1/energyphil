@@ -10,11 +10,12 @@ import SiteHeader from "../components/SiteHeader";
 import Tag from "../components/Tag";
 import styles from "./welcome.module.css";
 
-type Stage = "setting-up" | "upload" | "applying" | "done" | "no-session" | "error";
+type Stage = "setting-up" | "check-email" | "upload" | "applying" | "done" | "no-session" | "error";
 interface Result {
   retailer: string;
   plan: string;
   saving: number;
+  savingPerYear?: number;
   usedCurrentBill: boolean;
 }
 
@@ -42,7 +43,11 @@ export default function WelcomePage() {
         session = (await supabase.auth.getSession()).data.session;
       }
       if (cancelled) return;
-      if (!session) return setStage("no-session");
+      if (!session) {
+        // Just paid: we've emailed them a sign-in link (see /api/welcome-link).
+        const justPaid = new URLSearchParams(window.location.search).get("check_email") === "1";
+        return setStage(justPaid ? "check-email" : "no-session");
+      }
 
       setSetupStep(2);
       // The payment webhook can land a moment after the redirect: wait for the membership row.
@@ -102,8 +107,22 @@ export default function WelcomePage() {
       <SiteHeader active="other" />
       <div className={styles.wrap}>
         <div className={styles.card}>
-          <Tag tone="green">Payment received</Tag>
+          {stage !== "no-session" && <Tag tone="green">Payment received</Tag>}
           <h1>Let&apos;s start saving.</h1>
+
+          {stage === "check-email" && (
+            <>
+              <p className={styles.lede}>
+                Thanks for joining. We&apos;ve emailed you a one-click sign-in link at the address you paid with. Open it on this device and your
+                membership will finish setting up.
+              </p>
+              <div className={styles.row}>
+                <a className={styles.cta} href="https://mail.google.com" target="_blank" rel="noopener noreferrer">Open Gmail</a>
+                <a className={styles.ctaGhost} href="https://outlook.live.com/mail" target="_blank" rel="noopener noreferrer">Open Outlook</a>
+              </div>
+              <p className={styles.skip}>Nothing there after a minute? Check spam, or <Link href="/account">request a new link</Link>.</p>
+            </>
+          )}
 
           {stage === "setting-up" && (
             <div className={styles.setup} aria-live="polite">
@@ -162,9 +181,9 @@ export default function WelcomePage() {
             <>
               <p className={styles.lede}>
                 Best match for your bill: <strong>{result.retailer} — {result.plan}</strong>.
-                {result.saving > 0
-                  ? ` About ${money(result.saving)} cheaper than ${result.usedCurrentBill ? "what you pay now" : "the default offer"} for the same period.`
-                  : " Your current plan is already as cheap as anything we found. We'll keep watching."}
+                {(result.savingPerYear ?? 0) >= 50
+                  ? ` About ${money(result.savingPerYear ?? 0)} a year cheaper than ${result.usedCurrentBill ? "what you pay now" : "the default offer"}.`
+                  : " Your current plan is already about as cheap as anything we found. We'll keep watching."}
               </p>
               <Link href="/account" className={styles.cta}>Open my savings dashboard →</Link>
             </>

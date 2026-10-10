@@ -22,27 +22,15 @@ create table if not exists public.leads (
   estimated_saving_pct numeric
 );
 
--- Row Level Security: the public site must only be able to INSERT new leads —
--- never read, edit, or delete anyone else's. Only you, signed in to the
--- Supabase dashboard, can browse the leads table (Table Editor > leads).
+-- Row Level Security: leads are written only by the server (/api/lead, using
+-- the secret key), which validates the email and works out the result itself.
+-- The public site can't read, write or delete leads directly. Only you,
+-- signed in to the Supabase dashboard, can browse the table.
 alter table public.leads enable row level security;
-
--- Policy scoped "to public" (every Postgres role, not just "anon") so this
--- works no matter which role Supabase's API gateway resolves an unauthenticated
--- request to under the newer publishable-key system. It still only grants
--- INSERT — there is no select/update/delete policy, so those stay denied.
 drop policy if exists "anon can submit a lead" on public.leads;
 drop policy if exists "public can submit a lead" on public.leads;
-create policy "public can submit a lead"
-  on public.leads
-  for insert
-  to public
-  with check (true);
-
--- Belt-and-suspenders: make sure the table-level grants exist too (RLS
--- policies only apply once the role already has the underlying privilege).
+revoke insert on public.leads from anon, authenticated;
 grant usage on schema public to anon, authenticated;
-grant insert on public.leads to anon, authenticated;
 
 -- Paying subscribers (monthly / quarterly / half-yearly / once-off). Written
 -- only by the server — the Stripe webhook, using the secret key, which
@@ -260,3 +248,12 @@ create index if not exists waitlist_email on public.waitlist (email);
 alter table subscribers add column if not exists current_rates jsonb;
 alter table subscribers add column if not exists current_price_type text;
 alter table subscribers add column if not exists current_price_fixed_until date;
+
+-- One membership per Stripe checkout (stops a webhook/sync race creating two rows).
+create unique index if not exists subscribers_checkout_session_unique
+  on subscribers (stripe_checkout_session_id) where stripe_checkout_session_id is not null;
+
+-- Deal-ending alerts (Oct 2026): when the member's discount / benefit period
+-- ends, and which end date we've already warned them about.
+alter table subscribers add column if not exists discount_ends_at date;
+alter table subscribers add column if not exists deal_alert_sent_for date;

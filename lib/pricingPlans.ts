@@ -1,7 +1,7 @@
 // Prices (Phil, 3 Oct 2026; rounded to clean whole dollars 5 Oct 2026). Everything else in the checkout flow
 // reads from this file, so changing a price here is the only change needed
 // if these ever need updating later.
-export type PlanId = "monthly" | "quarterly" | "half_yearly" | "once_off";
+export type PlanId = "annual" | "monthly" | "quarterly" | "half_yearly" | "once_off";
 
 export interface PricingPlan {
   id: PlanId;
@@ -16,9 +16,26 @@ export interface PricingPlan {
   interval?: "month";
   intervalCount?: number;
   blurb: string;
+  /** Offered to new sign-ups. Plans set false still work for existing members. */
+  onSale: boolean;
 }
 
+// Annual first (Oct 2026): energy savings come in a few moments a year, so a
+// yearly price that's clearly below the typical saving keeps the maths in the
+// customer's favour and cuts churn. Monthly stays for people who want to try it.
 export const PRICING_PLANS: PricingPlan[] = [
+  {
+    id: "annual",
+    name: "Yearly",
+    cadenceLabel: "per year",
+    priceCents: 3900,
+    currency: "aud",
+    mode: "subscription",
+    interval: "month",
+    intervalCount: 12,
+    blurb: "One payment a year. Cancel any time.",
+    onSale: true,
+  },
   {
     id: "monthly",
     name: "Monthly",
@@ -29,6 +46,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     interval: "month",
     intervalCount: 1,
     blurb: "Cancel anytime.",
+    onSale: true,
   },
   {
     id: "quarterly",
@@ -40,6 +58,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     interval: "month",
     intervalCount: 3,
     blurb: "Works out cheaper than paying monthly.",
+    onSale: false,
   },
   {
     id: "half_yearly",
@@ -51,6 +70,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     interval: "month",
     intervalCount: 6,
     blurb: "Our best ongoing value.",
+    onSale: false,
   },
   {
     id: "once_off",
@@ -60,8 +80,12 @@ export const PRICING_PLANS: PricingPlan[] = [
     currency: "aud",
     mode: "payment",
     blurb: "Pay once, monitored for good — no renewals.",
+    onSale: false,
   },
 ];
+
+/** The plans shown to new customers, in display order. */
+export const PLANS_ON_SALE: PricingPlan[] = PRICING_PLANS.filter((p) => p.onSale);
 
 export function findPlan(id: string): PricingPlan | undefined {
   return PRICING_PLANS.find((p) => p.id === id);
@@ -93,18 +117,25 @@ const MONTHLY = 700;
 // a struck-through "would cost" figure, a per-month equivalent, and one
 // featured middle option. Savings are computed from the anchor, not hard-coded.
 export const PLAN_DISPLAY: Record<PlanId, PlanDisplay> = {
+  annual: {
+    tag: { label: "Best value", tone: "green" },
+    perMonthCents: 325,
+    anchorCents: MONTHLY * 12,
+    note: "Less than a coffee a month.",
+    featured: true,
+    features: ["Prices re-checked daily, summary monthly", "Alerts before your discount or fixed price ends", "1 July price-change re-check", "Bill photo and PDF reading"],
+  },
   monthly: {
     tag: { label: "Flexible", tone: "navy" },
     perMonthCents: MONTHLY,
     note: "Pay month to month. Stop any time.",
-    features: ["Monthly price check", "Email when something is cheaper", "Bill photo and PDF reading"],
+    features: ["Prices re-checked daily, summary monthly", "Alerts before your discount or fixed price ends", "1 July price-change re-check", "Bill photo and PDF reading"],
   },
   quarterly: {
-    tag: { label: "Most popular", tone: "amber" },
+    tag: { label: "Lower monthly cost", tone: "amber" },
     perMonthCents: 600,
     anchorCents: MONTHLY * 3,
-    note: "Our most-picked plan.",
-    featured: true,
+    note: "Same service, billed every 3 months.",
     features: ["Everything in Monthly", "Billed once a quarter", "Cancel any time"],
   },
   half_yearly: {

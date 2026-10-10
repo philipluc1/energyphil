@@ -36,7 +36,7 @@ export default function StateWaitlist({ compact = false }: { compact?: boolean }
                 <button key={s} type="button" className={s === state ? styles.stateOn : styles.state} onClick={() => setState(s)}>{s}</button>
               ))}
             </div>
-            <input type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input type="email" required aria-label="Your email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             <button type="submit" className={styles.btn} disabled={status === "saving"}>{status === "saving" ? "Saving…" : "Notify me"}</button>
           </div>
           {status === "error" && <span className={styles.err}>Couldn&apos;t save that. Try again.</span>}

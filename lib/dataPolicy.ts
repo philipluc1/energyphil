@@ -20,7 +20,7 @@ export const DATA_FACTS = {
   planCount: PLANS.length,
   retailerCount: new Set(PLANS.map((p) => p[0])).size,
   // What actually runs, and when (Melbourne time). Vercel crons in vercel.json.
-  memberRecheck: "Every morning, each member's home is re-priced against every plan on their network.",
+  memberRecheck: "Every morning, each member's home is re-priced against every plan we track on their network.",
   monthlyEmail: "On the 1st of each month, members get a summary of what changed and what they're saving.",
   defaultOffer: "The default offer (VDO) is updated each 1 July from the Essential Services Commission's final decision.",
   howPriced:

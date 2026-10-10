@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   const plan = findPlan(body.planId ?? "");
-  if (!plan) {
+  if (!plan || !plan.onSale) {
     return NextResponse.json({ ok: false, message: "Unknown plan." }, { status: 400 });
   }
 
@@ -63,6 +63,12 @@ export async function POST(req: NextRequest) {
     // Compact JSON of the household profile (people, heating, EV, ...). Stripe
     // allows 500 chars per metadata value; the profile is well under that.
     homeProfile: profile.homeProfile ? JSON.stringify(profile.homeProfile).slice(0, 480) : "",
+    // Current plan pricing and deal end dates (for "your discount ends" alerts).
+    currentRates: profile.currentRates ? JSON.stringify(profile.currentRates).slice(0, 480) : "",
+    priceType: profile.priceType === "fixed" || profile.priceType === "variable" ? profile.priceType : "",
+    priceFixedUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(profile.priceFixedUntil ?? "")) ? String(profile.priceFixedUntil) : "",
+    discountEndsAt: /^\d{4}-\d{2}-\d{2}$/.test(String(profile.discountEndsAt ?? "")) ? String(profile.discountEndsAt) : "",
+    currentPlanName: String(profile.currentPlanName ?? "").slice(0, 120),
   };
 
   const origin = req.nextUrl.origin;

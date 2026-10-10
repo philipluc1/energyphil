@@ -9,7 +9,8 @@ import styles from "./upgradeplans.module.css";
 export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: string; onChanged: (planId: PlanId, amountCents: number) => void }) {
   const [busy, setBusy] = useState<PlanId | null>(null);
   const [msg, setMsg] = useState("");
-  const recurring = PRICING_PLANS.filter((p) => p.mode === "subscription");
+  // Plans on sale, plus whatever they are on now (older plans keep working).
+  const recurring = PRICING_PLANS.filter((p) => p.mode === "subscription" && (p.onSale || p.id === currentPlan));
   const isOnceOff = currentPlan === "once_off";
 
   async function change(planId: PlanId) {
@@ -35,8 +36,8 @@ export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: 
       <div className={styles.title}>Change your plan</div>
       <p className={styles.sub}>
         {isOnceOff
-          ? "You're on the once-off plan, which never renews. To move to a monthly, quarterly or half-yearly plan, email us and we'll sort it."
-          : "Same checking on every plan; the longer ones cost less per month. Changes are prorated on your next invoice."}
+          ? "You're on the once-off plan, which never renews. To move to a yearly or monthly plan, email us and we'll sort it."
+          : "Same checking on every plan; yearly costs much less per month. Changes are prorated on your next invoice."}
       </p>
       <div className={styles.grid}>
         {recurring.map((p) => {

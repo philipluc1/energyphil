@@ -36,6 +36,12 @@ export interface SubscribeProfile {
   solarExportKwh: number;
   homeProfile?: Record<string, unknown> | null;
   currentRetailer?: string;
+  /** Their current plan's pricing, if typed or read from a bill. */
+  currentRates?: unknown;
+  priceType?: "fixed" | "variable" | null;
+  priceFixedUntil?: string | null;
+  discountEndsAt?: string | null;
+  currentPlanName?: string | null;
 }
 
 export default function PricingSection({
@@ -83,12 +89,12 @@ export default function PricingSection({
 
   return (
     <PlanBand
-      title={yearlySaving >= 20 ? `Keep that $${Math.round(yearlySaving).toLocaleString("en-AU")} a year? We'll keep checking it for $7 a month.` : "We keep comparing, so you don't have to"}
+      title={yearlySaving >= 20 && profile.referenceTotal !== null ? `Keep that $${Math.round(yearlySaving).toLocaleString("en-AU")} a year? We'll keep checking it for $39 a year.` : "We keep comparing, so you don't have to"}
       intro={
         yearlySaving >= 20 ? (
           <>
             Retailers change prices all year, so a cheap plan doesn&apos;t stay cheap on its own. <strong>Join and we re-price{" "}
-            {bestRetailer ? `${bestRetailer} and every other plan on your network` : "every plan on your network"} every morning</strong>, and email you only
+            {bestRetailer ? `${bestRetailer} and every other plan we track on your network` : "every plan we track on your network"} every morning</strong>, and email you only
             when switching is worth it.
           </>
         ) : (

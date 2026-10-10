@@ -7,6 +7,7 @@ import {
   Distributor,
   PLAN_DATA_DATE,
   PLANS,
+  RETAILER_COUNT,
   isEvFriendly,
   planRateRows,
   rankPlans,
@@ -21,7 +22,7 @@ import {
   vdoBillForUsage,
   type HomeProfile,
 } from "@/lib/profileUsage";
-import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
+import { supabaseConfigured } from "@/lib/supabaseClient";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { periodBreakdown } from "@/lib/savings";
@@ -36,7 +37,7 @@ import StateWaitlist from "./StateWaitlist";
 import YourRates from "./YourRates";
 import w from "./wizard.module.css";
 import { EMPTY_RATES_FORM, costFromRates, ratesFromForm, ratesToForm, type RatesForm } from "@/lib/currentRates";
-import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 
 const RETAILERS = Array.from(new Set(PLANS.map((p) => p[0]))).sort();
 import { useEffect } from "react";
@@ -188,14 +189,15 @@ export default function Comparator() {
   const [distributor, setDistributor] = useState<Distributor>("Citipower");
   const [days, setDays] = useState(91);
   const [mode, setMode] = useState<Mode>("simple");
-  const [anytime, setAnytime] = useState(1150);
+  // Starts empty: a pre-filled figure would quietly become someone's "usage".
+  const [anytime, setAnytime] = useState(0);
   const [peak, setPeak] = useState(0);
   const [shoulder, setShoulder] = useState(0);
   const [offpeak, setOffpeak] = useState(0);
   const [showCl, setShowCl] = useState(false);
   const [cl, setCl] = useState(0);
   const [profile, setProfile] = useState<HomeProfile>(DEFAULT_PROFILE);
-  const [usageSource, setUsageSource] = useState<UsageSource>("estimate");
+  const [usageSource, setUsageSource] = useState<UsageSource>("bill");
   const [hasSolar, setHasSolar] = useState(false);
   const [solarExportRaw, setSolarExportRaw] = useState("");
   const [currentBillRaw, setCurrentBillRaw] = useState("");
@@ -252,6 +254,12 @@ export default function Comparator() {
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
         if (d.ratesForm && typeof d.ratesForm === "object") setRatesForm({ ...EMPTY_RATES_FORM, ...d.ratesForm });
         setRestored(true);
+        // "Join" links point at /check#pricing: with a saved check, go
+        // straight to the result and its membership plans.
+        if (window.location.hash === "#pricing" && d.distributor) {
+          setStage("results");
+          setTimeout(() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }), 400);
+        }
       } catch {
         /* ignore a bad saved value */
       }
@@ -276,7 +284,7 @@ export default function Comparator() {
     if (!hydrated) return;
     const rates = ratesFromForm(ratesForm);
     try {
-      if (!rates && !ratesForm.planName && ratesForm.priceType === "unsure") return;
+      if (!rates && !ratesForm.planName && ratesForm.priceType === "unsure" && !ratesForm.discountEnds) return;
       window.localStorage.setItem(
         "utilo.pricing.v1",
         JSON.stringify({
@@ -284,6 +292,7 @@ export default function Comparator() {
           rates,
           priceType: ratesForm.priceType === "unsure" ? null : ratesForm.priceType,
           fixedUntil: ratesForm.priceType === "fixed" && ratesForm.fixedUntil ? ratesForm.fixedUntil : null,
+          discountEndsAt: ratesForm.discountEnds || null,
         }),
       );
     } catch { /* storage unavailable */ }
@@ -316,6 +325,8 @@ export default function Comparator() {
     setProfile((p) => ({ ...p, ...patch }));
   }
   const useEst = usageSource === "estimate";
+  // Victorian postcodes start with 3 (or 8 for PO boxes). Others can't be priced yet.
+  const nonVic = postcode.length === 4 && !/^[38]/.test(postcode);
   const est = useMemo(() => estimateUsage(profile, days), [profile, days]);
   const solarExportKwh = useEst ? est.solarExportKwh : hasSolar || profile.hasSolar ? parseFloat(solarExportRaw) || 0 : 0;
   const hasSolarEff = useEst ? profile.hasSolar : hasSolar || profile.hasSolar;
@@ -328,6 +339,7 @@ export default function Comparator() {
         planName: bill.planName ?? "",
         priceType: bill.priceType ?? "unsure",
         fixedUntil: bill.priceFixedUntil ?? "",
+        discountEnds: bill.discountEndsAt ?? "",
       }),
     );
     if (bill.currentRates) setShowRates(true);
@@ -407,6 +419,13 @@ export default function Comparator() {
     cl: clKwh,
     solarExportKwh,
   };
+  // Why the customer can't move on yet (shown under the step), if anything.
+  const blockReason =
+    inputStep === 1 && nonVic
+      ? "We can only check Victorian addresses for now."
+      : inputStep === 3 && !useEst && usagePeak + usageShoulder + usageOffpeak + usageAnytime <= 0
+        ? "Snap your bill, or enter the kWh it shows. No bill to hand? Pick “No, estimate it for me”."
+        : "";
   // Their own plan priced from the rates they typed. Used as "what you pay
   // now" when they didn't type a bill total.
   const myRates = useMemo(() => ratesFromForm(ratesForm), [ratesForm]);
@@ -423,10 +442,10 @@ export default function Comparator() {
         anytime: usageAnytime,
         cl: clKwh,
         solarExportKwh,
-      }),
-    [distributor, days, usagePeak, usageShoulder, usageOffpeak, usageAnytime, clKwh, solarExportKwh],
+      }, { ev: profile.ev }),
+    [distributor, days, usagePeak, usageShoulder, usageOffpeak, usageAnytime, clKwh, solarExportKwh, profile.ev],
   );
-  const totalInDist = useMemo(() => PLANS.filter((p) => p[1] === distributor).length, [distributor]);
+  const totalInDist = useMemo(() => PLANS.filter((p) => p[1] === distributor && (profile.ev || !isEvFriendly(p))).length, [distributor, profile.ev]);
   const haveBill = currentBill !== null && !Number.isNaN(currentBill);
   const retailerBest = useMemo(
     () => (currentRetailer ? matches.find((m) => m.plan[0] === currentRetailer) ?? null : null),
@@ -466,52 +485,34 @@ export default function Comparator() {
   }, [stage, topForSave, distributor, days, haveBill, bench, useEst]);
 
   const potentialWithTou = useMemo(
-    () => PLANS.filter((p) => p[1] === distributor && p[6] !== null).length,
-    [distributor],
+    () => PLANS.filter((p) => p[1] === distributor && p[6] !== null && (profile.ev || !isEvFriendly(p))).length,
+    [distributor, profile.ev],
   );
   const showUnlock = mode === "simple" && potentialWithTou > 0;
 
   async function handleLeadSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabase) {
-      // Not wired up yet (Supabase env vars not set in Vercel) — still confirm locally so the
-      // flow feels complete for whoever's testing it.
-      setLeadStatus("saved");
-      return;
-    }
     setLeadStatus("saving");
-    const top = matches[0];
-    const save = top ? bench - top.total : null;
-    const { error } = await supabase.from("leads").insert({
-      email,
-      distributor,
-      billing_days: days,
-      usage_mode: useEst ? "detailed" : mode,
-      peak_kwh: usage.peak,
-      shoulder_kwh: usage.shoulder,
-      offpeak_kwh: usage.offpeak,
-      anytime_kwh: usage.anytime,
-      controlled_load_kwh: usage.cl,
-      current_bill: currentBill,
-      best_retailer: top?.plan[0] ?? null,
-      best_plan_name: top?.plan[2] ?? null,
-      best_total: top?.total ?? null,
-      estimated_saving: save,
-      estimated_saving_pct: save !== null && bench > 0 ? save / bench : null,
-      wants_price_alerts: wantsAlerts,
-      customer_name: customerName || null,
-      address: address || null,
-      suburb: suburb || null,
-      postcode: postcode || null,
-      has_solar: hasSolarEff,
-      solar_export_kwh: hasSolarEff ? solarExportKwh : null,
-      home_profile: useEst ? profile : null,
-    });
-    setLeadStatus(error ? "error" : "saved");
+    // Saved by the server, which re-works-out the result from this usage.
+    const res = await fetch("/api/lead", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email, distributor, days, usageMode: useEst ? "detailed" : mode,
+        peak: usage.peak, shoulder: usage.shoulder, offpeak: usage.offpeak, anytime: usage.anytime, cl: usage.cl,
+        currentBill, wantsAlerts, customerName, address, suburb, postcode,
+        hasSolar: hasSolarEff, solarExportKwh: hasSolarEff ? solarExportKwh : 0, homeProfile: profile,
+      }),
+    }).catch(() => null);
+    setLeadStatus(res?.ok ? "saved" : "error");
   }
 
   const top = matches[0];
-  const rest = matches.slice(1, 9);
+  const rest = matches.slice(1);
+  // Same rule as the dashboard: with a real bill, only call it a saving when
+  // it's worth at least WORTH_SWITCHING_PER_YEAR a year.
+  const yearlySave = top && days > 0 ? (bench - top.total) * (365 / days) : 0;
+  const worthSwitching = haveBill ? yearlySave >= WORTH_SWITCHING_PER_YEAR : yearlySave > 0;
 
   const hasCurrentBill = currentBill !== null && !Number.isNaN(currentBill);
 
@@ -537,7 +538,7 @@ export default function Comparator() {
           // Green when what they pay now already beats the cheapest plan we
           // found, red when they're paying more than they need to. Grey for
           // an estimate against the default offer.
-          kind: hasCurrentBill ? (bench <= top.total + 1 ? "referenceGood" : "referenceBad") : "reference",
+          kind: hasCurrentBill ? (worthSwitching ? "referenceBad" : "referenceGood") : "reference",
         },
       ]
     : [];
@@ -564,8 +565,8 @@ export default function Comparator() {
           </p>
         </section>
 
-        <BillPhotoUpload onApply={handleBillExtracted} />
-        {inputStep === 1 && <StateWaitlist compact />}
+        {/* Step 3 (bill mode) has its own upload card; don't show it twice. */}
+        {!(inputStep === 3 && !useEst) && <BillPhotoUpload onApply={handleBillExtracted} />}
 
         {scanBanner && (
           <div className={styles.scanBanner}>
@@ -630,7 +631,7 @@ export default function Comparator() {
                 <input
                   id="custName"
                   type="text"
-                  placeholder="Jane Smith"
+                  placeholder="Jane"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                 />
@@ -678,7 +679,16 @@ export default function Comparator() {
                 </div>
               </div>
             )}
-            {postcode.length === 4 && !postcodeGuessed && (
+            {nonVic && (
+              <div className={styles.mt16}>
+                <div className={styles.unlockHint}>
+                  Utilo only covers Victoria for now, so we can&apos;t price plans for {postcode} yet. NSW, SA and QLD are next. Leave your email
+                  and we&apos;ll tell you when we reach you.
+                </div>
+                <StateWaitlist compact />
+              </div>
+            )}
+            {postcode.length === 4 && !postcodeGuessed && !nonVic && (
               <div className={`${styles.unlockHint} ${styles.mt16}`}>
                 Couldn&apos;t match that postcode — pick your network below.
               </div>
@@ -717,6 +727,13 @@ export default function Comparator() {
               ))}
             </div>
             <p className={styles.helper}>We&apos;ll also show their best plan for you, in case you&apos;d rather stay.</p>
+            {currentRetailer && (
+              <div className={`${styles.accuracyNote} ${styles.mt16}`}>
+                <b>Heads up:</b> knowing your retailer doesn&apos;t tell us which {currentRetailer} plan you&apos;re on or what you pay. Many people are on older plans that
+                cost more than the retailer&apos;s current offers. For an exact answer, snap your bill (or a screenshot from the {currentRetailer} app) at the top of this
+                page, or type your rates in step 3.
+              </div>
+            )}
           </div>
         )}
 
@@ -823,6 +840,7 @@ export default function Comparator() {
                   { value: true, label: "Yes" },
                 ]}
               />
+              <p className={styles.helper}>Say yes to also see plans built around cheap or free overnight EV charging. Without an EV those plans rarely work out cheaper.</p>
               {profile.ev && (
                 <Choice
                   value={profile.evCharging}
@@ -888,7 +906,7 @@ export default function Comparator() {
               <div className={w.big}>
                 <button type="button" className={!useEst ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("bill")}>
                   <span className={w.bigIcon} aria-hidden="true">📄</span>
-                  <span><b>Yes, I have a bill</b>I&apos;ll copy a few numbers from it. Most accurate.</span>
+                  <span><b>Yes, I have a bill</b>Snap a photo or copy a few numbers. Most accurate.</span>
                   <span className={w.tick} aria-hidden="true">✓</span>
                 </button>
                 <button type="button" className={useEst ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("estimate")}>
@@ -927,6 +945,19 @@ export default function Comparator() {
                 </label>
               </div>
             </section>
+
+            {!useEst && !scanBanner && (
+              <section className={w.q}>
+                <div className={w.qHead}>
+                  <span className={w.qNum}>★</span>
+                  <div>
+                    <h3 className={w.qTitle}>Fastest and most accurate: snap it</h3>
+                    <p className={w.qSub}>A photo, PDF or app screenshot fills in everything below, including the rates you really pay. Or type the numbers yourself.</p>
+                  </div>
+                </div>
+                <BillPhotoUpload onApply={handleBillExtracted} />
+              </section>
+            )}
 
             {useEst ? (
               <>
@@ -1018,7 +1049,7 @@ export default function Comparator() {
                       <label className={w.rate} htmlFor="anytime">
                         <span className={w.rateLabel}>Total usage</span>
                         <span className={w.suffixWrap}>
-                          <input id="anytime" type="number" inputMode="decimal" min={0} value={anytime} onChange={(e) => setAnytime(parseFloat(e.target.value) || 0)} />
+                          <input id="anytime" type="number" inputMode="decimal" min={0} value={anytime || ""} placeholder="e.g. 1150" onChange={(e) => setAnytime(parseFloat(e.target.value) || 0)} />
                           <span className={w.suffix}>kWh</span>
                         </span>
                       </label>
@@ -1044,7 +1075,7 @@ export default function Comparator() {
                       <label className={w.rate} htmlFor="cl">
                         <span className={w.rateLabel}>Controlled load</span>
                         <span className={w.suffixWrap}>
-                          <input id="cl" type="number" inputMode="decimal" min={0} value={cl} onChange={(e) => setCl(parseFloat(e.target.value) || 0)} />
+                          <input id="cl" type="number" inputMode="decimal" min={0} value={cl || ""} onChange={(e) => setCl(parseFloat(e.target.value) || 0)} />
                           <span className={w.suffix}>kWh</span>
                         </span>
                       </label>
@@ -1095,6 +1126,7 @@ export default function Comparator() {
           </div>
         )}
 
+        {blockReason && <p className={styles.blockNote} role="status">{blockReason}</p>}
         <div className={styles.wizardNav}>
           {inputStep > 1 ? (
             <button
@@ -1114,6 +1146,7 @@ export default function Comparator() {
             <button
               type="button"
               className={styles.heroCta}
+              disabled={!!blockReason}
               onClick={() => {
                 setInputStep((s) => nextInputStep(s));
                 scrollToTop();
@@ -1125,6 +1158,7 @@ export default function Comparator() {
             <button
               type="button"
               className={styles.heroCta}
+              disabled={!!blockReason}
               onClick={() => {
                 setStage("results");
                 scrollToTop();
@@ -1136,11 +1170,11 @@ export default function Comparator() {
         </div>
         <div className={styles.stickyBar}>
           {inputStep < 3 ? (
-            <button type="button" className={styles.stickyBtn} onClick={() => { setInputStep((s) => nextInputStep(s)); scrollToTop(); }}>
+            <button type="button" className={styles.stickyBtn} disabled={!!blockReason} onClick={() => { setInputStep((s) => nextInputStep(s)); scrollToTop(); }}>
               Next · step {inputStep} of 3 →
             </button>
           ) : (
-            <button type="button" className={styles.stickyBtn} onClick={() => { setStage("results"); scrollToTop(); }}>
+            <button type="button" className={styles.stickyBtn} disabled={!!blockReason} onClick={() => { setStage("results"); scrollToTop(); }}>
               See my savings →
             </button>
           )}
@@ -1163,7 +1197,7 @@ export default function Comparator() {
           </button>
           {matches.length > 0 && (
             <span className={styles.resultsSub}>
-              {matches.length} comparable plan{matches.length === 1 ? "" : "s"} for {distributor} · {days}-day period ·{" "}
+              {matches.length} plan{matches.length === 1 ? "" : "s"} from the {RETAILER_COUNT} retailers we track on {distributor} (not every plan in the market) · {days}-day period ·{" "}
               <span className={PRICES_STALE ? styles.freshStale : styles.fresh} title={PRICES_STALE ? "These prices may be out of date" : "Retailers' published prices"}>
                 prices checked {fmtUpdated()}{PRICES_STALE ? " (may be out of date)" : ""}
               </span>
@@ -1178,13 +1212,13 @@ export default function Comparator() {
             </div>
           ) : (
             <>
-              {bench - top.total > 0 && (
+              {worthSwitching && (
                 <div className={`${styles.resultHero} ${haveBill ? styles.resultHeroBad : ""}`}>
                   <span className={styles.resultHeroKicker}>{useEst ? "Estimated from your answers" : haveBill ? "Based on your bill: you're paying more than you need to" : "Based on your usage"}</span>
-                  <div className={styles.resultHeroLabel}>You could save about</div>
+                  <div className={styles.resultHeroLabel}>{haveBill ? "You could save about" : "Compared with the default offer, the cheapest plan saves up to"}</div>
                   <div className={styles.resultHeroNum}>${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}</div>
                   <div className={styles.resultHeroSub}>
-                    a year with {top.plan[0]}, vs {haveBill ? "your current bill" : "the default offer"}
+                    {haveBill ? <>a year with {top.plan[0]}, vs your current bill</> : <>a year with {top.plan[0]}. Add your bill or rates to see your own saving.</>}
                   </div>
                   <FunEquivalents dollars={periodBreakdown(bench - top.total, days).annual} />
                   {RETAILER_LINKS[top.plan[0]] ? (
@@ -1199,14 +1233,16 @@ export default function Comparator() {
                   </span>
                 </div>
               )}
-              {RETAILER_LINKS[top.plan[0]] && bench - top.total > 0 && (
+              {RETAILER_LINKS[top.plan[0]] && worthSwitching && (
                 <div className={styles.stickyBar}>
                   <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.stickyBtn}>
-                    Switch with {top.plan[0]} · save ${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}/yr →
+                    {haveBill
+                      ? <>Switch with {top.plan[0]} · save ${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}/yr →</>
+                      : <>See the cheapest plan: {top.plan[0]} →</>}
                   </a>
                 </div>
               )}
-              {haveBill && bench - top.total <= 0 && (
+              {haveBill && !worthSwitching && (
                 <div className={`${styles.resultHero} ${styles.resultHeroGood}`}>
                   <span className={styles.resultHeroKicker}>Based on your bill</span>
                   <div className={styles.resultHeroLabel}>Good news</div>
@@ -1222,14 +1258,29 @@ export default function Comparator() {
                   answer stays current.
                 </div>
               )}
-              {!haveBill && (
-                <div className={styles.billNudge}>
-                  <b>This is an estimate.</b> Prices are exact, but your usage is a typical figure for a home like yours. Snap your bill at the top of the
-                  page for your real numbers.
+              {(!haveBill || useEst) && (
+                <div className={styles.accuracyCard}>
+                  <div className={styles.accuracyHead}>
+                    <span className={styles.accuracyBadge}>Estimate</span>
+                    <b>Get your exact answer in about a minute</b>
+                  </div>
+                  <p className={styles.helper}>
+                    {!haveBill
+                      ? <>We don&apos;t know what you pay now{currentRetailer ? <>, or which {currentRetailer} plan you&apos;re on</> : null}, so we&apos;ve compared against the default offer. Many people are on older plans that cost more than any current offer.</>
+                      : <>Your usage is estimated from your answers, so the saving could be higher or lower.</>}
+                  </p>
+                  <BillPhotoUpload onApply={handleBillExtracted} />
+                  <button
+                    type="button"
+                    className={styles.accuracyLink}
+                    onClick={() => { setStage("input"); setInputStep(3); setUsageSource("bill"); setShowRates(true); scrollToTop(); }}
+                  >
+                    Or type your rates and usage instead →
+                  </button>
                 </div>
               )}
               <div className={styles.bestCard} id="top-plan">
-                <span className={styles.bestTag}>{bench - top.total > 0 ? "Yes, you'd save with" : haveBill ? "Closest to what you pay" : "Cheapest we found"}</span>
+                <span className={styles.bestTag}>{haveBill && worthSwitching ? "Yes, you'd save with" : haveBill ? "Cheapest we found (not worth switching)" : "Cheapest plan for a home like yours"}</span>
                 <div className={styles.retailer}>
                   {top.plan[0]}
                   <span className={`${styles.offerTag} ${top.plan[3] === "MARKET" ? styles.offerMarket : styles.offerStanding}`}>
@@ -1251,19 +1302,14 @@ export default function Comparator() {
                     <div className={`${styles.v} mono`}>{fmtCurrency(top.total * k)}</div>
                     <div className={styles.l}>{PERIOD_LABEL[period]} on this plan</div>
                   </div>
-                  <div className={`${styles.numBlock} ${styles.save}`}>
-                    <div className={`${styles.v} mono`}>
-                      {fmtCurrency(Math.abs(bench - top.total) * k)}
-                    </div>
-                    <div className={styles.l}>
-                      {bench - top.total >= 0 ? "you'd save" : "extra cost"} {PERIOD_LABEL[period]} vs {haveBill ? "your bill" : "the default offer"}
-                    </div>
-                  </div>
-                  <div className={`${styles.numBlock} ${styles.save}`}>
-                    <div className={`${styles.v} mono`}>{fmtPct(Math.abs(bench > 0 ? (bench - top.total) / bench : 0))}</div>
-                    <div className={styles.l}>{bench - top.total >= 0 ? "cheaper" : "dearer"}</div>
-                  </div>
                 </div>
+                <p className={styles.saveLine}>
+                  {bench - top.total >= 0 ? (
+                    <><b>{fmtCurrency((bench - top.total) * k)} less</b> {PERIOD_LABEL[period]} than {haveBill ? "your bill" : "the default offer"} ({fmtPct(bench > 0 ? (bench - top.total) / bench : 0)} cheaper)</>
+                  ) : (
+                    <><b>{fmtCurrency((top.total - bench) * k)} more</b> {PERIOD_LABEL[period]} than {haveBill ? "your bill" : "the default offer"}</>
+                  )}
+                </p>
 
                 <button
                   type="button"
@@ -1295,8 +1341,29 @@ export default function Comparator() {
                 </div>
               </div>
 
+              {retailerBest && top && (
+                <div className={styles.stayCard}>
+                  <div>
+                    <b>Staying with {currentRetailer}?</b> Their cheapest current plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at{" "}
+                    {fmtCurrency(retailerBest.total)} for {days} days.{!haveBill && <> You may be on an older, dearer {currentRetailer} plan. Your bill shows which.</>}
+                  </div>
+                  <div className={styles.stayNum}>
+                    {retailerBest.total - top.total > 1 ? (
+                      <>
+                        <b>${Math.round(periodBreakdown(retailerBest.total - top.total, days).annual).toLocaleString("en-AU")}</b> a year more by moving to {top.plan[0]}
+                      </>
+                    ) : (
+                      <>Already the cheapest we found. No need to move.</>
+                    )}
+                  </div>
+
+                </div>
+              )}
+              <details className={styles.detailsBox}>
+                <summary>See the workings: charts, every plan and the maths</summary>
+                <div className={styles.detailsInner}>
               <div className={styles.chartPair}>
-              {forecastData.length > 0 && (
+              {forecastData.length > 0 && haveBill && (
                 <div className={styles.chartCard}>
                   <div className={styles.chartTitle}>Your 12-month forecast</div>
                   <p className={styles.forecastIntro}>
@@ -1322,34 +1389,11 @@ export default function Comparator() {
               )}
 
                 <div className={styles.chartCard}>
-                  <div className={styles.chartTitle}>Your bill vs. the cheapest options</div>
+                  <div className={styles.chartTitle}>{haveBill ? "Your bill vs. the cheapest options" : "The default offer vs. the cheapest options"}</div>
                   <ResultsChart items={chartItems} />
                 </div>
               </div>
 
-              {retailerBest && top && (
-                <div className={styles.stayCard}>
-                  <div>
-                    <b>Staying with {currentRetailer}?</b> Their best plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at{" "}
-                    {fmtCurrency(retailerBest.total)} for {days} days.
-                  </div>
-                  <div className={styles.stayNum}>
-                    {retailerBest.total - top.total > 1 ? (
-                      <>
-                        <b>${Math.round(periodBreakdown(retailerBest.total - top.total, days).annual).toLocaleString("en-AU")}</b> a year more by moving to {top.plan[0]}
-                      </>
-                    ) : (
-                      <>Already the cheapest we found. No need to move.</>
-                    )}
-                  </div>
-                  {!haveBill && (
-                    <span className={styles.stayNote}>Enter your bill total to compare against what you pay now, not the default offer.</span>
-                  )}
-                </div>
-              )}
-              <details className={styles.detailsBox}>
-                <summary>See the details: every plan, the maths and switching tips</summary>
-                <div className={styles.detailsInner}>
               <HowWeWorkedItOut
                 plan={top.plan}
                 usage={usage}
@@ -1400,7 +1444,7 @@ export default function Comparator() {
                               {solarExportKwh > 0 && m.plan[10] !== null && <SolarBadge />}
                               <div className={styles.pname}>
                                 <span className={styles.pnameText}>{m.plan[2]}</span>
-                                <span className={styles.rateHint}>{isOpen ? "Hide rates ▴" : "See rates ▾"}</span>
+                                <span className={styles.rateHint}>{isOpen ? "Hide ▴" : "Rates & website ▾"}</span>
                               </div>
                             </div>
                             <div className={styles.right}>
@@ -1445,6 +1489,7 @@ export default function Comparator() {
                 </div>
               </details>
 
+              <div id="pricing" style={{ scrollMarginTop: 90 }} />
               <PricingSection
                 email={email}
                 onEmailChange={setEmail}
@@ -1462,14 +1507,22 @@ export default function Comparator() {
                   baselineTotal: top ? top.total : null,
                   baselineRetailer: top ? top.plan[0] : null,
                   baselinePlanName: top ? top.plan[2] : null,
-                  referenceTotal: bench,
+                  // Only a real bill (typed, read, or priced from their rates) counts
+                  // as "what you pay now"; never the default offer.
+                  referenceTotal: haveBill ? bench : null,
                   customerName,
                   address,
                   suburb,
                   postcode,
                   hasSolar: hasSolarEff,
                   solarExportKwh,
-                  homeProfile: useEst ? (profile as unknown as Record<string, unknown>) : null,
+                  // Always sent: the EV answer decides which plans they're shown.
+                  homeProfile: profile as unknown as Record<string, unknown>,
+                  currentRates: myRates,
+                  priceType: ratesForm.priceType === "unsure" ? null : ratesForm.priceType,
+                  priceFixedUntil: ratesForm.priceType === "fixed" && ratesForm.fixedUntil ? ratesForm.fixedUntil : null,
+                  discountEndsAt: ratesForm.discountEnds || null,
+                  currentPlanName: ratesForm.planName || null,
                   currentRetailer,
                 }}
               />
@@ -1479,15 +1532,16 @@ export default function Comparator() {
 
         <div className={styles.leadCard}>
           <h3>Want a copy of this result?</h3>
-          <p>We&apos;ll email your result, plus a couple of short follow-ups over the next week. Unsubscribe any time.</p>
+          <p>We&apos;ll email your result so it&apos;s easy to find later.</p>
           <label className={styles.alertsCheckboxRow}>
             <input type="checkbox" checked={wantsAlerts} onChange={(e) => setWantsAlerts(e.target.checked)} />
-            Also email me if a cheaper plan appears (unsubscribe anytime).
+            Also send me a couple of tips this week and tell me if a cheaper plan appears (unsubscribe any time).
           </label>
           <form className={styles.leadForm} onSubmit={handleLeadSubmit}>
             <input
               type="email"
               required
+              aria-label="Your email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

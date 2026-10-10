@@ -15,6 +15,12 @@ const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || "Utilo <onboarding@resen
 
 export const emailConfigured = Boolean(RESEND_API_KEY);
 
+/** Escape text before putting it into email HTML (names, plan names, anything
+ *  that came from a form, a bill or a database row). */
+export function esc(v: unknown): string {
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+}
+
 /** Branded shell every email is sent in: navy header with the wordmark, a
  *  white card for the body, an optional amber button, and a quiet footer.
  *  Table-based with inline styles so it survives Gmail and Outlook. */

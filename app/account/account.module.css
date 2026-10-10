@@ -466,3 +466,20 @@ details[open] > .panelSummary::after { content: " ▴"; }
 .perks li::before { color: var(--good); }
 .stateCard .btnPrimary, .emptyVerdict .btnPrimary { background: var(--btn-bg); color: var(--btn-fg); }
 .stateCard .btnPrimary:hover { filter: brightness(1.05); }
+
+/* Watched price changes */
+.watchList { list-style: none; margin: 4px 0 12px; padding: 0; display: grid; gap: 8px; }
+.watchList li { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: var(--bg); font-size: 14px; }
+.watchLabel { font-weight: 700; }
+.watchDate { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.watchDate em { font-style: normal; }
+.watchEmpty { color: var(--grey); font-size: 13px; }
+/* Saved vs paid */
+.tally { display: grid; gap: 10px; margin: 8px 0 12px; }
+.tallyRow { display: grid; grid-template-columns: 150px 1fr 70px; gap: 10px; align-items: center; font-size: 14px; }
+.tallyRow b { text-align: right; font-variant-numeric: tabular-nums; }
+.tallyTrack { height: 12px; border-radius: 6px; background: var(--border); overflow: hidden; }
+.tallySaved, .tallyPaid { display: block; height: 100%; border-radius: 6px; transition: width 0.6s ease; }
+.tallySaved { background: var(--good); }
+.tallyPaid { background: var(--grey-soft); }
+@media (max-width: 520px) { .tallyRow { grid-template-columns: 110px 1fr 56px; font-size: 13px; } }

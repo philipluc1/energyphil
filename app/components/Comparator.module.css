@@ -1638,3 +1638,22 @@
 .chartCard:nth-of-type(1) { border-top: 5px solid #f5a623; }
 .chartPair > :nth-child(1) { border-top: 5px solid #f5a623; }
 .chartPair > :nth-child(2) { border-top: 5px solid #0ea5a0; }
+
+.blockNote { margin: 14px 0 0; padding: 10px 14px; border-radius: 10px; background: rgba(245, 166, 35, 0.12); color: #8a4b08; font-size: 13.5px; font-weight: 600; }
+.heroCta:disabled, .stickyBtn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+@media (prefers-color-scheme: dark) { .blockNote { color: #fcd34d; } }
+
+/* Accuracy prompts: push people toward the bill photo for exact numbers */
+.accuracyNote { padding: 12px 14px; border-radius: 12px; background: rgba(245, 166, 35, 0.12); border: 1px solid rgba(245, 166, 35, 0.35); font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.accuracyCard { margin-top: 18px; padding: 18px; border-radius: 16px; border: 2px solid var(--amber); background: linear-gradient(135deg, rgba(255, 209, 102, 0.16), var(--surface) 60%); display: grid; gap: 10px; }
+.accuracyHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 17px; }
+.accuracyBadge { padding: 3px 10px; border-radius: 999px; background: var(--amber); color: #1c1403; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.accuracyLink { justify-self: start; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--navy-accent-text); cursor: pointer; }
+.accuracyCard .photoCard { margin-top: 0; }
+/* Email label sits on the dark membership band: keep it readable. */
+.pricingEmailField label { color: #fff !important; font-weight: 800; }
+
+/* One compact saving line under the plan cost (the hero carries the big figure). */
+.saveLine { margin: 8px 0 0; font-size: 14px; opacity: 0.9; position: relative; z-index: 1; }
+.saveLine b { color: var(--amber); }
+.detailsInner .chartPair { margin-top: 4px; }

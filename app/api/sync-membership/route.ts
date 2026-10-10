@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripeClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { createMembershipFromSession } from "@/lib/membership";
+import { createMembershipFromSession, isPaidSession } from "@/lib/membership";
 
 export const maxDuration = 30;
 
@@ -27,8 +27,7 @@ export async function POST(req: NextRequest) {
     for (const c of customers.data) {
       const sessions = await stripe.checkout.sessions.list({ customer: c.id, limit: 10 });
       for (const s of sessions.data) {
-        const paid = s.payment_status === "paid" || s.status === "complete";
-        if (!paid) continue;
+        if (!isPaidSession(s)) continue;
         paidFound++;
         const r = await createMembershipFromSession(s, process.env.SITE_URL || req.nextUrl.origin, { sendWelcome: false });
         if (r.created) created = true;
@@ -39,7 +38,7 @@ export async function POST(req: NextRequest) {
     if (!created) {
       const guest = await stripe.checkout.sessions.list({ customer_details: { email }, limit: 10 });
       for (const s of guest.data) {
-        if (!(s.payment_status === "paid" || s.status === "complete")) continue;
+        if (!isPaidSession(s)) continue;
         paidFound++;
         const r = await createMembershipFromSession(s, process.env.SITE_URL || req.nextUrl.origin, { sendWelcome: false });
         if (r.created) created = true;

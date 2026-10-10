@@ -14,6 +14,8 @@ export interface WatchProfile {
   anytime: number;
   cl: number;
   solarExportKwh?: number;
+  /** Charges an EV at home (only then are EV-only plans considered). */
+  ev?: boolean;
 }
 
 export interface WatchResult {
@@ -31,7 +33,7 @@ export function computeBest(profile: WatchProfile): WatchResult | null {
     anytime: profile.anytime,
     cl: profile.cl,
     solarExportKwh: profile.solarExportKwh ?? 0,
-  });
+  }, { ev: profile.ev === true });
   const top = matches[0];
   if (!top) return null;
   return { bestTotal: top.total, bestRetailer: top.plan[0], bestPlanName: top.plan[2] };

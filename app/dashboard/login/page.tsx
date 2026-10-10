@@ -19,7 +19,9 @@ export default function DashboardLoginPage() {
       body: JSON.stringify({ password }),
     });
     if (res.ok) {
-      const next = new URLSearchParams(window.location.search).get("next") || "/dashboard";
+      const raw = new URLSearchParams(window.location.search).get("next") || "/dashboard";
+      // Only ever go to a page on this site (no //evil.com or https://…).
+      const next = raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\") ? raw : "/dashboard";
       router.push(next);
       return;
     }

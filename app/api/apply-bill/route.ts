@@ -1,3 +1,5 @@
+import { costFromRates } from "@/lib/currentRates";
+import type { CurrentRates } from "@/lib/billExtraction";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActiveMember } from "@/lib/memberAccess";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -80,19 +82,25 @@ export async function POST(req: NextRequest) {
   const total = usage.peak + usage.shoulder + usage.offpeak + usage.anytime;
   if (total <= 0) return NextResponse.json({ ok: false, message: "We couldn't find your usage on that bill." });
 
-  const top = rankPlans(distributor, usage)[0];
-  if (!top) return NextResponse.json({ ok: false, message: "No comparable plans for that bill." });
-  const currentBill = num(b?.currentBill);
-  const reference = currentBill ?? vdoBillForUsage(distributor, usage);
-
   const { data: sub } = await supabaseAdmin
     .from("subscribers")
-    .select("id")
+    .select("id, home_profile")
     .eq("email", member.email)
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  // EV-only plans count only for members who told us they charge an EV.
+  const ev = !!sub?.home_profile && (sub.home_profile as { ev?: unknown }).ev === true;
+  const top = rankPlans(distributor, usage, { ev })[0];
+  if (!top) return NextResponse.json({ ok: false, message: "No comparable plans for that bill." });
+  const currentBill = num(b?.currentBill);
+  // What they pay now: the bill total, or their own plan priced from the
+  // rates on the bill. Never the default offer (that isn't their bill).
+  const fromRates = costFromRates(cleanRates(b?.currentRates) as CurrentRates | null, usage);
+  const ownTotal = currentBill ?? (fromRates.ok ? Math.round(fromRates.total * 100) / 100 : null);
+  const reference = ownTotal ?? vdoBillForUsage(distributor, usage);
+
   if (sub) {
     const { error } = await supabaseAdmin
       .from("subscribers")
@@ -107,7 +115,7 @@ export async function POST(req: NextRequest) {
         controlled_load_kwh: usage.cl,
         has_solar: Boolean(b?.hasSolar),
         solar_export_kwh: usage.solarExportKwh,
-        reference_total: reference,
+        ...(ownTotal !== null ? { reference_total: ownTotal } : {}),
         baseline_total: top.total,
         baseline_retailer: top.plan[0],
         baseline_plan_name: top.plan[2],
@@ -130,7 +138,8 @@ export async function POST(req: NextRequest) {
       .update({
         current_rates: cleanRates(b?.currentRates),
         current_price_type: pt,
-        current_price_fixed_until: typeof b?.priceFixedUntil === "string" ? b.priceFixedUntil.slice(0, 10) : null,
+        current_price_fixed_until: isoDate(b?.priceFixedUntil),
+        discount_ends_at: isoDate(b?.discountEndsAt),
       })
       .eq("id", sub.id);
     if (ratesErr) console.warn("apply-bill: pricing columns not saved (run supabase/schema.sql)", ratesErr.message);
@@ -162,7 +171,8 @@ export async function POST(req: NextRequest) {
     bestTotal: top.total,
     reference,
     saving: reference - top.total,
-    usedCurrentBill: currentBill !== null,
+    savingPerYear: ((reference - top.total) * 365) / days,
+    usedCurrentBill: ownTotal !== null,
   });
 }
 
@@ -178,4 +188,9 @@ function cleanRates(v: unknown): Record<string, number | null> | null {
     if (n !== null) any = true;
   }
   return any ? out : null;
+}
+
+/** A YYYY-MM-DD date from the client, or null. */
+function isoDate(v: unknown): string | null {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 }

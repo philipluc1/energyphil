@@ -12,7 +12,7 @@
 //   registry:  https://api.energymadeeasy.gov.au/refdata2?keys=organisations
 //   plan list: https://cdr.energymadeeasy.gov.au/{cdrCode}/cds-au/v1/energy/plans   (header x-v: 1)
 //   plan:      https://cdr.energymadeeasy.gov.au/{cdrCode}/cds-au/v1/energy/plans/{planId}  (header x-v: 3)
-// Rates are GST-inclusive dollars. One request a second per retailer; retailers run in parallel.
+// Feeds publish prices excluding GST; we store GST-inclusive dollars (see gst()). One request a second per retailer; retailers run in parallel.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -85,7 +85,9 @@ export function parseGasPlan(detail) {
   const unit = String(rates[0].measureUnit ?? "MJ").toUpperCase();
   if (unit === "KWH") for (const b of blocks) { b.rate = b.rate / 3.6; if (b.upTo !== null) b.upTo = b.upTo * 3.6; }
   blocks[blocks.length - 1].upTo = null;
-  return { supply, blocks, perDay };
+  // Add GST, like electricity.
+  for (const b of blocks) b.rate = gst(b.rate);
+  return { supply: gst(supply), blocks, perDay };
 }
 
 async function pullGasRetailer(cdrCode, retailerName, log) {
@@ -128,6 +130,8 @@ function vicDistributors(plan) {
 }
 
 const num = (v) => (v === null || v === undefined || v === "" ? null : Number(v));
+/** Add 10% GST, rounded to 6 decimal places. */
+export const gst = (v) => (v === null || v === undefined ? null : Math.round(v * 1.1 * 1e6) / 1e6);
 const firstRate = (rates) => (Array.isArray(rates) && rates.length ? num(rates[0].unitPrice) : null);
 
 /** Turn one CDR plan detail into the rate columns the site uses, or null if it can't be priced. */
@@ -165,7 +169,9 @@ export function parsePlan(detail) {
     const r = f.singleTariff?.rates ? firstRate(f.singleTariff.rates) : num(f.singleTariff?.amount);
     if (r !== null) { solarFit = r; break; }
   }
-  return { supply, anytime, peak, shoulder, offpeak, cl, solarFit };
+  // CDR prices exclude GST; the site shows what people actually pay, so add
+  // 10% to everything except the solar feed-in credit (no GST on that).
+  return { supply: gst(supply), anytime: gst(anytime), peak: gst(peak), shoulder: gst(shoulder), offpeak: gst(offpeak), cl: gst(cl), solarFit };
 }
 
 async function pullRetailer(cdrCode, retailerName, log) {
