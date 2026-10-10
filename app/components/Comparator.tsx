@@ -8,6 +8,8 @@ import {
   PLAN_DATA_DATE,
   PLANS,
   RETAILER_COUNT,
+  fmtRateCents,
+  fmtRatePerDay,
   isEvFriendly,
   planRateRows,
   rankPlans,
@@ -36,6 +38,7 @@ import HowWeWorkedItOut from "./HowWeWorkedItOut";
 import StateWaitlist from "./StateWaitlist";
 import YourRates from "./YourRates";
 import w from "./wizard.module.css";
+import snap from "./snap.module.css";
 import { EMPTY_RATES_FORM, costFromRates, ratesFromForm, ratesToForm, type RatesForm } from "@/lib/currentRates";
 import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 
@@ -213,6 +216,9 @@ export default function Comparator() {
   // Which period the result numbers and charts are shown for.
   const [period, setPeriod] = useState<"month" | "quarter" | "year">("quarter");
   const [restored, setRestored] = useState(false);
+  // How they came in: "snap" (the bill photo, the main way), "wizard" (the
+  // questions), or "read" (we've read a bill; show what we found).
+  const [entry, setEntry] = useState<"snap" | "wizard" | "read">("snap");
 
   // Remember the check in this browser, so a refresh or a return visit
   // doesn't start from scratch. Nothing leaves the device.
@@ -223,6 +229,11 @@ export default function Comparator() {
   useEffect(() => {
     let raw: string | null = null;
     try { raw = window.localStorage.getItem(SAVE_KEY); } catch { raw = null; }
+    // /check?start=questions or ?start=type skips the photo panel.
+    const start = new URLSearchParams(window.location.search).get("start");
+    if (start === "questions" || start === "type") {
+      setTimeout(() => { setEntry("wizard"); setUsageSource(start === "questions" ? "estimate" : "bill"); }, 0);
+    }
     if (!raw) {
       const t0 = setTimeout(() => setHydrated(true), 0);
       return () => clearTimeout(t0);
@@ -254,6 +265,7 @@ export default function Comparator() {
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
         if (d.ratesForm && typeof d.ratesForm === "object") setRatesForm({ ...EMPTY_RATES_FORM, ...d.ratesForm });
         setRestored(true);
+        setEntry("wizard");
         // "Join" links point at /check#pricing: with a saved check, go
         // straight to the result and its membership plans.
         if (window.location.hash === "#pricing" && d.distributor) {
@@ -403,6 +415,18 @@ export default function Comparator() {
     }
     if (bill.fuel === "dual" && bill.gasMj) warnings.push("We also read the gas part of this bill. See your gas result on the gas check page after this.");
     setScanBanner({ retailer: bill.retailerName, warnings });
+
+    // Read from the results page: stay there; the numbers update in place.
+    if (stage === "results") return;
+    const network = bill.distributor ?? (bill.postcode ? guessDistributorFromPostcode(bill.postcode) : null);
+    const outsideVic = !!bill.postcode && bill.postcode.length === 4 && !/^[38]/.test(bill.postcode);
+    if (network && !outsideVic && hasUsage && bill.billingDays !== null) {
+      setEntry("read");
+    } else {
+      setEntry("wizard");
+      setInputStep(!network || outsideVic ? 1 : 3);
+    }
+    scrollToTop();
   }
 
   const typedBill = currentBillRaw === "" ? null : parseFloat(currentBillRaw);
@@ -558,16 +582,88 @@ export default function Comparator() {
             )}
         <section className={styles.hero}>
           <span className={styles.residentialTag}>Victorian homes · NSW, SA, QLD coming</span>
-          <h1>Check your plan</h1>
+          <h1>{entry === "read" ? "Here's what we read" : "Check your plan"}</h1>
           <p className={styles.lede}>
-            Got a bill? Snap it and we&apos;ll read it. No bill? Answer a few quick questions about your home. Free either way,
-            no sign-up. Gas bill? <Link href="/gas">Check gas</Link>.
+            {entry === "snap" ? (
+              <>The quickest, most accurate check: a photo of your electricity bill. Free, no sign-up. Gas bill? <Link href="/gas">Check gas</Link>.</>
+            ) : entry === "read" ? (
+              <>Have a quick look, then see your result.</>
+            ) : (
+              <>A few quick questions about your home. Free, no sign-up. Gas bill? <Link href="/gas">Check gas</Link>.</>
+            )}
           </p>
         </section>
 
-        {/* Step 3 (bill mode) has its own upload card; don't show it twice. */}
-        {!(inputStep === 3 && !useEst) && <BillPhotoUpload onApply={handleBillExtracted} />}
+        {entry === "snap" && (
+          <>
+            <BillPhotoUpload variant="hero" onApply={handleBillExtracted} />
+            <div className={snap.alt}>
+              <button type="button" className={snap.altBtn} onClick={() => { setUsageSource("estimate"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
+                <b>No bill handy?</b>
+                <span>Answer a few quick questions and we&apos;ll estimate →</span>
+              </button>
+              <button type="button" className={snap.altBtn} onClick={() => { setUsageSource("bill"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
+                <b>Rather type it in?</b>
+                <span>Copy the numbers from your bill yourself →</span>
+              </button>
+            </div>
+          </>
+        )}
 
+        {entry === "read" && (
+          <div className={snap.readCard}>
+            <div className={snap.readHead}>
+              <span className={snap.readTick} aria-hidden="true">✓</span>
+              {scanBanner?.retailer ? `Got it: your ${scanBanner.retailer} bill` : "Got it: we've read your bill"}
+            </div>
+            <p className={snap.readSub}>If anything looks wrong, change it before we work it out.</p>
+            <dl className={snap.facts}>
+              <div className={snap.fact}><dt>Network</dt><dd>{distributor}{postcode ? ` · ${postcode}` : ""}</dd></div>
+              <div className={snap.fact}><dt>Bill period</dt><dd>{days} days</dd></div>
+              <div className={snap.fact}>
+                <dt>Electricity used</dt>
+                <dd>{Math.round(usageAnytime + usagePeak + usageShoulder + usageOffpeak).toLocaleString("en-AU")} kWh{mode === "detailed" ? " (by time of day)" : ""}</dd>
+              </div>
+              <div className={snap.fact}><dt>Bill total</dt><dd>{typedBill !== null && !Number.isNaN(typedBill) ? fmtCurrency(typedBill) : "Not found"}</dd></div>
+              {clKwh > 0 && <div className={snap.fact}><dt>Hot-water meter</dt><dd>{Math.round(clKwh).toLocaleString("en-AU")} kWh</dd></div>}
+              {solarExportKwh > 0 && <div className={snap.fact}><dt>Solar sent to grid</dt><dd>{Math.round(solarExportKwh).toLocaleString("en-AU")} kWh</dd></div>}
+              <div className={`${snap.fact} ${snap.factWide}`}>
+                <dt>Your rates</dt>
+                <dd>
+                  {myRates
+                    ? [
+                        myRates.anytime !== null ? fmtRateCents(myRates.anytime) : null,
+                        myRates.peak !== null ? "peak " + fmtRateCents(myRates.peak) : null,
+                        myRates.offpeak !== null ? "off-peak " + fmtRateCents(myRates.offpeak) : null,
+                        myRates.supply !== null ? fmtRatePerDay(myRates.supply) + " supply" : null,
+                      ].filter(Boolean).join(" · ")
+                    : "Not found, so we'll use your bill total"}
+                  {myRates && ratesForm.planName ? <span className={snap.factNote}>{ratesForm.planName}{ratesForm.priceType !== "unsure" ? ` · ${ratesForm.priceType}` : ""}</span> : null}
+                </dd>
+              </div>
+            </dl>
+            {scanBanner && scanBanner.warnings.length > 0 && (
+              <div className={snap.readWarn}>
+                <b>Worth a check:</b>
+                <ul>{scanBanner.warnings.map((m, i) => <li key={i}>{m}</li>)}</ul>
+              </div>
+            )}
+            <button type="button" className={snap.readGo} onClick={() => { setStage("results"); scrollToTop(); }}>
+              See my result →
+            </button>
+            <button type="button" className={snap.readEdit} onClick={() => { setEntry("wizard"); setInputStep(3); scrollToTop(); }}>
+              Check or change what we read
+            </button>
+          </div>
+        )}
+
+        {entry === "wizard" && (
+          <>
+        {!scanBanner && (
+          <button type="button" className={snap.backToSnap} onClick={() => { setEntry("snap"); scrollToTop(); }}>
+            📷 Got your bill after all? <u>Snap it instead</u>, it&apos;s quicker
+          </button>
+        )}
         {scanBanner && (
           <div className={styles.scanBanner}>
             <div className={styles.scanBannerHead}>
@@ -1179,6 +1275,8 @@ export default function Comparator() {
             </button>
           )}
         </div>
+          </>
+        )}
           </>
         )}
 

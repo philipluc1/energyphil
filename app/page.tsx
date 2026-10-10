@@ -78,23 +78,23 @@ export default function Home() {
             <div className={`${home.chips} ${home.rise}`} style={{ "--d": "0ms" } as CSSProperties}>
               <Tag tone="teal">Victoria</Tag>
               <Tag tone="amber" shine>Free check</Tag>
-              <Tag tone="glass" dot>About 2 minutes</Tag>
+              <Tag tone="glass" dot>30 seconds with a photo</Tag>
               <Tag tone="glass">No sign-up</Tag>
             </div>
             <h1 className={`${home.heroTitle} ${home.rise}`} style={{ "--d": "120ms" } as CSSProperties}>
               Are you paying too much for electricity?
             </h1>
             <p className={`${home.heroLede} ${home.rise}`} style={{ "--d": "240ms" } as CSSProperties}>
-              Snap your bill, or answer a few quick questions. We&apos;ll find the cheapest Victorian plan for you and show what you&apos;d save.
+              Take a photo of your bill. We read what you use and the rates you pay, then find the cheapest Victorian plan for you and show what you&apos;d save.
               <span className={home.rollout}>Victoria now. NSW, SA and Queensland next.</span>
             </p>
             <div className={`${home.heroActions} ${home.rise}`} style={{ "--d": "360ms" } as CSSProperties}>
               <Link href="/check" className={home.ctaBig}>
-                Start my free check
+                <span aria-hidden="true">📷</span> Snap my bill
                 <span className={home.ctaArrow} aria-hidden="true">→</span>
               </Link>
-              <Link href="/pricing" className={home.ctaGhost}>
-                See pricing
+              <Link href="/check?start=questions" className={home.ctaGhost}>
+                No bill? Answer a few questions
               </Link>
             </div>
             <div className={`${home.heroStats} ${home.rise}`} style={{ "--d": "480ms" } as CSSProperties}>
@@ -226,13 +226,13 @@ export default function Home() {
           <ScrollReveal className={home.closing}>
             <div className={home.closingText}>
               <Tag tone="amber" shine>Free</Tag>
-              <h2>Two minutes. No bill. No cost.</h2>
+              <h2>One photo. Thirty seconds. No cost.</h2>
               <p>
-                Find out what you could save, then decide. Questions? See the <Link href="/faq">FAQ</Link> or{" "}
+                Snap your bill and see what you could save, then decide. No bill handy? Answer a few questions instead. Questions? See the <Link href="/faq">FAQ</Link> or{" "}
                 <Link href="/pricing">pricing</Link>.
               </p>
               <Link href="/check" className={home.ctaBig}>
-                Start my free check
+                <span aria-hidden="true">📷</span> Snap my bill
                 <span className={home.ctaArrow} aria-hidden="true">→</span>
               </Link>
             </div>
