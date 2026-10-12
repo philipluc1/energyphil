@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { totalEvFriendly } from "@/lib/plans";
+import { PLANS, RETAILER_COUNT, totalEvFriendly } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import styles from "../components/Comparator.module.css";
@@ -34,6 +34,20 @@ export default function FaqPage() {
             <details className={home.faqItem}>
               <summary>Are you part of the government?</summary>
               <p>No. We&apos;re an independent, privately run service, not affiliated with the Victorian Government or Victorian Energy Compare. Our results come from each retailer&apos;s published prices.</p>
+            </details>
+            <details className={home.faqItem}>
+              <summary>How is this different from Victorian Energy Compare?</summary>
+              <p>
+                Victorian Energy Compare is the Government&apos;s free comparison site, and it&apos;s good. It covers retailers across Victoria, and if you
+                share your smart meter data it prices a full year of your use, which makes it the most precise way to compare time-of-use plans. It
+                gives you the best deal on the day you check.
+              </p>
+              <p>
+                Utilo starts from a photo of your bill, so it takes about 30 seconds and uses the rates you actually pay. Then, for members, it keeps
+                going: prices re-checked every morning, a heads-up before your discount or fixed price ends, and a re-check after the 1 July changes. We
+                track {PLANS.length} plans from {RETAILER_COUNT} retailers, not every plan in the market, so using both is a good idea.{" "}
+                <Link href="/learn#compare">See who does what</Link>.
+              </p>
             </details>
             <details className={home.faqItem}>
               <summary>I switched, and now something cheaper has appeared. Did I waste my time?</summary>

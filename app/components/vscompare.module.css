@@ -1,0 +1,113 @@
+.wrap { margin-top: 64px; text-align: center; }
+.title { margin: 0 auto 10px; max-width: 760px; font: 900 34px/1.12 "Archivo", sans-serif; letter-spacing: -0.01em; color: var(--ink); }
+.lede { margin: 0 auto 28px; max-width: 560px; font-size: 17px; line-height: 1.5; color: var(--grey); }
+
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: left; }
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 26px rgba(20, 30, 70, 0.06);
+}
+.cardStar {
+  color: #fff;
+  border: none;
+  background:
+    radial-gradient(90% 70% at 100% 0%, rgba(14, 165, 160, 0.3) 0%, transparent 60%),
+    linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+}
+.icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: rgba(245, 166, 35, 0.14);
+}
+.cardStar .icon { background: rgba(255, 255, 255, 0.12); }
+.cardTitle { margin: 0; font: 900 21px/1.2 "Archivo", sans-serif; color: var(--ink); }
+.cardStar .cardTitle { color: #fff; }
+.cardText { margin: auto 0 0; font-size: 14px; line-height: 1.45; color: var(--grey); }
+.cardStar .cardText { color: rgba(255, 255, 255, 0.72); }
+
+/* Card 1: a race */
+.race { display: grid; gap: 10px; }
+.raceRow { display: grid; grid-template-columns: 82px 1fr 58px; gap: 8px; align-items: center; font-size: 13px; }
+.raceName { color: var(--grey); font-weight: 700; }
+.raceNameUs { color: var(--ink); font-weight: 900; }
+.raceTrack { height: 12px; border-radius: 99px; background: rgba(98, 108, 129, 0.12); overflow: hidden; }
+.raceVec, .raceUs { display: block; height: 100%; border-radius: 99px; }
+.raceVec { width: 100%; background: #b8c0d2; }
+.raceUs { width: 5%; min-width: 12px; background: linear-gradient(90deg, var(--amber-light), var(--amber)); }
+.raceTime { text-align: right; color: var(--grey); font-weight: 700; }
+.raceTimeUs { color: var(--ink); font-weight: 900; }
+
+/* Card 2: a mini bill with the rates highlighted */
+.billMini {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  font-size: 13.5px;
+}
+.billRow { display: flex; justify-content: space-between; color: var(--grey); }
+.billRow b { color: var(--ink); }
+.hl { padding: 0 6px; border-radius: 5px; background: rgba(14, 165, 160, 0.18); }
+
+/* Card 3: two tracks through the year */
+.tracks { display: grid; gap: 10px; }
+.track { display: grid; grid-template-columns: 82px 1fr; align-items: center; gap: 8px; font-size: 13px; }
+.trackName { color: rgba(255, 255, 255, 0.6); font-weight: 700; }
+.trackNameUs { color: #fff; font-weight: 900; }
+.trackLine {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 26px;
+}
+.trackLine::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  border-top: 2px dashed rgba(255, 255, 255, 0.22);
+}
+.trackLineUs::before { border-top: 2px solid var(--teal-light); }
+.dotOn, .dotOff, .dotUs { position: relative; display: grid; place-items: center; border-radius: 50%; }
+.dotOn, .dotOff { width: 14px; height: 14px; margin: 0 5px; }
+.dotOn { background: rgba(255, 255, 255, 0.75); }
+.dotOff { background: transparent; border: 2px solid rgba(255, 255, 255, 0.22); }
+.dotUs { width: 26px; height: 26px; font-size: 12px; background: var(--teal); box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.2); }
+.trackLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 90px;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+.trackLabels span { width: 25%; }
+.trackLabels span:first-child { text-align: left; }
+.trackLabels span:last-child { text-align: right; }
+
+.honest { margin: 20px auto 0; max-width: 680px; font-size: 13.5px; color: var(--grey); }
+.honest b { color: var(--ink); }
+.honest a { color: var(--navy-accent-text); font-weight: 700; }
+
+@media (max-width: 900px) {
+  .cards { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .wrap { margin-top: 48px; }
+  .title { font-size: 27px; }
+  .lede { font-size: 15.5px; }
+}

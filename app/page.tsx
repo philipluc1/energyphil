@@ -11,6 +11,7 @@ import { DATA_FACTS } from "@/lib/dataPolicy";
 import StateWaitlist from "./components/StateWaitlist";
 import PlanCards from "./components/PlanCards";
 import PlanBand from "./components/PlanBand";
+import VsCompare from "./components/VsCompare";
 import styles from "./components/Comparator.module.css";
 import home from "./home.module.css";
 
@@ -165,6 +166,8 @@ export default function Home() {
           </div>
           <p className={home.dataNote}>Plan prices checked {fmtUpdated()}.</p>
         </section>
+
+        <VsCompare />
 
       </div>
 

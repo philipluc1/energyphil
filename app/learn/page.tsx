@@ -8,6 +8,7 @@ import VideoSlot from "../components/VideoSlot";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 import learn from "./learn.module.css";
+import { StepsVisual, RolesVisual } from "./LearnVisuals";
 import { NetworkGapChart, RetailerRankChart, VdoHistoryChart, type NetworkGap, type RetailerRow } from "./LearnCharts";
 
 export const metadata = {
@@ -49,7 +50,7 @@ export default function LearnPage() {
           <h1>How Utilo works</h1>
           <p className={styles.lede}>Plain-English answers: what we do, how we&apos;re different, where prices are heading and how to pay less.</p>
           <div className={learn.chips}>
-            <a href="#compare">VEC &amp; ESC</a>
+            <a href="#compare">Who does what</a>
             <a href="#videos">Videos</a>
             <a href="#charts">Price charts</a>
             <a href="#timeline">Timeline</a>
@@ -62,34 +63,19 @@ export default function LearnPage() {
 
         <section id="how" className={learn.block}>
           <h2 className={home.h2}>Three steps</h2>
-          <ol className={learn.steps}>
-            <li><b>Tell us about your home.</b> A few taps: who lives there, heating, solar, EV. No bill needed.</li>
-            <li><b>See what you could save.</b> We price {PLANS.length} plans from {retailers} retailers against the default offer.</li>
-            <li><b>Switch, or let us keep watching.</b> Members get a monthly recheck and email, and a savings tracker.</li>
-          </ol>
+          <StepsVisual />
         </section>
 
         <section id="compare" className={learn.block}>
-          <h2 className={home.h2}>Utilo, Victorian Energy Compare and the ESC</h2>
+          <h2 className={home.h2}>Who does what</h2>
           <p className={home.sub}>Three different jobs. They work well together.</p>
-          <div className={learn.tableWrap}>
-            <table className={learn.table}>
-              <thead>
-                <tr><th></th><th>ESC</th><th>Victorian Energy Compare</th><th className={learn.us}>Utilo</th></tr>
-              </thead>
-              <tbody>
-                <tr><th>What it is</th><td>Independent regulator of Victorian energy</td><td>Victorian Government&apos;s official comparison site</td><td className={learn.us}>Independent, privately run helper</td></tr>
-                <tr><th>What it does</th><td>Sets the default offer (VDO) each year and enforces the rules</td><td>Lists offers so you can compare and switch</td><td className={learn.us}>Tailors the answer to your home, then keeps checking</td></tr>
-                <tr><th>Starting point</th><td>Not a comparison tool</td><td>Your usage or bill details</td><td className={learn.us}>A few taps about your home. Bill optional</td></tr>
-                <tr><th>After you switch</th><td>n/a</td><td>You come back and check again yourself</td><td className={learn.us}>Monthly recheck, email alerts and savings tracking (members)</td></tr>
-              </tbody>
-            </table>
-          </div>
+          <RolesVisual planCount={PLANS.length} retailers={retailers} />
           <p className={learn.note}>
-            Utilo covers the {PLANS.length} plans we can see from {retailers} retailers (data from {PLAN_DATA_DATE}). Before you switch, confirm the
-            price with the retailer or on{" "}
+            Data from {PLAN_DATA_DATE}. Before you switch, confirm the price with the retailer or on{" "}
             <a href="https://compare.energy.vic.gov.au" target="_blank" rel="noopener noreferrer">Victorian Energy Compare</a>. Using both is a good idea.
-            We are not affiliated with the Victorian Government.
+            We are not affiliated with the Victorian Government. Victorian Energy Compare details are from{" "}
+            <a href="https://www.victorianenergysaver.vic.gov.au/victorian-energy-compare" target="_blank" rel="noopener noreferrer">its published guide</a>{" "}
+            (October 2026).
           </p>
         </section>
 
