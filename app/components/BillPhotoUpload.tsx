@@ -173,7 +173,7 @@ export default function BillPhotoUpload({
         </div>
         <div className={snap.body}>
           <span className={snap.kicker}>Fastest way · about 30 seconds</span>
-          <h2 className={snap.title}>Snap your bill. We&apos;ll do the rest.</h2>
+          <h1 className={snap.title}>Snap your bill. We&apos;ll do the rest.</h1>
           <ul className={snap.points}>
             <li>We read your usage <b>and the rates you actually pay</b></li>
             <li>Paper bill, PDF or a screenshot from your retailer&apos;s app</li>

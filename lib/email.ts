@@ -25,7 +25,7 @@ export function esc(v: unknown): string {
  *  white card for the body, an optional amber button, and a quiet footer.
  *  Table-based with inline styles so it survives Gmail and Outlook. */
 export function renderEmail(opts: { title: string; bodyHtml: string; cta?: { label: string; url: string }; preheader?: string }): string {
-  const site = process.env.SITE_URL || "https://utilo.com.au";
+  const site = process.env.SITE_URL || "https://www.utiloaustralia.com.au";
   const button = opts.cta
     ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:22px 0 6px;"><tr><td style="border-radius:999px;background:#f5a623;">
          <a href="${opts.cta.url}" style="display:inline-block;padding:13px 26px;font:700 15px Arial,Helvetica,sans-serif;color:#171305;text-decoration:none;border-radius:999px;">${opts.cta.label} &rarr;</a>

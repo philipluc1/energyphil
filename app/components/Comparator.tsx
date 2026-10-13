@@ -579,19 +579,19 @@ export default function Comparator() {
                 <button type="button" onClick={startFresh}>Start fresh</button>
               </div>
             )}
+        {entry !== "snap" && (
         <section className={styles.hero}>
           <span className={styles.residentialTag}>Victorian homes · NSW, SA, QLD coming</span>
           <h1>{entry === "read" ? "Here's what we read" : "Check your plan"}</h1>
           <p className={styles.lede}>
-            {entry === "snap" ? (
-              <>The quickest, most accurate check: a photo of your electricity bill. Free, no sign-up. Gas bill? <Link href="/gas">Check gas</Link>.</>
-            ) : entry === "read" ? (
+            {entry === "read" ? (
               <>Have a quick look, then see your result.</>
             ) : (
               <>Or skip the questions: a photo of your bill does it all. Gas bill? <Link href="/gas">Check gas</Link>.</>
             )}
           </p>
         </section>
+        )}
 
         {entry === "snap" && (
           <>
@@ -612,6 +612,9 @@ export default function Comparator() {
                 <span>Copy the numbers from your bill yourself →</span>
               </button>
             </div>
+            <p className={snap.underNote}>
+              Victorian homes · NSW, SA and QLD coming. Gas bill? <Link href="/gas">Check gas</Link>.
+            </p>
           </>
         )}
 

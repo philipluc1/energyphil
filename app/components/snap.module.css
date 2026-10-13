@@ -344,3 +344,6 @@
 @media (prefers-reduced-motion: reduce) { .stripPrimary { animation: none; } }
 
 .altContinue { border-color: var(--teal); background: rgba(14, 165, 160, 0.06); }
+
+.underNote { margin: 14px 0 0; font-size: 13px; color: var(--grey); text-align: center; }
+.underNote a { color: var(--navy-accent-text); font-weight: 700; }
