@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Here's your sign-in link</title>
+<style>p{margin:0 0 14px;line-height:1.55} a{color:#0d6f78} ol,ul{margin:0 0 14px;padding-left:20px;line-height:1.6}</style></head>
+<body style="margin:0;padding:0;background:#eef0f8;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;">
+<div style="display:none;max-height:0;overflow:hidden;color:#eef0f8;">Your Utilo sign-in link</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef0f8;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;">
+  <tr><td style="background:#131c57;background-image:linear-gradient(135deg,#131c57,#0d6f78);border-radius:18px 18px 0 0;padding:22px 28px;">
+    <table role="presentation" cellspacing="0" cellpadding="0"><tr>
+      <td style="width:38px;height:38px;border-radius:11px;background:#f5a623;text-align:center;vertical-align:middle;font:900 22px Arial;color:#131c57;">&#9889;</td>
+      <td style="padding-left:12px;font:900 26px Arial,Helvetica,sans-serif;color:#fff;letter-spacing:-0.5px;">Util<span style="color:#f5a623;">o</span>
+        <div style="font:700 10px Arial;letter-spacing:2px;color:#f5a623;margin-top:2px;">PAY LESS. POWER ON.</div></td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="background:#ffffff;padding:28px 28px 22px;font-size:15px;">
+    <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;letter-spacing:-0.3px;">Here's your sign-in link</h1>
+    <p>Tap the button to open your Utilo dashboard as <strong>{{ .Email }}</strong>. The link works once and expires in an hour.</p>
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin:8px 0 20px;"><tr><td style="border-radius:999px;background:#f5a623;">
+    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:13px 26px;font:700 15px Arial,Helvetica,sans-serif;color:#171305;text-decoration:none;border-radius:999px;">Sign in to Utilo &rarr;</a>
+  </td></tr></table><p style="margin:16px 0 0;padding:12px 14px;border-radius:10px;background:#f4f6fb;font-size:13px;line-height:1.5;color:#5f6b82;">Button not working? Copy this link into your browser:<br><a href="{{ .ConfirmationURL }}" style="color:#0d6f78;word-break:break-all;">{{ .ConfirmationURL }}</a></p><p style="margin:16px 0 0;font-size:13px;color:#5f6b82;">Didn't ask for this? You can safely ignore this email. Nobody can sign in without this link.</p>
+    
+  </td></tr>
+  <tr><td style="background:#ffffff;border-radius:0 0 18px 18px;border-top:1px solid #e6e9f2;padding:16px 28px;font-size:12px;color:#777;line-height:1.5;">
+    Utilo is an independent comparison service for Victorian households, not affiliated with the Victorian Government or any retailer. Estimates only; confirm prices with the retailer before switching.
+    <br><a href="https://www.utiloaustralia.com.au" style="color:#777;">www.utiloaustralia.com.au</a>
+  </td></tr>
+</table></td></tr></table></body></html>

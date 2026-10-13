@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BIG_SAVING_PER_YEAR, PRICE_CHANGE_CLAUSE, QUIET_DAYS_AFTER_SWITCH } from "@/lib/dataPolicy";
+import { BIG_SAVING_PER_YEAR, QUIET_DAYS_AFTER_SWITCH } from "@/lib/dataPolicy";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { esc, sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
-import { computeBest, isMeaningfullyCheaper, fmtCurrency } from "@/lib/priceWatch";
+import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
+import { cheaperForLead, cheaperForMember, dealEnding, followUpMembership, followUpWeek, resultEmail } from "@/lib/emailTemplates";
+import { computeBest, isMeaningfullyCheaper } from "@/lib/priceWatch";
 import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
 
@@ -54,12 +55,8 @@ function siteOrigin(req: NextRequest): string {
   return process.env.SITE_URL || req.nextUrl.origin;
 }
 
-function unsubscribeFooter(origin: string, type: "subscriber" | "lead", id: string, extra?: string): string {
-  return `
-    <p style="margin-top:24px;font-size:12px;color:#888;">
-      ${extra ? extra + " " : ""}
-      <a href="${origin}/api/unsubscribe?type=${type}&id=${id}">Unsubscribe from these emails</a>.
-    </p>`;
+function unsubUrl(origin: string, type: "subscriber" | "lead", id: string): string {
+  return `${origin}/api/unsubscribe?type=${type}&id=${id}`;
 }
 
 export async function GET(req: NextRequest) {
@@ -124,24 +121,14 @@ export async function GET(req: NextRequest) {
         if (sinceSwitch < QUIET_DAYS_AFTER_SWITCH && perYear < BIG_SAVING_PER_YEAR) continue;
       }
 
-      const sent = await sendEmail({
-        to: sub.email,
-        subject: "A cheaper electricity plan just showed up for you",
-        cta: { label: "See it on your dashboard", url: `${origin}/account#compare` },
-        html: `
-          <p>Good news: while keeping an eye on the market for you, we found a plan that beats the one we last recommended.</p>
-          <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${esc(best.bestRetailer)} (${esc(best.bestPlanName)})</p>
-          <p style="margin:0 0 16px;">About <strong>${fmtCurrency(((previousBest! - best.bestTotal) * 365) / days)} a year</strong> cheaper than our last pick for you.</p>
-          <p><a href="${origin}/account#compare">See every plan and how to switch →</a></p>
-          <p style="color:#666;font-size:13px;">${PRICE_CHANGE_CLAUSE}</p>
-          ${unsubscribeFooter(
-            origin,
-            "subscriber",
-            sub.id,
-            "You're getting this because you're subscribed to Utilo's ongoing monitoring. This link won't cancel your membership; you can manage or cancel it any time from your dashboard.",
-          )}
-        `,
+      const e = cheaperForMember({
+        origin,
+        retailer: best.bestRetailer,
+        planName: best.bestPlanName,
+        yearly: ((previousBest! - best.bestTotal) * 365) / days,
+        unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
       });
+      const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
 
       if (sent) {
         subscribersNotified++;
@@ -221,21 +208,15 @@ export async function GET(req: NextRequest) {
       const previousBest = lead.last_notified_total ?? lead.best_total;
       if (!isMeaningfullyCheaper(best.bestTotal, previousBest, lead.billing_days ?? 91)) continue;
 
-      const sent = await sendEmail({
-        to: lead.email,
-        subject: "A cheaper electricity plan just showed up in your area",
-        cta: { label: "See it and switch", url: `${origin}/check` },
-        html: `
-          <p>When you checked your plan with Utilo, the best match was ${esc(lead.best_retailer ?? "your previous result")}. We just found something cheaper:</p>
-          <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${esc(best.bestRetailer)} (${esc(best.bestPlanName)})</p>
-          <p style="margin:0 0 16px;">About <strong>${fmtCurrency(((previousBest! - best.bestTotal) * 365) / (lead.billing_days ?? 91))} a year</strong> cheaper than that earlier match.</p>
-          <p><a href="${origin}/check">See it and switch →</a></p>
-          <p style="color:#666;font-size:13px;">${PRICE_CHANGE_CLAUSE}</p>
-          <p>Want us to keep doing this automatically from now on, instead of waiting for an email like this one?
-          <a href="${origin}/check#pricing">See ongoing monitoring plans →</a></p>
-          ${unsubscribeFooter(origin, "lead", lead.id, "You're getting this because you asked to be told about cheaper plans.")}
-        `,
+      const e = cheaperForLead({
+        origin,
+        previousRetailer: lead.best_retailer,
+        retailer: best.bestRetailer,
+        planName: best.bestPlanName,
+        yearly: ((previousBest! - best.bestTotal) * 365) / (lead.billing_days ?? 91),
+        unsubscribeUrl: unsubUrl(origin, "lead", lead.id),
       });
+      const sent = await sendEmail({ to: lead.email, subject: e.subject, title: e.title, html: e.html });
 
       if (sent) {
         leadsNotified++;
@@ -293,19 +274,16 @@ export async function GET(req: NextRequest) {
       const when = new Date(`${due.date}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "UTC" });
       const days = sub.billing_days ?? 91;
       const yearly = best && sub.reference_total ? ((sub.reference_total - best.bestTotal) * 365) / days : null;
-      const sent = await sendEmail({
-        to: sub.email,
-        subject: `Your ${due.what} ends on ${when}`,
-        cta: { label: "See your options", url: `${origin}/account#compare` },
-        html: `
-          <p>Heads up: your electricity ${esc(due.what)} ends on <strong>${esc(when)}</strong> (in ${due.days} days). Prices often go up when that happens.</p>
-          ${best ? `<p style="font-size:18px;font-weight:700;margin:16px 0 4px;">Cheapest for you today: ${esc(best.bestRetailer)} (${esc(best.bestPlanName)})</p>` : ""}
-          ${yearly !== null && yearly >= 50 ? `<p style="margin:0 0 16px;">About <strong>${fmtCurrency(yearly)} a year</strong> less than your last bill, before your current deal ends.</p>` : ""}
-          <p>Now is a good time to compare and, if it's worth it, switch or ask your retailer to match it.</p>
-          <p><a href="${origin}/account#compare">See every plan on your dashboard →</a></p>
-          ${unsubscribeFooter(origin, "subscriber", sub.id, "You're getting this because you're a Utilo member and told us when your deal ends.")}
-        `,
+      const e = dealEnding({
+        origin,
+        what: due.what,
+        when,
+        daysLeft: due.days,
+        best: best ? { retailer: best.bestRetailer, planName: best.bestPlanName } : null,
+        yearly,
+        unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
       });
+      const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
         dealAlerts++;
         await supabaseAdmin.from("subscribers").update({ deal_alert_sent_for: due.date }).eq("id", sub.id);
@@ -356,43 +334,14 @@ export async function GET(req: NextRequest) {
       const rawYearly = lead.estimated_saving && lead.billing_days ? (lead.estimated_saving / lead.billing_days) * 365 : null;
       // No "you're losing $X a week" emails to people already on a good deal.
       const yearly = rawYearly !== null && rawYearly >= 1 ? rawYearly : null;
-      const plan = lead.best_retailer ? esc(`${lead.best_retailer}${lead.best_plan_name ? ` (${lead.best_plan_name})` : ""}`) : "the plan we found";
-      const emails = [
-        {
-          subject: yearly ? `Your result: about ${fmtCurrency(yearly)} a year` : "Your Utilo result",
-          html: `
-            <p>Here's your result from yesterday's check, so it's easy to find.</p>
-            <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">${plan}</p>
-            ${yearly ? `<p style="margin:0 0 16px;">About <strong>${fmtCurrency(yearly)}</strong> a year cheaper than the benchmark we compared against.</p>` : ""}
-            <p><a href="${origin}/check">See the plan and how to switch →</a></p>
-            <p style="color:#666;">Switching takes about ten minutes online, your power stays on, and you can change your mind within 10 business days.</p>`,
-        },
-        {
-          subject: "Prices move. We can keep watching for you",
-          html: `
-            <p>Retailers change their plans through the year, so a plan that's cheapest today may not be in a few months.</p>
-            <p>Members get a check every morning, an email only when it's worth switching, bill reading from a photo, and a running tally of what they've saved. $39 a year (or $7 month to month), cancel any time.</p>
-            <p><a href="${origin}/pricing">See what members get →</a></p>`,
-        },
-        {
-          subject: yearly ? `Still paying the old rate? That's ${fmtCurrency(yearly / 52)} a week` : "A week on: did you switch?",
-          html: `
-            <p>A week ago we found <strong>${plan}</strong> for you.${yearly ? ` Every week on the old plan is about ${fmtCurrency(yearly / 52)} you don't get back.` : ""}</p>
-            <p><a href="${origin}/check">Run the check again with today's prices →</a></p>
-            <p>If you've already switched, nice work. This is the last of these emails.</p>`,
-        },
-      ];
-      const ctas = [
-        { label: "See the plan", url: `${origin}/check` },
-        { label: "See what members get", url: `${origin}/pricing` },
-        { label: "Check again with today's prices", url: `${origin}/check` },
-      ];
-      const sent = await sendEmail({
-        to: lead.email,
-        subject: emails[step].subject,
-        cta: ctas[step],
-        html: emails[step].html + unsubscribeFooter(origin, "lead", lead.id, "You're getting this because you checked your plan with Utilo."),
-      });
+      const unsub = unsubUrl(origin, "lead", lead.id);
+      const e =
+        step === 0
+          ? resultEmail({ origin, retailer: lead.best_retailer ?? "the cheapest plan", planName: lead.best_plan_name, yearly: yearly ?? 0, vsBill: false, unsubscribeUrl: unsub, sentLater: true })
+          : step === 1
+            ? followUpMembership({ origin, unsubscribeUrl: unsub })
+            : followUpWeek({ origin, retailer: lead.best_retailer, planName: lead.best_plan_name, yearly, unsubscribeUrl: unsub });
+      const sent = await sendEmail({ to: lead.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
         dripSent++;
         await supabaseAdmin.from("leads").update({ drip_step: step + 1, drip_sent_at: new Date().toISOString() }).eq("id", lead.id);

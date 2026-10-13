@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendEmail, emailConfigured, sendHealthEmail, esc } from "@/lib/email";
-import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
-import { computeBest, fmtCurrency } from "@/lib/priceWatch";
+import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
+import { monthlyCheck } from "@/lib/emailTemplates";
+import { computeBest } from "@/lib/priceWatch";
 import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
 
@@ -90,23 +90,17 @@ export async function GET(req: NextRequest) {
 
       if (emailConfigured && !sub.unsubscribed) {
         const monthName = now.toLocaleDateString("en-AU", { month: "long", timeZone: "UTC" });
-        const ok = await sendEmail({
-          to: sub.email,
+        const e = monthlyCheck({
+          origin,
+          monthName,
           // 1 July is when Victorian retailers usually reprice: say so.
-          subject: now.getUTCMonth() === 6 ? "Prices changed on 1 July: your re-check" : `Your ${monthName} electricity check`,
-          cta: { label: "Open My Dashboard", url: `${origin}/account#compare` },
-          html: `
-            <p>${now.getUTCMonth() === 6 ? "Retailers changed their prices on 1 July, so we've re-checked your plan against the new ones." : "We re-checked your plan against today's prices."}</p>
-            <p style="margin:0 0 12px;padding:10px 12px;background:#fff7e0;border-radius:8px;">Switched recently? <a href="${origin}/account">Tell us the date on your dashboard</a> so your savings count from the right day.</p>
-            <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">Cheapest for you: ${esc(best.bestRetailer)} (${esc(best.bestPlanName)})</p>
-            <p style="margin:0 0 16px;">${
-              (saving * 365) / days >= WORTH_SWITCHING_PER_YEAR
-                ? `Switching could save you about <strong>${fmtCurrency((saving * 365) / days)} a year</strong> compared with your last bill.`
-                : "Nothing beats your plan by enough to bother (at least $" + WORTH_SWITCHING_PER_YEAR + " a year). We'll keep watching."
-            }</p>
-            <p><a href="${origin}/account#compare">See every plan on your dashboard</a></p>
-            <p style="margin-top:24px;font-size:12px;color:#888;"><a href="${origin}/api/unsubscribe?type=subscriber&id=${sub.id}">Unsubscribe from these emails</a>. This won't cancel your plan.</p>`,
+          isJuly: now.getUTCMonth() === 6,
+          retailer: best.bestRetailer,
+          planName: best.bestPlanName,
+          yearly: (saving * 365) / days,
+          unsubscribeUrl: `${origin}/api/unsubscribe?type=subscriber&id=${sub.id}`,
         });
+        const ok = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
         if (ok) emailed++;
       }
     } catch (err) {

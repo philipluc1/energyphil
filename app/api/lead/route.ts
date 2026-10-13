@@ -1,9 +1,9 @@
+import { resultEmail } from "@/lib/emailTemplates";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { DISTRIBUTORS, rankPlans, type Distributor, type UsageInput } from "@/lib/plans";
 import { vdoBillForUsage } from "@/lib/profileUsage";
-import { esc, emailConfigured, sendEmail } from "@/lib/email";
-import { RETAILER_LINKS } from "@/lib/retailerLinks";
+import { emailConfigured, sendEmail } from "@/lib/email";
 
 // Saves a free check ("email me this result"). Written by the server only:
 // the browser can't insert into `leads` directly, so nobody can plant rows
@@ -80,19 +80,15 @@ export async function POST(req: NextRequest) {
   if (emailConfigured && inserted && top) {
     const origin = process.env.SITE_URL || req.nextUrl.origin;
     const yearly = save !== null ? (save * 365) / days : 0;
-    const link = RETAILER_LINKS[top.plan[0]];
-    const sent = await sendEmail({
-      to: email,
-      subject: yearly >= 50 ? `Your result: about $${Math.round(yearly)} a year` : "Your Utilo result",
-      cta: { label: "See it again", url: `${origin}/check` },
-      html: `
-        <p>Here's your result, so it's easy to find later.</p>
-        <p style="font-size:18px;font-weight:700;margin:16px 0 4px;">Cheapest for you: ${esc(top.plan[0])} (${esc(top.plan[2])})</p>
-        ${yearly >= 50 ? `<p>About <strong>$${Math.round(yearly).toLocaleString("en-AU")} a year</strong> less than ${bill > 0 ? "your bill" : "the Victorian Default Offer (snap your bill for your exact saving)"}.</p>` : `<p>Nothing beats ${bill > 0 ? "your bill" : "the default offer"} by enough to bother right now.</p>`}
-        ${link ? `<p><a href="${link}">Go to ${esc(top.plan[0])} →</a></p>` : ""}
-        <p style="color:#666;">Switching takes about ten minutes online, your power stays on, and you can change your mind within 10 business days.</p>
-        <p style="color:#888;font-size:12px;"><a href="${origin}/api/unsubscribe?type=lead&id=${inserted.id}">Unsubscribe</a></p>`,
-    }).catch(() => false);
+    const e = resultEmail({
+      origin,
+      retailer: top.plan[0],
+      planName: top.plan[2],
+      yearly,
+      vsBill: bill > 0,
+      unsubscribeUrl: `${origin}/api/unsubscribe?type=lead&id=${inserted.id}`,
+    });
+    const sent = await sendEmail({ to: email, subject: e.subject, title: e.title, html: e.html }).catch(() => false);
     if (sent) await supabaseAdmin.from("leads").update({ drip_step: 1, drip_sent_at: new Date().toISOString() }).eq("id", inserted.id);
   }
   return NextResponse.json({ ok: true });

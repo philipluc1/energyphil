@@ -73,6 +73,9 @@ export async function sendEmail(opts: { to: string; subject: string; html: strin
         to: opts.to,
         subject: opts.subject,
         html,
+        // Where replies go. Set RESEND_REPLY_TO in Vercel (e.g. your own inbox);
+        // otherwise replies go to the sending address.
+        ...(process.env.RESEND_REPLY_TO ? { reply_to: process.env.RESEND_REPLY_TO } : {}),
       }),
     });
     if (!res.ok) {
@@ -93,14 +96,21 @@ export async function sendHealthEmail(job: string, stats: Record<string, number 
   const to = process.env.ADMIN_EMAIL;
   if (!to || !RESEND_API_KEY) return;
   const errors = Number(stats.errors ?? 0);
+  const ok = errors === 0;
   const rows = Object.entries(stats)
-    .map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#666;">${k}</td><td style="padding:6px 0;font-weight:700;">${v}</td></tr>`)
+    .map(([k, v]) => `<tr><td style="padding:10px 0;border-top:1px solid #eef0f5;color:#5f6b82;font-size:14px;">${esc(k)}</td><td style="padding:10px 0;border-top:1px solid #eef0f5;text-align:right;font-weight:800;font-size:16px;color:${k === "errors" && !ok ? "#b45309" : "#131c57"};">${esc(v)}</td></tr>`)
     .join("");
   await sendEmail({
     to,
-    subject: `${errors > 0 ? "⚠️ " : "✅ "}Utilo ${job}: ${errors > 0 ? `${errors} error${errors === 1 ? "" : "s"}` : "all good"}`,
-    title: `${job} ran ${new Date().toLocaleString("en-AU", { timeZone: "Australia/Melbourne", dateStyle: "medium", timeStyle: "short" })}`,
-    html: `<table role="presentation" cellspacing="0" cellpadding="0" style="font-size:15px;">${rows}</table>
-      ${errors > 0 ? `<p style="margin-top:14px;color:#b45309;">Check the Vercel logs for this job to see what failed.</p>` : ""}`,
+    subject: `${ok ? "✅ " : "⚠️ "}Utilo ${job}: ${ok ? "all good" : `${errors} error${errors === 1 ? "" : "s"}`}`,
+    title: `${job.charAt(0).toUpperCase() + job.slice(1)}`,
+    html: `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 18px;background:${ok ? "#ecfdf3" : "#fff6e5"};border-radius:12px;">
+        <tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;">
+          <div style="font:800 18px Arial;color:${ok ? "#15803d" : "#9a6400"};">${ok ? "All good" : `${errors} error${errors === 1 ? "" : "s"}: check the Vercel logs for this job`}</div>
+          <div style="font:13px Arial;color:#5f6b82;margin-top:3px;">Ran ${new Date().toLocaleString("en-AU", { timeZone: "Australia/Melbourne", dateStyle: "medium", timeStyle: "short" })} Melbourne time</div>
+        </td></tr>
+      </table>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-family:Arial,Helvetica,sans-serif;">${rows}</table>`,
   }).catch(() => undefined);
 }

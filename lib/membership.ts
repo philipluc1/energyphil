@@ -2,7 +2,8 @@ import "server-only";
 import type Stripe from "stripe";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { findPlan } from "./pricingPlans";
-import { esc, sendEmail } from "./email";
+import { sendEmail } from "./email";
+import { welcomeEmail } from "./welcomeEmail";
 import { PLANS } from "./plans";
 
 const KNOWN_RETAILERS = new Set(PLANS.map((p) => p[0]));
@@ -97,21 +98,21 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
   }
 
   if (opts.sendWelcome !== false) {
-    await sendEmail({
-      to: email,
-      subject: "Welcome to Utilo. Let's start saving",
-      cta: { label: "Upload my bill and see my dashboard", url: `${origin}/account` },
-      html: `
-        <p>Thanks for joining. From now on we re-check your plan every morning and email you only when switching is worth it. On the 1st of each month you'll get a short summary.</p>
-        <p style="font-size:16px;font-weight:700;margin:18px 0 6px;">Two things to do now</p>
-        <ol style="margin:0 0 16px;padding-left:20px;line-height:1.6;">
-          <li><a href="${origin}/account">Read your latest bill</a> (photo or PDF) so your checks use real numbers.</li>
-          <li>Once you've switched, tell us the date on your dashboard so your savings count from the right day.</li>
-        </ol>
-        ${baselineRetailer ? `<p>Your best match at sign-up was <strong>${esc(baselineRetailer)}${md.baselinePlanName ? ` (${esc(md.baselinePlanName)})` : ""}</strong>.</p>` : ""}
-        <p>Questions? Just reply to this email.</p>
-      `,
-    }).catch((e) => console.error("welcome email failed", e));
+    // Wording and layout live in lib/welcomeEmail.ts.
+    const yearlySaving =
+      referenceTotal !== null && baselineTotal !== null && billingDays && billingDays > 0
+        ? Math.max(0, ((referenceTotal - baselineTotal) / billingDays) * 365)
+        : null;
+    const w = welcomeEmail({
+      origin,
+      customerName: md.customerName || null,
+      planName: plan.name,
+      priceLabel: `$${(plan.priceCents / 100).toLocaleString("en-AU")} ${plan.cadenceLabel}`,
+      bestRetailer: baselineRetailer,
+      bestPlanName: md.baselinePlanName || null,
+      yearlySaving,
+    });
+    await sendEmail({ to: email, subject: w.subject, title: w.title, html: w.html }).catch((e) => console.error("welcome email failed", e));
   }
 
   if (inserted && referenceTotal !== null && baselineTotal !== null && billingDays && billingDays > 0) {
