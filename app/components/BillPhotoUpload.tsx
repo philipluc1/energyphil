@@ -45,7 +45,7 @@ export default function BillPhotoUpload({
 }: {
   onApply: (bill: ExtractedBill) => void;
   /** "hero": the big, main way into the check. "card": the smaller reminder elsewhere. */
-  variant?: "hero" | "card";
+  variant?: "hero" | "strip" | "card";
 }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -129,6 +129,31 @@ export default function BillPhotoUpload({
       <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className={styles.photoInputHidden} onChange={onInputChange} />
     </>
   );
+
+  if (variant === "strip") {
+    const reading = status === "reading";
+    return (
+      <div className={snap.strip}>
+        <div className={snap.stripText}>
+          <span className={snap.stripIcon} aria-hidden="true">📷</span>
+          <span>
+            <b>{reading ? READING_STEPS[readingStep] : "Got your bill? Skip these questions."}</b>
+            {!reading && <small>A photo fills in everything, including your real rates. About 30 seconds.</small>}
+          </span>
+        </div>
+        {reading ? (
+          <span className={snap.spinner} aria-hidden="true" />
+        ) : (
+          <div className={snap.stripActions}>
+            <button type="button" className={snap.stripPrimary} onClick={() => cameraInputRef.current?.click()}>📷 Snap my bill</button>
+            <button type="button" className={snap.stripSecondary} onClick={() => fileInputRef.current?.click()}>Upload</button>
+          </div>
+        )}
+        {status === "error" && <p className={snap.err}>{errorMsg}</p>}
+        {inputs}
+      </div>
+    );
+  }
 
   if (variant === "hero") {
     const reading = status === "reading";

@@ -265,7 +265,6 @@ export default function Comparator() {
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
         if (d.ratesForm && typeof d.ratesForm === "object") setRatesForm({ ...EMPTY_RATES_FORM, ...d.ratesForm });
         setRestored(true);
-        setEntry("wizard");
         // "Join" links point at /check#pricing: with a saved check, go
         // straight to the result and its membership plans.
         if (window.location.hash === "#pricing" && d.distributor) {
@@ -574,7 +573,7 @@ export default function Comparator() {
       <div className={styles.wrap}>
         {stage === "input" && (
           <>
-            {restored && (
+            {restored && entry === "wizard" && (
               <div className={styles.restoredBar}>
                 <span>We&apos;ve filled in your last answers.</span>
                 <button type="button" onClick={startFresh}>Start fresh</button>
@@ -589,7 +588,7 @@ export default function Comparator() {
             ) : entry === "read" ? (
               <>Have a quick look, then see your result.</>
             ) : (
-              <>A few quick questions about your home. Free, no sign-up. Gas bill? <Link href="/gas">Check gas</Link>.</>
+              <>Or skip the questions: a photo of your bill does it all. Gas bill? <Link href="/gas">Check gas</Link>.</>
             )}
           </p>
         </section>
@@ -598,6 +597,12 @@ export default function Comparator() {
           <>
             <BillPhotoUpload variant="hero" onApply={handleBillExtracted} />
             <div className={snap.alt}>
+              {restored && (
+                <button type="button" className={`${snap.altBtn} ${snap.altContinue}`} onClick={() => { setEntry("wizard"); scrollToTop(); }}>
+                  <b>Continue your last check</b>
+                  <span>Your answers are saved on this device →</span>
+                </button>
+              )}
               <button type="button" className={snap.altBtn} onClick={() => { setUsageSource("estimate"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
                 <b>No bill handy?</b>
                 <span>Answer a few quick questions and we&apos;ll estimate →</span>
@@ -659,11 +664,7 @@ export default function Comparator() {
 
         {entry === "wizard" && (
           <>
-        {!scanBanner && (
-          <button type="button" className={snap.backToSnap} onClick={() => { setEntry("snap"); scrollToTop(); }}>
-            📷 Got your bill after all? <u>Snap it instead</u>, it&apos;s quicker
-          </button>
-        )}
+        {!scanBanner && <BillPhotoUpload variant="strip" onApply={handleBillExtracted} />}
         {scanBanner && (
           <div className={styles.scanBanner}>
             <div className={styles.scanBannerHead}>
@@ -1042,18 +1043,6 @@ export default function Comparator() {
               </div>
             </section>
 
-            {!useEst && !scanBanner && (
-              <section className={w.q}>
-                <div className={w.qHead}>
-                  <span className={w.qNum}>★</span>
-                  <div>
-                    <h3 className={w.qTitle}>Fastest and most accurate: snap it</h3>
-                    <p className={w.qSub}>A photo, PDF or app screenshot fills in everything below, including the rates you really pay. Or type the numbers yourself.</p>
-                  </div>
-                </div>
-                <BillPhotoUpload onApply={handleBillExtracted} />
-              </section>
-            )}
 
             {useEst ? (
               <>
