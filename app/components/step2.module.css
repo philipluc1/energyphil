@@ -1,0 +1,37 @@
+/* Step 2: about your home. Two columns of short questions, then tap-to-select extras. */
+.grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; margin-top: 20px;
+}
+.label { display: block; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 9px; }
+.labelSoft { font-weight: 500; color: var(--grey); font-size: 13px; margin-left: 6px; }
+
+.follow {
+  margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.followLabel { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.followHint { font-size: 12.5px; color: var(--grey); line-height: 1.4; }
+
+.extrasWrap { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
+.extras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.tile, .tileOn {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 14px; min-height: 96px; border-radius: 14px; cursor: pointer; text-align: left;
+  font-family: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--border);
+}
+.tile:hover { border-color: var(--amber); }
+.tileOn { border: 2px solid var(--amber); background: rgba(245, 166, 35, 0.1); padding: 13.5px; }
+.tileIcon { color: var(--navy-accent-text); display: inline-flex; }
+.tileOn .tileIcon { color: var(--amber-ink); }
+.tileText { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.tick {
+  position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--amber); color: var(--amber-ink);
+}
+
+
+@media (max-width: 720px) {
+  .grid { grid-template-columns: 1fr; gap: 20px; }
+  .extras { grid-template-columns: 1fr 1fr; }
+}

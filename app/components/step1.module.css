@@ -52,3 +52,31 @@
 @media (max-width: 720px) {
   .types { grid-template-columns: 1fr; }
 }
+
+/* Postcode and suburb checks */
+.select {
+  width: 100%; padding: 10px 12px; border-radius: 9px; border: 1.5px solid var(--border);
+  background: var(--bg); color: var(--ink); font-family: inherit; font-size: 15px; line-height: 1.4;
+}
+.select:focus { outline: 2px solid var(--amber); outline-offset: 1px; border-color: var(--amber); }
+@media (max-width: 720px) { .select { font-size: 16px; } }
+.check {
+  margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.5;
+  background: #fff6e5; border: 1px solid rgba(245, 166, 35, 0.45); color: var(--ink);
+}
+.check button { border: none; background: none; padding: 0 4px 0 0; font: inherit; font-weight: 700; color: var(--navy-accent-text); text-decoration: underline; cursor: pointer; }
+
+/* Step 2: solar by panel count */
+.solar { margin-top: 12px; padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.solarLabel { font-weight: 700; font-size: 14px; color: var(--ink); margin-top: 4px; }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper button {
+  width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--bg);
+  font: inherit; font-size: 22px; font-weight: 700; color: var(--ink); cursor: pointer; line-height: 1;
+}
+.stepper input {
+  width: 84px; height: 44px; text-align: center; border-radius: 12px; border: 1.5px solid var(--border);
+  background: var(--bg); color: var(--ink); font: inherit; font-size: 18px; font-weight: 700;
+}
+.stepper span { font-size: 14px; color: var(--grey); }
+.solarSum { margin: 4px 0 0; font-size: 14.5px; color: var(--ink); }

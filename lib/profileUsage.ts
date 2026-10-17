@@ -9,15 +9,15 @@ import { VDO, type Distributor, type UsageInput } from "./plans";
 // price plans against THIS household's shape (who's home when, what's
 // electric, solar, EV) instead of one general-average household.
 
-export type Dwelling = "apartment" | "townhouse" | "house";
 export type Heating = "gas_none" | "reverse_cycle" | "resistive";
 export type HotWater = "gas_solar" | "electric_controlled" | "electric_general" | "heat_pump";
 export type DaytimeHome = "away" | "some" | "home";
 export type EvCharging = "overnight" | "anytime";
+/** Roughly when the solar panels went in: older panels are smaller. */
+export type SolarAge = "pre2016" | "2016to2020" | "2021on" | "unsure";
 
 export interface HomeProfile {
   people: number; // 1..6 (6 = 6+)
-  dwelling: Dwelling;
   heating: Heating;
   cooling: boolean; // air-conditioning used for cooling
   hotWater: HotWater;
@@ -26,12 +26,16 @@ export interface HomeProfile {
   evCharging: EvCharging;
   daytimeHome: DaytimeHome;
   hasSolar: boolean;
-  solarKw: number; // system size, only when hasSolar
+  solarKw: number; // system size used by the estimate, only when hasSolar
+  // Most people don't know their system size but can count panels. solarKw is
+  // worked out from the count and age unless they typed the kW themselves.
+  solarInput: "panels" | "kw";
+  solarPanels: number;
+  solarAge: SolarAge;
 }
 
 export const DEFAULT_PROFILE: HomeProfile = {
   people: 3,
-  dwelling: "house",
   heating: "gas_none",
   cooling: true,
   hotWater: "gas_solar",
@@ -40,12 +44,32 @@ export const DEFAULT_PROFILE: HomeProfile = {
   evCharging: "overnight",
   daytimeHome: "some",
   hasSolar: false,
-  solarKw: 6.6,
+  solarKw: 6.7,
+  solarInput: "panels",
+  solarPanels: 18,
+  solarAge: "unsure",
 };
+
+/** Typical panel size (kW) by install period in Australia. */
+export const PANEL_KW: Record<SolarAge, number> = { pre2016: 0.25, "2016to2020": 0.33, "2021on": 0.41, unsure: 0.37 };
+
+/** Panels x typical panel size, to one decimal place. */
+export function panelsToKw(panels: number, age: SolarAge): number {
+  return Math.round(Math.max(0, panels) * PANEL_KW[age] * 10) / 10;
+}
+
+/** A saved profile from any version of the check, filled out to today's shape. */
+export function normaliseProfile(saved: Partial<HomeProfile> & Record<string, unknown>): HomeProfile {
+  const p = { ...DEFAULT_PROFILE, ...saved } as HomeProfile & { dwelling?: unknown };
+  delete p.dwelling; // no longer asked: step 1 already says it's a home
+  // Saves from before the panel count had only a kW figure: keep it as typed.
+  if (saved.solarInput !== "panels" && saved.solarInput !== "kw") p.solarInput = typeof saved.solarKw === "number" ? "kw" : "panels";
+  if (p.solarInput === "panels") p.solarKw = panelsToKw(p.solarPanels, p.solarAge);
+  return p;
+}
 
 // Annual kWh for lighting, fridge, cooking, laundry, electronics, etc.
 const BASE_BY_PEOPLE: Record<number, number> = { 1: 2600, 2: 3500, 3: 4300, 4: 5000, 5: 5600, 6: 6200 };
-const DWELLING_FACTOR: Record<Dwelling, number> = { apartment: 0.85, townhouse: 0.95, house: 1 };
 const HEATING_KWH: Record<Heating, number> = { gas_none: 0, reverse_cycle: 900, resistive: 1800 };
 const COOLING_KWH = 350;
 const HOT_WATER_KWH: Record<HotWater, number> = {
@@ -80,7 +104,7 @@ export interface EstimatedUsage {
 
 export function estimateUsage(p: HomeProfile, days: number): EstimatedUsage {
   const scale = days / 365;
-  const base = (BASE_BY_PEOPLE[Math.min(6, Math.max(1, Math.round(p.people)))] ?? 4300) * DWELLING_FACTOR[p.dwelling];
+  const base = BASE_BY_PEOPLE[Math.min(6, Math.max(1, Math.round(p.people)))] ?? 4300;
   const heatCool = HEATING_KWH[p.heating] + (p.cooling ? COOLING_KWH : 0);
   const wfh = p.daytimeHome === "home" ? 300 : 0;
   const hotWater = HOT_WATER_KWH[p.hotWater];

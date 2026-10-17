@@ -20,12 +20,17 @@ import {
 } from "@/lib/plans";
 import { guessDistributorFromPostcode } from "@/lib/postcodeNetwork";
 import { SMALL_CUSTOMER_KWH_PER_YEAR, addressHint, checkNmi, type PropertyType } from "@/lib/meterCheck";
+import { checkLocality, suburbsIn, type Localities } from "@/lib/localityCheck";
 import NotifyMe from "./NotifyMe";
 import s1 from "./step1.module.css";
+import s2 from "./step2.module.css";
 import {
   DEFAULT_PROFILE,
   TYPICAL_ANNUAL_KWH,
   estimateUsage,
+  normaliseProfile,
+  panelsToKw,
+  type SolarAge,
   vdoBillForUsage,
   type HomeProfile,
 } from "@/lib/profileUsage";
@@ -199,7 +204,11 @@ export default function Comparator() {
   const [nmiRaw, setNmiRaw] = useState("");
   // Utilo compares home plans only; embedded networks and businesses are flagged.
   const [propertyType, setPropertyType] = useState<PropertyType>("home");
+  // The customer has answered the note about their address ("it's my home").
   const [addressHintOff, setAddressHintOff] = useState(false);
+  // Victorian postcodes and their suburbs (loaded on demand), to catch a postcode that doesn't match.
+  const [localities, setLocalities] = useState<Localities | null>(null);
+  const [suburbNotListed, setSuburbNotListed] = useState(false);
   // A bill read that looks like a business, embedded network or large site.
   const [billFlag, setBillFlag] = useState<"business" | "embedded" | "large" | null>(null);
   const [distributor, setDistributor] = useState<Distributor>("Citipower");
@@ -265,7 +274,7 @@ export default function Comparator() {
         if (typeof d.offpeak === "number") setOffpeak(d.offpeak);
         if (typeof d.cl === "number") setCl(d.cl);
         if (typeof d.showCl === "boolean") setShowCl(d.showCl);
-        if (d.profile) setProfile({ ...DEFAULT_PROFILE, ...d.profile });
+        if (d.profile) setProfile(normaliseProfile(d.profile));
         if (d.usageSource) setUsageSource(d.usageSource);
         if (typeof d.hasSolar === "boolean") setHasSolar(d.hasSolar);
         if (typeof d.solarExportRaw === "string") setSolarExportRaw(d.solarExportRaw);
@@ -277,6 +286,7 @@ export default function Comparator() {
         if (typeof d.suburb === "string") setSuburb(d.suburb);
         if (d.propertyType === "home" || d.propertyType === "embedded" || d.propertyType === "business") setPropertyType(d.propertyType);
         if (typeof d.nmiRaw === "string") setNmiRaw(d.nmiRaw);
+        if (d.addressOk === true) setAddressHintOff(true);
         // Older saves have no networkFrom: a saved network was the customer's choice.
         setNetworkFrom(["nmi", "bill", "postcode", "manual"].includes(d.networkFrom) ? d.networkFrom : d.distributor ? "manual" : null);
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
@@ -300,12 +310,21 @@ export default function Comparator() {
     try {
       window.localStorage.setItem(
         SAVE_KEY,
-        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom }),
+        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressOk: addressHintOff }),
       );
     } catch {
       /* storage unavailable */
     }
-  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, hydrated]);
+  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressHintOff, hydrated]);
+
+  // The suburb list is ~20 KB gzipped, so it loads after the page, not with it.
+  useEffect(() => {
+    let live = true;
+    import("@/lib/vicLocalities")
+      .then((m) => { if (live) setLocalities(m.VIC_LOCALITIES); })
+      .catch(() => { /* no list: the postcode check is skipped, never blocking */ });
+    return () => { live = false; };
+  }, []);
 
   // Current plan pricing for the dashboard ("Your rates vs the cheapest").
   useEffect(() => {
@@ -340,6 +359,14 @@ export default function Comparator() {
   function applyPostcode(raw: string) {
     const cleaned = raw.replace(/\D/g, "").slice(0, 4);
     setPostcode(cleaned);
+    // Offer only this postcode's suburbs: pick it when there's just one, and
+    // clear a suburb from another postcode so the two can't disagree.
+    if (localities && cleaned.length === 4) {
+      const list = suburbsIn(localities, cleaned);
+      if (list.length === 1) setSuburb(list[0]);
+      else if (list.length > 1 && !list.some((x) => x.toLowerCase() === suburb.trim().toLowerCase())) setSuburb("");
+      setSuburbNotListed(false);
+    }
     const guess = cleaned.length === 4 ? guessDistributorFromPostcode(cleaned) : null;
     // A meter number, the bill or the customer's own pick beats a postcode guess.
     if (networkFrom === "nmi" || networkFrom === "bill" || networkFrom === "manual") return;
@@ -362,12 +389,23 @@ export default function Comparator() {
   }
 
   function patchProfile(patch: Partial<HomeProfile>) {
-    setProfile((p) => ({ ...p, ...patch }));
+    setProfile((p) => {
+      const next = { ...p, ...patch };
+      // Counting panels: the system size follows the count and their age.
+      if (next.solarInput === "panels") next.solarKw = panelsToKw(next.solarPanels, next.solarAge);
+      return next;
+    });
   }
   const useEst = usageSource === "estimate";
   // Victorian postcodes start with 3 (or 8 for PO boxes). Others can't be priced yet.
   const nonVic = postcode.length === 4 && !/^[38]/.test(postcode);
   const nmiStatus = checkNmi(nmiRaw);
+  const loc = checkLocality(localities, postcode, suburb);
+  const locSuburbs = loc.status === "needSuburb" || loc.status === "mismatch" || loc.status === "ok" ? loc.suburbs : [];
+  // The suburb as the list spells it ("ALTONA NORTH" off a bill -> "Altona North").
+  const suburbListed = locSuburbs.find((x) => x.toLowerCase() === suburb.trim().toLowerCase()) ?? "";
+  // An address note (business words, or a unit) waiting for an answer.
+  const addressNote = propertyType === "home" && !addressHintOff ? addressHint(address) : null;
   // Known when it came from the meter number, the bill, the postcode or the customer.
   const networkKnown = networkFrom !== null;
   const est = useMemo(() => estimateUsage(profile, days), [profile, days]);
@@ -499,8 +537,18 @@ export default function Comparator() {
       ? "Utilo compares home electricity plans for now."
       : inputStep === 1 && nonVic
       ? "We can only check Victorian addresses for now."
-      : inputStep === 1 && !networkKnown && postcode.length < 4
+      : inputStep === 1 && postcode.length < 4
       ? "Enter your postcode so we can work out your network."
+      : inputStep === 1 && loc.status === "poBox"
+      ? `${postcode} is a PO Box postcode. Use the postcode of the home's street address.`
+      : inputStep === 1 && loc.status === "unknown"
+      ? `We can't find postcode ${postcode} in Victoria. Check it against your bill.`
+      : inputStep === 1 && loc.status === "needSuburb"
+      ? "Pick your suburb."
+      : inputStep === 1 && loc.status === "mismatch"
+      ? `${suburb} is in postcode ${loc.suburbPostcodes.join(" or ")}, not ${postcode}. Fix the postcode or the suburb.`
+      : inputStep === 1 && addressNote
+      ? "Answer the note about your address first."
       : inputStep === 1 && !networkKnown
       ? "Pick your network, or enter your meter number (NMI) from your bill."
       : billFlag
@@ -885,21 +933,65 @@ export default function Comparator() {
                 <input id="address" type="text" placeholder="12 Smith Street" value={address} onChange={(e) => { setAddress(e.target.value); setAddressHintOff(false); }} />
               </div>
               <div className={styles.field}>
-                <label htmlFor="suburb">
-                  Suburb <span className={styles.unitNote}>(optional)</span>
-                </label>
-                <input id="suburb" type="text" placeholder="Richmond" value={suburb} onChange={(e) => setSuburb(e.target.value)} />
+                <label htmlFor="suburb">Suburb</label>
+                {localities && locSuburbs.length > 0 && !suburbNotListed && (!suburb.trim() || suburbListed) ? (
+                  <select
+                    id="suburb"
+                    className={s1.select}
+                    value={suburbListed}
+                    onChange={(e) => {
+                      if (e.target.value === "__other") { setSuburbNotListed(true); setSuburb(""); }
+                      else setSuburb(e.target.value);
+                    }}
+                  >
+                    <option value="" disabled>{locSuburbs.length === 1 ? locSuburbs[0] : `Pick from ${locSuburbs.length} suburbs in ${postcode}`}</option>
+                    {locSuburbs.map((x) => <option key={x} value={x}>{x}</option>)}
+                    <option value="__other">My suburb isn&apos;t listed</option>
+                  </select>
+                ) : (
+                  <input
+                    id="suburb"
+                    type="text"
+                    placeholder={localities && postcode.length < 4 ? "Enter your postcode first" : "Richmond"}
+                    disabled={!!localities && postcode.length < 4 && !suburb}
+                    value={suburb}
+                    onChange={(e) => setSuburb(e.target.value)}
+                  />
+                )}
               </div>
             </div>
 
-            {!addressHintOff && addressHint(address) === "business" && (
+            {loc.status === "mismatch" && (
+              <div className={s1.check}>
+                <b>{suburb} is in postcode {loc.suburbPostcodes.join(" or ")}, not {postcode}.</b> The postcode decides your network and prices, so it needs to match.{" "}
+                {loc.suburbPostcodes.slice(0, 3).map((pc) => (
+                  <button key={pc} type="button" onClick={() => { applyPostcode(pc); setSuburbNotListed(false); }}>
+                    Use {pc}
+                  </button>
+                ))}
+                {" · "}
+                <button type="button" onClick={() => { setSuburb(""); setSuburbNotListed(false); }}>Pick a suburb in {postcode}</button>
+              </div>
+            )}
+            {loc.status === "unknown" && (
+              <div className={s1.check}>
+                <b>We can&apos;t find postcode {postcode} in Victoria.</b> Check the postcode on your bill or a letter to your home.
+              </div>
+            )}
+            {loc.status === "poBox" && (
+              <div className={s1.check}>
+                <b>{postcode} is a PO Box postcode.</b> Use the postcode of the home&apos;s street address, as it shows on your power bill.
+              </div>
+            )}
+
+            {addressNote === "business" && (
               <div className={s1.hint}>
                 This looks like a business address. Utilo compares home plans for now.{" "}
                 <button type="button" onClick={() => setPropertyType("business")}>It&apos;s a business</button> ·{" "}
                 <button type="button" onClick={() => setAddressHintOff(true)}>It&apos;s my home</button>
               </div>
             )}
-            {!addressHintOff && addressHint(address) === "apartment" && (
+            {addressNote === "apartment" && (
               <div className={s1.hint}>
                 A unit? If it&apos;s a factory, warehouse or shop unit, it&apos;s a business. If it&apos;s an apartment, check who sends your power bill: a normal
                 retailer is fine, but if it&apos;s the building, strata or an embedded network company we can&apos;t compare it yet.{" "}
@@ -1021,134 +1113,169 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>2</span> Tell us about your home
+                  <span className={styles.stepNum}>2</span> About your home
                 </div>
-                <span className={styles.stepSub}>Tap what fits best. Rough answers are fine; it helps us match plans to how you use power.</span>
+                <span className={styles.stepSub}>Rough answers are fine. They tell us when you use power.</span>
               </div>
             </div>
 
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>How many people live here?</div>
-              <Choice
-                value={profile.people}
-                onChange={(v) => patchProfile({ people: v })}
-                options={[1, 2, 3, 4, 5, 6].map((n) => ({ value: n, label: n === 6 ? "6+" : String(n) }))}
-              />
-            </div>
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>What kind of home is it?</div>
-              <Choice
-                value={profile.dwelling}
-                onChange={(v) => patchProfile({ dwelling: v })}
-                options={[
-                  { value: "apartment", label: "Apartment" },
-                  { value: "townhouse", label: "Townhouse" },
-                  { value: "house", label: "House" },
-                ]}
-              />
-            </div>
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Is anyone home during the day?</div>
-              <Choice
-                value={profile.daytimeHome}
-                onChange={(v) => patchProfile({ daytimeHome: v })}
-                options={[
-                  { value: "away", label: "Mostly out" },
-                  { value: "some", label: "Some of the time" },
-                  { value: "home", label: "Home most days" },
-                ]}
-              />
-            </div>
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>How do you heat your home?</div>
-              <Choice
-                value={profile.heating}
-                onChange={(v) => patchProfile({ heating: v })}
-                options={[
-                  { value: "gas_none", label: "Gas, or no heating" },
-                  { value: "reverse_cycle", label: "Split system / reverse-cycle" },
-                  { value: "resistive", label: "Electric heaters" },
-                ]}
-              />
-            </div>
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Do you use air-con to cool down?</div>
-              <Choice
-                value={profile.cooling}
-                onChange={(v) => patchProfile({ cooling: v })}
-                options={[
-                  { value: true, label: "Yes" },
-                  { value: false, label: "No" },
-                ]}
-              />
-            </div>
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>How is your water heated?</div>
-              <Choice
-                value={profile.hotWater}
-                onChange={(v) => patchProfile({ hotWater: v })}
-                options={[
-                  { value: "gas_solar", label: "Gas / solar" },
-                  { value: "electric_controlled", label: "Electric, on a separate off-peak meter" },
-                  { value: "electric_general", label: "Electric, not sure / normal meter" },
-                  { value: "heat_pump", label: "Heat pump" },
-                ]}
-              />
-            </div>
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Pool or spa?</div>
-              <Choice
-                value={profile.pool}
-                onChange={(v) => patchProfile({ pool: v })}
-                options={[
-                  { value: false, label: "No" },
-                  { value: true, label: "Yes" },
-                ]}
-              />
-            </div>
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Do you charge an electric car at home?</div>
-              <Choice
-                value={profile.ev}
-                onChange={(v) => patchProfile({ ev: v })}
-                options={[
-                  { value: false, label: "No" },
-                  { value: true, label: "Yes" },
-                ]}
-              />
-              <p className={styles.helper}>Say yes to also see plans built around cheap or free overnight EV charging. Without an EV those plans rarely work out cheaper.</p>
-              {profile.ev && (
+            <div className={s2.grid}>
+              <div>
+                <span className={s2.label}>People living here</span>
                 <Choice
-                  value={profile.evCharging}
-                  onChange={(v) => patchProfile({ evCharging: v })}
+                  value={profile.people}
+                  onChange={(v) => patchProfile({ people: v })}
+                  options={[1, 2, 3, 4, 5, 6].map((n) => ({ value: n, label: n === 6 ? "6+" : String(n) }))}
+                />
+              </div>
+              <div>
+                <span className={s2.label}>Home during the day?</span>
+                <Choice
+                  value={profile.daytimeHome}
+                  onChange={(v) => patchProfile({ daytimeHome: v })}
                   options={[
-                    { value: "overnight", label: "Charge overnight" },
-                    { value: "anytime", label: "Charge any time" },
+                    { value: "away", label: "Mostly out" },
+                    { value: "some", label: "Some days" },
+                    { value: "home", label: "Most days" },
                   ]}
                 />
-              )}
+              </div>
+              <div>
+                <span className={s2.label}>Heating</span>
+                <Choice
+                  value={profile.heating}
+                  onChange={(v) => patchProfile({ heating: v })}
+                  options={[
+                    { value: "gas_none", label: "Gas or none" },
+                    { value: "reverse_cycle", label: "Split system" },
+                    { value: "resistive", label: "Electric heaters" },
+                  ]}
+                />
+              </div>
+              <div>
+                <span className={s2.label}>Hot water</span>
+                <Choice
+                  value={profile.hotWater === "electric_controlled" ? "electric_general" : profile.hotWater}
+                  onChange={(v) => patchProfile({ hotWater: v === "electric_general" && profile.hotWater === "electric_controlled" ? "electric_controlled" : v })}
+                  options={[
+                    { value: "gas_solar", label: "Gas or solar" },
+                    { value: "electric_general", label: "Electric" },
+                    { value: "heat_pump", label: "Heat pump" },
+                  ]}
+                />
+                {(profile.hotWater === "electric_general" || profile.hotWater === "electric_controlled") && (
+                  <div className={s2.follow}>
+                    <span className={s2.followLabel}>On a separate off-peak meter?</span>
+                    <Choice
+                      value={profile.hotWater}
+                      onChange={(v) => patchProfile({ hotWater: v })}
+                      options={[
+                        { value: "electric_controlled", label: "Yes" },
+                        { value: "electric_general", label: "No or not sure" },
+                      ]}
+                    />
+                    <span className={s2.followHint}>If it is, your bill has a &ldquo;controlled load&rdquo; line.</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className={styles.profileField}>
-              <div className={styles.profileLabel}>Do you have rooftop solar?</div>
-              <Choice
-                value={profile.hasSolar}
-                onChange={(v) => patchProfile({ hasSolar: v })}
-                options={[
-                  { value: false, label: "No solar" },
-                  { value: true, label: "I have solar" },
-                ]}
-              />
-              {profile.hasSolar && (
-                <div className={styles.field} style={{ marginTop: 10, maxWidth: 220 }}>
-                  <label htmlFor="solarKw">System size (kW)</label>
-                  <input
-                    id="solarKw"
-                    type="number"
-                    min={0.5}
-                    step={0.1}
-                    value={profile.solarKw}
-                    onChange={(e) => patchProfile({ solarKw: Math.max(0, parseFloat(e.target.value) || 0) })}
+
+            <div className={s2.extrasWrap}>
+              <span className={s2.label}>Do you have any of these? <span className={s2.labelSoft}>Tap all that apply</span></span>
+              <div className={s2.extras}>
+                {([
+                  ["cooling", "snow", "Air-con for cooling"],
+                  ["pool", "waves", "Pool or spa"],
+                  ["ev", "car", "Electric car"],
+                  ["hasSolar", "sun", "Solar panels"],
+                ] as const).map(([key, icon, label]) => {
+                  const on = profile[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={on}
+                      className={on ? s2.tileOn : s2.tile}
+                      onClick={() => patchProfile({ [key]: !on } as Partial<HomeProfile>)}
+                    >
+                      <span className={s2.tileIcon}><Icon name={icon} size={26} /></span>
+                      <span className={s2.tileText}>{label}</span>
+                      {on && <span className={s2.tick}><Icon name="check" size={14} /></span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {profile.ev && (
+                <div className={s2.follow}>
+                  <span className={s2.followLabel}>When do you charge the car?</span>
+                  <Choice
+                    value={profile.evCharging}
+                    onChange={(v) => patchProfile({ evCharging: v })}
+                    options={[
+                      { value: "overnight", label: "Mostly overnight" },
+                      { value: "anytime", label: "Whenever" },
+                    ]}
                   />
+                  <span className={s2.followHint}>We&apos;ll also show plans with cheap overnight charging.</span>
+                </div>
+              )}
+              {profile.hasSolar && (
+                <div className={s1.solar}>
+                  {profile.solarInput === "panels" ? (
+                    <>
+                      <label className={s1.solarLabel} htmlFor="solarPanels">How many panels are on your roof?</label>
+                      <div className={s1.stepper}>
+                        <button type="button" aria-label="One fewer panel" onClick={() => patchProfile({ solarPanels: Math.max(1, profile.solarPanels - 1) })}>−</button>
+                        <input
+                          id="solarPanels"
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={100}
+                          value={profile.solarPanels || ""}
+                          onChange={(e) => patchProfile({ solarPanels: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
+                        />
+                        <button type="button" aria-label="One more panel" onClick={() => patchProfile({ solarPanels: Math.min(100, profile.solarPanels + 1) })}>+</button>
+                        <span>panels</span>
+                      </div>
+                      <span className={s1.qHint}>Count them from the street or on Google Maps&apos; satellite view. Close enough is fine.</span>
+                      <span className={s1.solarLabel}>Roughly when were they put in?</span>
+                      <Choice
+                        value={profile.solarAge}
+                        onChange={(v: SolarAge) => patchProfile({ solarAge: v })}
+                        options={[
+                          { value: "pre2016", label: "Before 2016" },
+                          { value: "2016to2020", label: "2016 to 2020" },
+                          { value: "2021on", label: "2021 or later" },
+                          { value: "unsure", label: "Not sure" },
+                        ]}
+                      />
+                      <p className={s1.solarSum}>
+                        {profile.solarPanels > 0 ? <>That&apos;s about <b>{profile.solarKw} kW</b> of solar.</> : <>Enter how many panels you have.</>}{" "}
+                        <button type="button" className={s1.linkBtn} onClick={() => patchProfile({ solarInput: "kw" })}>I know the system size</button>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <label className={s1.solarLabel} htmlFor="solarKw">System size (kW)</label>
+                      <div className={s1.stepper}>
+                        <input
+                          id="solarKw"
+                          type="number"
+                          min={0.5}
+                          step={0.1}
+                          value={profile.solarKw}
+                          onChange={(e) => patchProfile({ solarKw: Math.max(0, parseFloat(e.target.value) || 0) })}
+                        />
+                        <span>kW</span>
+                      </div>
+                      <span className={s1.qHint}>It&apos;s on the installer&apos;s paperwork or the inverter app.</span>
+                      <p className={s1.solarSum}>
+                        <button type="button" className={s1.linkBtn} onClick={() => patchProfile({ solarInput: "panels" })}>Count my panels instead</button>
+                      </p>
+                    </>
+                  )}
                   <span className={styles.unitNote}>We use each plan&apos;s real feed-in rate ({totalWithSolarFit()} of {PLAN_COUNT} publish one).</span>
                 </div>
               )}

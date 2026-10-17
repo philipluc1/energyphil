@@ -9,14 +9,13 @@ const k = (n: number) => `${Math.round(n).toLocaleString("en-AU")} kWh`;
 function profileWords(p: HomeProfile): string {
   const bits = [
     `${p.people}${p.people >= 6 ? "+" : ""} ${p.people === 1 ? "person" : "people"}`,
-    p.dwelling,
     p.heating === "gas_none" ? "gas or no electric heating" : p.heating === "reverse_cycle" ? "reverse-cycle heating" : "electric heaters",
     p.cooling ? "air-con" : "no air-con",
     p.hotWater === "gas_solar" ? "gas/solar hot water" : p.hotWater === "heat_pump" ? "heat-pump hot water" : "electric hot water",
   ];
   if (p.pool) bits.push("pool");
   if (p.ev) bits.push(`EV charged ${p.evCharging === "overnight" ? "overnight" : "any time"}`);
-  if (p.hasSolar) bits.push(`${p.solarKw} kW solar`);
+  if (p.hasSolar) bits.push(p.solarInput === "panels" ? `${p.solarPanels} solar panels (about ${p.solarKw} kW)` : `${p.solarKw} kW solar`);
   bits.push(p.daytimeHome === "home" ? "home most days" : p.daytimeHome === "away" ? "out most days" : "home some of the day");
   return bits.join(" · ");
 }
