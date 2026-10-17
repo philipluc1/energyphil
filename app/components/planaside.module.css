@@ -1,0 +1,38 @@
+.card {
+  padding: 18px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(10, 15, 40, 0.06); display: flex; flex-direction: column; gap: 12px;
+}
+.head { display: flex; gap: 12px; align-items: center; }
+.avatar {
+  width: 48px; height: 48px; flex: none; border-radius: 14px; display: grid; place-items: center;
+  background: var(--navy, #22306e); color: #fde047; font-weight: 900; font-size: 17px;
+}
+.headText { display: flex; flex-direction: column; min-width: 0; }
+.kicker { font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--grey); }
+.headText b { font-size: 18px; line-height: 1.25; }
+.plan { font-size: 13px; color: var(--grey); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+.fixed, .variable, .warn {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  padding: 5px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800;
+}
+.fixed { background: rgba(245, 166, 35, 0.16); color: #9a5b00; }
+.variable { background: var(--soft, rgba(34, 48, 110, 0.06)); color: var(--grey); }
+.warn { background: #fee2e2; color: #991b1b; }
+
+.rows { margin: 0; display: flex; flex-direction: column; }
+.row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.row:last-child { border-bottom: 0; }
+.row dt { color: var(--grey); }
+.row dd { margin: 0; font-weight: 700; text-align: right; }
+.missing { font-weight: 500 !important; color: var(--grey-soft, #8a93a6); font-style: italic; }
+
+.rates { padding: 12px 14px; border-radius: 14px; background: var(--bg); }
+.ratesTitle { font-size: 13.5px; font-weight: 800; }
+.ratesTitle small { font-weight: 600; color: var(--grey); }
+.empty { margin: 6px 0 0; font-size: 13px; color: var(--grey); line-height: 1.45; }
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.primary, .ghost { flex: 1 1 auto; text-align: center; padding: 10px 12px; border-radius: 12px; font-size: 13.5px; font-weight: 800; text-decoration: none; }
+.primary { background: var(--btn-bg, #f5a623); color: var(--btn-fg, #1c1403); }
+.ghost { border: 1.5px solid var(--border); color: inherit; }

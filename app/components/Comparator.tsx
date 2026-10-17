@@ -39,12 +39,12 @@ import type { ExtractedBill } from "@/lib/billExtraction";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { periodBreakdown } from "@/lib/savings";
 import BillPhotoUpload from "./BillPhotoUpload";
-import ResultsChart, { ChartItem } from "./ResultsChart";
-import ForecastChart, { buildForecastSeries } from "./ForecastChart";
 import PricingSection from "./PricingSection";
 import SaveCheck from "./SaveCheck";
-import FunEquivalents from "./FunEquivalents";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
+import MemberLock from "./MemberLock";
+import r from "./results.module.css";
+import { useMember } from "@/lib/useMember";
 import StateWaitlist from "./StateWaitlist";
 import YourRates from "./YourRates";
 import w from "./wizard.module.css";
@@ -82,6 +82,21 @@ function fmtUpdated(): string {
 // who wants to see exactly what they'd be charged. planRateRows() itself
 // lives in lib/plans.ts so the account portal's "your tariff" card can
 // render the same breakdown for a subscriber's matched plan.
+/** A steady colour per retailer for the little initials badge. */
+const AVATAR_COLOURS = ["#2d3f9e", "#0d9488", "#c2410c", "#7c3aed", "#0369a1", "#b91c1c", "#15803d", "#a16207", "#be185d", "#4338ca"];
+function retailerColour(name: string): string {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return AVATAR_COLOURS[h % AVATAR_COLOURS.length];
+}
+/** Plan names as retailers publish them can be messy ("…RateWith CL) Powercor"). Tidy for display only. */
+function tidyPlanName(p: PlanRow): string {
+  let n = p[2].replace(/\s+/g, " ").replace(/\(electricity\)/gi, "").replace(/RateWith/g, "Rate With").trim();
+  const nets = [p[1], p[1] === "Citipower" ? "CitiPower" : "", p[1] === "AusNet Services" ? "AusNet" : ""].filter(Boolean);
+  for (const net of nets) n = n.replace(new RegExp(`[\\s\\-–]*${net}\\s*$`, "i"), "");
+  return n.replace(/[\s\-–]+$/, "").trim() || p[2];
+}
+
 function RateBreakdown({ plan, solarExportKwh = 0 }: { plan: PlanRow; solarExportKwh?: number }) {
   return (
     <div className={styles.rateBreakdown}>
@@ -236,7 +251,7 @@ export default function Comparator() {
   const [showRates, setShowRates] = useState(false);
   const patchRates = (patch: Partial<RatesForm>) => setRatesForm((f) => ({ ...f, ...patch }));
   // Which period the result numbers and charts are shown for.
-  const [period, setPeriod] = useState<"month" | "quarter" | "year">("quarter");
+  const [period, setPeriod] = useState<"month" | "quarter" | "year">("month");
   const [restored, setRestored] = useState(false);
   // How they came in: "snap" (the bill photo, the main way), "wizard" (the
   // questions), or "read" (we've read a bill; show what we found).
@@ -638,40 +653,22 @@ export default function Comparator() {
   }
 
   const top = matches[0];
-  const rest = matches.slice(1);
+  // Free result: the best plan plus the next two. Members see every plan and the forecast.
+  const member = useMember();
+  const locked = member !== true;
+  const FREE_ROWS = 2;
+  const joinScroll = () => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth", block: "start" });
   // Same rule as the dashboard: with a real bill, only call it a saving when
   // it's worth at least WORTH_SWITCHING_PER_YEAR a year.
   const yearlySave = top && days > 0 ? (bench - top.total) * (365 / days) : 0;
   const worthSwitching = haveBill ? yearlySave >= WORTH_SWITCHING_PER_YEAR : yearlySave > 0;
 
-  const hasCurrentBill = currentBill !== null && !Number.isNaN(currentBill);
 
-  const forecastData = useMemo(
-    () => (top && days > 0 ? buildForecastSeries(bench / days, top.total / days) : []),
-    [top, bench, days],
-  );
-  const forecastSaving =
-    forecastData.length > 0 ? forecastData[forecastData.length - 1].current - forecastData[forecastData.length - 1].best : 0;
-
-  const chartItems: ChartItem[] = top
-    ? [
-        ...matches.slice(0, 5).map((m, i) => ({
-          label: m.plan[0],
-          sublabel: m.plan[2],
-          value: m.total * k,
-          kind: (i === 0 ? "cheapest" : "plan") as ChartItem["kind"],
-        })),
-        {
-          label: hasCurrentBill ? "Your bill" : "Default offer (VDO)",
-          sublabel: hasCurrentBill ? "What you told us you're paying now" : "Essential Services Commission benchmark",
-          value: bench * k,
-          // Green when what they pay now already beats the cheapest plan we
-          // found, red when they're paying more than they need to. Grey for
-          // an estimate against the default offer.
-          kind: hasCurrentBill ? (worthSwitching ? "referenceBad" : "referenceGood") : "reference",
-        },
-      ]
-    : [];
+  // Plain numbers for the result: a month and a year, stay vs switch.
+  const perMonth = (x: number) => (days > 0 ? (x * (365 / 12)) / days : 0);
+  const perYear = (x: number) => (days > 0 ? (x * 365) / days : 0);
+  const listRows = locked ? matches.slice(0, 1 + FREE_ROWS) : matches;
+  const hiddenRows = locked ? matches.slice(1 + FREE_ROWS) : [];
 
   return (
     <>
@@ -1606,23 +1603,43 @@ export default function Comparator() {
           ) : (
             <>
               {worthSwitching && (
-                <div className={`${styles.resultHero} ${haveBill ? styles.resultHeroBad : ""}`}>
-                  <span className={styles.resultHeroKicker}>{useEst ? "Estimated from your answers" : haveBill ? "Based on your bill: you're paying more than you need to" : "Based on your usage"}</span>
-                  <div className={styles.resultHeroLabel}>{haveBill ? "You could save about" : "Compared with the default offer, the cheapest plan saves up to"}</div>
-                  <div className={styles.resultHeroNum}>${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}</div>
-                  <div className={styles.resultHeroSub}>
-                    {haveBill ? <>a year with {top.plan[0]}, vs your current bill</> : <>a year with {top.plan[0]}. Add your bill or rates to see your own saving.</>}
+                <div className={r.hero}>
+                  <span className={r.kicker}>{useEst ? "Estimated from your answers" : haveBill ? "Based on your bill" : "Based on your usage"}</span>
+                  <div className={r.heroLabel}>{haveBill ? "You could save" : "The cheapest plan could save you up to"}</div>
+                  <div className={r.heroNum}>
+                    ${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")}
+                    <span> a year</span>
                   </div>
-                  <FunEquivalents dollars={periodBreakdown(bench - top.total, days).annual} />
+                  <div className={r.compare}>
+                    <div className={r.tile}>
+                      <span className={r.tileLabel}>{haveBill ? "Your bill now" : "The default offer"}</span>
+                      <b>{fmtCurrency(perMonth(bench))}</b>
+                      <small>a month</small>
+                    </div>
+                    <span className={r.op} aria-hidden="true">→</span>
+                    <div className={r.tile}>
+                      <span className={r.tileLabel}>With {top.plan[0]}</span>
+                      <b>{fmtCurrency(perMonth(top.total))}</b>
+                      <small>a month</small>
+                    </div>
+                    <span className={r.op} aria-hidden="true">=</span>
+                    <div className={`${r.tile} ${r.tileSave}`}>
+                      <span className={r.tileLabel}>You save</span>
+                      <b>{fmtCurrency(perMonth(bench - top.total))}</b>
+                      <small>a month</small>
+                    </div>
+                  </div>
+                  {!haveBill && <p className={r.heroNote}>Add your bill to compare against what you really pay.</p>}
                   {RETAILER_LINKS[top.plan[0]] ? (
-                    <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.resultHeroBtn}>
-                      See the plan →
+                    <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={r.heroBtn}>
+                      See the {top.plan[0]} plan →
                     </a>
                   ) : (
-                    <a href="#top-plan" className={styles.resultHeroBtn}>See the plan ↓</a>
+                    <a href="#top-plan" className={r.heroBtn}>See the plan ↓</a>
                   )}
-                  <span className={styles.resultHeroFine}>
-                    Excludes sign-up credits, conditional discounts and fees. Confirm with the retailer. {PRICE_CHANGE_CLAUSE}
+                  <span className={r.fine}>
+                    Averages a month from your {days}-day {haveBill ? "bill" : "period"}. Excludes sign-up credits, conditional discounts and fees. Confirm with the
+                    retailer. {PRICE_CHANGE_CLAUSE}
                   </span>
                 </div>
               )}
@@ -1640,6 +1657,18 @@ export default function Comparator() {
                   <span className={styles.resultHeroKicker}>Based on your bill</span>
                   <div className={styles.resultHeroLabel}>Good news</div>
                   <div className={styles.resultHeroNum}>You&apos;re on a good deal</div>
+                  <div className={r.compare}>
+                    <div className={r.tile}>
+                      <span className={r.tileLabel}>Your bill now</span>
+                      <b>{fmtCurrency(perMonth(bench))}</b>
+                      <small>a month</small>
+                    </div>
+                    <div className={r.tile}>
+                      <span className={r.tileLabel}>Cheapest we found</span>
+                      <b>{fmtCurrency(perMonth(top.total))}</b>
+                      <small>a month</small>
+                    </div>
+                  </div>
                   <div className={styles.resultHeroSub}>
                     Nothing we found beats what you pay now by enough to bother. Members get told the moment that changes.
                   </div>
@@ -1735,58 +1764,83 @@ export default function Comparator() {
                 </div>
               </div>
 
-              {retailerBest && top && (
-                <div className={styles.stayCard}>
-                  <div>
-                    <b>Staying with {currentRetailer}?</b> Their cheapest current plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at{" "}
-                    {fmtCurrency(retailerBest.total)} for {days} days.{!haveBill && <> You may be on an older, dearer {currentRetailer} plan. Your bill shows which.</>}
-                  </div>
-                  <div className={styles.stayNum}>
-                    {retailerBest.total - top.total > 1 ? (
+              {retailerBest && top && (() => {
+                const cur = (ratesForm.planName ?? "").trim().toLowerCase();
+                const best = retailerBest.plan[2].toLowerCase();
+                const onIt = cur.length > 3 && (best.includes(cur) || cur.includes(best));
+                const sameAsTop = retailerBest.plan[0] === top.plan[0] && retailerBest.plan[2] === top.plan[2];
+                const stayYear = perYear(bench - retailerBest.total);
+                const extraYear = perYear(retailerBest.total - top.total);
+                const worthStaying = haveBill && !onIt && stayYear >= WORTH_SWITCHING_PER_YEAR;
+                return (
+                  <div className={`${styles.stayCard} ${worthStaying ? r.stayGood : ""}`}>
+                    {worthStaying ? (
                       <>
-                        <b>${Math.round(periodBreakdown(retailerBest.total - top.total, days).annual).toLocaleString("en-AU")}</b> a year more by moving to {top.plan[0]}
+                        <b className={r.stayHead}>You can save without changing company</b>
+                        <div>
+                          Ask {currentRetailer} to move you to &ldquo;{retailerBest.plan[2]}&rdquo;. It works out at <b>{fmtCurrency(perMonth(retailerBest.total))} a month</b>,
+                          against {fmtCurrency(perMonth(bench))} on your bill: <b>{fmtCurrency(perMonth(bench - retailerBest.total))} a month less</b> (about $
+                          {Math.round(stayYear).toLocaleString("en-AU")} a year). Changing plans with your own retailer is usually a quick call or a few taps in their app.
+                        </div>
                       </>
+                    ) : haveBill && onIt ? (
+                      <div>
+                        <b>Staying with {currentRetailer}?</b> You&apos;re already on their cheapest plan for you, &ldquo;{retailerBest.plan[2]}&rdquo;.
+                      </div>
+                    ) : haveBill ? (
+                      <div>
+                        <b>Staying with {currentRetailer}?</b> Their cheapest plan for you, &ldquo;{retailerBest.plan[2]}&rdquo;, is {fmtCurrency(perMonth(retailerBest.total))} a month,
+                        about the same as your bill.
+                      </div>
                     ) : (
-                      <>Already the cheapest we found. No need to move.</>
+                      <div>
+                        <b>Staying with {currentRetailer}?</b> Their cheapest plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at {fmtCurrency(perMonth(retailerBest.total))} a month.
+                        If you&apos;re on an older {currentRetailer} plan, ask them to move you to it. No need to change company.
+                      </div>
+                    )}
+                    {!sameAsTop && extraYear > 1 && (
+                      <div className={styles.stayNum}>
+                        Moving to {top.plan[0]} instead saves about <b>${Math.round(extraYear).toLocaleString("en-AU")}</b> a year more.
+                      </div>
+                    )}
+                    {sameAsTop && !worthStaying && haveBill && !onIt && (
+                      <div className={styles.stayNum}>{currentRetailer} already has the cheapest plan we found.</div>
                     )}
                   </div>
-
-                </div>
-              )}
+                );
+              })()}
               <details className={styles.detailsBox}>
-                <summary>See the workings: charts, every plan and the maths</summary>
+                <summary>Every plan we compared, and the maths</summary>
                 <div className={styles.detailsInner}>
-              <div className={styles.chartPair}>
-              {forecastData.length > 0 && haveBill && (
-                <div className={styles.chartCard}>
-                  <div className={styles.chartTitle}>Your 12-month forecast</div>
-                  <p className={styles.forecastIntro}>
-                    If your usage stays about the same, here&apos;s how {hasCurrentBill ? "your current plan" : "the VDO benchmark"}{" "}
-                    adds up against the cheapest match over the year ahead.
-                  </p>
-                  <ForecastChart
-                    data={forecastData}
-                    currentLabel={hasCurrentBill ? "Your current plan" : "VDO benchmark"}
-                  />
-                  {forecastSaving > 1 ? (
-                    <p className={styles.forecastCallout}>
-                      Projected to save <strong>{fmtCurrency(forecastSaving)}</strong> over the next 12 months by
-                      switching to {top.plan[0]}.
+              {(() => {
+                const stay = perYear(bench);
+                const go = perYear(top.total);
+                const max = Math.max(stay, go, 1);
+                const keep = stay - go;
+                return (
+                  <div className={r.year}>
+                    <div className={r.yearTitle}>Your next 12 months</div>
+                    <p className={r.yearIntro}>If you use about the same power as {haveBill ? "on this bill" : "we estimated"}.</p>
+                    <div className={r.yearRow}>
+                      <span className={r.yearLabel}>{haveBill ? "Stay on your current plan" : "Stay on the default offer"}</span>
+                      <span className={r.yearTrack}><span className={r.yearStay} style={{ width: `${(stay / max) * 100}%` }} /></span>
+                      <b className={r.yearAmt}>${Math.round(stay).toLocaleString("en-AU")}</b>
+                    </div>
+                    <div className={r.yearRow}>
+                      <span className={r.yearLabel}>Switch to {top.plan[0]}</span>
+                      <span className={r.yearTrack}><span className={r.yearGo} style={{ width: `${(go / max) * 100}%` }} /></span>
+                      <b className={r.yearAmt}>${Math.round(go).toLocaleString("en-AU")}</b>
+                    </div>
+                    <p className={r.yearKeep}>
+                      {keep > 1 ? (
+                        <>You keep <b>${Math.round(keep).toLocaleString("en-AU")}</b> over the year, about {fmtCurrency(keep / 12)} a month.</>
+                      ) : (
+                        <>About the same either way.</>
+                      )}
                     </p>
-                  ) : (
-                    <p className={styles.forecastCallout}>
-                      {hasCurrentBill ? "Your current plan" : "The VDO benchmark"} is already close to the cheapest
-                      option we found — nothing urgent to change.
-                    </p>
-                  )}
-                </div>
-              )}
-
-                <div className={styles.chartCard}>
-                  <div className={styles.chartTitle}>{haveBill ? "Your bill vs. the cheapest options" : "The default offer vs. the cheapest options"}</div>
-                  <ResultsChart items={chartItems} />
-                </div>
-              </div>
+                  </div>
+                );
+              })()}
 
               <HowWeWorkedItOut
                 plan={top.plan}
@@ -1809,57 +1863,59 @@ export default function Comparator() {
                     <li><b>Final bill:</b> your old retailer sends one for the days up to the switch. Pay it as normal.</li>
                   </ul>
                 </details>
-                  <div className={styles.chartTitle}>All {matches.length} comparable plans, cheapest first</div>
+                  <div className={r.listHead}>
+                    <b>{locked && hiddenRows.length > 0 ? `The ${listRows.length} cheapest of ${matches.length} plans` : `All ${matches.length} plans, cheapest first`}</b>
+                    <span>
+                      Prices are {PERIOD_LABEL[period]} for your usage. The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}.
+                    </span>
+                    <span className={r.legend}>
+                      <span className={r.chipMarket}>Market offer</span> a retailer&apos;s own deal ·{" "}
+                      <span className={r.chipStanding}>Standing offer</span> the regulated default price, usually dearer
+                    </span>
+                  </div>
 
-                  
-
-                  <div className={styles.planList}>
-                    {rest.map((m, i) => {
-                      const mSave = bench - m.total;
+                  <div className={r.list}>
+                    {listRows.map((m, i) => {
+                      const diff = bench - m.total;
                       const rowKey = m.plan[0] + m.plan[2] + i;
                       const isOpen = expandedKey === rowKey;
+                      const isTop = i === 0;
                       return (
-                        <div className={styles.planRowWrap} key={rowKey}>
-                          <button
-                            type="button"
-                            className={styles.planRow}
-                            onClick={() => setExpandedKey((k) => (k === rowKey ? null : rowKey))}
-                            aria-expanded={isOpen}
-                          >
-                            <div className={styles.left}>
-                              <span className={styles.rk}>#{i + 2}</span>
-                              <span className={styles.rname}>{m.plan[0]}</span>
-                              <span
-                                className={`${styles.offerTag} ${m.plan[3] === "MARKET" ? styles.offerMarket : styles.offerStanding}`}
-                              >
-                                {m.plan[3] === "MARKET" ? "Market" : "Standing"}
+                        <div className={`${r.row} ${isTop ? r.rowTop : ""}`} key={rowKey}>
+                          <button type="button" className={r.rowMain} onClick={() => setExpandedKey((x) => (x === rowKey ? null : rowKey))} aria-expanded={isOpen}>
+                            <span className={r.avatar} style={{ background: retailerColour(m.plan[0]) }} aria-hidden="true">
+                              {m.plan[0].split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                            </span>
+                            <span className={r.info}>
+                              <span className={r.nameLine}>
+                                <b className={r.retailer}>{m.plan[0]}</b>
+                                {isTop && <span className={r.cheapest}>Cheapest</span>}
+                                {retailerBest && m === retailerBest && currentRetailer && <span className={r.yours}>Your retailer</span>}
                               </span>
-                              {isEvFriendly(m.plan) && <EvBadge />}
-                              {solarExportKwh > 0 && m.plan[10] !== null && <SolarBadge />}
-                              <div className={styles.pname}>
-                                <span className={styles.pnameText}>{m.plan[2]}</span>
+                              <span className={r.planName} title={m.plan[2]}>{tidyPlanName(m.plan)}</span>
+                              <span className={r.chips}>
+                                <span className={m.plan[3] === "MARKET" ? r.chipMarket : r.chipStanding}>{m.plan[3] === "MARKET" ? "Market offer" : "Standing offer"}</span>
+                                <span className={r.chip}>{m.plan[5] !== null ? "Single rate" : "Time of use"}</span>
+                                {isEvFriendly(m.plan) && <span className={r.chip}>EV plan</span>}
+                                {solarExportKwh > 0 && m.plan[10] !== null && m.plan[10] > 0 && <span className={r.chip}>Solar credit {(m.plan[10] * 100).toFixed(1)}c</span>}
                                 <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
-                                <span className={styles.rateHint}>{isOpen ? "Hide ▴" : "Rates & website ▾"}</span>
-                              </div>
-                            </div>
-                            <div className={styles.right}>
-                              <div className={styles.tot}>{fmtCurrency(m.total)}</div>
-                              <div className={`${styles.sav} ${mSave < 0 ? styles.savNeg : ""}`}>
-                                {mSave >= 0 ? "-" : "+"}
-                                {fmtCurrency(Math.abs(mSave))}
-                              </div>
-                            </div>
+                              </span>
+                            </span>
+                            <span className={r.priceCol}>
+                              <span className={r.price}>{fmtCurrency(m.total * k)}</span>
+                              <span className={r.per}>{PERIOD_LABEL[period]}</span>
+                              <span className={diff >= 0.005 ? r.save : diff <= -0.005 ? r.more : r.same}>
+                                {diff >= 0.005 ? `Save ${fmtCurrency(diff * k)}` : diff <= -0.005 ? `${fmtCurrency(-diff * k)} more` : "Same as now"}
+                              </span>
+                              <span className={r.ratesLink}>{isOpen ? "Hide rates ▴" : "See rates ▾"}</span>
+                            </span>
                           </button>
                           {isOpen && (
                             <div className={styles.planRowExpanded}>
+                              <p className={r.fullName}>Full plan name: {m.plan[2]}</p>
                               <RateBreakdown plan={m.plan} solarExportKwh={solarExportKwh} />
                               {RETAILER_LINKS[m.plan[0]] && (
-                                <a
-                                  href={RETAILER_LINKS[m.plan[0]]}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={styles.rowSwitchLink}
-                                >
+                                <a href={RETAILER_LINKS[m.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.rowSwitchLink}>
                                   Go to {m.plan[0]}&apos;s site →
                                 </a>
                               )}
@@ -1869,7 +1925,22 @@ export default function Comparator() {
                       );
                     })}
                   </div>
-                
+                  {hiddenRows.length > 0 && (
+                    <MemberLock
+                      variant="list"
+                      startRank={listRows.length + 1}
+                      title={`${hiddenRows.length} more plans on your network`}
+                      body={
+                        <>
+                          From {fmtCurrency(Math.min(...hiddenRows.map((x) => x.total)) * k)} to {fmtCurrency(Math.max(...hiddenRows.map((x) => x.total)) * k)}{" "}
+                          {PERIOD_LABEL[period]}. Members see every plan with its rates, and get an email when a cheaper one turns up.
+                        </>
+                      }
+                      cta={`See all ${matches.length} plans`}
+                      onJoin={joinScroll}
+                    />
+                  )}
+
               {top && (
                 <SaveCheck
                   billingDays={days}

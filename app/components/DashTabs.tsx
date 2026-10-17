@@ -2,12 +2,17 @@
 
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import styles from "./dashtabs.module.css";
+import Icon from "./Icon";
 
 export interface TabDef<T extends string> {
   id: T;
   label: string;
   /** Small dot on the tab, e.g. "this month's check is due". */
   dot?: boolean;
+  /** Line icon name (see Icon.tsx). */
+  icon?: string;
+  /** What's in the tab, shown under the label on wide screens. */
+  hint?: string;
 }
 
 /** Sticky tab bar with a sliding indicator. On phones the panel also
@@ -51,6 +56,17 @@ export default function DashTabs<T extends string>({
     const el = e.target as HTMLElement;
     touch.current = { x: t.clientX, y: t.clientY, skip: !!el.closest("input, select, textarea, [data-noswipe]") };
   }
+  /** Change tab and bring the tab bar back into view. */
+  function go(next: number) {
+    if (next < 0 || next >= tabs.length) return;
+    onChange(tabs[next].id);
+    const bar = document.getElementById("dash-tabs");
+    if (bar) {
+      const y = bar.getBoundingClientRect().top + window.scrollY - top - 8;
+      if (window.scrollY > y) window.scrollTo({ top: y, behavior: "smooth" });
+    }
+  }
+
   function onTouchEnd(e: TouchEvent) {
     const start = touch.current;
     touch.current = null;
@@ -59,15 +75,7 @@ export default function DashTabs<T extends string>({
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
     if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-    const next = dx < 0 ? index + 1 : index - 1;
-    if (next >= 0 && next < tabs.length) {
-      onChange(tabs[next].id);
-      const bar = document.getElementById("dash-tabs");
-      if (bar) {
-        const y = bar.getBoundingClientRect().top + window.scrollY - top - 8;
-        if (window.scrollY > y) window.scrollTo({ top: y, behavior: "smooth" });
-      }
-    }
+    go(dx < 0 ? index + 1 : index - 1);
   }
 
   return (
@@ -76,7 +84,10 @@ export default function DashTabs<T extends string>({
         <div className={styles.track} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
           <span
             className={styles.indicator}
-            style={{ width: `calc((100% - 8px) / ${tabs.length})`, transform: `translateX(${index * 100}%)` }}
+            style={{
+              width: `calc((100% - 12px - ${(tabs.length - 1) * 4}px) / ${tabs.length})`,
+              transform: `translateX(calc(${index} * (100% + 4px)))`,
+            }}
             aria-hidden="true"
           />
           {tabs.map((t) => (
@@ -90,7 +101,11 @@ export default function DashTabs<T extends string>({
               className={t.id === active ? styles.tabOn : styles.tab}
               onClick={() => onChange(t.id)}
             >
-              {t.label}
+              {t.icon && <span className={styles.tabIcon}><Icon name={t.icon} size={20} /></span>}
+              <span className={styles.tabText}>
+                <span className={styles.tabLabel}>{t.label}</span>
+                {t.hint && <span className={styles.tabHint}>{t.hint}</span>}
+              </span>
               {t.dot && <span className={styles.dot} aria-label="needs attention" />}
             </button>
           ))}
@@ -109,6 +124,19 @@ export default function DashTabs<T extends string>({
         onTouchEnd={onTouchEnd}
       >
         {children}
+        <nav className={styles.stepNav} aria-label="Dashboard sections">
+          {index > 0 ? (
+            <button type="button" className={styles.prevBtn} onClick={() => go(index - 1)}>
+              ← {tabs[index - 1].label}
+            </button>
+          ) : <span />}
+          <span className={styles.stepCount}>{index + 1} of {tabs.length}</span>
+          {index < tabs.length - 1 ? (
+            <button type="button" className={styles.nextBtn} onClick={() => go(index + 1)}>
+              Next: {tabs[index + 1].label} →
+            </button>
+          ) : <span />}
+        </nav>
       </div>
     </>
   );

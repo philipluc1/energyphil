@@ -164,6 +164,17 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
           <span className={styles.sideCost}>{money(top.total * k)}</span>
           {bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
         </div>
+        {verdict !== "good" && savingYear > 0 && (
+          <>
+            <div className={styles.arrow} aria-hidden="true">=</div>
+            <div className={`${styles.side} ${styles.sideSave}`}>
+              <span className={styles.sideLabel}>You save</span>
+              <b>By switching</b>
+              <span className={styles.sidePlan}>{PERIOD_LABEL[period]}, to {top.plan[0]}</span>
+              <span className={styles.sideCost}>{money((you - top.total) * k)}</span>
+            </div>
+          </>
+        )}
       </div>
       {verdict !== "good" && savingYear > 0 && <FunEquivalents dollars={savingYear} />}
       <div className={styles.verdictActions}>

@@ -8,7 +8,8 @@ import { findPlan, fmtPrice } from "@/lib/pricingPlans";
 import { accumulatedSavings, mergeChecks, monthlySavings, type SavedCheck } from "@/lib/savings";
 import { RETAILER_COUNT, findPlanRow, planRateRows } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
-import EnergyTips from "../components/EnergyTips";
+import { TipCarousel } from "../components/EnergyTips";
+import PlanAside, { type PlanAsideData } from "../components/PlanAside";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
 import DashTabs, { type TabDef } from "../components/DashTabs";
@@ -387,7 +388,7 @@ export default function AccountPage() {
     document.body.style.backgroundAttachment = "fixed";
     return () => { document.body.style.background = prev; };
   }, [stage, themeMode]);
-  const [period, setPeriod] = useState<Period>("year");
+  const [period, setPeriod] = useState<Period>("month");
   const [showSwitchForm, setShowSwitchForm] = useState(false);
   // Deal end dates (discount / benefit period, fixed price), editable on the Savings tab.
   const [dealForm, setDealForm] = useState<{ discount: string; fixed: string } | null>(null);
@@ -479,10 +480,10 @@ export default function AccountPage() {
   const firstName = ((isMember ? sub!.customer_name : localCheck?.customer_name) ?? "").trim().split(/\s+/)[0] || "";
 
   const tabs: TabDef<Tab>[] = [
-    { id: "compare", label: "Compare" },
-    { id: "home", label: "My home" },
-    { id: "savings", label: "Savings", dot: isMember && !doneThisMonth },
-    { id: "membership", label: "Membership" },
+    { id: "compare", label: "Compare", icon: "scale", hint: "All plans, ranked" },
+    { id: "home", label: "My home", icon: "home", hint: "Address and usage" },
+    { id: "savings", label: "Savings", icon: "dollar", hint: "What you've saved", dot: isMember && !doneThisMonth },
+    { id: "membership", label: "Membership", icon: "receipt", hint: "Plan and billing" },
   ];
 
   useEffect(() => {
@@ -582,6 +583,95 @@ export default function AccountPage() {
     }
   }
 
+
+  // "Your plan now", gas, the cheapest match's rates and energy tips: a side
+  // column on wide screens, and inside the "My home" tab on phones.
+  const TARIFF_NAMES: Record<string, string> = { single_rate: "Single rate", time_of_use: "Time of use", demand: "Demand", flexible: "Flexible" };
+  const planBase: ProfileData | null = isMember ? (sub as unknown as ProfileData) : localCheck;
+  const planData: PlanAsideData | null = planBase
+    ? (() => {
+        const days = planBase.billing_days ?? 0;
+        const kwh = (planBase.peak_kwh ?? 0) + (planBase.shoulder_kwh ?? 0) + (planBase.offpeak_kwh ?? 0) + (planBase.anytime_kwh ?? 0) + (planBase.controlled_load_kwh ?? 0);
+        return {
+          retailer: planBase.current_retailer,
+          planName: isMember ? sub!.current_plan_name : localPricing?.planName ?? planBase.current_plan_name,
+          priceType: isMember ? sub!.current_price_type ?? null : localPricing?.priceType ?? null,
+          fixedUntil: isMember ? sub!.current_price_fixed_until ?? null : localPricing?.fixedUntil ?? null,
+          discountEnds: isMember ? sub!.discount_ends_at ?? null : null,
+          distributor: planBase.distributor,
+          nmi: planBase.nmi,
+          address: [planBase.address, planBase.suburb, planBase.postcode].filter(Boolean).join(", ") || null,
+          tariff: planBase.tariff_type
+            ? TARIFF_NAMES[planBase.tariff_type] ?? planBase.tariff_type
+            : planBase.usage_mode === "detailed" ? "Time of use" : planBase.usage_mode === "simple" ? "Single rate" : null,
+          kwhPerDay: days > 0 && kwh > 0 ? kwh / days : null,
+          hasSolar: planBase.has_solar,
+          rates: isMember ? sub!.current_rates ?? null : localPricing?.rates ?? null,
+          source: isMember ? (sub!.nmi || sub!.current_plan_name ? "bill" : "answers") : planBase.source ?? null,
+        };
+      })()
+    : null;
+  const sideCards = (
+    <>
+      {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} />}
+          <div className={styles.panelCard}>
+            <div className={styles.panelTitle}>Gas</div>
+            {isMember && sub!.gas_zone && sub!.gas_mj ? (
+              <>
+                <p className={styles.panelText}>
+                  {sub!.gas_zone} · {Math.round(sub!.gas_mj).toLocaleString("en-AU")} MJ over {sub!.gas_billing_days ?? "?"} days
+                  {sub!.gas_current_plan_name ? ` · now on "${sub!.gas_current_plan_name}"` : ""}
+                </p>
+                {sub!.gas_best_retailer && sub!.gas_best_total !== null ? (
+                  <>
+                    <p className={styles.panelText}>
+                      Cheapest gas match: <strong>{sub!.gas_best_retailer} — {sub!.gas_best_plan_name}</strong> at {fmtDollars(sub!.gas_best_total)} for the period
+                      {sub!.gas_reference_total !== null && sub!.gas_reference_total - sub!.gas_best_total > 1
+                        ? `, about ${fmtDollars(sub!.gas_reference_total - sub!.gas_best_total)} less than your bill.`
+                        : "."}
+                    </p>
+                    <p className={styles.panelText}>
+                      {sub!.gas_best_retailer === sub!.baseline_retailer
+                        ? `Same retailer as your best electricity plan, so ask ${sub!.gas_best_retailer} about a dual-fuel discount.`
+                        : "A different retailer from your best electricity plan. That's fine: gas and electricity can be with different companies. If you'd rather keep one, check whether a dual-fuel discount beats the gap."}
+                    </p>
+                  </>
+                ) : (
+                  <p className={styles.panelText}>Your gas details are saved. The comparison switches on with our next gas price pull.</p>
+                )}
+              </>
+            ) : (
+              <p className={styles.panelText}>
+                No gas bill yet. {isMember ? <>Upload one in <a href="#savings">Savings</a> (a dual-fuel bill works too) or </> : null}
+                <Link href="/gas">run the free gas check</Link>.
+              </p>
+            )}
+          </div>
+          {isMember && sub!.baseline_retailer && sub!.baseline_plan_name && (
+            <details className={styles.panelCard}>
+              <summary className={styles.panelSummary}>Cheapest match rates: {sub!.baseline_retailer}, {sub!.baseline_plan_name}</summary>
+              {tariffPlan ? (
+                <>
+                  <div className={styles.tariffMeta}>{sub!.distributor} network</div>
+                  <div className={styles.tariffRows}>
+                    {tariffRows.map((r) => (
+                      <div className={styles.tariffRow} key={r.label}>
+                        <span className={styles.tariffRowLabel}>{r.label}</span>
+                        <span className={styles.tariffRowValue}>{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className={styles.tariffNote}>Matched at your last check. Confirm against your bill.</p>
+                </>
+              ) : (
+                <p className={styles.panelText}>That plan is no longer listed. Upload a new bill for today&apos;s rates.</p>
+              )}
+            </details>
+          )}
+      <TipCarousel />
+    </>
+  );
+
   return (
     <>
       <SiteHeader active="account" />
@@ -660,6 +750,8 @@ export default function AccountPage() {
                 </div>
               )}
 
+              <div className={styles.dashGrid}>
+              <div className={styles.dashMain}>
               {/* Always on top: are you on the cheapest plan? */}
               {!subLoading && cmpInput && (
                 <VerdictCard input={cmpInput} member={isMember} period={period} onPeriod={setPeriod} />
@@ -704,63 +796,7 @@ export default function AccountPage() {
                         </div>
                       )}
 
-                      <div className={styles.panelCard}>
-                        <div className={styles.panelTitle}>Gas</div>
-                        {isMember && sub!.gas_zone && sub!.gas_mj ? (
-                          <>
-                            <p className={styles.panelText}>
-                              {sub!.gas_zone} · {Math.round(sub!.gas_mj).toLocaleString("en-AU")} MJ over {sub!.gas_billing_days ?? "?"} days
-                              {sub!.gas_current_plan_name ? ` · now on "${sub!.gas_current_plan_name}"` : ""}
-                            </p>
-                            {sub!.gas_best_retailer && sub!.gas_best_total !== null ? (
-                              <>
-                                <p className={styles.panelText}>
-                                  Cheapest gas match: <strong>{sub!.gas_best_retailer} — {sub!.gas_best_plan_name}</strong> at {fmtDollars(sub!.gas_best_total)} for the period
-                                  {sub!.gas_reference_total !== null && sub!.gas_reference_total - sub!.gas_best_total > 1
-                                    ? `, about ${fmtDollars(sub!.gas_reference_total - sub!.gas_best_total)} less than your bill.`
-                                    : "."}
-                                </p>
-                                <p className={styles.panelText}>
-                                  {sub!.gas_best_retailer === sub!.baseline_retailer
-                                    ? `Same retailer as your best electricity plan, so ask ${sub!.gas_best_retailer} about a dual-fuel discount.`
-                                    : "A different retailer from your best electricity plan. That's fine: gas and electricity can be with different companies. If you'd rather keep one, check whether a dual-fuel discount beats the gap."}
-                                </p>
-                              </>
-                            ) : (
-                              <p className={styles.panelText}>Your gas details are saved. The comparison switches on with our next gas price pull.</p>
-                            )}
-                          </>
-                        ) : (
-                          <p className={styles.panelText}>
-                            No gas bill yet. {isMember ? <>Upload one in <a href="#savings">Savings</a> (a dual-fuel bill works too) or </> : null}
-                            <Link href="/gas">run the free gas check</Link>.
-                          </p>
-                        )}
-                      </div>
-
-                      {isMember && sub!.baseline_retailer && sub!.baseline_plan_name && (
-                        <details className={styles.panelCard}>
-                          <summary className={styles.panelSummary}>Rates for {sub!.baseline_retailer} — {sub!.baseline_plan_name}</summary>
-                          {tariffPlan ? (
-                            <>
-                              <div className={styles.tariffMeta}>{sub!.distributor} network</div>
-                              <div className={styles.tariffRows}>
-                                {tariffRows.map((r) => (
-                                  <div className={styles.tariffRow} key={r.label}>
-                                    <span className={styles.tariffRowLabel}>{r.label}</span>
-                                    <span className={styles.tariffRowValue}>{r.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              <p className={styles.tariffNote}>Matched at your last check. Confirm against your bill.</p>
-                            </>
-                          ) : (
-                            <p className={styles.panelText}>That plan is no longer listed. Upload a new bill for today&apos;s rates.</p>
-                          )}
-                        </details>
-                      )}
-
-                      <EnergyTips />
+                      <div className={styles.sideInTab}>{sideCards}</div>
                     </>
                   )}
 
@@ -966,6 +1002,9 @@ export default function AccountPage() {
                   )}
                 </DashTabs>
               )}
+              </div>
+              {!subLoading && <aside className={styles.dashSide} aria-label="Your plan and tips">{sideCards}</aside>}
+              </div>
 
               <button type="button" className={`${styles.logoutBtn} ${styles.logoutBtnSpaced}`} onClick={handleLogout}>
                 Log out

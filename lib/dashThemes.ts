@@ -24,11 +24,12 @@ const glow = (rgba: string) => `radial-gradient(600px 300px at 100% 0%, ${rgba},
 /** Verdict colours shared by every theme: green = fine, amber = could pay less, red = clearly overpriced. */
 const VERDICT = {
   "--v-good": `${glow("rgba(110,231,183,0.30)")}, linear-gradient(135deg, #0b4f3a, #13795b)`,
-  "--v-mild": `${glow("rgba(253,224,140,0.32)")}, linear-gradient(135deg, #8a4b08, #c77d12)`,
-  "--v-severe": `${glow("rgba(255,170,150,0.30)")}, linear-gradient(135deg, #7a1616, #c0392b)`,
+  // Oct 2026: a saving is shown in teal-green with a yellow figure (was brown and red).
+  "--v-mild": `${glow("rgba(253,224,71,0.20)")}, linear-gradient(135deg, #0f766e, #155e75)`,
+  "--v-severe": `${glow("rgba(253,224,71,0.24)")}, linear-gradient(135deg, #065f46 0%, #0f766e 55%, #155e75 100%)`,
   "--pill-good-bg": "#c9f2df", "--pill-good-fg": "#064e3b",
-  "--pill-mild-bg": "#fde7b0", "--pill-mild-fg": "#6b3a06",
-  "--pill-severe-bg": "#fdd5cf", "--pill-severe-fg": "#7a1616",
+  "--pill-mild-bg": "#fef9c3", "--pill-mild-fg": "#713f12",
+  "--pill-severe-bg": "#fde047", "--pill-severe-fg": "#1c1917",
   "--amount-good": "#bbf7d0",
   "--accent-good": "#15803d", "--accent-mild": "#c77d12", "--accent-severe": "#c0392b",
 };

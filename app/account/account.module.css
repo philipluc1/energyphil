@@ -483,3 +483,29 @@ details[open] > .panelSummary::after { content: " ▴"; }
 .tallySaved { background: var(--good); }
 .tallyPaid { background: var(--grey-soft); }
 @media (max-width: 520px) { .tallyRow { grid-template-columns: 110px 1fr 56px; font-size: 13px; } }
+
+/* ---- Dashboard v5 (Oct 2026): main column + side column on wide screens ---- */
+.wrap:has(.cardDash) { max-width: 1240px; }
+.cardDash { max-width: none; }
+.dashGrid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+.dashMain { min-width: 0; }
+.dashSide { display: flex; flex-direction: column; gap: 14px; }
+.dashSide > * { animation: sideIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.dashSide > *:nth-child(2) { animation-delay: 0.08s; }
+.dashSide > *:nth-child(3) { animation-delay: 0.16s; }
+.dashSide > *:nth-child(4) { animation-delay: 0.24s; }
+.dashSide > * { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.dashSide > section:hover, .dashSide > div:hover, .dashSide > details:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(10, 15, 40, 0.1); }
+@keyframes sideIn { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+.dashSide .panelCard { margin: 0; }
+.sideInTab { display: none; flex-direction: column; gap: 14px; margin-top: 14px; }
+.sideInTab .panelCard { margin: 0; }
+
+@media (max-width: 1100px) {
+  .dashGrid { grid-template-columns: minmax(0, 1fr); }
+  .dashSide { display: none; }
+  .sideInTab { display: flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashSide > * { animation: none; transition: none; }
+}

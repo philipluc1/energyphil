@@ -1672,3 +1672,11 @@
 .resultHeroBtn { box-shadow: none; }
 
 .offerDateRow { margin-top: 6px; position: relative; z-index: 1; }
+
+/* Oct 2026: the best-plan card is centred, like the hero above it. */
+.bestCard { text-align: center; }
+.bestCard .retailer { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px; }
+.bestCard .nums { justify-content: center; }
+.bestCard .saveLine, .bestCard .scaleNote { margin-left: auto; margin-right: auto; max-width: 560px; }
+.bestCard .getPlan, .bestCard .rateBreakdown { text-align: left; }
+.stayCard { text-align: left; }

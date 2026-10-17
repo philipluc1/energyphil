@@ -23,3 +23,36 @@
   .dots { display: flex; }
 }
 @media (prefers-reduced-motion: reduce) { .panel { animation: none; } .indicator { transition: none; } }
+
+/* Oct 2026: tabs that look like tabs. Icon, label and a one-line hint, a clear
+   active state, and next/previous buttons under each section. */
+.bar { margin-top: 10px; }
+.track { padding: 6px; gap: 4px; border-radius: 18px; border: 1.5px solid var(--border); box-shadow: 0 6px 20px rgba(10, 15, 40, 0.07); }
+.indicator { top: 6px; bottom: 6px; left: 6px; border-radius: 13px; box-shadow: 0 6px 16px rgba(34, 48, 110, 0.28); }
+.tab, .tabOn { padding: 12px 12px; gap: 10px; justify-content: flex-start; text-align: left; border-radius: 13px; }
+.tab { background: var(--bg); color: var(--ink, #12141c); }
+.tab:hover { background: var(--track); }
+.tabIcon { display: inline-flex; width: 36px; height: 36px; flex: none; border-radius: 10px; align-items: center; justify-content: center; background: var(--surface); color: var(--navy-accent-text, #2d3f9e); border: 1px solid var(--border); }
+.tabOn .tabIcon { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.25); color: #fde047; }
+.tabText { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tabLabel { font-size: 15px; font-weight: 800; }
+.tabHint { font-size: 12px; font-weight: 600; opacity: 0.72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabOn .tabHint { opacity: 0.85; }
+
+.stepNav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--border); }
+.stepCount { font-size: 12.5px; font-weight: 700; color: var(--grey); }
+.prevBtn, .nextBtn { border-radius: 12px; padding: 11px 16px; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.prevBtn { border: 1.5px solid var(--border); background: var(--surface); color: var(--ink, #12141c); }
+.nextBtn { border: 0; background: var(--navy, #22306e); color: #fff; box-shadow: 0 6px 16px rgba(34, 48, 110, 0.25); }
+.nextBtn:hover, .prevBtn:hover { filter: brightness(1.06); }
+
+@media (max-width: 900px) {
+  .tabHint { display: none; }
+}
+@media (max-width: 640px) {
+  .tab, .tabOn { flex-direction: column; justify-content: center; text-align: center; gap: 4px; padding: 8px 2px; }
+  .tabIcon { width: 30px; height: 30px; }
+  .tabLabel { font-size: 12px; }
+  .prevBtn, .nextBtn { padding: 10px 12px; font-size: 13px; }
+}
+.tab, .tabOn { min-width: 0; overflow: hidden; }
