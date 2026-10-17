@@ -27,6 +27,12 @@ export interface ExtractedBill {
   address: string | null;
   suburb: string | null;
   postcode: string | null;
+  /** Residential or business account, if the bill says. */
+  accountType: "residential" | "business" | null;
+  /** Supplied through a building's private (embedded) network. */
+  embeddedNetwork: boolean;
+  /** The bill has a demand charge ($/kW or $/kVA), typical of business tariffs. */
+  demandCharge: boolean;
   // True if the bill shows any solar feed-in credit line, even a small one.
   hasSolar: boolean;
   solarExportKwh: number | null;
@@ -131,6 +137,9 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     address: typeof r.address === "string" ? r.address.slice(0, 200) : null,
     suburb: typeof r.suburb === "string" ? r.suburb.slice(0, 80) : null,
     postcode,
+    accountType: r.account_type === "residential" || r.account_type === "business" ? r.account_type : null,
+    embeddedNetwork: r.embedded_network === true,
+    demandCharge: r.has_demand_charge === true,
     hasSolar: r.has_solar === true,
     solarExportKwh: toFiniteNumber(r.solar_export_kwh),
     currentRates: readRates(r),

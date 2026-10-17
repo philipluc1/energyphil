@@ -19,6 +19,9 @@ import {
   type PlanRow,
 } from "@/lib/plans";
 import { guessDistributorFromPostcode } from "@/lib/postcodeNetwork";
+import { SMALL_CUSTOMER_KWH_PER_YEAR, addressHint, checkNmi, type PropertyType } from "@/lib/meterCheck";
+import NotifyMe from "./NotifyMe";
+import s1 from "./step1.module.css";
 import {
   DEFAULT_PROFILE,
   TYPICAL_ANNUAL_KWH,
@@ -190,7 +193,15 @@ export default function Comparator() {
   const [address, setAddress] = useState("");
   const [suburb, setSuburb] = useState("");
   const [postcode, setPostcode] = useState("");
-  const [postcodeGuessed, setPostcodeGuessed] = useState(false);
+  // Where the network came from: the meter number, the bill, the postcode, or the customer's own pick.
+  const [networkFrom, setNetworkFrom] = useState<"nmi" | "bill" | "postcode" | "manual" | null>(null);
+  const [showNetworkPicker, setShowNetworkPicker] = useState(false);
+  const [nmiRaw, setNmiRaw] = useState("");
+  // Utilo compares home plans only; embedded networks and businesses are flagged.
+  const [propertyType, setPropertyType] = useState<PropertyType>("home");
+  const [addressHintOff, setAddressHintOff] = useState(false);
+  // A bill read that looks like a business, embedded network or large site.
+  const [billFlag, setBillFlag] = useState<"business" | "embedded" | "large" | null>(null);
   const [distributor, setDistributor] = useState<Distributor>("Citipower");
   const [days, setDays] = useState(91);
   const [mode, setMode] = useState<Mode>("simple");
@@ -264,6 +275,10 @@ export default function Comparator() {
         if (typeof d.customerName === "string") setCustomerName(d.customerName);
         if (typeof d.address === "string") setAddress(d.address);
         if (typeof d.suburb === "string") setSuburb(d.suburb);
+        if (d.propertyType === "home" || d.propertyType === "embedded" || d.propertyType === "business") setPropertyType(d.propertyType);
+        if (typeof d.nmiRaw === "string") setNmiRaw(d.nmiRaw);
+        // Older saves have no networkFrom: a saved network was the customer's choice.
+        setNetworkFrom(["nmi", "bill", "postcode", "manual"].includes(d.networkFrom) ? d.networkFrom : d.distributor ? "manual" : null);
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
         if (d.ratesForm && typeof d.ratesForm === "object") setRatesForm({ ...EMPTY_RATES_FORM, ...d.ratesForm });
         setRestored(true);
@@ -285,12 +300,12 @@ export default function Comparator() {
     try {
       window.localStorage.setItem(
         SAVE_KEY,
-        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm }),
+        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom }),
       );
     } catch {
       /* storage unavailable */
     }
-  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, hydrated]);
+  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, hydrated]);
 
   // Current plan pricing for the dashboard ("Your rates vs the cheapest").
   useEffect(() => {
@@ -326,11 +341,23 @@ export default function Comparator() {
     const cleaned = raw.replace(/\D/g, "").slice(0, 4);
     setPostcode(cleaned);
     const guess = cleaned.length === 4 ? guessDistributorFromPostcode(cleaned) : null;
+    // A meter number, the bill or the customer's own pick beats a postcode guess.
+    if (networkFrom === "nmi" || networkFrom === "bill" || networkFrom === "manual") return;
     if (guess) {
       setDistributor(guess);
-      setPostcodeGuessed(true);
+      setNetworkFrom("postcode");
     } else {
-      setPostcodeGuessed(false);
+      setNetworkFrom(null);
+    }
+  }
+
+  /** Meter number typed in: it tells us the network exactly. */
+  function applyNmi(raw: string) {
+    setNmiRaw(raw.slice(0, 14));
+    const c = checkNmi(raw);
+    if (c.status === "network") {
+      setDistributor(c.network);
+      setNetworkFrom("nmi");
     }
   }
 
@@ -340,6 +367,9 @@ export default function Comparator() {
   const useEst = usageSource === "estimate";
   // Victorian postcodes start with 3 (or 8 for PO boxes). Others can't be priced yet.
   const nonVic = postcode.length === 4 && !/^[38]/.test(postcode);
+  const nmiStatus = checkNmi(nmiRaw);
+  // Known when it came from the meter number, the bill, the postcode or the customer.
+  const networkKnown = networkFrom !== null;
   const est = useMemo(() => estimateUsage(profile, days), [profile, days]);
   const solarExportKwh = useEst ? est.solarExportKwh : hasSolar || profile.hasSolar ? parseFloat(solarExportRaw) || 0 : 0;
   const hasSolarEff = useEst ? profile.hasSolar : hasSolar || profile.hasSolar;
@@ -369,16 +399,35 @@ export default function Comparator() {
       router.push("/gas");
       return;
     }
-    if (bill.distributor) {
+    // Network: the meter number is exact, then the bill's own wording, then the postcode.
+    const nmiCheck = bill.nmi ? checkNmi(bill.nmi) : null;
+    if (bill.nmi) setNmiRaw(bill.nmi);
+    if (nmiCheck?.status === "network") {
+      setDistributor(nmiCheck.network);
+      setNetworkFrom("nmi");
+    } else if (bill.distributor) {
       setDistributor(bill.distributor);
-      setPostcodeGuessed(false);
+      setNetworkFrom("bill");
     } else if (bill.postcode) {
       const guess = guessDistributorFromPostcode(bill.postcode);
       if (guess) {
         setDistributor(guess);
-        setPostcodeGuessed(true);
+        setNetworkFrom("postcode");
       }
     }
+    // Is this a home on its own account? Flag business, embedded network or large sites.
+    const billKwh = (bill.anytimeKwh ?? 0) + (bill.peakKwh ?? 0) + (bill.shoulderKwh ?? 0) + (bill.offpeakKwh ?? 0) + (bill.controlledLoadKwh ?? 0);
+    const yearlyKwh = bill.billingDays ? (billKwh / bill.billingDays) * 365 : 0;
+    const vicPostcode = !bill.postcode || /^[38]/.test(bill.postcode);
+    setBillFlag(
+      bill.embeddedNetwork || (nmiCheck?.status === "notVictorian" && vicPostcode)
+        ? "embedded"
+        : bill.accountType === "business" || bill.demandCharge
+          ? "business"
+          : yearlyKwh > SMALL_CUSTOMER_KWH_PER_YEAR
+            ? "large"
+            : null,
+    );
     if (bill.billingDays !== null) setDays(bill.billingDays);
     setUsageSource("bill");
     if (bill.usageMode) setMode(bill.usageMode);
@@ -446,8 +495,16 @@ export default function Comparator() {
   };
   // Why the customer can't move on yet (shown under the step), if anything.
   const blockReason =
-    inputStep === 1 && nonVic
+    inputStep === 1 && propertyType !== "home"
+      ? "Utilo compares home electricity plans for now."
+      : inputStep === 1 && nonVic
       ? "We can only check Victorian addresses for now."
+      : inputStep === 1 && !networkKnown && postcode.length < 4
+      ? "Enter your postcode so we can work out your network."
+      : inputStep === 1 && !networkKnown
+      ? "Pick your network, or enter your meter number (NMI) from your bill."
+      : billFlag
+      ? "Check the note above about your bill first."
       : inputStep === 3 && !useEst && usagePeak + usageShoulder + usageOffpeak + usageAnytime <= 0
         ? "Snap your bill, or enter the kWh it shows. No bill to hand? Pick “No, estimate it for me”."
         : "";
@@ -573,6 +630,47 @@ export default function Comparator() {
       <SiteHeader active="check" />
 
       <div className={styles.wrap}>
+        {billFlag && (
+          <div className={s1.stop} role="status">
+            {billFlag === "embedded" ? (
+              <>
+                <b>This bill looks like it&apos;s from an embedded network</b>
+                <p>
+                  Your power seems to come through your building&apos;s own network, so your price is set by its operator and the market plans we compare
+                  don&apos;t apply. If your bill is actually from a normal retailer, carry on.
+                </p>
+              </>
+            ) : billFlag === "business" ? (
+              <>
+                <b>This looks like a business bill</b>
+                <p>
+                  It shows a business account or a demand charge. Utilo compares home plans for now, so a result here could mislead. If this is your
+                  home, carry on.
+                </p>
+              </>
+            ) : (
+              <>
+                <b>That&apos;s a lot of electricity for a home</b>
+                <p>
+                  This bill works out at over {(SMALL_CUSTOMER_KWH_PER_YEAR / 1000).toLocaleString("en-AU")} MWh a year, which Victoria treats as a large
+                  (business) customer. Utilo compares home plans for now. If this is your home and the reading is right, carry on.
+                </p>
+              </>
+            )}
+            <div className={styles.choiceRow}>
+              <button type="button" className={styles.choiceBtn} onClick={() => { setBillFlag(null); setPropertyType("home"); }}>
+                {billFlag === "embedded" ? "A normal retailer bills me, carry on" : "It's my home, carry on"}
+              </button>
+              <button
+                type="button"
+                className={styles.choiceBtn}
+                onClick={() => { setPropertyType(billFlag === "embedded" ? "embedded" : "business"); setBillFlag(null); setEntry("wizard"); setInputStep(1); setStage("input"); scrollToTop(); }}
+              >
+                {billFlag === "embedded" ? "Yes, the building bills me" : "Yes, it's a business"}
+              </button>
+            </div>
+          </div>
+        )}
         {stage === "input" && (
           <>
             {restored && entry === "wizard" && (
@@ -658,7 +756,7 @@ export default function Comparator() {
                 <ul>{scanBanner.warnings.map((m, i) => <li key={i}>{m}</li>)}</ul>
               </div>
             )}
-            <button type="button" className={snap.readGo} onClick={() => { setStage("results"); scrollToTop(); }}>
+            <button type="button" className={snap.readGo} disabled={!!billFlag} onClick={() => { setStage("results"); scrollToTop(); }}>
               See my result →
             </button>
             <button type="button" className={snap.readEdit} onClick={() => { setEntry("wizard"); setInputStep(3); scrollToTop(); }}>
@@ -725,30 +823,58 @@ export default function Comparator() {
                 <span className={styles.stepSub}>Your postcode tells us your power network, which decides the prices you can get.</span>
               </div>
             </div>
-            <div className={styles.fieldGrid}>
+            {/* 1. What kind of property: Utilo compares homes on their own account. */}
+            <div className={`${s1.q} ${s1.qFirst}`}>
+              <span className={s1.qLabel}>What are you checking?</span>
+              <div className={s1.types}>
+                {([
+                  ["home", "My home", "A house, townhouse or unit with its own electricity account"],
+                  ["embedded", "Apartment billed by the building", "Your power bill comes from the building, strata or an embedded network company"],
+                  ["business", "A business", "A shop, office, warehouse or other business premises"],
+                ] as [PropertyType, string, string][]).map(([v, t, d]) => (
+                  <button key={v} type="button" className={propertyType === v ? s1.typeOn : s1.type} onClick={() => setPropertyType(v)}>
+                    <b>{t}</b>
+                    <span>{d}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {propertyType !== "home" ? (
+              <div className={s1.stop}>
+                {propertyType === "embedded" ? (
+                  <>
+                    <b>We can&apos;t compare embedded networks yet</b>
+                    <p>
+                      In an embedded network, the building&apos;s operator buys power in bulk and sets your price, so the market plans we compare
+                      don&apos;t apply. If your bill comes from a normal retailer (such as AGL, Origin or Red Energy), choose <b>My home</b> instead: most
+                      apartments are fine. Want to know when we cover embedded networks?
+                    </p>
+                    <NotifyMe label="Embedded network" postcode={postcode} />
+                  </>
+                ) : (
+                  <>
+                    <b>Utilo compares home plans for now</b>
+                    <p>
+                      Business tariffs work differently (often with demand charges and larger usage), so a home comparison would be misleading.
+                      Business checks are on our list. Want to know when they&apos;re ready?
+                    </p>
+                    <NotifyMe label="Business" postcode={postcode} />
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+            <div className={`${styles.fieldGrid} ${styles.mt16}`}>
               <div className={styles.field}>
                 <label htmlFor="custName">
                   First name <span className={styles.unitNote}>(optional, so we can say hi)</span>
                 </label>
-                <input
-                  id="custName"
-                  type="text"
-                  placeholder="Jane"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
+                <input id="custName" type="text" placeholder="Jane" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
               </div>
               <div className={styles.field}>
                 <label htmlFor="postcode">Postcode</label>
-                <input
-                  id="postcode"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder="3121"
-                  value={postcode}
-                  onChange={(e) => applyPostcode(e.target.value)}
-                />
+                <input id="postcode" type="text" inputMode="numeric" maxLength={4} placeholder="3121" value={postcode} onChange={(e) => applyPostcode(e.target.value)} />
               </div>
             </div>
             <div className={styles.fieldGrid}>
@@ -756,13 +882,7 @@ export default function Comparator() {
                 <label htmlFor="address">
                   Street address <span className={styles.unitNote}>(optional)</span>
                 </label>
-                <input
-                  id="address"
-                  type="text"
-                  placeholder="12 Smith Street"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
+                <input id="address" type="text" placeholder="12 Smith Street" value={address} onChange={(e) => { setAddress(e.target.value); setAddressHintOff(false); }} />
               </div>
               <div className={styles.field}>
                 <label htmlFor="suburb">
@@ -772,15 +892,23 @@ export default function Comparator() {
               </div>
             </div>
 
-            {postcode.length === 4 && postcodeGuessed && (
-              <div className={`${styles.scanBanner} ${styles.mt16}`}>
-                <div className={styles.scanBannerHead}>
-                  <span>
-                    ✓ You&apos;re on the <strong>{distributor}</strong> network. If your bill says otherwise, pick it below.
-                  </span>
-                </div>
+            {!addressHintOff && addressHint(address) === "business" && (
+              <div className={s1.hint}>
+                This looks like a business address. Utilo compares home plans for now.{" "}
+                <button type="button" onClick={() => setPropertyType("business")}>It&apos;s a business</button> ·{" "}
+                <button type="button" onClick={() => setAddressHintOff(true)}>It&apos;s my home</button>
               </div>
             )}
+            {!addressHintOff && addressHint(address) === "apartment" && (
+              <div className={s1.hint}>
+                A unit? If it&apos;s a factory, warehouse or shop unit, it&apos;s a business. If it&apos;s an apartment, check who sends your power bill: a normal
+                retailer is fine, but if it&apos;s the building, strata or an embedded network company we can&apos;t compare it yet.{" "}
+                <button type="button" onClick={() => setAddressHintOff(true)}>It&apos;s my home, a retailer bills me</button> ·{" "}
+                <button type="button" onClick={() => setPropertyType("business")}>It&apos;s a business unit</button> ·{" "}
+                <button type="button" onClick={() => setPropertyType("embedded")}>The building bills me</button>
+              </div>
+            )}
+
             {nonVic && (
               <div className={styles.mt16}>
                 <div className={styles.unlockHint}>
@@ -790,51 +918,97 @@ export default function Comparator() {
                 <StateWaitlist compact />
               </div>
             )}
-            {postcode.length === 4 && !postcodeGuessed && !nonVic && (
-              <div className={`${styles.unlockHint} ${styles.mt16}`}>
-                Couldn&apos;t match that postcode — pick your network below.
+
+            {/* 2. Retailer first: customers know who they pay, not their network. */}
+            <div className={s1.q}>
+              <span className={s1.qLabel}>Who do you pay for electricity now? <span className={s1.opt}>(optional)</span></span>
+              <div className={styles.choiceRow}>
+                {RETAILERS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`${styles.choiceBtn} ${r === currentRetailer ? styles.choiceBtnActive : ""}`}
+                    onClick={() => setCurrentRetailer(r === currentRetailer ? "" : r)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <span className={s1.qHint}>We&apos;ll also show their best plan for you, in case you&apos;d rather stay.</span>
+              {currentRetailer && (
+                <div className={`${styles.accuracyNote} ${styles.mt16}`}>
+                  <b>Heads up:</b> knowing your retailer doesn&apos;t tell us which {currentRetailer} plan you&apos;re on or what you pay. Many people are on
+                  older plans that cost more than the retailer&apos;s current offers. For an exact answer, snap your bill (or a screenshot from the{" "}
+                  {currentRetailer} app) at the top of this page, or type your rates in step 3.
+                </div>
+              )}
+            </div>
+
+            {/* 3. Network: worked out for them from the postcode or meter number. */}
+            {!nonVic && (
+              <div className={s1.q}>
+                <span className={s1.qLabel}>Your electricity network</span>
+                {networkKnown ? (
+                  <div className={s1.network}>
+                    <div>
+                      <b>{distributor}</b>
+                      <small>
+                        {networkFrom === "nmi"
+                          ? "From your meter number (NMI), so it's exact."
+                          : networkFrom === "bill"
+                            ? "Read from your bill."
+                            : networkFrom === "postcode"
+                              ? `Worked out from postcode ${postcode}. Your bill lists it as "Distributor" if you want to check.`
+                              : "Picked by you."}
+                      </small>
+                    </div>
+                    <button type="button" className={s1.linkBtn} onClick={() => setShowNetworkPicker((v) => !v)}>
+                      {showNetworkPicker ? "Done" : "Change"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className={s1.hint}>
+                    {postcode.length === 4
+                      ? `We can't tell the network from postcode ${postcode} alone, because some areas are split between two. `
+                      : "Enter your postcode and we'll work out your network. "}
+                    {postcode.length === 4 && <>Enter your meter number (NMI) from your bill, or pick the network below.</>}
+                  </div>
+                )}
+                {(showNetworkPicker || (!networkKnown && postcode.length === 4)) && (
+                  <div className={s1.picker}>
+                    <div className={s1.nmiRow}>
+                      <label className={s1.srOnly} htmlFor="nmi">Meter number (NMI)</label>
+                      <input id="nmi" type="text" inputMode="numeric" placeholder="Meter number (NMI), e.g. 6203 1234 567" value={nmiRaw} onChange={(e) => applyNmi(e.target.value)} />
+                      {nmiStatus.status === "network" && <span className={s1.nmiOk}>That&apos;s {nmiStatus.network}</span>}
+                      {nmiStatus.status === "notVictorian" && (
+                        <span className={s1.nmiWarn}>
+                          That meter number isn&apos;t on a Victorian network. It may be an embedded network, which we can&apos;t compare yet.
+                        </span>
+                      )}
+                    </div>
+                    <span className={s1.qHint}>The NMI is a 10 or 11 digit number near the top of your bill.</span>
+                    <div className={`${styles.distGrid} ${styles.mt16}`}>
+                      {DISTRIBUTORS.map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          className={`${styles.distBtn} ${d === distributor && networkKnown ? styles.distBtnActive : ""}`}
+                          onClick={() => {
+                            setDistributor(d);
+                            setNetworkFrom("manual");
+                            setShowNetworkPicker(false);
+                          }}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                    <span className={s1.qHint}>The network owns the poles and wires. You can&apos;t choose it, but it changes prices.</span>
+                  </div>
+                )}
               </div>
             )}
-
-            <div className={`${styles.distGrid} ${styles.mt16}`}>
-              {DISTRIBUTORS.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`${styles.distBtn} ${d === distributor ? styles.distBtnActive : ""}`}
-                  onClick={() => {
-                    setDistributor(d);
-                    setPostcodeGuessed(false);
-                  }}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-            <p className={styles.helper}>
-              The network owns the poles and wires. Your bill lists it as &ldquo;Distributor&rdquo;. You can&apos;t choose it, but it changes prices.
-            </p>
-
-            <div className={`${styles.stepLabel} ${styles.mt16}`}>Who do you pay for electricity now? <span className={styles.unitNote}>(optional)</span></div>
-            <div className={styles.choiceRow}>
-              {RETAILERS.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className={`${styles.choiceBtn} ${r === currentRetailer ? styles.choiceBtnActive : ""}`}
-                  onClick={() => setCurrentRetailer(r === currentRetailer ? "" : r)}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-            <p className={styles.helper}>We&apos;ll also show their best plan for you, in case you&apos;d rather stay.</p>
-            {currentRetailer && (
-              <div className={`${styles.accuracyNote} ${styles.mt16}`}>
-                <b>Heads up:</b> knowing your retailer doesn&apos;t tell us which {currentRetailer} plan you&apos;re on or what you pay. Many people are on older plans that
-                cost more than the retailer&apos;s current offers. For an exact answer, snap your bill (or a screenshot from the {currentRetailer} app) at the top of this
-                page, or type your rates in step 3.
-              </div>
+              </>
             )}
           </div>
         )}
@@ -1216,7 +1390,7 @@ export default function Comparator() {
           </div>
         )}
 
-        {blockReason && <p className={styles.blockNote} role="status">{blockReason}</p>}
+        {blockReason && !(inputStep === 1 && propertyType !== "home") && <p className={styles.blockNote} role="status">{blockReason}</p>}
         <div className={styles.wizardNav}>
           {inputStep > 1 ? (
             <button

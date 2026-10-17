@@ -92,7 +92,11 @@ export default function GasCheck() {
     setBillRaw(b.gasBillTotal ? String(b.gasBillTotal) : "");
     setPlanName(b.gasPlanName ?? "");
     setRetailer(b.retailerName ?? "");
-    setWarnings([...w, ...(b.warnings ?? [])]);
+    // Utilo compares home plans: flag business and embedded-network gas bills.
+    const flags: string[] = [];
+    if (b.embeddedNetwork) flags.push("This bill looks like it's from an embedded network (gas supplied through your building). We can't compare those yet, so treat this result with care.");
+    if (b.accountType === "business" || b.demandCharge) flags.push("This looks like a business gas bill. Utilo compares home plans for now, so a result here could mislead.");
+    setWarnings([...flags, ...w, ...(b.warnings ?? [])]);
     setFromPhoto(true);
     setEntry(w.length ? "type" : "read");
     window.scrollTo({ top: 0, behavior: "smooth" });

@@ -1,0 +1,54 @@
+/* Step 1: property type, retailer, network. */
+.q { margin-top: 18px; }
+.qFirst { margin-top: 4px; }
+.qLabel { display: block; font-weight: 800; font-size: 15px; color: var(--ink); margin-bottom: 8px; }
+.qHint { display: block; font-size: 13px; color: var(--grey); line-height: 1.45; margin-top: 6px; }
+.opt { font-weight: 500; font-size: 13px; color: var(--grey); }
+
+.types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.type, .typeOn {
+  display: flex; flex-direction: column; gap: 3px; text-align: left;
+  padding: 12px 14px; border-radius: 14px; cursor: pointer; font-family: inherit;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--ink);
+}
+.type b, .typeOn b { font-size: 14.5px; }
+.type span, .typeOn span { font-size: 12.5px; color: var(--grey); line-height: 1.4; }
+.typeOn { border: 2px solid var(--navy-accent-text); background: rgba(45, 63, 158, 0.06); }
+
+.stop {
+  margin-top: 14px; padding: 14px 16px; border-radius: 14px;
+  background: #fff6e5; border: 1px solid rgba(245, 166, 35, 0.45);
+  font-size: 14px; line-height: 1.5; color: var(--ink);
+}
+.stop b { display: block; font-size: 15px; margin-bottom: 4px; }
+.stop p { margin: 0 0 10px; }
+
+.hint {
+  margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+  background: rgba(45, 63, 158, 0.06); font-size: 13.5px; line-height: 1.5; color: var(--ink);
+}
+.hint button { border: none; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--navy-accent-text); text-decoration: underline; cursor: pointer; }
+
+.network {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface);
+}
+.network b { font-size: 15px; }
+.network small { display: block; font-size: 12.5px; color: var(--grey); margin-top: 2px; }
+.linkBtn { border: none; background: none; padding: 0; font: inherit; font-size: 14px; font-weight: 700; color: var(--navy-accent-text); text-decoration: underline; cursor: pointer; }
+.picker { margin-top: 10px; }
+.nmiRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.nmiRow input { flex: 1 1 220px; padding: 11px 12px; border-radius: 10px; border: 1.5px solid var(--border); font: inherit; background: var(--surface); color: var(--ink); letter-spacing: 0.04em; }
+.nmiOk { font-size: 13px; font-weight: 700; color: var(--teal); }
+.nmiWarn { font-size: 13px; color: #8a5a00; }
+
+.notify { display: flex; flex-wrap: wrap; gap: 8px; }
+.notify input { flex: 1 1 200px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--border); font: inherit; background: var(--surface); color: var(--ink); }
+.notify button { padding: 10px 16px; border-radius: 10px; border: none; background: var(--amber); color: var(--amber-ink); font: inherit; font-weight: 800; cursor: pointer; }
+.notifyDone { margin: 0; font-weight: 700; color: var(--teal); }
+.notifyErr { width: 100%; font-size: 13px; color: #b42318; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+@media (max-width: 720px) {
+  .types { grid-template-columns: 1fr; }
+}

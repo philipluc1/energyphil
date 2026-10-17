@@ -112,6 +112,21 @@ const TOOL_SCHEMA = {
         type: ["string", "null"],
         description: "The 4-digit postcode of the supply address. Null if not visible.",
       },
+      account_type: {
+        type: ["string", "null"],
+        enum: ["residential", "business", null],
+        description:
+          "Whether this is a residential (home) or business account. Look for wording such as 'Residential', 'Home', 'Business', 'Commercial', 'Small business', a business or company name as the account holder, or the customer's own ABN (not the retailer's ABN). Null if unclear.",
+      },
+      embedded_network: {
+        type: "boolean",
+        description:
+          "True if the bill comes from an embedded network: the electricity is supplied through a building, apartment complex, retirement village, caravan park or shopping centre's private network, often billed by the owners corporation, strata manager or an embedded network operator, or the bill mentions 'embedded network', 'child meter' or 'parent meter'. False otherwise.",
+      },
+      has_demand_charge: {
+        type: "boolean",
+        description: "True if the bill includes a demand charge (priced in $ per kW or kVA, per day or per month), which is typical of business tariffs.",
+      },
       has_solar: {
         type: "boolean",
         description: "True if the bill shows any solar feed-in / solar export credit line item, even a small or zero-dollar one — this indicates the property has solar, regardless of the credit amount.",
@@ -269,7 +284,8 @@ export async function POST(req: NextRequest) {
                   "clearly a different network. Also read the account holder's name and the supply address " +
                   "(street/suburb/postcode) if printed, and check for any solar feed-in/export credit line — " +
                   "set has_solar true whenever one appears, even if the credit is $0 or very small. If the bill includes gas, fill the gas_* fields " +
-                  "(usage in MJ, days, gas charges, gas network) and set fuel accordingly.",
+                  "(usage in MJ, days, gas charges, gas network) and set fuel accordingly. Also say whether it's a residential or business " +
+                  "account, whether it comes from an embedded network (building or strata-supplied power), and whether it has a demand charge.",
               },
             ],
           },
