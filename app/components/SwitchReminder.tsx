@@ -1,5 +1,6 @@
 "use client";
 
+import Icon from "./Icon";
 import { useState } from "react";
 import styles from "./reminder.module.css";
 
@@ -126,7 +127,7 @@ export default function SwitchReminder({
   if (!open) {
     return (
       <button type="button" className={dark ? styles.triggerDark : styles.trigger} onClick={() => setOpen(true)}>
-        <span aria-hidden="true">📅</span> Remind me to switch
+        <Icon name="calendar" /> Remind me to switch
       </button>
     );
   }

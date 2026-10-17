@@ -21,7 +21,7 @@ const MAX_BYTES = 15 * 1024 * 1024;
 
 // Cheapest current vision-capable model. Swap this for a Sonnet model string
 // if extraction accuracy turns out to need it — one line, higher cost per scan.
-const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
 
 const TOOL_SCHEMA = {
   name: "extract_bill_fields",

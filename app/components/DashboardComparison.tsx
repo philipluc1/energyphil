@@ -1,5 +1,7 @@
 "use client";
 
+import OfferDate from "./OfferDate";
+import Icon from "./Icon";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RETAILER_COUNT, rankPlans, isEvFriendly, fmtRateCents, fmtRatePerDay, type Distributor, type UsageInput, type PlanRow } from "@/lib/plans";
@@ -151,7 +153,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
           <span className={styles.sidePlan}>{haveBill ? currentPlanName ?? "from your bill" : `${distributor} network`}</span>
           <span className={styles.sideCost}>{money(you * k)}</span>
           {haveBill && input.currentPriceType === "fixed" && (
-            <span className={styles.sideTerms}>🔒 Fixed price{input.currentFixedUntil ? ` until ${fmtDay(input.currentFixedUntil)}` : ""}</span>
+            <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price{input.currentFixedUntil ? ` until ${fmtDay(input.currentFixedUntil)}` : ""}</span>
           )}
         </div>
         <div className={styles.arrow} aria-hidden="true">→</div>
@@ -160,7 +162,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
           <b>{top.plan[0]}</b>
           <span className={styles.sidePlan}>{top.plan[2]}</span>
           <span className={styles.sideCost}>{money(top.total * k)}</span>
-          {bestTerms === "fixed" && <span className={styles.sideTerms}>🔒 Fixed price</span>}
+          {bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
         </div>
       </div>
       {verdict !== "good" && savingYear > 0 && <FunEquivalents dollars={savingYear} />}
@@ -233,12 +235,12 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
                       <RetailerLink name={m.plan[0]} />
                       {i === 0 && <span className={styles.tagBest}>Cheapest</span>}
                       {mine && <span className={styles.tagMine}>Your retailer</span>}
-                      {input.ev && isEvFriendly(m.plan) && <span className={styles.tagEv}>⚡ EV charging</span>}
+                      {input.ev && isEvFriendly(m.plan) && <span className={styles.tagEv}><Icon name="bolt" size={12} /> EV charging</span>}
                     </td>
-                    <td className={styles.planName}>{m.plan[2]}</td>
+                    <td className={styles.planName}>{m.plan[2]}<br /><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></td>
                     <td title={chargeHelp(m.plan)}>
                       {chargeLabel(m.plan)}
-                      {planPriceType(m.plan[0], m.plan[2]) === "fixed" && <span className={styles.ptFixed}> · 🔒 Fixed</span>}
+                      {planPriceType(m.plan[0], m.plan[2]) === "fixed" && <span className={styles.ptFixed}> · <Icon name="lock" size={12} /> Fixed</span>}
                     </td>
                     <td className={styles.num}>{money(m.total * k)}</td>
                     <td className={`${styles.num} ${diff >= 0 ? styles.pos : styles.neg}`}>{diff >= 0 ? `save ${money(diff)}` : `+${money(-diff)}`}</td>
@@ -247,7 +249,7 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
               })}
               <tr className={styles.rowRef}>
                 <td>–</td><td><b>{youLabel}</b></td><td className={styles.planName}>{haveBill ? currentPlanName ?? "" : "Essential Services Commission"}</td>
-                <td>{haveBill && input.currentPriceType === "fixed" ? <span className={styles.ptFixed}>🔒 Fixed</span> : ""}</td>
+                <td>{haveBill && input.currentPriceType === "fixed" ? <span className={styles.ptFixed}><Icon name="lock" size={12} /> Fixed</span> : ""}</td>
                 <td className={styles.num}>{money(you * k)}</td><td className={styles.num}>–</td>
               </tr>
             </tbody>
@@ -268,7 +270,8 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
                     {i === 0 && <span className={styles.tagBest}>Cheapest</span>}
                     {mine && <span className={styles.tagMine}>Yours</span>}
                   </div>
-                  <span className={styles.pcPlan}>{m.plan[2]} · {chargeLabel(m.plan)}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · 🔒 Fixed" : ""}</span>
+                  <span className={styles.pcPlan}>{m.plan[2]} · {chargeLabel(m.plan)}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · Fixed price" : ""}</span>
+                  <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
                 </div>
                 <div className={styles.pcNums}>
                   <b>{whole(m.total * k)}</b>
@@ -292,7 +295,7 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
         <div className={styles.legend}>
           <span><b>Same price all day</b>: one rate for every kWh.</span>
           <span><b>Cheaper at night</b>: dearer late afternoon to evening, cheaper overnight.</span>
-          <span><b>🔒 Fixed</b>: price locked for a set time. Everything else can change with notice, usually around 1 July.</span>
+          <span><b><Icon name="lock" size={12} /> Fixed</b>: price locked for a set time. Everything else can change with notice, usually around 1 July.</span>
           {!input.ev && <span>Plans built around EV charging are hidden. Tell us you charge an EV to include them.</span>}
         </div>
         {!member && (

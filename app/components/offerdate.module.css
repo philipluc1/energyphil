@@ -1,0 +1,8 @@
+.wrap { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; line-height: 1.3; }
+.label { color: var(--grey); }
+.new, .changed { padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 11.5px; white-space: nowrap; }
+.new { background: rgba(14, 165, 160, 0.14); color: #0d6f78; }
+.changed { background: rgba(245, 166, 35, 0.18); color: #8a5a00; }
+.dark .label { color: rgba(255, 255, 255, 0.72); }
+.dark .new { background: rgba(94, 234, 212, 0.18); color: #5eead4; }
+.dark .changed { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }

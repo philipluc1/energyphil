@@ -24,7 +24,6 @@ export default function SiteHeader({ active }: { active: "home" | "check" | "pri
             <span className={styles.mark}>
               Util<span className={styles.accent}>o</span>
             </span>
-            <span className={styles.slogan}>Pay less. Power on.</span>
           </span>
         </Link>
         <nav className={styles.navLinks}>

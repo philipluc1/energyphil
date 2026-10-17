@@ -83,9 +83,9 @@ export function followUpWeek(i: { origin: string; retailer: string | null; planN
 }
 
 /* ---------- 4. Cheaper plan found (member) ---------- */
-export function cheaperForMember(i: { origin: string; retailer: string; planName: string; yearly: number; unsubscribeUrl: string }): Email {
+export function cheaperForMember(i: { origin: string; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null }): Email {
   const html = `
-    <p>Watching the market for you this morning, we found a plan that beats our last pick.</p>
+    <p>Watching the market for you this morning, we found a plan that beats our last pick.${i.offerNote ? ` ${esc(i.offerNote)}` : ""}</p>
     ${planCard({ kicker: "New cheapest for you", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: "a year cheaper than our last pick." }, link: retailerLink(i.retailer), tone: "amber" })}
     ${button("See it on my dashboard", `${i.origin}/account#compare`)}
     ${chips(SWITCH_FACTS)}
@@ -94,10 +94,22 @@ export function cheaperForMember(i: { origin: string; retailer: string; planName
   return { subject: `A cheaper plan just showed up: about ${money(i.yearly)} a year less`, title: "We found a cheaper plan.", html };
 }
 
-/* ---------- 5. Cheaper plan found (free user who opted in) ---------- */
-export function cheaperForLead(i: { origin: string; previousRetailer: string | null; retailer: string; planName: string; yearly: number; unsubscribeUrl: string }): Email {
+/* ---------- 4b. Cheaper gas plan found (member) ---------- */
+export function cheaperGasForMember(i: { origin: string; retailer: string; planName: string; yearly: number; vsBill: boolean; unsubscribeUrl: string }): Email {
   const html = `
-    <p>When you checked your plan${i.previousRetailer ? `, the best match was ${esc(i.previousRetailer)}` : ""}. Prices have moved since, and there's now something cheaper.</p>
+    <p>Watching gas prices for you this morning, we found a gas plan that beats our last pick.</p>
+    ${planCard({ kicker: "New cheapest gas plan for you", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: i.vsBill ? "a year less than our last pick, based on your gas bill." : "a year less than our last pick." }, link: retailerLink(i.retailer), tone: "amber" })}
+    ${button("See it on my dashboard", `${i.origin}/account`)}
+    ${tip("Getting electricity from the same retailer? Ask about a dual-fuel discount when you switch.")}
+    ${note(esc(PRICE_CHANGE_CLAUSE) + " Gas use swings with the seasons, so yearly figures are scaled from your bill.")}
+    ${unsubscribe(i.unsubscribeUrl, "You're getting this as a Utilo member. This won't cancel your membership; manage it from your dashboard.")}`;
+  return { subject: `A cheaper gas plan just showed up: about ${money(i.yearly)} a year less`, title: "We found a cheaper gas plan.", html };
+}
+
+/* ---------- 5. Cheaper plan found (free user who opted in) ---------- */
+export function cheaperForLead(i: { origin: string; previousRetailer: string | null; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null }): Email {
+  const html = `
+    <p>When you checked your plan${i.previousRetailer ? `, the best match was ${esc(i.previousRetailer)}` : ""}. Prices have moved since, and there's now something cheaper.${i.offerNote ? ` ${esc(i.offerNote)}` : ""}</p>
     ${planCard({ kicker: "New cheapest in your area", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: "a year cheaper than that earlier match." }, link: retailerLink(i.retailer), tone: "amber" })}
     ${button("Check it with my bill", `${i.origin}/check`)}
     ${tip(`Want this done for you every morning, without waiting for an email like this? <a href="${i.origin}/pricing">Membership is $39 a year</a>.`)}
@@ -140,8 +152,16 @@ export function monthlyCheck(i: {
   planName: string;
   yearly: number;          // best vs their last bill (may be <= 0)
   unsubscribeUrl: string;
+  /** Members with a gas bill on file: the cheapest gas plan vs their gas bill. */
+  gas?: { retailer: string; planName: string; yearly: number } | null;
 }): Email {
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
+  const gasWorth = !!i.gas && i.gas.yearly >= WORTH_SWITCHING_PER_YEAR;
+  const gasBlock = !i.gas
+    ? ""
+    : gasWorth
+      ? planCard({ kicker: "Gas: you could pay less", retailer: i.gas.retailer, planName: i.gas.planName, figure: { amount: i.gas.yearly, after: "a year less than your gas bill." }, link: retailerLink(i.gas.retailer), tone: "amber" })
+      : statusBox({ kicker: "Gas", headline: "Your gas plan is a good deal", body: `Nothing beats it by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more.`, tone: "green" });
   const lead = i.isJuly
     ? "Retailers changed their prices on 1 July, so we've re-checked your plan against the new ones."
     : "We re-checked your plan against today's prices.";
@@ -150,7 +170,9 @@ export function monthlyCheck(i: {
     : statusBox({ kicker: `Your ${esc(i.monthName)} check`, headline: "You're on a good deal", body: `Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more. We'll keep watching.`, tone: "green" });
   const html = `
     <p>${lead}</p>
+    ${i.gas ? heading("Electricity") : ""}
     ${card}
+    ${i.gas ? heading("Gas") + gasBlock : ""}
     ${button("Open my dashboard", `${i.origin}/account#compare`)}
     ${tip(`Switched recently? <a href="${i.origin}/account">Add the date on your dashboard</a> so your savings count from the right day. New bill? Snap it there too.`)}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this as a Utilo member. This won't cancel your membership.")}`;

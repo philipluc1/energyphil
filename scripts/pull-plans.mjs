@@ -24,6 +24,18 @@ const GAS_TS = path.join(ROOT, "lib", "gasPlans.ts");
 const TERMS_TS = path.join(ROOT, "lib", "planTerms.ts");
 // "Retailer|Plan name" for every plan whose CDR contract says isFixed: true.
 const FIXED = new Set();
+// When each offer took effect and was last updated, from the feed (CDR
+// effectiveFrom / lastUpdated). Keyed "retailer|plan name".
+const FEED_DATES = new Map();
+const isoDay = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null);
+function noteDates(retailerName, name, detail, p) {
+  const key = `${retailerName}|${name}`;
+  if (FEED_DATES.has(key)) return;
+  FEED_DATES.set(key, {
+    from: isoDay(detail.effectiveFrom ?? p.effectiveFrom),
+    updated: isoDay(detail.lastUpdated ?? p.lastUpdated),
+  });
+}
 const DATA_DIR = path.join(ROOT, "data");
 const DRY = process.argv.includes("--dry-run");
 const ALL = process.argv.includes("--all");
@@ -103,6 +115,7 @@ async function pullGasRetailer(cdrCode, retailerName, log) {
     if (!g) continue;
     const name = String(detail.displayName ?? p.displayName ?? p.planId).replace(/\s+/g, " ").trim();
     const offerType = String(p.type ?? detail.type ?? "MARKET").toUpperCase() === "STANDING" ? "STANDING" : "MARKET";
+    noteDates(retailerName, name, detail, p);
     for (const z of gasZones(detail.geography ? detail : p)) rows.push([retailerName, z, name, offerType, g.supply, g.blocks, g.perDay]);
   }
   log(`  ${retailerName} gas: ${plans.length} VIC residential plans listed, ${rows.length} rows priced`);
@@ -196,12 +209,48 @@ async function pullRetailer(cdrCode, retailerName, log) {
     const name = String(detail.displayName ?? p.displayName ?? p.planId).replace(/\s+/g, " ").trim();
     const offerType = String(p.type ?? detail.type ?? "MARKET").toUpperCase() === "STANDING" ? "STANDING" : "MARKET";
     if (detail.electricityContract?.isFixed === true) FIXED.add(`${retailerName}|${name}`);
+    noteDates(retailerName, name, detail, p);
     for (const d of vicDistributors(detail.geography ? detail : p)) {
       rows.push([retailerName, d, name, offerType, rates.supply, rates.anytime, rates.peak, rates.shoulder, rates.offpeak, rates.cl, rates.solarFit]);
     }
   }
   log(`  ${retailerName}: ${plans.length} VIC residential plans listed, ${rows.length} rows priced`);
   return rows;
+}
+
+/** Offer dates: the feed's own dates, plus when we first saw each offer and
+ *  when its prices last changed (worked out by comparing with yesterday). */
+export function buildPlanDates(termsSrc, previousPlansSrc, rows, today, previousGasSrc = "", gasRows = []) {
+  const prevMatch = termsSrc.match(/export const PLAN_DATES: Record<string, PlanDates> = (\{.*?\});/s);
+  const prevDates = prevMatch ? JSON.parse(prevMatch[1]) : {};
+  const prevRowsMatch = previousPlansSrc.match(/^export const PLANS: PlanRow\[\] = (\[.*\]);$/m);
+  const prevRows = prevRowsMatch ? JSON.parse(prevRowsMatch[1]) : [];
+  const priceOf = (r) => JSON.stringify(r.slice(4));
+  const prevGasMatch = previousGasSrc.match(/export const GAS_PLANS: GasPlanRow\[\] = (\[.*?\]);/s);
+  const prevGas = prevGasMatch ? JSON.parse(prevGasMatch[1]) : [];
+  const prevPrice = new Map([...prevRows, ...prevGas].map((r) => [`${r[0]}|${r[1]}|${r[2]}`, priceOf(r)]));
+  const firstRun = prevRows.length === 0 || Object.keys(prevDates).length === 0;
+  const changed = new Set();
+  for (const r of [...rows, ...gasRows]) {
+    const before = prevPrice.get(`${r[0]}|${r[1]}|${r[2]}`);
+    if (before !== undefined && before !== priceOf(r)) changed.add(`${r[0]}|${r[2]}`);
+  }
+  const out = {};
+  for (const key of new Set([...rows, ...gasRows].map((r) => `${r[0]}|${r[2]}`))) {
+    const prev = prevDates[key];
+    const feed = FEED_DATES.get(key) ?? {};
+    out[key] = {
+      from: feed.from ?? prev?.from ?? null,
+      updated: feed.updated ?? prev?.updated ?? null,
+      // On the very first run everything is "seen" today, so don't call it new.
+      seen: prev ? prev.seen : firstRun ? null : today,
+      priceChanged: changed.has(key) ? today : prev?.priceChanged ?? null,
+    };
+  }
+  return termsSrc.replace(
+    /export const PLAN_DATES: Record<string, PlanDates> = \{.*?\};/s,
+    `export const PLAN_DATES: Record<string, PlanDates> = ${JSON.stringify(out)};`,
+  );
 }
 
 async function main() {
@@ -258,7 +307,8 @@ async function main() {
   const termsSrc = fs.readFileSync(TERMS_TS, "utf8")
     .replace(/export const PLAN_TERMS_DATE: string \| null = .*?;/, `export const PLAN_TERMS_DATE: string | null = "${today}";`)
     .replace(/export const FIXED_PLAN_KEYS: string\[\] = \[.*?\];/s, `export const FIXED_PLAN_KEYS: string[] = ${JSON.stringify([...FIXED].sort())};`);
-  fs.writeFileSync(TERMS_TS, termsSrc);
+  const gasBefore = fs.existsSync(GAS_TS) ? fs.readFileSync(GAS_TS, "utf8") : "";
+  fs.writeFileSync(TERMS_TS, buildPlanDates(termsSrc, current, unique, today, gasBefore, gasUnique));
   log(`${FIXED.size} fixed-price plans.`);
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(DATA_DIR, `plans-${today}.json`), JSON.stringify({ pulled: today, rows: unique }, null, 0));

@@ -39,10 +39,10 @@ function step(n: number, title: string, body: string): string {
 }
 
 /** One "what we watch" row: small icon tile, when, what. */
-function watch(icon: string, when: string, what: string): string {
+function watch(_icon: string, when: string, what: string): string {
   return `<tr>
-    <td valign="top" style="width:34px;padding:0 10px 10px 0;">
-      <div style="width:30px;height:30px;border-radius:9px;background:#e6f6f5;font:16px/30px Arial;text-align:center;">${icon}</div>
+    <td valign="top" style="width:18px;padding:9px 10px 10px 0;">
+      <div style="width:8px;height:8px;border-radius:4px;background:#0ea5a0;"></div>
     </td>
     <td valign="top" style="padding:3px 0 10px;font:14px/1.45 Arial,Helvetica,sans-serif;color:#1a1a1a;">
       <strong>${when}</strong> <span style="color:#5f6b82;">${what}</span>

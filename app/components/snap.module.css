@@ -347,3 +347,13 @@
 
 .underNote { margin: 14px 0 0; font-size: 13px; color: var(--grey); text-align: center; }
 .underNote a { color: var(--navy-accent-text); font-weight: 700; }
+
+.readGo:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
+/* Calm pass (Oct 2026): flat colour, no glow or pulsing. */
+.hero { background: var(--navy); box-shadow: 0 10px 30px rgba(10, 15, 40, 0.16); }
+.strip { background: var(--navy); box-shadow: none; }
+.primary, .stripPrimary { animation: none; background: var(--amber); box-shadow: none; }
+.readGo { background: var(--amber); box-shadow: none; }
+.kicker { background: transparent; border: none; padding: 0; color: var(--amber-light); }
+.scan { animation-duration: 3.2s; }

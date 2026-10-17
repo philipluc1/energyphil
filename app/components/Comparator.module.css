@@ -1657,3 +1657,18 @@
 .saveLine { margin: 8px 0 0; font-size: 14px; opacity: 0.9; position: relative; z-index: 1; }
 .saveLine b { color: var(--amber); }
 .detailsInner .chartPair { margin-top: 4px; }
+
+/* Calm pass (Oct 2026): flat header, no glowing logo, quieter cards. */
+.top { background: #131c57; }
+.brandMark { animation: none; box-shadow: none; }
+.bestCard { background: #1b2a6b; }
+.navCta { box-shadow: none; animation: none; background: var(--amber); }
+.heroCta { box-shadow: none; }
+.navCta:hover { box-shadow: none; }
+.resultHero { background: #16235e; }
+.resultHeroBad { background: #8a3a0c; }
+.resultHeroGood { background: #14532d; }
+.stickyBtn { background: var(--amber); box-shadow: none; }
+.resultHeroBtn { box-shadow: none; }
+
+.offerDateRow { margin-top: 6px; position: relative; z-index: 1; }

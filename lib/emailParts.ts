@@ -95,10 +95,11 @@ export function step(n: number, title: string, body: string): string {
 export const steps = (rows: string[]) => `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 8px;">${rows.join("")}</table>`;
 
 /** Icon row: small tinted tile, bold lead-in, quiet text. Icons are HTML entities. */
-export function iconRow(icon: string, lead: string, text: string): string {
+export function iconRow(_icon: string, lead: string, text: string): string {
+  // A small teal marker instead of an emoji: renders the same in every mail app.
   return `<tr>
-    <td valign="top" style="width:34px;padding:0 10px 10px 0;">
-      <div style="width:30px;height:30px;border-radius:9px;background:${C.tealTint};font:16px/30px ${F};text-align:center;">${icon}</div>
+    <td valign="top" style="width:18px;padding:9px 10px 10px 0;">
+      <div style="width:8px;height:8px;border-radius:4px;background:${C.tealBright};"></div>
     </td>
     <td valign="top" style="padding:3px 0 10px;font:14px/1.45 ${F};color:${C.ink};">
       <strong>${lead}</strong> <span style="color:${C.grey};">${text}</span>

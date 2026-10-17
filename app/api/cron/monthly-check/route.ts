@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { monthlyCheck } from "@/lib/emailTemplates";
+import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 import { computeBest } from "@/lib/priceWatch";
 import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
@@ -27,6 +28,10 @@ interface Row {
   reference_total: number | null;
   baseline_total: number | null;
   unsubscribed: boolean | null;
+  gas_zone?: string | null;
+  gas_billing_days?: number | null;
+  gas_mj?: number | null;
+  gas_reference_total?: number | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -41,7 +46,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, baseline_total, unsubscribed, home_profile",
+      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, baseline_total, unsubscribed, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total",
     )
     .eq("status", "active")
     .not("distributor", "is", null);
@@ -99,6 +104,7 @@ export async function GET(req: NextRequest) {
           planName: best.bestPlanName,
           yearly: (saving * 365) / days,
           unsubscribeUrl: `${origin}/api/unsubscribe?type=subscriber&id=${sub.id}`,
+          gas: gasSummary(sub),
         });
         const ok = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
         if (ok) emailed++;
@@ -115,4 +121,13 @@ export async function GET(req: NextRequest) {
 /** True when the saved home answers say they charge an EV at home. */
 function hasEv(profile: unknown): boolean {
   return !!profile && typeof profile === "object" && (profile as { ev?: unknown }).ev === true;
+}
+
+/** The cheapest gas plan vs the member's gas bill, when they have one on file. */
+function gasSummary(sub: Row): { retailer: string; planName: string; yearly: number } | null {
+  if (!sub.gas_zone || !GAS_ZONES.includes(sub.gas_zone as GasZone) || !sub.gas_mj || !sub.gas_reference_total) return null;
+  const days = sub.gas_billing_days ?? 91;
+  const top = rankGasPlans(sub.gas_zone as GasZone, { days, mj: sub.gas_mj })[0];
+  if (!top) return null;
+  return { retailer: top.plan[0], planName: top.plan[2], yearly: ((sub.gas_reference_total - top.total) * 365) / days };
 }

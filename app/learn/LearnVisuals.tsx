@@ -1,5 +1,6 @@
 import { typicalHouseholdExample } from "@/lib/savings";
 import v from "./visuals.module.css";
+import Icon from "../components/Icon";
 
 /** Three steps, each with a small picture instead of a paragraph. */
 export function StepsVisual() {
@@ -51,7 +52,7 @@ export function StepsVisual() {
       <li className={`${v.step} ${v.s3}`}>
         <div className={v.pic} aria-hidden="true">
           <div className={v.notify}>
-            <span className={v.notifyIcon}>🔔</span>
+            <span className={v.notifyIcon}><Icon name="bell" size={15} /></span>
             <span>
               <b>Utilo</b>
               Your discount ends in 30 days. A better plan is ready.
@@ -75,14 +76,14 @@ type Mark = "yes" | "no" | "member" | string;
 
 // Victorian Energy Compare facts: its published guide, October 2026.
 const ROWS: { label: string; icon: string; esc: Mark; vec: Mark; us: Mark }[] = [
-  { label: "Sets the default offer and the rules", icon: "⚖️", esc: "yes", vec: "no", us: "no" },
-  { label: "Compares plans for you", icon: "🔍", esc: "no", vec: "yes", us: "yes" },
-  { label: "Covers retailers across Victoria", icon: "🗺️", esc: "no", vec: "yes", us: "TRACKED" },
-  { label: "Starts from a photo of your bill", icon: "📷", esc: "no", vec: "no", us: "yes" },
-  { label: "Prices a year of smart meter data", icon: "📈", esc: "no", vec: "yes", us: "no" },
-  { label: "Re-checks prices for you every day", icon: "🔄", esc: "no", vec: "no", us: "member" },
-  { label: "Warns before your discount ends", icon: "🔔", esc: "no", vec: "no", us: "member" },
-  { label: "Cost", icon: "💲", esc: "Free", vec: "Free", us: "Free check" },
+  { label: "Sets the default offer and the rules", icon: "scale", esc: "yes", vec: "no", us: "no" },
+  { label: "Compares plans for you", icon: "search", esc: "no", vec: "yes", us: "yes" },
+  { label: "Covers retailers across Victoria", icon: "map", esc: "no", vec: "yes", us: "TRACKED" },
+  { label: "Starts from a photo of your bill", icon: "camera", esc: "no", vec: "no", us: "yes" },
+  { label: "Prices a year of smart meter data", icon: "chart", esc: "no", vec: "yes", us: "no" },
+  { label: "Re-checks prices for you every day", icon: "refresh", esc: "no", vec: "no", us: "member" },
+  { label: "Warns before your discount ends", icon: "bell", esc: "no", vec: "no", us: "member" },
+  { label: "Cost", icon: "dollar", esc: "Free", vec: "Free", us: "Free check" },
 ];
 
 function Cell({ m }: { m: Mark }) {
@@ -98,19 +99,19 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
     <>
       <div className={v.roles}>
         <div className={v.role}>
-          <span className={v.roleIcon} aria-hidden="true">🏛️</span>
+          <span className={v.roleIcon} aria-hidden="true"><Icon name="landmark" size={26} /></span>
           <b>ESC</b>
           <span className={v.roleJob}>Sets the rules</span>
           <span className={v.roleSub}>The regulator. Sets the default offer each July.</span>
         </div>
         <div className={v.role}>
-          <span className={v.roleIcon} aria-hidden="true">🔍</span>
+          <span className={v.roleIcon} aria-hidden="true"><Icon name="search" size={26} /></span>
           <b>Victorian Energy Compare</b>
           <span className={v.roleJob}>Finds today&apos;s deal</span>
           <span className={v.roleSub}>The Government&apos;s free comparison site. Broadest coverage.</span>
         </div>
         <div className={`${v.role} ${v.roleUs}`}>
-          <span className={v.roleIcon} aria-hidden="true">🔔</span>
+          <span className={v.roleIcon} aria-hidden="true"><Icon name="bell" size={26} /></span>
           <b>Utilo</b>
           <span className={v.roleJob}>Finds it, then keeps watching</span>
           <span className={v.roleSub}>Independent. Starts from a photo of your bill.</span>
@@ -126,7 +127,7 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
         </div>
         {ROWS.map((r) => (
           <div className={v.gRow} role="row" key={r.label}>
-            <span role="rowheader" className={v.gLabel}><span className={v.gIcon} aria-hidden="true">{r.icon}</span>{r.label}</span>
+            <span role="rowheader" className={v.gLabel}><span className={v.gIcon} aria-hidden="true"><Icon name={r.icon} size={17} /></span>{r.label}</span>
             <span role="cell"><Cell m={r.esc} /></span>
             <span role="cell"><Cell m={r.vec} /></span>
             <span role="cell" className={v.gUs}><Cell m={r.us === "TRACKED" ? `The ${retailers} we track` : r.us} /></span>

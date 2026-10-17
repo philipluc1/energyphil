@@ -1,5 +1,7 @@
 "use client";
 
+import OfferDate from "./OfferDate";
+import Icon from "./Icon";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -88,7 +90,7 @@ function RateBreakdown({ plan, solarExportKwh = 0 }: { plan: PlanRow; solarExpor
 function EvBadge() {
   return (
     <span className={styles.evBadge} title="Very cheap or free off-peak rate — handy for overnight EV charging">
-      ⚡ EV-friendly off-peak
+      <Icon name="bolt" size={13} /> EV-friendly off-peak
     </span>
   );
 }
@@ -96,7 +98,7 @@ function EvBadge() {
 function SolarBadge() {
   return (
     <span className={styles.solarBadge} title="This total already includes this plan's solar feed-in credit">
-      ☀ Solar credit included
+      <Icon name="sun" size={13} /> Solar credit included
     </span>
   );
 }
@@ -359,7 +361,7 @@ export default function Comparator() {
       try {
         window.localStorage.setItem(
           "utilo.gas.v1",
-          JSON.stringify({ zone: bill.gasDistributor ?? "Australian Gas Networks", days: bill.gasBillingDays ?? bill.billingDays ?? 91, mj: Math.round(bill.gasMj), billRaw: bill.gasBillTotal ? String(bill.gasBillTotal) : "", planName: bill.gasPlanName ?? "" }),
+          JSON.stringify({ zone: bill.gasDistributor ?? "Australian Gas Networks", days: bill.gasBillingDays ?? bill.billingDays ?? 91, mj: Math.round(bill.gasMj), billRaw: bill.gasBillTotal ? String(bill.gasBillTotal) : "", planName: bill.gasPlanName ?? "", fromBill: true, retailer: bill.retailerName ?? "" }),
         );
       } catch { /* ignore */ }
     }
@@ -852,7 +854,7 @@ export default function Comparator() {
             </div>
 
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>👥 How many people live here?</div>
+              <div className={styles.profileLabel}>How many people live here?</div>
               <Choice
                 value={profile.people}
                 onChange={(v) => patchProfile({ people: v })}
@@ -860,7 +862,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>🏠 What kind of home is it?</div>
+              <div className={styles.profileLabel}>What kind of home is it?</div>
               <Choice
                 value={profile.dwelling}
                 onChange={(v) => patchProfile({ dwelling: v })}
@@ -872,7 +874,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>☀️ Is anyone home during the day?</div>
+              <div className={styles.profileLabel}>Is anyone home during the day?</div>
               <Choice
                 value={profile.daytimeHome}
                 onChange={(v) => patchProfile({ daytimeHome: v })}
@@ -884,7 +886,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>🔥 How do you heat your home?</div>
+              <div className={styles.profileLabel}>How do you heat your home?</div>
               <Choice
                 value={profile.heating}
                 onChange={(v) => patchProfile({ heating: v })}
@@ -896,7 +898,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>❄️ Do you use air-con to cool down?</div>
+              <div className={styles.profileLabel}>Do you use air-con to cool down?</div>
               <Choice
                 value={profile.cooling}
                 onChange={(v) => patchProfile({ cooling: v })}
@@ -907,7 +909,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>🚿 How is your water heated?</div>
+              <div className={styles.profileLabel}>How is your water heated?</div>
               <Choice
                 value={profile.hotWater}
                 onChange={(v) => patchProfile({ hotWater: v })}
@@ -920,7 +922,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>🏊 Pool or spa?</div>
+              <div className={styles.profileLabel}>Pool or spa?</div>
               <Choice
                 value={profile.pool}
                 onChange={(v) => patchProfile({ pool: v })}
@@ -931,7 +933,7 @@ export default function Comparator() {
               />
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>🚗 Do you charge an electric car at home?</div>
+              <div className={styles.profileLabel}>Do you charge an electric car at home?</div>
               <Choice
                 value={profile.ev}
                 onChange={(v) => patchProfile({ ev: v })}
@@ -953,7 +955,7 @@ export default function Comparator() {
               )}
             </div>
             <div className={styles.profileField}>
-              <div className={styles.profileLabel}>🔆 Do you have rooftop solar?</div>
+              <div className={styles.profileLabel}>Do you have rooftop solar?</div>
               <Choice
                 value={profile.hasSolar}
                 onChange={(v) => patchProfile({ hasSolar: v })}
@@ -1005,12 +1007,12 @@ export default function Comparator() {
               </div>
               <div className={w.big}>
                 <button type="button" className={!useEst ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("bill")}>
-                  <span className={w.bigIcon} aria-hidden="true">📄</span>
+                  <span className={w.bigIcon} aria-hidden="true"><Icon name="file" size={22} /></span>
                   <span><b>Yes, I have a bill</b>Snap a photo or copy a few numbers. Most accurate.</span>
                   <span className={w.tick} aria-hidden="true">✓</span>
                 </button>
                 <button type="button" className={useEst ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("estimate")}>
-                  <span className={w.bigIcon} aria-hidden="true">🏠</span>
+                  <span className={w.bigIcon} aria-hidden="true"><Icon name="home" size={22} /></span>
                   <span><b>No, estimate it for me</b>We&apos;ll use your answers about your home.</span>
                   <span className={w.tick} aria-hidden="true">✓</span>
                 </button>
@@ -1380,6 +1382,7 @@ export default function Comparator() {
                   {solarExportKwh > 0 && top.plan[10] !== null && <SolarBadge />}
                 </div>
                 <div className={styles.plan}>{top.plan[2]}</div>
+                <div className={styles.offerDateRow}><OfferDate retailer={top.plan[0]} plan={top.plan[2]} dark /></div>
                 <div className={styles.periodToggle} role="tablist" aria-label="Show figures per">
                   {(["month", "quarter", "year"] as const).map((pp) => (
                     <button key={pp} type="button" role="tab" aria-selected={period === pp} className={period === pp ? styles.periodOn : styles.periodBtn} onClick={() => setPeriod(pp)}>
@@ -1534,6 +1537,7 @@ export default function Comparator() {
                               {solarExportKwh > 0 && m.plan[10] !== null && <SolarBadge />}
                               <div className={styles.pname}>
                                 <span className={styles.pnameText}>{m.plan[2]}</span>
+                                <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
                                 <span className={styles.rateHint}>{isOpen ? "Hide ▴" : "Rates & website ▾"}</span>
                               </div>
                             </div>

@@ -56,3 +56,6 @@
 .dark .featured .features { border-top-color: #e6e9f2; }
 @keyframes glow { 0%, 100% { box-shadow: 0 0 0 6px rgba(251,191,36,0.18), 0 24px 60px rgba(245,166,35,0.35); } 50% { box-shadow: 0 0 0 10px rgba(251,191,36,0.1), 0 24px 70px rgba(245,166,35,0.55); } }
 @media (prefers-reduced-motion: reduce) { .dark .featured { animation: none; } }
+
+/* Calm pass (Oct 2026) */
+.dark .featured { animation: none; box-shadow: 0 0 0 2px #fbbf24; }

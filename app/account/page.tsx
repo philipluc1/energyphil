@@ -1,5 +1,6 @@
 "use client";
 
+import Icon from "../components/Icon";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
@@ -602,7 +603,7 @@ export default function AccountPage() {
               </p>
               {linkSent ? (
                 <div className={styles.inbox}>
-                  <div className={styles.inboxIcon} aria-hidden="true">✉</div>
+                  <div className={styles.inboxIcon} aria-hidden="true"><Icon name="mail" size={28} /></div>
                   <h2>Check your inbox</h2>
                   <p>
                     We sent a sign-in link to <strong>{loginEmail}</strong>. Open it on this device and you&apos;re in.

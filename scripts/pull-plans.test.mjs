@@ -18,3 +18,16 @@ const dup = { electricityContract: { tariffPeriod: [{ rateBlockUType: "timeOfUse
   timeOfUseRates: [{ type: "PEAK", rates: [{ unitPrice: "0.40" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0.20" }] }] }] } };
 assert.equal(parsePlan(dup).offpeak, 0.22);
 console.log("duplicate band ok");
+
+// Offer dates: a new offer gets "seen" today; a price change gets "priceChanged" today.
+import { buildPlanDates } from "./pull-plans.mjs";
+const terms = 'export const PLAN_DATES: Record<string, PlanDates> = {"AGL|Saver":{"from":"2026-07-01","updated":null,"seen":null,"priceChanged":null}};';
+const prevPlans = 'export const PLANS: PlanRow[] = [["AGL","Citipower","Saver","MARKET",1,0.3,null,null,null,null,null]];';
+const newRows = [["AGL", "Citipower", "Saver", "MARKET", 1, 0.28, null, null, null, null, null], ["GloBird Energy", "Citipower", "GloSave", "MARKET", 1, 0.25, null, null, null, null, null]];
+const outSrc = buildPlanDates(terms, prevPlans, newRows, "2026-10-17");
+const dates = JSON.parse(outSrc.match(/= (\{.*\});/)[1]);
+assert.equal(dates["AGL|Saver"].from, "2026-07-01");
+assert.equal(dates["AGL|Saver"].priceChanged, "2026-10-17");
+assert.equal(dates["AGL|Saver"].seen, null);
+assert.equal(dates["GloBird Energy|GloSave"].seen, "2026-10-17");
+console.log("offer dates ok");

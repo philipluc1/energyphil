@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PLAN_DISPLAY, PLANS_ON_SALE, fmtPrice, savePct, type PlanId } from "@/lib/pricingPlans";
+import { PLAN_DISPLAY, PLANS_ON_SALE, fmtPrice, type PlanId } from "@/lib/pricingPlans";
 import Tag from "./Tag";
 import styles from "./plancards.module.css";
 import ScrollReveal from "./ScrollReveal";
@@ -23,13 +23,12 @@ export default function PlanCards({
     <div className={`${styles.grid} ${dark ? styles.dark : ""}`}>
       {PLANS_ON_SALE.map((plan, i) => {
         const d = PLAN_DISPLAY[plan.id];
-        const save = savePct(plan);
         const recurring = plan.mode === "subscription";
         return (
           <ScrollReveal key={plan.id} delayMs={i * 90} className={`${styles.card} ${d.featured ? styles.featured : ""}`}>
             <div className={styles.tagRow}>
               {d.tag && (
-                <Tag tone={d.tag.tone} shine={d.featured || d.tag.tone === "green"}>
+                <Tag tone={d.tag.tone}>
                   {d.tag.label}
                 </Tag>
               )}
@@ -37,16 +36,14 @@ export default function PlanCards({
             <div className={styles.name}>{plan.name}</div>
 
             <div className={styles.priceRow}>
-              {d.anchorCents && <span className={styles.anchor}>{fmtPrice(d.anchorCents)}</span>}
               <span className={styles.price}>{fmtPrice(plan.priceCents)}</span>
             </div>
             <div className={styles.cadence}>
               {recurring ? plan.cadenceLabel : "one payment, once"}
-              {save ? <span className={styles.save}>Save {save}%</span> : null}
             </div>
             {d.perMonthCents && plan.id !== "monthly" ? (
               <div className={styles.perMonth}>
-                Just <strong>{fmtPrice(d.perMonthCents)}</strong> a month
+                Works out at {fmtPrice(d.perMonthCents)} a month
               </div>
             ) : (
               <div className={styles.perMonth}>{plan.id === "once_off" ? "Under 9 months of Monthly" : "Pay month to month"}</div>

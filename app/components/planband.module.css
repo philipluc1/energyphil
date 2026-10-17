@@ -16,3 +16,7 @@
 .trust { position: relative; margin: 22px 0 0; text-align: center; font-size: 12.5px; opacity: 0.7; }
 @media (max-width: 760px) { .band { padding: 34px 16px 24px; border-radius: 22px; } .proofs { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .orbA, .orbB { animation: none; } }
+
+/* Calm pass (Oct 2026) */
+.orbA, .orbB { display: none; }
+.band { background: #131c57; }

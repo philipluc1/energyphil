@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { BIG_SAVING_PER_YEAR, QUIET_DAYS_AFTER_SWITCH } from "@/lib/dataPolicy";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
-import { cheaperForLead, cheaperForMember, dealEnding, followUpMembership, followUpWeek, resultEmail } from "@/lib/emailTemplates";
-import { computeBest, isMeaningfullyCheaper } from "@/lib/priceWatch";
+import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
+import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, resultEmail } from "@/lib/emailTemplates";
+import { computeBest, isMeaningfullyCheaper, priceOfPlan } from "@/lib/priceWatch";
+import { offerDates } from "@/lib/planTerms";
 import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
+import { PRIVACY } from "@/lib/about";
 
 // Vercel Cron (see vercel.json) hits this once a day. It re-prices every
 // saved profile against today's lib/plans.ts data and emails anyone for whom
@@ -31,6 +34,10 @@ interface SubscriberWatchRow {
   baseline_total: number | null;
   reference_total: number | null;
   last_notified_total: number | null;
+  last_notified_retailer?: string | null;
+  last_notified_plan_name?: string | null;
+  baseline_retailer?: string | null;
+  baseline_plan_name?: string | null;
   switched_at?: string | null;
 }
 
@@ -53,6 +60,26 @@ interface LeadWatchRow {
 
 function siteOrigin(req: NextRequest): string {
   return process.env.SITE_URL || req.nextUrl.origin;
+}
+
+interface GasRow {
+  id: string;
+  email: string;
+  gas_zone: string | null;
+  gas_billing_days: number | null;
+  gas_mj: number | null;
+  gas_reference_total: number | null;
+  gas_best_total: number | null;
+  gas_best_retailer?: string | null;
+  gas_best_plan_name?: string | null;
+}
+
+/** "A new offer from GloBird Energy, released 3 Oct 2026." for the alert email. */
+function offerNote(retailer: string, plan: string): string | null {
+  const d = offerDates(retailer, plan);
+  if (d.badge === "New") return `This is a new offer from ${retailer}${d.badgeDate ? `, released ${d.badgeDate}` : ""}.`;
+  if (d.badge === "Price change") return `${retailer} changed this plan's prices${d.badgeDate ? ` on ${d.badgeDate}` : ""}.`;
+  return d.label ? `${d.label}.` : null;
 }
 
 function unsubUrl(origin: string, type: "subscriber" | "lead", id: string): string {
@@ -85,7 +112,7 @@ export async function GET(req: NextRequest) {
   const { data: subsData, error: subsErr } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, baseline_total, reference_total, last_notified_total, switched_at, home_profile",
+      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, baseline_total, reference_total, last_notified_total, last_notified_retailer, last_notified_plan_name, baseline_retailer, baseline_plan_name, switched_at, home_profile",
     )
     .eq("status", "active")
     .eq("unsubscribed", false)
@@ -98,7 +125,7 @@ export async function GET(req: NextRequest) {
 
   for (const sub of (subsData ?? []) as SubscriberWatchRow[]) {
     try {
-      const best = computeBest({
+      const profile = {
         distributor: sub.distributor as Distributor,
         billingDays: sub.billing_days ?? 91,
         peak: sub.peak_kwh ?? 0,
@@ -108,10 +135,17 @@ export async function GET(req: NextRequest) {
         cl: sub.controlled_load_kwh ?? 0,
         solarExportKwh: sub.solar_export_kwh ?? 0,
         ev: hasEv(sub.home_profile),
-      });
+      };
+      const best = computeBest(profile);
       if (!best) continue;
 
-      const previousBest = sub.last_notified_total ?? sub.baseline_total;
+      // Compare with the plan we last recommended, re-priced at today's prices,
+      // so a retailer raising that plan's prices (or a new cheaper offer) is
+      // caught. Falls back to the stored figure if that plan is no longer offered.
+      const pickRetailer = sub.last_notified_retailer ?? sub.baseline_retailer ?? null;
+      const pickPlan = sub.last_notified_plan_name ?? sub.baseline_plan_name ?? null;
+      const pickToday = priceOfPlan(profile, pickRetailer, pickPlan);
+      const previousBest = pickToday ?? sub.last_notified_total ?? sub.baseline_total;
       const days = sub.billing_days ?? 91;
       if (!isMeaningfullyCheaper(best.bestTotal, previousBest, days)) continue;
       // Just switched? Leave them alone for a while unless the saving is big.
@@ -125,6 +159,7 @@ export async function GET(req: NextRequest) {
         origin,
         retailer: best.bestRetailer,
         planName: best.bestPlanName,
+        offerNote: offerNote(best.bestRetailer, best.bestPlanName),
         yearly: ((previousBest! - best.bestTotal) * 365) / days,
         unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
       });
@@ -210,6 +245,7 @@ export async function GET(req: NextRequest) {
 
       const e = cheaperForLead({
         origin,
+        offerNote: offerNote(best.bestRetailer, best.bestPlanName),
         previousRetailer: lead.best_retailer,
         retailer: best.bestRetailer,
         planName: best.bestPlanName,
@@ -352,15 +388,68 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // --- Gas: members with a gas bill on file are re-priced too, and told when a
+  // gas plan beats our last gas pick by the same $50-a-year rule.
+  let gasAlerts = 0;
+  const { data: gasSubs, error: gasErr } = await supabaseAdmin
+    .from("subscribers")
+    .select("id, email, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_best_total, gas_best_retailer, gas_best_plan_name")
+    .eq("status", "active")
+    .eq("unsubscribed", false)
+    .not("gas_zone", "is", null)
+    .not("gas_mj", "is", null);
+  if (gasErr) console.error("recheck-prices: gas members not loaded", gasErr.message);
+  for (const sub of (gasSubs ?? []) as GasRow[]) {
+    try {
+      if (!GAS_ZONES.includes(sub.gas_zone as GasZone) || !sub.gas_mj) continue;
+      const gDays = sub.gas_billing_days ?? 91;
+      const gasRanked = rankGasPlans(sub.gas_zone as GasZone, { days: gDays, mj: sub.gas_mj });
+      const top = gasRanked[0];
+      if (!top) continue;
+      // Re-price our last gas pick at today's prices, as for electricity.
+      const pickToday = gasRanked.find((m) => m.plan[0] === sub.gas_best_retailer && m.plan[2] === sub.gas_best_plan_name)?.total ?? null;
+      const previous = pickToday ?? sub.gas_best_total ?? sub.gas_reference_total;
+      if (!isMeaningfullyCheaper(top.total, previous, gDays)) continue;
+      const e = cheaperGasForMember({
+        origin,
+        retailer: top.plan[0],
+        planName: top.plan[2],
+        yearly: ((previous! - top.total) * 365) / gDays,
+        vsBill: sub.gas_reference_total !== null,
+        unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
+      });
+      const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
+      if (sent) {
+        gasAlerts++;
+        await supabaseAdmin
+          .from("subscribers")
+          .update({ gas_best_retailer: top.plan[0], gas_best_plan_name: top.plan[2], gas_best_total: top.total, gas_updated_at: new Date().toISOString() })
+          .eq("id", sub.id);
+      }
+    } catch (err) {
+      console.error("recheck-prices: gas member failed", sub.id, err);
+      errors++;
+    }
+  }
+
+  // Privacy: free bill-read records (IP-based, for the daily limit) are only
+  // kept for PRIVACY.billReadRetentionDays (see the Privacy Policy).
+  const { error: purgeErr } = await supabaseAdmin
+    .from("bill_reads")
+    .delete()
+    .lt("created_at", new Date(Date.now() - PRIVACY.billReadRetentionDays * 86_400_000).toISOString());
+  if (purgeErr) console.error("recheck-prices: bill_reads clean-up failed", purgeErr.message);
+
   await sendHealthEmail("daily recheck", {
     "members checked": (subsData ?? []).length,
     "members alerted": subscribersNotified,
     "free users alerted": leadsNotified,
     "follow-up emails sent": dripSent,
     "deal-ending alerts": dealAlerts,
+    "gas alerts": gasAlerts,
     errors,
   });
-  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, errors });
+  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, errors });
 }
 
 /** Warn this many days before a discount or fixed price ends. */

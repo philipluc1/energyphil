@@ -39,6 +39,23 @@ export function computeBest(profile: WatchProfile): WatchResult | null {
   return { bestTotal: top.total, bestRetailer: top.plan[0], bestPlanName: top.plan[2] };
 }
 
+/** Today's price of one named plan for this profile, or null if it's no longer
+ *  offered (or can't be priced for this usage). Used to re-price the plan we
+ *  last recommended, so a retailer raising that plan's prices is noticed. */
+export function priceOfPlan(profile: WatchProfile, retailer: string | null, planName: string | null): number | null {
+  if (!retailer || !planName) return null;
+  const match = rankPlans(profile.distributor, {
+    days: profile.billingDays,
+    peak: profile.peak,
+    shoulder: profile.shoulder,
+    offpeak: profile.offpeak,
+    anytime: profile.anytime,
+    cl: profile.cl,
+    solarExportKwh: profile.solarExportKwh ?? 0,
+  }, { ev: true }).find((m) => m.plan[0] === retailer && m.plan[2] === planName);
+  return match ? match.total : null;
+}
+
 import { WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 
 /** Worth telling someone only if the new plan beats the previous one by at

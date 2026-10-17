@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Fill, MailLink } from "../components/Fill";
+import { ABOUT } from "@/lib/about";
 import SiteHeader from "../components/SiteHeader";
 import styles from "../components/StaticPage.module.css";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
@@ -33,7 +35,7 @@ export default function TermsPage() {
           <p>
             Utilo is an independent comparison and monitoring service for Victorian residential electricity and gas, with other states to follow. We are not an energy
             retailer, we don&apos;t sell energy, and we are not affiliated with the Victorian Government, Victorian Energy Compare, the
-            Essential Services Commission or any retailer. Utilo is operated by [YOUR COMPANY NAME] (ABN [YOUR ABN]).
+            Essential Services Commission or any retailer. Utilo is operated by <Fill value={ABOUT.businessName} label="business name" /> (ABN <Fill value={ABOUT.abn} label="ABN" />).
           </p>
         </section>
 
@@ -106,7 +108,7 @@ export default function TermsPage() {
           <h2>9. Changes and contact</h2>
           <p>
             We may update these terms; the date at the top tells you when. Questions go to{" "}
-            <a href="mailto:support@utilo.com.au">support@utilo.com.au</a>. These terms are governed by the laws of Victoria,
+            <MailLink email={ABOUT.contactEmail} label="contact email" />. These terms are governed by the laws of Victoria,
             Australia.
           </p>
         </section>

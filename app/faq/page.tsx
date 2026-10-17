@@ -55,7 +55,7 @@ export default function FaqPage() {
             </details>
             <details className={home.faqItem}>
               <summary>What happens to my details?</summary>
-              <p>We only use them to work out your result. We never sell or share them. <Link href="/privacy">Read our privacy policy</Link>.</p>
+              <p>We use them to work out your result and, if you ask or join, to email you and keep checking your plan. We never sell them or pass them to retailers, and we don&apos;t keep photos of your bill, only the numbers. Your answers are also saved in your own browser so you can pick up where you left off. <Link href="/privacy">Read our privacy policy</Link>.</p>
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;ve got an EV. Does that matter?</summary>

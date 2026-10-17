@@ -1,5 +1,6 @@
 "use client";
 
+import Icon from "./Icon";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { ExtractedBill } from "@/lib/billExtraction";
@@ -42,10 +43,13 @@ const READING_STEPS = ["Finding your usage…", "Reading the rates you pay…", 
 export default function BillPhotoUpload({
   onApply,
   variant = "card",
+  fuel = "electricity",
 }: {
   onApply: (bill: ExtractedBill) => void;
   /** "hero": the big, main way into the check. "card": the smaller reminder elsewhere. */
   variant?: "hero" | "strip" | "card";
+  /** Gas wording for the big panel and the strip; electricity by default. */
+  fuel?: "electricity" | "gas";
 }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,17 +139,17 @@ export default function BillPhotoUpload({
     return (
       <div className={snap.strip}>
         <div className={snap.stripText}>
-          <span className={snap.stripIcon} aria-hidden="true">📷</span>
+          <span className={snap.stripIcon} aria-hidden="true"><Icon name="camera" size={24} /></span>
           <span>
             <b>{reading ? READING_STEPS[readingStep] : "Got your bill? Skip these questions."}</b>
-            {!reading && <small>A photo fills in everything, including your real rates. About 30 seconds.</small>}
+            {!reading && <small>{fuel === "gas" ? "A photo fills in your network, the days and the MJ. About 30 seconds." : "A photo fills in everything, including your real rates. About 30 seconds."}</small>}
           </span>
         </div>
         {reading ? (
           <span className={snap.spinner} aria-hidden="true" />
         ) : (
           <div className={snap.stripActions}>
-            <button type="button" className={snap.stripPrimary} onClick={() => cameraInputRef.current?.click()}>📷 Snap my bill</button>
+            <button type="button" className={snap.stripPrimary} onClick={() => cameraInputRef.current?.click()}><Icon name="camera" /> Snap my bill</button>
             <button type="button" className={snap.stripSecondary} onClick={() => fileInputRef.current?.click()}>Upload</button>
           </div>
         )}
@@ -166,19 +170,27 @@ export default function BillPhotoUpload({
               <span className={snap.billLine} />
               <span className={snap.billLine} />
               <span className={`${snap.billLine} ${snap.billShort}`} />
-              <span className={snap.billTotal}>$425.31</span>
+              <span className={snap.billTotal}>{fuel === "gas" ? "$245.60" : "$425.31"}</span>
             </div>
             <span className={snap.scan} />
           </div>
         </div>
         <div className={snap.body}>
-          <span className={snap.kicker}>Fastest way · about 30 seconds</span>
-          <h1 className={snap.title}>Snap your bill. We&apos;ll do the rest.</h1>
-          <ul className={snap.points}>
-            <li>We read your usage <b>and the rates you actually pay</b></li>
-            <li>Paper bill, PDF or a screenshot from your retailer&apos;s app</li>
-            <li>You check what we read before we work anything out</li>
-          </ul>
+          <span className={snap.kicker}>Takes about 30 seconds</span>
+          <h1 className={snap.title}>{fuel === "gas" ? "Start with a photo of your gas bill" : "Start with a photo of your bill"}</h1>
+          {fuel === "gas" ? (
+            <ul className={snap.points}>
+              <li>We read your network, the days and the <b>megajoules (MJ) you used</b></li>
+              <li>Paper bill, PDF or a screenshot from your retailer&apos;s app</li>
+              <li>Gas and electricity on one bill? We read both</li>
+            </ul>
+          ) : (
+            <ul className={snap.points}>
+              <li>We read your usage <b>and the rates you actually pay</b></li>
+              <li>Paper bill, PDF or a screenshot from your retailer&apos;s app</li>
+              <li>You check what we read before we work anything out</li>
+            </ul>
+          )}
           {reading ? (
             <div className={snap.reading} role="status" aria-live="polite">
               <span className={snap.spinner} aria-hidden="true" />
@@ -187,10 +199,10 @@ export default function BillPhotoUpload({
           ) : (
             <div className={snap.actions}>
               <button type="button" className={snap.primary} onClick={() => cameraInputRef.current?.click()}>
-                <span aria-hidden="true">📷</span> Take a photo of my bill
+                <Icon name="camera" size={20} /> Take a photo of my bill
               </button>
               <button type="button" className={snap.secondary} onClick={() => fileInputRef.current?.click()}>
-                <span aria-hidden="true">⬆</span> Upload a PDF or screenshot
+                <Icon name="upload" size={18} /> Upload a PDF or screenshot
               </button>
             </div>
           )}
@@ -208,7 +220,7 @@ export default function BillPhotoUpload({
   return (
     <div className={styles.photoCard}>
       <div className={styles.stepLabel}>
-        <span className={styles.photoBolt}>⚡</span> Got your bill handy?
+        <Icon name="camera" /> Got your bill handy?
       </div>
       <p className={styles.helper}>
         Snap a photo, upload the PDF, or screenshot your plan in your retailer&apos;s app. We read your usage <b>and the rates you actually pay</b>, so the answer is exact. You can check everything before we calculate.
@@ -222,7 +234,7 @@ export default function BillPhotoUpload({
           onClick={() => cameraInputRef.current?.click()}
           disabled={status === "reading"}
         >
-          {status === "reading" ? "Reading your bill…" : "📷 Take a photo"}
+          {status === "reading" ? "Reading your bill…" : "Take a photo"}
         </button>
         <button
           type="button"

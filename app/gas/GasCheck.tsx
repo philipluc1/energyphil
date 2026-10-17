@@ -1,137 +1,322 @@
 "use client";
 
+// The gas check, set up like the electricity one: a bill photo first, a
+// "here's what we read" card, then one verdict and the cheapest plan.
+// Typing the numbers in is the fallback.
+
+import OfferDate from "../components/OfferDate";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { GAS_PLANS, GAS_PLAN_DATA_DATE, GAS_ZONES, TYPICAL_MJ_PER_DAY, gasBenchmark, gasDataReady, rankGasPlans, type GasZone } from "@/lib/gasPlans";
-import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+import { GAS_PLANS, GAS_PLAN_DATA_DATE, GAS_RETAILER_COUNT, GAS_ZONES, TYPICAL_MJ_PER_DAY, gasBenchmark, gasDataReady, rankGasPlans, type GasZone } from "@/lib/gasPlans";
+import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import BillPhotoUpload from "../components/BillPhotoUpload";
-import FunEquivalents from "../components/FunEquivalents";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import styles from "../components/Comparator.module.css";
-import ev from "../ev/ev.module.css";
+import snap from "../components/snap.module.css";
+import g from "./gas.module.css";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
 const KEY = "utilo.gas.v1";
 
+type Entry = "snap" | "type" | "read" | "result";
+
+const ZONE_HELP: Record<GasZone, string> = {
+  "Australian Gas Networks": "Most of the rest of Melbourne, and regional Victoria",
+  Multinet: "Melbourne's east and south-east",
+  "AusNet Services": "Melbourne's west and north",
+};
+
+function fmtDate(iso: string): string {
+  return iso ? new Date(iso + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "";
+}
+
 export default function GasCheck() {
+  const [entry, setEntry] = useState<Entry>("snap");
   const [zone, setZone] = useState<GasZone>("Australian Gas Networks");
   const [days, setDays] = useState(91);
-  const [mj, setMj] = useState(TYPICAL_MJ_PER_DAY * 91);
+  const [mjRaw, setMjRaw] = useState("");
   const [billRaw, setBillRaw] = useState("");
   const [planName, setPlanName] = useState("");
-  const [show, setShow] = useState(false);
+  const [retailer, setRetailer] = useState("");
+  const [fromPhoto, setFromPhoto] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [elecOnly, setElecOnly] = useState(false);
 
+  // Pick up saved details, including a gas bill read on the electricity page.
   useEffect(() => {
     const t = setTimeout(() => {
       try {
         const d = JSON.parse(window.localStorage.getItem(KEY) ?? "null");
-        if (!d) return;
-        if (GAS_ZONES.includes(d.zone)) setZone(d.zone);
-        if (typeof d.days === "number") setDays(d.days);
-        if (typeof d.mj === "number") setMj(d.mj);
-        if (typeof d.billRaw === "string") setBillRaw(d.billRaw);
-        if (typeof d.planName === "string") setPlanName(d.planName);
+        if (d) {
+          if (GAS_ZONES.includes(d.zone)) setZone(d.zone);
+          if (typeof d.days === "number" && d.days > 0) setDays(d.days);
+          if (typeof d.mj === "number" && d.mj > 0) setMjRaw(String(d.mj));
+          if (typeof d.billRaw === "string") setBillRaw(d.billRaw);
+          if (typeof d.planName === "string") setPlanName(d.planName);
+          if (typeof d.retailer === "string") setRetailer(d.retailer);
+          if (d.fromBill && d.mj > 0) {
+            setFromPhoto(true);
+            setEntry("read");
+          }
+        }
       } catch { /* nothing saved */ }
+      setHydrated(true);
     }, 0);
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {
-    try { window.localStorage.setItem(KEY, JSON.stringify({ zone, days, mj, billRaw, planName })); } catch { /* ignore */ }
-  }, [zone, days, mj, billRaw, planName]);
+    if (!hydrated) return;
+    const mj = parseFloat(mjRaw);
+    try {
+      window.localStorage.setItem(KEY, JSON.stringify({ zone, days, mj: Number.isFinite(mj) ? mj : 0, billRaw, planName, retailer }));
+    } catch { /* ignore */ }
+  }, [zone, days, mjRaw, billRaw, planName, retailer, hydrated]);
 
   function fromBill(b: ExtractedBill) {
+    if (!b.gasMj) {
+      // An electricity-only bill: point them to the right check.
+      setElecOnly(b.fuel === "electricity" || b.fuel === null);
+      return;
+    }
+    setElecOnly(false);
+    const w: string[] = [];
     if (b.gasDistributor && GAS_ZONES.includes(b.gasDistributor as GasZone)) setZone(b.gasDistributor as GasZone);
-    if (b.gasBillingDays) setDays(b.gasBillingDays);
-    if (b.gasMj) setMj(Math.round(b.gasMj));
-    if (b.gasBillTotal) setBillRaw(String(b.gasBillTotal));
-    if (b.gasPlanName) setPlanName(b.gasPlanName);
-    if (!b.gasMj && b.fuel === "electricity") setPlanName("");
-    setShow(Boolean(b.gasMj));
+    else w.push("We couldn't see your gas network. Please check it.");
+    const d = b.gasBillingDays ?? b.billingDays;
+    if (d) setDays(d);
+    else w.push("We couldn't find the billing period. Please check the days.");
+    setMjRaw(String(Math.round(b.gasMj)));
+    setBillRaw(b.gasBillTotal ? String(b.gasBillTotal) : "");
+    setPlanName(b.gasPlanName ?? "");
+    setRetailer(b.retailerName ?? "");
+    setWarnings([...w, ...(b.warnings ?? [])]);
+    setFromPhoto(true);
+    setEntry(w.length ? "type" : "read");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const mj = parseFloat(mjRaw);
+  const mjOk = Number.isFinite(mj) && mj > 0;
   const bill = billRaw === "" ? null : parseFloat(billRaw);
-  const usage = useMemo(() => ({ days, mj }), [days, mj]);
-  const ranked = useMemo(() => rankGasPlans(zone, usage), [zone, usage]);
-  const bench = useMemo(() => gasBenchmark(zone, usage, bill !== null && !Number.isNaN(bill) ? bill : null), [zone, usage, bill]);
+  const haveBill = bill !== null && Number.isFinite(bill) && bill > 0;
+  const usage = useMemo(() => ({ days, mj: mjOk ? mj : 0 }), [days, mj, mjOk]);
+  const ranked = useMemo(() => (mjOk ? rankGasPlans(zone, usage) : []), [zone, usage, mjOk]);
+  const bench = useMemo(() => (mjOk ? gasBenchmark(zone, usage, haveBill ? bill : null) : null), [zone, usage, bill, haveBill, mjOk]);
   const top = ranked[0];
-  const saving = top && bench ? bench.value - top.total : 0;
-  const yearly = (saving / Math.max(1, days)) * 365;
+  const perYear = (v: number) => (v / Math.max(1, days)) * 365;
+  const yearly = top && bench ? perYear(bench.value - top.total) : 0;
+  const worth = yearly >= WORTH_SWITCHING_PER_YEAR;
+  const go = (e: Entry) => { setEntry(e); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
+  /* ---------- 1. Photo first ---------- */
+  if (entry === "snap") {
+    return (
+      <>
+        <BillPhotoUpload variant="hero" fuel="gas" onApply={fromBill} />
+        {elecOnly && (
+          <div className={g.notice}>
+            That looks like an electricity bill. <Link href="/check">Check it on the electricity page</Link>, or snap your gas bill here.
+          </div>
+        )}
+        <div className={snap.alt}>
+          <button type="button" className={snap.altBtn} onClick={() => go("type")}>
+            <b>Rather type it in?</b>
+            <span>Three numbers from your gas bill →</span>
+          </button>
+          <button type="button" className={snap.altBtn} onClick={() => { setMjRaw(String(TYPICAL_MJ_PER_DAY * days)); setBillRaw(""); setFromPhoto(false); go("type"); }}>
+            <b>No gas bill handy?</b>
+            <span>Start from a typical Victorian home →</span>
+          </button>
+        </div>
+        <p className={snap.underNote}>
+          Victorian homes. Electricity bill? <Link href="/check">Check electricity</Link>.
+        </p>
+      </>
+    );
+  }
+
+  /* ---------- 2. Here's what we read ---------- */
+  if (entry === "read") {
+    return (
+      <div className={snap.readCard}>
+        <div className={snap.readHead}>
+          <span className={snap.readTick} aria-hidden="true">✓</span>
+          {fromPhoto ? (retailer ? `Got it: your ${retailer} gas bill` : "Got it: we've read your gas bill") : "Your gas details"}
+        </div>
+        <p className={snap.readSub}>If anything looks wrong, change it before we work it out.</p>
+        <dl className={snap.facts}>
+          <div className={snap.fact}><dt>Gas network</dt><dd>{zone}</dd></div>
+          <div className={snap.fact}><dt>Bill period</dt><dd>{days} days</dd></div>
+          <div className={snap.fact}><dt>Gas used</dt><dd>{mjOk ? `${Math.round(mj).toLocaleString("en-AU")} MJ` : "Not found"}</dd></div>
+          <div className={snap.fact}><dt>Gas charges</dt><dd>{haveBill ? money(bill as number) : "Not found"}</dd></div>
+          {planName && <div className={`${snap.fact} ${g.wide}`}><dt>Your gas plan</dt><dd>{planName}</dd></div>}
+        </dl>
+        {warnings.length > 0 && (
+          <div className={snap.readWarn}><b>Worth a check:</b><ul>{warnings.map((m, i) => <li key={i}>{m}</li>)}</ul></div>
+        )}
+        <button type="button" className={snap.readGo} disabled={!mjOk} onClick={() => go("result")}>See my gas result →</button>
+        <button type="button" className={snap.readEdit} onClick={() => go("type")}>Check or change what we read</button>
+      </div>
+    );
+  }
+
+  /* ---------- 3. Type it in ---------- */
+  if (entry === "type") {
+    return (
+      <>
+        {!fromPhoto && <BillPhotoUpload variant="strip" fuel="gas" onApply={fromBill} />}
+        <div className={styles.card}>
+          <h2 className={g.h2}>Your gas bill</h2>
+          {warnings.length > 0 && <div className={snap.readWarn}><ul>{warnings.map((m, i) => <li key={i}>{m}</li>)}</ul></div>}
+
+          <div className={g.q}>
+            <span className={g.qLabel}>1. Your gas network</span>
+            <span className={g.qHint}>On your bill as &ldquo;Distributor&rdquo;. Not sure? Pick your area.</span>
+            <div className={g.zones}>
+              {GAS_ZONES.map((z) => (
+                <button key={z} type="button" className={z === zone ? g.zoneOn : g.zone} onClick={() => setZone(z)}>
+                  <b>{z}</b><span>{ZONE_HELP[z]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={g.q}>
+            <span className={g.qLabel}>2. How long the bill covers</span>
+            <div className={g.pills}>
+              {([[30, "Monthly"], [61, "2 months"], [91, "Quarterly"]] as [number, string][]).map(([d, l]) => (
+                <button key={d} type="button" className={days === d ? g.pillOn : g.pill} onClick={() => setDays(d)}>{l}</button>
+              ))}
+              <label className={g.inline}>or <input type="number" min={1} max={366} value={days} onChange={(e) => setDays(Math.max(1, parseInt(e.target.value) || 91))} aria-label="Days on the bill" /> days</label>
+            </div>
+          </div>
+
+          <div className={g.row2}>
+            <label className={g.field}>
+              <span className={g.qLabel}>3. Gas used</span>
+              <span className={g.suffixWrap}><input type="number" inputMode="decimal" min={0} placeholder={`e.g. ${TYPICAL_MJ_PER_DAY * 91}`} value={mjRaw} onChange={(e) => setMjRaw(e.target.value)} /><span>MJ</span></span>
+              <span className={g.qHint}>Megajoules, usually in the usage table. A typical home uses about {TYPICAL_MJ_PER_DAY} MJ a day, more in winter.</span>
+            </label>
+            <label className={g.field}>
+              <span className={g.qLabel}>4. Gas charges <span className={g.opt}>(recommended)</span></span>
+              <span className={g.suffixWrap}><span>$</span><input type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g. 245.60" value={billRaw} onChange={(e) => setBillRaw(e.target.value)} /></span>
+              <span className={g.qHint}>The gas total including GST. Without it we compare with a typical plan.</span>
+            </label>
+          </div>
+
+          <button type="button" className={snap.readGo} disabled={!mjOk} onClick={() => go("result")}>See my gas result →</button>
+          {!mjOk && <p className={g.block}>Enter the MJ from your bill, or snap the bill above.</p>}
+        </div>
+      </>
+    );
+  }
+
+  /* ---------- 4. Result ---------- */
   return (
     <>
-      <BillPhotoUpload onApply={fromBill} />
-      <div className={styles.card}>
-        <div className={styles.stepLabel}>Your gas network</div>
-        <div className={styles.choiceRow}>
-          {GAS_ZONES.map((z) => (
-            <button key={z} type="button" className={`${styles.choiceBtn} ${z === zone ? styles.choiceBtnActive : ""}`} onClick={() => setZone(z)}>{z}</button>
-          ))}
-        </div>
-        <p className={styles.helper}>It&apos;s on your bill as &ldquo;Distributor&rdquo;. Multinet covers much of Melbourne&apos;s east and south-east; AGN most of the rest of Melbourne and regional areas; AusNet the west and north.</p>
-        <div className={styles.fieldGrid}>
-          <div className={styles.field}>
-            <label htmlFor="gdays">Billing period (days)</label>
-            <input id="gdays" type="number" min={1} max={366} value={days} onChange={(e) => setDays(Number(e.target.value) || 0)} />
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="gmj">Gas used (MJ)</label>
-            <input id="gmj" type="number" min={0} value={mj} onChange={(e) => setMj(Number(e.target.value) || 0)} />
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="gbill">Gas charges on the bill ($) <span className={styles.unitNote}>(optional)</span></label>
-            <input id="gbill" type="number" min={0} step="0.01" placeholder="e.g. 245.60" value={billRaw} onChange={(e) => setBillRaw(e.target.value)} />
-          </div>
-        </div>
-        <p className={styles.helper}>A typical home uses about {TYPICAL_MJ_PER_DAY} MJ a day, more in winter with gas heating.</p>
-        <button type="button" className={styles.heroCta} onClick={() => setShow(true)}>See my cheapest gas plan →</button>
+      <div className={g.topBar}>
+        <button type="button" className={styles.backLink} onClick={() => go(fromPhoto ? "read" : "type")}>← Edit my details</button>
+        {gasDataReady && <span className={g.meta}>{ranked.length} gas plans on {zone}, from the {GAS_RETAILER_COUNT} gas retailers we track · prices checked {fmtDate(GAS_PLAN_DATA_DATE)}</span>}
       </div>
 
-      {show && !gasDataReady && (
-        <div className={`${styles.card} ${ev.promo}`}>
-          <b>Gas prices are loading.</b> We&apos;ve saved your details here, and the comparison switches on with our next daily price pull. In the meantime the <Link href="/check">electricity check</Link> works as normal.
+      {!gasDataReady || !top || !bench ? (
+        <div className={g.waiting}>
+          <b>Gas prices are on their way.</b>
+          <p>We&apos;ve saved your details on this device. Your result appears here as soon as today&apos;s gas prices are loaded. Meanwhile, the <Link href="/check">electricity check</Link> works now.</p>
         </div>
-      )}
-
-      {show && gasDataReady && top && bench && (
+      ) : (
         <>
-          <div className={styles.resultHero}>
-            <span className={styles.resultHeroKicker}>{bench.label === "your bill" ? "Based on your gas bill" : "Compared with a typical plan"}</span>
-            <div className={styles.resultHeroLabel}>{saving > 0 ? "You could save about" : "You're already close to the cheapest"}</div>
-            <div className={styles.resultHeroNum}>${Math.max(0, Math.round(yearly)).toLocaleString("en-AU")}</div>
-            <div className={styles.resultHeroSub}>a year on gas with {top.plan[0]}, vs {bench.label}</div>
-            {saving > 0 && <FunEquivalents dollars={yearly} />}
-            <span className={styles.resultHeroFine}>Excludes conditional discounts and fees. {PRICE_CHANGE_CLAUSE}</span>
-          </div>
+          {haveBill && !worth ? (
+            <div className={`${styles.resultHero} ${styles.resultHeroGood}`}>
+              <span className={styles.resultHeroKicker}>Based on your gas bill</span>
+              <div className={styles.resultHeroLabel}>Good news</div>
+              <div className={styles.resultHeroNum}>You&apos;re on a good gas deal</div>
+              <div className={styles.resultHeroSub}>Nothing beats it by {money0(WORTH_SWITCHING_PER_YEAR)} a year or more. Members get told when that changes.</div>
+            </div>
+          ) : (
+            <div className={`${styles.resultHero} ${haveBill ? styles.resultHeroBad : ""}`}>
+              <span className={styles.resultHeroKicker}>{haveBill ? "Based on your gas bill" : "Compared with a typical gas plan"}</span>
+              <div className={styles.resultHeroLabel}>{haveBill ? "You could save about" : "The cheapest gas plan saves up to"}</div>
+              <div className={styles.resultHeroNum}>{money0(Math.max(0, yearly))}</div>
+              <div className={styles.resultHeroSub}>a year with {top.plan[0]}{haveBill ? ", vs your gas bill" : ". Add your gas charges for your own saving."}</div>
+              {RETAILER_LINKS[top.plan[0]] && <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.resultHeroBtn}>See the plan →</a>}
+              <span className={styles.resultHeroFine}>From this bill, scaled to a year. Gas use swings with the seasons, so treat it as a guide. {PRICE_CHANGE_CLAUSE}</span>
+            </div>
+          )}
+
           <div className={styles.bestCard}>
-            <span className={styles.bestTag}>Cheapest gas match</span>
+            <span className={styles.bestTag}>{worth || !haveBill ? "Cheapest gas plan for you" : "Cheapest we found"}</span>
             <div className={styles.retailer}>{top.plan[0]}</div>
             <div className={styles.plan}>{top.plan[2]}</div>
+            <div className={styles.offerDateRow}><OfferDate retailer={top.plan[0]} plan={top.plan[2]} dark /></div>
             <div className={styles.nums}>
-              <div className={styles.numBlock}><div className={`${styles.v} mono`}>{money(top.total)}</div><div className={styles.l}>this period</div></div>
-              <div className={`${styles.numBlock} ${styles.save}`}><div className={`${styles.v} mono`}>{money(Math.abs(saving))}</div><div className={styles.l}>{saving >= 0 ? "you'd save" : "extra"} vs {bench.label}</div></div>
+              <div className={styles.numBlock}>
+                <div className={`${styles.v} mono`}>{money(top.total)}</div>
+                <div className={styles.l}>for these {days} days</div>
+              </div>
             </div>
+            <p className={styles.saveLine}>
+              {bench.value - top.total >= 0
+                ? <><b>{money(bench.value - top.total)} less</b> than {bench.label} for the same gas</>
+                : <><b>{money(top.total - bench.value)} more</b> than {bench.label}</>}
+            </p>
             {RETAILER_LINKS[top.plan[0]] && (
               <div className={styles.getPlan}>
                 <div className={styles.getPlanLogo} aria-hidden="true">{top.plan[0].split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
-                <div className={styles.getPlanText}><b>Get this plan from {top.plan[0]}</b><span>Look for &ldquo;{top.plan[2]}&rdquo;. If you also take electricity from them, ask about a dual-fuel discount.</span></div>
+                <div className={styles.getPlanText}>
+                  <b>Get this plan from {top.plan[0]}</b>
+                  <span>Look for &ldquo;{top.plan[2]}&rdquo;. If you take electricity from them too, ask about a dual-fuel discount.</span>
+                </div>
                 <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.switchBtn}>Go to {top.plan[0]} →</a>
               </div>
             )}
           </div>
-          <div className={styles.planList}>
-            {ranked.slice(1, 8).map((m, i) => (
-              <div key={m.plan[0] + m.plan[2]} className={styles.planRowWrap}>
-                <div className={styles.planRow}>
-                  <div className={styles.left}><span className={styles.rk}>#{i + 2}</span><span className={styles.rname}>{m.plan[0]}</span><div className={styles.pname}><span className={styles.pnameText}>{m.plan[2]}</span></div></div>
-                  <div className={styles.right}><div className={styles.tot}>{money(m.total)}</div></div>
-                </div>
-              </div>
-            ))}
+
+          {!haveBill && (
+            <div className={g.tip}>
+              <b>Want your own saving?</b> We compared with the middle of the market because we don&apos;t know what you pay. <button type="button" onClick={() => go("snap")}>Snap your gas bill</button> for the exact figure.
+            </div>
+          )}
+
+          <div className={g.member}>
+            <div>
+              <b>Keep both bills watched</b>
+              <span>Members get gas and electricity re-checked every morning, and an email only when switching saves {money0(WORTH_SWITCHING_PER_YEAR)}+ a year.</span>
+            </div>
+            <Link href="/pricing" className={g.memberBtn}>$39 a year →</Link>
           </div>
-          <p className={styles.helper}>
-            {GAS_PLANS.filter((p) => p[1] === zone).length} gas plans priced for {zone}, data from {GAS_PLAN_DATA_DATE}. Victoria has no default offer for gas, so without your bill we compare against a typical plan.
-          </p>
+
+          <details className={styles.detailsBox}>
+            <summary>See the workings: every gas plan and the maths</summary>
+            <div className={styles.detailsInner}>
+              <p className={styles.helper}>
+                Each plan&apos;s cost = daily supply charge × {days} days + {Math.round(mj).toLocaleString("en-AU")} MJ priced through the plan&apos;s usage
+                steps (the first block of MJ at one rate, the next at another). Prices include GST. Victoria has no default offer for gas, so without your
+                bill we compare with the middle-priced plan on your network.
+              </p>
+              <div className={styles.planList}>
+                {ranked.map((m, i) => (
+                  <div key={m.plan[0] + m.plan[2] + i} className={styles.planRowWrap}>
+                    <div className={styles.planRow}>
+                      <div className={styles.left}>
+                        <span className={styles.rk}>#{i + 1}</span>
+                        <span className={styles.rname}>{m.plan[0]}</span>
+                        <div className={styles.pname}><span className={styles.pnameText}>{m.plan[2]}</span> <OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></div>
+                      </div>
+                      <div className={styles.right}>
+                        <div className={styles.tot}>{money(m.total)}</div>
+                        <div className={styles.sav}>{money0(perYear(m.total))}/yr</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className={styles.helper}>{GAS_PLANS.filter((p) => p[1] === zone).length} gas plans on {zone}, from the retailers we track. Not every plan in the market. Excludes conditional discounts and fees.</p>
+            </div>
+          </details>
         </>
       )}
     </>

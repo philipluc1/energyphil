@@ -1,5 +1,6 @@
 "use client";
 
+import Icon from "./Icon";
 import type { PriceTypeAnswer, RatesCostResult, RatesForm } from "@/lib/currentRates";
 import styles from "./wizard.module.css";
 
@@ -49,7 +50,7 @@ export default function YourRates({
   return (
     <div className={styles.rates}>
       <p className={styles.where}>
-        <span aria-hidden="true">🔎</span> On your bill, look for a table of charges like &ldquo;Supply charge 125.4c per day&rdquo; and &ldquo;Peak usage 32.1c per kWh&rdquo;. Copy the numbers in cents.
+        <Icon name="search" /> On your bill, look for a table of charges like &ldquo;Supply charge 125.4c per day&rdquo; and &ldquo;Peak usage 32.1c per kWh&rdquo;. Copy the numbers in cents.
       </p>
 
       <div className={styles.rateGrid}>
