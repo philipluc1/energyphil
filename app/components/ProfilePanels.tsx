@@ -36,7 +36,6 @@ const DAYTIME: Record<string, string> = { away: "Out most days", some: "Home som
 function homeWords(h: Record<string, unknown>): { label: string; value: string }[] {
   const out: { label: string; value: string }[] = [];
   if (typeof h.people === "number") out.push({ label: "People", value: `${h.people}${h.people >= 6 ? "+" : ""}` });
-  if (typeof h.dwelling === "string") out.push({ label: "Home type", value: h.dwelling.charAt(0).toUpperCase() + h.dwelling.slice(1) });
   if (typeof h.heating === "string") out.push({ label: "Heating", value: HEATING[h.heating] ?? h.heating });
   if (typeof h.cooling === "boolean") out.push({ label: "Air-con", value: h.cooling ? "Yes" : "No" });
   if (typeof h.hotWater === "string") out.push({ label: "Hot water", value: HOTWATER[h.hotWater] ?? h.hotWater });

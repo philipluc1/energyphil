@@ -509,3 +509,11 @@ details[open] > .panelSummary::after { content: " ▴"; }
 @media (prefers-reduced-motion: reduce) {
   .dashSide > * { animation: none; transition: none; }
 }
+
+/* Log out, always visible at the top of the dashboard */
+.headActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.logoutTop {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--ink, inherit); font: inherit; font-size: 13px; font-weight: 800;
+}
+.logoutTop:hover { border-color: #b91c1c; color: #b91c1c; }

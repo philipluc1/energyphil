@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import LeaveSiteGuard from "./components/LeaveSiteGuard";
 
 export const metadata: Metadata = {
   title: "Utilo",
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <LeaveSiteGuard />
+      </body>
     </html>
   );
 }

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import type { CurrentRates } from "@/lib/billExtraction";
+import type { PlanRow } from "@/lib/plans";
+import RatesCompare from "./RatesCompare";
+import RetailerLogo from "./RetailerLogo";
 import Icon from "./Icon";
 import s from "./planaside.module.css";
 
@@ -43,7 +46,7 @@ function Row({ label, value }: { label: string; value: string | null }) {
 
 /** "Your plan now": the customer's own plan, rates and supply details, kept in
  *  view beside the dashboard on wide screens. */
-export default function PlanAside({ d, uploadHref }: { d: PlanAsideData; uploadHref: string }) {
+export default function PlanAside({ d, uploadHref, best }: { d: PlanAsideData; uploadHref: string; best?: { plan: PlanRow; label: string } | null }) {
   const r = d.rates;
   const rateRows: [string, string | null][] = r
     ? [
@@ -57,14 +60,13 @@ export default function PlanAside({ d, uploadHref }: { d: PlanAsideData; uploadH
       ]
     : [];
   const shownRates = rateRows.filter(([, v]) => v !== null);
-  const initials = (d.retailer ?? "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   const price =
     d.priceType === "fixed" ? `Fixed${d.fixedUntil ? ` until ${fmtDay(d.fixedUntil)}` : ""}` : d.priceType === "variable" ? "Variable (can change)" : null;
 
   return (
     <section className={s.card} aria-label="Your plan now">
       <div className={s.head}>
-        <span className={s.avatar} aria-hidden="true">{initials}</span>
+        <RetailerLogo name={d.retailer} size={48} />
         <div className={s.headText}>
           <span className={s.kicker}>Your plan now</span>
           <b>{d.retailer ?? "Your retailer"}</b>
@@ -92,6 +94,13 @@ export default function PlanAside({ d, uploadHref }: { d: PlanAsideData; uploadH
         <Row label="Solar" value={d.hasSolar === null ? null : d.hasSolar ? "Yes" : "No"} />
       </dl>
 
+      {best ? (
+        <div className={s.rates}>
+          <span className={s.ratesTitle}>Your rates vs the cheapest plan</span>
+          <span className={s.ratesSub}>{best.label}: {best.plan[2]}</span>
+          <RatesCompare current={r} plan={best.plan} planLabel={best.label} compact />
+        </div>
+      ) : (
       <div className={s.rates}>
         <span className={s.ratesTitle}>Your rates <small>(inc. GST)</small></span>
         {shownRates.length > 0 ? (
@@ -102,6 +111,7 @@ export default function PlanAside({ d, uploadHref }: { d: PlanAsideData; uploadH
           <p className={s.empty}>We read these off your bill. Upload one and they show here.</p>
         )}
       </div>
+      )}
 
       <div className={s.actions}>
         <a href={uploadHref} className={s.primary}>Upload a new bill</a>

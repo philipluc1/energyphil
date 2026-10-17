@@ -21,7 +21,7 @@ export default function AccountNavLink({ className }: { className: string }) {
   }, []);
   return (
     <Link href="/account" className={className}>
-      {signedIn ? "Dashboard" : "Sign in"}
+      {signedIn ? "Dashboard" : "Member login"}
     </Link>
   );
 }

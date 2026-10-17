@@ -6,10 +6,11 @@ import Link from "next/link";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
 import { findPlan, fmtPrice } from "@/lib/pricingPlans";
 import { accumulatedSavings, mergeChecks, monthlySavings, type SavedCheck } from "@/lib/savings";
-import { RETAILER_COUNT, findPlanRow, planRateRows } from "@/lib/plans";
+import { RETAILER_COUNT, findPlanRow } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
 import { TipCarousel } from "../components/EnergyTips";
 import PlanAside, { type PlanAsideData } from "../components/PlanAside";
+import Disclosures from "../components/Disclosures";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
 import DashTabs, { type TabDef } from "../components/DashTabs";
@@ -366,10 +367,6 @@ export default function AccountPage() {
     if (!sub?.baseline_retailer || !sub?.baseline_plan_name || !sub?.distributor) return null;
     return findPlanRow(sub.baseline_retailer, sub.baseline_plan_name, sub.distributor);
   }, [sub]);
-  const tariffRows = useMemo(
-    () => (tariffPlan ? planRateRows(tariffPlan, sub?.has_solar ? sub?.solar_export_kwh ?? 0 : 0) : []),
-    [tariffPlan, sub],
-  );
 
   const [tab, setTab] = useState<Tab>("compare");
   // Colour theme: the default, or ?theme=slate|mint|brand to preview another.
@@ -611,9 +608,13 @@ export default function AccountPage() {
         };
       })()
     : null;
+  // The plan to compare rates against: today's cheapest (as in the verdict), else the last match.
+  const rateDist = isMember ? sub?.distributor ?? null : localCheck?.distributor ?? null;
+  const bestRow = (summary && rateDist ? findPlanRow(summary.bestRetailer, summary.bestPlan, rateDist) : null) ?? tariffPlan;
+  const bestForRates = bestRow ? { plan: bestRow, label: bestRow[0] } : null;
   const sideCards = (
     <>
-      {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} />}
+      {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} />}
           <div className={styles.panelCard}>
             <div className={styles.panelTitle}>Gas</div>
             {isMember && sub!.gas_zone && sub!.gas_mj ? (
@@ -647,27 +648,6 @@ export default function AccountPage() {
               </p>
             )}
           </div>
-          {isMember && sub!.baseline_retailer && sub!.baseline_plan_name && (
-            <details className={styles.panelCard}>
-              <summary className={styles.panelSummary}>Cheapest match rates: {sub!.baseline_retailer}, {sub!.baseline_plan_name}</summary>
-              {tariffPlan ? (
-                <>
-                  <div className={styles.tariffMeta}>{sub!.distributor} network</div>
-                  <div className={styles.tariffRows}>
-                    {tariffRows.map((r) => (
-                      <div className={styles.tariffRow} key={r.label}>
-                        <span className={styles.tariffRowLabel}>{r.label}</span>
-                        <span className={styles.tariffRowValue}>{r.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className={styles.tariffNote}>Matched at your last check. Confirm against your bill.</p>
-                </>
-              ) : (
-                <p className={styles.panelText}>That plan is no longer listed. Upload a new bill for today&apos;s rates.</p>
-              )}
-            </details>
-          )}
       <TipCarousel />
     </>
   );
@@ -733,11 +713,16 @@ export default function AccountPage() {
                   <h1 className={styles.dashTitle}>{firstName ? `Hi ${firstName}` : "My Dashboard"}</h1>
                   <p className={styles.signedInAs}>Signed in as {userEmail}</p>
                 </div>
-                {isMember ? (
-                  <a href="#membership" className={styles.memberPill}>{findPlan(sub!.plan)?.name ?? sub!.plan} member · Active</a>
-                ) : (
-                  !subLoading && <a href="#membership" className={styles.freePill}>Free account · See plans</a>
-                )}
+                <div className={styles.headActions}>
+                  {isMember ? (
+                    <a href="#membership" className={styles.memberPill}>{findPlan(sub!.plan)?.name ?? sub!.plan} member · Active</a>
+                  ) : (
+                    !subLoading && <a href="#membership" className={styles.freePill}>Free account · See plans</a>
+                  )}
+                  <button type="button" className={styles.logoutTop} onClick={handleLogout}>
+                    <Icon name="power" size={15} /> Log out
+                  </button>
+                </div>
               </div>
 
               {subLoading && <p className={styles.note}>Loading your plan…</p>}
@@ -1002,6 +987,7 @@ export default function AccountPage() {
                   )}
                 </DashTabs>
               )}
+              {!subLoading && <Disclosures />}
               </div>
               {!subLoading && <aside className={styles.dashSide} aria-label="Your plan and tips">{sideCards}</aside>}
               </div>
