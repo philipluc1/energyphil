@@ -11,6 +11,8 @@ import SiteHeader from "../components/SiteHeader";
 import { TipCarousel } from "../components/EnergyTips";
 import PlanAside, { type PlanAsideData } from "../components/PlanAside";
 import Disclosures from "../components/Disclosures";
+import BillCheckCard from "../components/BillCheckCard";
+import { cleanBillCheck, type BillCheck } from "@/lib/billCheck";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
 import DashTabs, { type TabDef } from "../components/DashTabs";
@@ -21,7 +23,7 @@ import { DASH_THEMES, DEFAULT_DASH_THEME, isDashTheme, type DashThemeId } from "
 import ProfilePanels, { type ProfileData } from "../components/ProfilePanels";
 import type { LatestCheck } from "../components/LatestCheckCard";
 import LearnCard from "../components/LearnCard";
-import { VerdictCard, CompareSection, summariseComparison, type ComparisonInput, type Period } from "../components/DashboardComparison";
+import { VerdictCard, CompareSection, summariseComparison, billCheckFacts, type ComparisonInput, type Period } from "../components/DashboardComparison";
 import PlanBand from "../components/PlanBand";
 import PlanCards from "../components/PlanCards";
 import UpgradePlans from "../components/UpgradePlans";
@@ -87,6 +89,7 @@ interface SubscriberSummary {
   current_price_type?: string | null;
   current_price_fixed_until?: string | null;
   discount_ends_at?: string | null;
+  bill_check?: unknown;
 }
 
 interface EpisodeRow {
@@ -143,6 +146,8 @@ export default function AccountPage() {
   const [switchBusy, setSwitchBusy] = useState(false);
   // What a non-member told us in the free check, kept in this browser.
   const [localCheck, setLocalCheck] = useState<ProfileData | null>(null);
+  // Bill checks from the free check in this browser (members' come from their record).
+  const [localBillCheck, setLocalBillCheck] = useState<BillCheck | null>(null);
   const [latest, setLatest] = useState<LatestCheck | null>(null);
   const [localEv, setLocalEv] = useState(false);
   const [localPricing, setLocalPricing] = useState<{ planName: string | null; rates: CurrentRates | null; priceType: "fixed" | "variable" | null; fixedUntil: string | null } | null>(null);
@@ -160,6 +165,7 @@ export default function AccountPage() {
         const raw = window.localStorage.getItem("utilo.check.v1");
         if (!raw) return;
         const d = JSON.parse(raw);
+        setLocalBillCheck(cleanBillCheck(d.billCheck));
         const profile = { ...DEFAULT_PROFILE, ...(d.profile ?? {}) };
         setLocalEv(profile.ev === true);
         const days = typeof d.days === "number" ? d.days : 91;
@@ -239,8 +245,9 @@ export default function AccountPage() {
       const PRICING_COLS = ", current_rates, current_price_type, current_price_fixed_until, discount_ends_at";
       const pick = (cols: string) =>
         supabase!.from("subscribers").select(cols).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      let { data, error } = await pick(BASE_COLS + PRICING_COLS);
-      // Database without the newest pricing columns yet? Load everything else.
+      let { data, error } = await pick(BASE_COLS + PRICING_COLS + ", bill_check");
+      // Database without the newest columns yet? Load everything else.
+      if (error && /column|schema cache/i.test(error.message ?? "")) ({ data, error } = await pick(BASE_COLS + PRICING_COLS));
       if (error && /column|schema cache/i.test(error.message ?? "")) ({ data, error } = await pick(BASE_COLS));
       if (cancelled) return;
       if (error) {
@@ -473,6 +480,8 @@ export default function AccountPage() {
     return null;
   }, [isMember, sub, localCheck, latest, localPricing, localEv]);
   const summary = useMemo(() => (cmpInput ? summariseComparison(cmpInput) : null), [cmpInput]);
+  const dashCheck = isMember ? cleanBillCheck(sub?.bill_check) : localBillCheck;
+  const dashCheckFacts = useMemo(() => (cmpInput ? billCheckFacts(cmpInput) : null), [cmpInput]);
   const savedShown = useCountUp(accumulated.total);
   const firstName = ((isMember ? sub!.customer_name : localCheck?.customer_name) ?? "").trim().split(/\s+/)[0] || "";
 
@@ -740,6 +749,11 @@ export default function AccountPage() {
               {/* Always on top: are you on the cheapest plan? */}
               {!subLoading && cmpInput && (
                 <VerdictCard input={cmpInput} member={isMember} period={period} onPeriod={setPeriod} />
+              )}
+              {!subLoading && dashCheck && dashCheckFacts && (
+                <div className={styles.billCheckWrap}>
+                  <BillCheckCard check={dashCheck} retailer={cmpInput?.currentRetailer ?? ""} facts={dashCheckFacts} title="We checked your latest bill" />
+                </div>
               )}
               {!subLoading && !cmpInput && (
                 <section className={styles.emptyVerdict}>

@@ -1,4 +1,5 @@
 import "server-only";
+import { cleanBillCheck } from "./billCheck";
 import type Stripe from "stripe";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { findPlan } from "./pricingPlans";
@@ -81,6 +82,7 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     current_price_type: md.priceType === "fixed" || md.priceType === "variable" ? md.priceType : null,
     current_price_fixed_until: /^\d{4}-\d{2}-\d{2}$/.test(md.priceFixedUntil ?? "") ? md.priceFixedUntil : null,
     discount_ends_at: /^\d{4}-\d{2}-\d{2}$/.test(md.discountEndsAt ?? "") ? md.discountEndsAt : null,
+    bill_check: cleanBillCheck(parseJson(md.billCheck)),
   };
   let { data: inserted, error } = await supabaseAdmin.from("subscribers").insert({ ...core, ...extras }).select("id").single();
   // If the database is missing a newer optional column (schema.sql not re-run),

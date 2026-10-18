@@ -79,6 +79,7 @@ export default function LeaveSiteGuard() {
           <li><Icon name="scale" size={18} /><span><b>{independenceLabel()}</b> {independenceLine(retailer)}</span></li>
           <li><Icon name="refresh" size={18} /><span><b>Check it&apos;s still available.</b> Offers and prices change, sometimes daily. What {retailer} offers you may differ from our estimate.</span></li>
           <li><Icon name="receipt" size={18} /><span><b>Read the conditions.</b> Some prices depend on paying on time, direct debit, e-billing or a membership, and you need to be eligible. Our figures leave out conditional discounts, sign-up credits and fees.</span></li>
+          <li><Icon name="landmark" size={18} /><span><b>Concessions and payment plans don&apos;t move with you.</b> Give {retailer} your concession card details when you sign up. Behind on a bill or on a payment plan? Talk to your current retailer first.</span></li>
           <li><Icon name="file" size={18} /><span><b>Read the Energy Fact Sheet.</b> It&apos;s the official summary of the plan&apos;s rates and terms. {retailer} must give you one.</span></li>
           <li><Icon name="calendar" size={18} /><span><b>You can change your mind.</b> In Victoria you have 10 business days to cancel a new energy contract without penalty.</span></li>
           <li><Icon name="check" size={18} /><span><b>Your decision.</b> This is general information, not financial advice. Think about what suits you before you switch.</span></li>

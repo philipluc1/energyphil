@@ -38,6 +38,7 @@ export interface SubscribeProfile {
   currentRetailer?: string;
   /** Their current plan's pricing, if typed or read from a bill. */
   currentRates?: unknown;
+  billCheck?: unknown;
   priceType?: "fixed" | "variable" | null;
   priceFixedUntil?: string | null;
   discountEndsAt?: string | null;

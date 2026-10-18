@@ -257,3 +257,8 @@ create unique index if not exists subscribers_checkout_session_unique
 -- ends, and which end date we've already warned them about.
 alter table subscribers add column if not exists discount_ends_at date;
 alter table subscribers add column if not exists deal_alert_sent_for date;
+
+-- Bill checks (Oct 2026): what we noticed on the member's latest bill —
+-- estimated read, overdue amount or payment plan, concession applied, and the
+-- retailer's own "best offer" message. Shown on the dashboard.
+alter table subscribers add column if not exists bill_check jsonb;

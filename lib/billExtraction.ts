@@ -42,6 +42,12 @@ export interface ExtractedBill {
   priceFixedUntil: string | null;
   /** When a discount or benefit period ends, if the bill says. */
   discountEndsAt: string | null;
+  /** Bill checks: was the meter read, any debt, a concession, the retailer's own best offer message. */
+  readingType: "actual" | "estimated" | "mixed" | null;
+  overdueAmount: number | null;
+  paymentPlan: boolean;
+  concessionApplied: boolean;
+  bestOffer: { planName: string | null; savingPerYear: number | null; saysOnBest: boolean } | null;
   warnings: string[];
 }
 
@@ -146,6 +152,18 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     priceType: r.price_type === "fixed" || r.price_type === "variable" ? r.price_type : null,
     priceFixedUntil: typeof r.price_fixed_until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.price_fixed_until) ? r.price_fixed_until : null,
     discountEndsAt: typeof r.discount_ends === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.discount_ends) ? r.discount_ends : null,
+    readingType: r.reading_type === "actual" || r.reading_type === "estimated" || r.reading_type === "mixed" ? r.reading_type : null,
+    overdueAmount: (() => { const n = toFiniteNumber(r.overdue_amount); return n !== null && n > 0 && n < 100000 ? n : null; })(),
+    paymentPlan: r.payment_plan === true,
+    concessionApplied: r.concession_applied === true,
+    bestOffer:
+      typeof r.best_offer_plan === "string" || toFiniteNumber(r.best_offer_saving) !== null || r.best_offer_says_on_best === true
+        ? {
+            planName: typeof r.best_offer_plan === "string" ? r.best_offer_plan.slice(0, 120) : null,
+            savingPerYear: (() => { const n = toFiniteNumber(r.best_offer_saving); return n !== null && n >= 0 && n < 10000 ? n : null; })(),
+            saysOnBest: r.best_offer_says_on_best === true,
+          }
+        : null,
     warnings,
   };
 }

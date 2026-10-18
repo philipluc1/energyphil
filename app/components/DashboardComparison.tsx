@@ -16,6 +16,8 @@ import { useCountUp } from "@/lib/useCountUp";
 import ResultsChart, { type ChartItem } from "./ResultsChart";
 import FunEquivalents from "./FunEquivalents";
 import RetailerLogo from "./RetailerLogo";
+import type { BillCheckFacts } from "./BillCheckCard";
+import { samePlanName } from "@/lib/planVersion";
 import styles from "./dashcompare.module.css";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -94,6 +96,29 @@ function compute(input: ComparisonInput) {
   const verdict: ComparisonSummary["verdict"] = haveBill ? (cheapest ? "good" : "bad") : "estimate";
   const severe = verdict === "bad" && (savingYear >= OVERPRICED_PER_YEAR || savingYear >= you * perYear * OVERPRICED_SHARE);
   return { matches, top, haveBill, you, vdo, savingYear, cheapest, verdict, severe, perYear };
+}
+
+/** Facts for the "We checked your bill" card, from the same maths as the verdict. Null without a bill. */
+export function billCheckFacts(input: ComparisonInput): BillCheckFacts | null {
+  const c = compute(input);
+  if (!c || !c.haveBill) return null;
+  const retailer = input.currentRetailer ?? "";
+  const billPlanName = (input.currentPlanName ?? "").trim();
+  const todays =
+    retailer && billPlanName
+      ? c.matches.find((m) => m.plan[0] === retailer && m.plan[3] === "MARKET" && samePlanName(billPlanName, m.plan[2], retailer)) ?? null
+      : null;
+  const gap = todays ? c.you - todays.total : 0;
+  const older = !!todays && gap * c.perYear >= 20;
+  const rb = retailer ? c.matches.find((m) => m.plan[0] === retailer) ?? null : null;
+  return {
+    billPlanName,
+    olderVersion: older && todays ? { planName: todays.plan[2], perMonth: (gap * (365 / 12)) / input.days, perYear: gap * c.perYear } : null,
+    planIsCurrent: !!todays && !older,
+    retailerBest: rb ? { planName: rb.plan[2], savingPerYear: (c.you - rb.total) * c.perYear } : null,
+    retailerCount: RETAILER_COUNT,
+    worthPerYear: WORTH_SWITCHING_PER_YEAR,
+  };
 }
 
 export function summariseComparison(input: ComparisonInput): ComparisonSummary | null {
@@ -251,7 +276,13 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
               <>
                 Based on {source === "bill" ? "your last bill" : "your answers"}: about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day) on {tariffWords}
                 {currentRetailer ? <> with {currentRetailer}{currentPlanName ? <>, &ldquo;{currentPlanName}&rdquo;</> : null}</> : null}.{" "}
-                That&apos;s <b className={vsVdo(you) > 0 ? styles.neg : styles.pos}>{pct(vsVdo(you))}</b> against the default offer ({money(vdo * k)} {PERIOD_LABEL[period]}) for the same usage.
+                {vsVdo(you) > 0 ? (
+                  <>That&apos;s <b className={styles.neg}>{pct(vsVdo(you))}</b> against the default offer ({money(vdo * k)} {PERIOD_LABEL[period]}) for the same usage.</>
+                ) : you - top.total > 0.005 ? (
+                  <>You&apos;re under the default offer, but {top.plan[0]} would still cost <b className={styles.pos}>{money((you - top.total) * k)} {PERIOD_LABEL[period]} less</b>.</>
+                ) : (
+                  <>You&apos;re under the default offer and nothing we found is cheaper.</>
+                )}
               </>
             ) : (
               <>

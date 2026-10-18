@@ -132,3 +132,4 @@
 .chipGood, .chipBad { font-size: 11.5px; font-weight: 800; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
 .chipGood { background: #ecfdf3; color: #15803d; border: 1px solid #bbf7d0; }
 .chipBad { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+

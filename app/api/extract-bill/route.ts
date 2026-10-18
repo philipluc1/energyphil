@@ -127,6 +127,37 @@ const TOOL_SCHEMA = {
         type: "boolean",
         description: "True if the bill includes a demand charge (priced in $ per kW or kVA, per day or per month), which is typical of business tariffs.",
       },
+      reading_type: {
+        type: ["string", "null"],
+        enum: ["actual", "estimated", "mixed", null],
+        description:
+          "Whether the electricity meter reading(s) on this bill were actual or estimated. Look for 'Estimated read', 'Est.', an 'E' marker beside readings, or 'Actual read'. 'mixed' if some were estimated. Null if the bill doesn't say.",
+      },
+      overdue_amount: {
+        type: ["number", "null"],
+        description: "Any overdue, unpaid or arrears amount carried forward from earlier bills, in dollars (not this bill's new charges). Null if none is shown.",
+      },
+      payment_plan: {
+        type: "boolean",
+        description: "True if the bill mentions a payment plan, payment arrangement, hardship program, payment assistance, Centrepay deductions or tailored assistance. False otherwise.",
+      },
+      concession_applied: {
+        type: "boolean",
+        description:
+          "True if the bill shows a government concession for card holders (e.g. 'Annual Electricity Concession', 'Victorian Government concession', 'pensioner concession'). Do not count one-off rebates or bill relief credits. False otherwise.",
+      },
+      best_offer_plan: {
+        type: ["string", "null"],
+        description: "If the bill has the retailer's 'best offer', 'better offer' or 'could you save' message, the plan name it recommends. Null if there's no such message or no plan is named.",
+      },
+      best_offer_saving: {
+        type: ["number", "null"],
+        description: "The saving in dollars per year stated in that best offer message. Null if none is stated.",
+      },
+      best_offer_says_on_best: {
+        type: "boolean",
+        description: "True if the bill's best offer message says the customer is already on the retailer's best (or cheapest) offer. False otherwise.",
+      },
       has_solar: {
         type: "boolean",
         description: "True if the bill shows any solar feed-in / solar export credit line item, even a small or zero-dollar one — this indicates the property has solar, regardless of the credit amount.",
@@ -285,7 +316,9 @@ export async function POST(req: NextRequest) {
                   "(street/suburb/postcode) if printed, and check for any solar feed-in/export credit line — " +
                   "set has_solar true whenever one appears, even if the credit is $0 or very small. If the bill includes gas, fill the gas_* fields " +
                   "(usage in MJ, days, gas charges, gas network) and set fuel accordingly. Also say whether it's a residential or business " +
-                  "account, whether it comes from an embedded network (building or strata-supplied power), and whether it has a demand charge.",
+                  "account, whether it comes from an embedded network (building or strata-supplied power), and whether it has a demand charge. " +
+                  "Finally, check whether readings were actual or estimated, any overdue amount or payment plan, whether a government concession " +
+                  "is applied, and read the retailer's best offer message (the plan it names and the yearly saving, or that you're already on the best offer).",
               },
             ],
           },

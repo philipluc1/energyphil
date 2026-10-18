@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cleanBillCheck } from "@/lib/billCheck";
 import { stripe } from "@/lib/stripeClient";
 import { findPlan } from "@/lib/pricingPlans";
 
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
     homeProfile: profile.homeProfile ? JSON.stringify(profile.homeProfile).slice(0, 480) : "",
     // Current plan pricing and deal end dates (for "your discount ends" alerts).
     currentRates: profile.currentRates ? JSON.stringify(profile.currentRates).slice(0, 480) : "",
+    billCheck: (() => { const c = cleanBillCheck(profile.billCheck); const j = c ? JSON.stringify(c) : ""; return j.length <= 490 ? j : ""; })(),
     priceType: profile.priceType === "fixed" || profile.priceType === "variable" ? profile.priceType : "",
     priceFixedUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(profile.priceFixedUntil ?? "")) ? String(profile.priceFixedUntil) : "",
     discountEndsAt: /^\d{4}-\d{2}-\d{2}$/.test(String(profile.discountEndsAt ?? "")) ? String(profile.discountEndsAt) : "",

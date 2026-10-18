@@ -517,3 +517,6 @@ details[open] > .panelSummary::after { content: " ▴"; }
   border: 1.5px solid var(--border); background: var(--surface); color: var(--ink, inherit); font: inherit; font-size: 13px; font-weight: 800;
 }
 .logoutTop:hover { border-color: #b91c1c; color: #b91c1c; }
+
+.billCheckWrap { margin: -2px 0 14px; }
+.billCheckWrap > section { margin-top: 0; }

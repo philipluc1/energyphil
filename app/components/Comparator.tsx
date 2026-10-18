@@ -47,6 +47,9 @@ import r from "./results.module.css";
 import RatesCompare from "./RatesCompare";
 import RetailerLogo from "./RetailerLogo";
 import Disclosures from "./Disclosures";
+import { samePlanName } from "@/lib/planVersion";
+import BillCheckCard from "./BillCheckCard";
+import { billCheckFromBill, type BillCheck } from "@/lib/billCheck";
 import { useMember } from "@/lib/useMember";
 import StateWaitlist from "./StateWaitlist";
 import YourRates from "./YourRates";
@@ -222,6 +225,8 @@ export default function Comparator() {
   const [suburbNotListed, setSuburbNotListed] = useState(false);
   // A bill read that looks like a business, embedded network or large site.
   const [billFlag, setBillFlag] = useState<"business" | "embedded" | "large" | null>(null);
+  // What we noticed on the bill itself: estimated read, debt, concession, the retailer's own best offer message.
+  const [billCheck, setBillCheck] = useState<BillCheck | null>(null);
   const [distributor, setDistributor] = useState<Distributor>("Citipower");
   const [days, setDays] = useState(91);
   const [mode, setMode] = useState<Mode>("simple");
@@ -298,6 +303,7 @@ export default function Comparator() {
         if (d.propertyType === "home" || d.propertyType === "embedded" || d.propertyType === "business") setPropertyType(d.propertyType);
         if (typeof d.nmiRaw === "string") setNmiRaw(d.nmiRaw);
         if (d.addressOk === true) setAddressHintOff(true);
+        if (d.billCheck && typeof d.billCheck === "object") setBillCheck(d.billCheck);
         // Older saves have no networkFrom: a saved network was the customer's choice.
         setNetworkFrom(["nmi", "bill", "postcode", "manual"].includes(d.networkFrom) ? d.networkFrom : d.distributor ? "manual" : null);
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
@@ -321,12 +327,12 @@ export default function Comparator() {
     try {
       window.localStorage.setItem(
         SAVE_KEY,
-        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressOk: addressHintOff }),
+        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressOk: addressHintOff, billCheck }),
       );
     } catch {
       /* storage unavailable */
     }
-  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressHintOff, hydrated]);
+  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressHintOff, billCheck, hydrated]);
 
   // The suburb list is ~20 KB gzipped, so it loads after the page, not with it.
   useEffect(() => {
@@ -464,6 +470,7 @@ export default function Comparator() {
         setNetworkFrom("postcode");
       }
     }
+    setBillCheck(billCheckFromBill(bill));
     // Is this a home on its own account? Flag business, embedded network or large sites.
     const billKwh = (bill.anytimeKwh ?? 0) + (bill.peakKwh ?? 0) + (bill.shoulderKwh ?? 0) + (bill.offpeakKwh ?? 0) + (bill.controlledLoadKwh ?? 0);
     const yearlyKwh = bill.billingDays ? (billKwh / bill.billingDays) * 365 : 0;
@@ -668,6 +675,17 @@ export default function Comparator() {
   // Plain numbers for the result: a month and a year, stay vs switch.
   const perMonth = (x: number) => (days > 0 ? (x * (365 / 12)) / days : 0);
   const perYear = (x: number) => (days > 0 ? (x * 365) / days : 0);
+  // Same plan name, older price? Price the bill's own rates on this usage and
+  // compare with today's version of the plan from the same retailer.
+  const billPlanName = ratesForm.planName.trim();
+  const sameNamePlans = currentRetailer && billPlanName
+    ? matches.filter((m) => m.plan[0] === currentRetailer && m.plan[3] === "MARKET" && samePlanName(billPlanName, m.plan[2], currentRetailer))
+    : [];
+  const todaysVersion = sameNamePlans[0] ?? null;
+  // Same base as the headline (your bill total) so the two savings agree; your rates only when there's no total.
+  const yourPlanCost = haveBill ? bench : ratesCost.ok ? ratesCost.total : null;
+  const olderVersionGap = todaysVersion && yourPlanCost !== null ? yourPlanCost - todaysVersion.total : 0;
+  const onOlderVersion = !!todaysVersion && perYear(olderVersionGap) >= 20;
   const listRows = locked ? matches.slice(0, 1 + FREE_ROWS) : matches;
   const hiddenRows = locked ? matches.slice(1 + FREE_ROWS) : [];
 
@@ -1630,7 +1648,10 @@ export default function Comparator() {
                       <small>a month</small>
                     </div>
                   </div>
-                  {!haveBill && <p className={r.heroNote}>Add your bill to compare against what you really pay.</p>}
+                  <p className={r.heroNote}>
+                    Cheapest of {matches.length} plans from the {RETAILER_COUNT} retailers we check, not every retailer in Victoria.
+                    {!haveBill && " Add your bill to compare against what you really pay."}
+                  </p>
                   {RETAILER_LINKS[top.plan[0]] ? (
                     <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} target="_blank" rel="noopener noreferrer" className={r.heroBtn}>
                       See the {top.plan[0]} plan →
@@ -1680,6 +1701,20 @@ export default function Comparator() {
                   <b>Based on one bill.</b> Prices are exact for today. Members get every plan re-priced each morning and a saved result every month, so the
                   answer stays current.
                 </div>
+              )}
+              {billCheck && haveBill && (
+                <BillCheckCard
+                  check={billCheck}
+                  retailer={currentRetailer}
+                  facts={{
+                    billPlanName,
+                    olderVersion: onOlderVersion && todaysVersion ? { planName: todaysVersion.plan[2], perMonth: perMonth(olderVersionGap), perYear: perYear(olderVersionGap) } : null,
+                    planIsCurrent: !!todaysVersion && !onOlderVersion,
+                    retailerBest: retailerBest ? { planName: retailerBest.plan[2], savingPerYear: perYear(bench - retailerBest.total) } : null,
+                    retailerCount: RETAILER_COUNT,
+                    worthPerYear: WORTH_SWITCHING_PER_YEAR,
+                  }}
+                />
               )}
               {(!haveBill || useEst) && (
                 <div className={styles.accuracyCard}>
@@ -1897,11 +1932,18 @@ export default function Comparator() {
                       {usagePeak + usageShoulder + usageOffpeak > 0 ? "a time-of-use tariff" : "a single-rate tariff"}
                       {clKwh > 0 ? " with controlled load" : ""}
                       {haveBill && currentRetailer ? <> with {currentRetailer}</> : null}.
-                      {haveBill && (
-                        <>
-                          {" "}That&apos;s <b className={vsVdo(bench) > 0 ? r.bad : r.good}>{pctVdo(vsVdo(bench))}</b> against the default offer ({fmtCurrency(vdoForUsage * k)}{" "}
-                          {PERIOD_LABEL[period]}).
-                        </>
+                      {haveBill && top && (
+                        vsVdo(bench) > 0 ? (
+                          <>
+                            {" "}That&apos;s <b className={r.bad}>{pctVdo(vsVdo(bench))}</b> against the default offer ({fmtCurrency(vdoForUsage * k)} {PERIOD_LABEL[period]}).
+                          </>
+                        ) : bench - top.total > 0.005 ? (
+                          <>
+                            {" "}You&apos;re under the default offer, but {top.plan[0]} would still cost <b className={r.good}>{fmtCurrency((bench - top.total) * k)} {PERIOD_LABEL[period]} less</b>.
+                          </>
+                        ) : (
+                          <> You&apos;re under the default offer and nothing we found is cheaper.</>
+                        )
                       )}
                     </p>
                   </div>
@@ -2020,6 +2062,7 @@ export default function Comparator() {
                   // Always sent: the EV answer decides which plans they're shown.
                   homeProfile: profile as unknown as Record<string, unknown>,
                   currentRates: myRates,
+                  billCheck,
                   priceType: ratesForm.priceType === "unsure" ? null : ratesForm.priceType,
                   priceFixedUntil: ratesForm.priceType === "fixed" && ratesForm.fixedUntil ? ratesForm.fixedUntil : null,
                   discountEndsAt: ratesForm.discountEnds || null,

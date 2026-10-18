@@ -1,4 +1,5 @@
 import { costFromRates } from "@/lib/currentRates";
+import { billCheckFromBill } from "@/lib/billCheck";
 import type { CurrentRates } from "@/lib/billExtraction";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActiveMember } from "@/lib/memberAccess";
@@ -143,6 +144,11 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", sub.id);
     if (ratesErr) console.warn("apply-bill: pricing columns not saved (run supabase/schema.sql)", ratesErr.message);
+    const { error: checkErr } = await supabaseAdmin
+      .from("subscribers")
+      .update({ bill_check: billCheckFromBill(b ?? {}) })
+      .eq("id", sub.id);
+    if (checkErr) console.warn("apply-bill: bill_check not saved (run supabase/schema.sql)", checkErr.message);
   }
 
   const now = new Date();
