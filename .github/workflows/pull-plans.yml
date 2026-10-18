@@ -13,21 +13,23 @@ permissions:
 jobs:
   pull:
     runs-on: ubuntu-latest
+    # Every retailer in the register, one request a second each: allow time.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Pull current plans from the retailers' CDR feeds
+      - name: Pull current plans from every retailer's CDR feed
         run: node scripts/pull-plans.mjs
       - name: Commit if anything changed (Vercel deploys on push)
         run: |
-          if git diff --quiet -- lib/plans.ts lib/gasPlans.ts lib/planTerms.ts; then
+          if git diff --quiet -- lib/plans.ts lib/gasPlans.ts lib/planTerms.ts lib/planExtras.ts lib/retailerDirectory.ts; then
             echo "No price changes today."
             exit 0
           fi
           git config user.name "utilo-bot"
           git config user.email "bot@utilo.local"
-          git add lib/plans.ts lib/gasPlans.ts lib/planTerms.ts data/
+          git add lib/plans.ts lib/gasPlans.ts lib/planTerms.ts lib/planExtras.ts lib/retailerDirectory.ts data/
           git commit -m "Daily plan pull: $(date -u +%Y-%m-%d)"
           git push

@@ -32,7 +32,7 @@ export const GENERAL_DISCLOSURES: { title: string; body: string }[] = [
   },
   {
     title: "Conditions and availability",
-    body: "We leave out conditional discounts, sign-up credits and fees. Some prices need conditions such as paying on time, direct debit, e-billing or a membership. Offers can change or close at any time, and you need to be eligible.",
+    body: "Prices include each plan's discounts, assuming you pay on time (and by direct debit where that's the condition). Sign-up credits, other conditional discounts, fees and concessions aren't counted; each plan lists its own from the retailer's feed. Offers only some people can get, such as members-only plans, are listed but never picked as your best plan. Offers can change or close at any time, and you need to be eligible.",
   },
   {
     title: "Your decision",

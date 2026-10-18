@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { cleanBillCheck } from "@/lib/billCheck";
 import { stripe } from "@/lib/stripeClient";
 import { findPlan } from "@/lib/pricingPlans";
+import { SRC_COOKIE, parseSource, sourceValue } from "@/lib/attribution";
+import { ensureFriendCoupon, referrerFor } from "@/lib/referrals";
 
 export const maxDuration = 30;
 
@@ -73,6 +75,24 @@ export async function POST(req: NextRequest) {
     currentPlanName: String(profile.currentPlanName ?? "").slice(0, 120),
   };
 
+  // Where they came from (partner, a member's referral, an ad), from the
+  // first-party cookie set by /p/<code>, /r/<CODE> or a campaign link.
+  const sourceRaw = sourceValue(req.cookies.get(SRC_COOKIE)?.value);
+  if (sourceRaw) metadata.source = sourceRaw;
+  // A friend's referral: money off the first payment, unless it's their own link.
+  let discounts: { coupon: string }[] | undefined;
+  const src = parseSource(sourceRaw);
+  if (src?.kind === "referral") {
+    const ref = await referrerFor(src.code);
+    if (ref && ref.email.toLowerCase() !== email.toLowerCase()) {
+      const coupon = await ensureFriendCoupon();
+      if (coupon) {
+        discounts = [{ coupon }];
+        metadata.referredBy = src.code;
+      }
+    }
+  }
+
   const origin = req.nextUrl.origin;
 
   try {
@@ -102,6 +122,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       metadata,
+      ...(discounts ? { discounts } : {}),
       // Goes via /api/welcome-link, which signs the new member in and lands them on /welcome.
       success_url: `${origin}/api/welcome-link?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/check#pricing`,

@@ -133,3 +133,32 @@
 .chipGood { background: #ecfdf3; color: #15803d; border: 1px solid #bbf7d0; }
 .chipBad { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
+
+/* ---------- Free users: the cheapest plans are for members ---------- */
+button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.rank { font-size: 11.5px; font-weight: 900; padding: 2px 7px; border-radius: 6px; background: var(--track); color: var(--grey); font-variant-numeric: tabular-nums; }
+.lockedTop { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding: 12px; border-radius: 18px; border: 2px dashed rgba(245, 166, 35, 0.6); background: linear-gradient(135deg, rgba(253, 224, 71, 0.12), rgba(245, 166, 35, 0.05)); }
+.lockedRow { display: grid; grid-template-columns: 48px 1fr auto; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--border); }
+.lockAvatar { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, #1b2a6b, #2d3f9e); color: #fde047; }
+.blurBar { display: inline-block; height: 14px; min-width: 90px; max-width: 220px; border-radius: 7px; background: linear-gradient(90deg, var(--track), rgba(140, 150, 170, 0.35), var(--track)); background-size: 200% 100%; filter: blur(1.5px); animation: shimmer 2.4s linear infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.unlockBtn {
+  align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border: 0; border-radius: 999px; cursor: pointer;
+  font: inherit; font-weight: 800; font-size: 14.5px; background: #f5a623; color: #1c1403; box-shadow: 0 6px 16px rgba(245, 166, 35, 0.35);
+}
+.unlockBtn:hover { filter: brightness(1.05); }
+.lockedName { display: inline-flex; align-items: center; gap: 10px; color: #fde047; }
+.blurName { display: inline-block; width: 190px; height: 26px; border-radius: 8px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.18)); background-size: 200% 100%; filter: blur(2px); animation: shimmer 2.4s linear infinite; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.unlockBox { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; margin-top: 14px; padding: 14px 16px; border-radius: 14px; text-align: left; background: rgba(253, 224, 71, 0.1); border: 1px solid rgba(253, 224, 71, 0.45); }
+.unlockBox b { display: block; font-size: 15.5px; color: #fff; }
+.unlockBox span { font-size: 13px; line-height: 1.5; color: rgba(255, 255, 255, 0.8); }
+.unlockIcon { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: #fde047; color: #1b2a6b !important; }
+@media (max-width: 720px) {
+  .lockedRow { grid-template-columns: 40px 1fr; gap: 10px; padding: 12px; }
+  .lockedRow .priceCol { grid-column: 2; }
+  .lockAvatar { width: 40px; height: 40px; }
+  .unlockBox { grid-template-columns: auto 1fr; }
+  .unlockBox > button { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { .blurBar, .blurName { animation: none; } }

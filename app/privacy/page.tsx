@@ -69,7 +69,19 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong>Bill photos and PDFs.</strong> When you snap or upload a bill, the file is sent to our bill-reading provider (Anthropic) to
-              read the figures. We don&apos;t keep a copy of the file; only the figures you then see on screen.
+              read the figures. We don&apos;t keep a copy of the file; only the figures you then see on screen. If a bill shows an overdue amount or
+              a payment plan, we use that only on screen, to suggest talking to your retailer before switching. We don&apos;t store it, and it&apos;s
+              never used in emails.
+            </li>
+            <li>
+              <strong>How the check is used, anonymously:</strong> a count of checks started and finished, clicks to join, which network, and how
+              you arrived (a partner&apos;s link, a member&apos;s referral link, or an ad&apos;s campaign name). These counts carry no name, email
+              or IP address. They tell us which parts of the site and which partners help people.
+            </li>
+            <li>
+              <strong>Where you came from:</strong> if you arrive through a partner&apos;s link, a member&apos;s referral link or an ad, a small
+              cookie remembers that for 90 days, so the partner is counted, your friend&apos;s discount applies and the right member gets their
+              credit. If you join, we store it with your membership.
             </li>
             <li>
               <strong>Technical information:</strong> your IP address and browser details, logged by our hosting provider for security, and a record
@@ -85,7 +97,7 @@ export default function PrivacyPolicyPage() {
             To save you typing everything again, the check saves your answers and last result in your browser (local storage) on the device you
             used. This stays on your device and isn&apos;t sent to us unless you ask for your result by email or join. To clear it, use{" "}
             <strong>Start fresh</strong> on the check page, or clear your browser&apos;s site data. If you sign in, your browser also keeps a sign-in
-            session. We don&apos;t use advertising or analytics trackers.
+            session. We don&apos;t use third-party advertising or analytics trackers: the anonymous counts above are our own.
           </p>
         </section>
 
@@ -162,7 +174,9 @@ export default function PrivacyPolicyPage() {
             <MailLink email={PRIVACY.email} label="privacy email" />
             {ABOUT.postalAddress ? <>, or write to {ABOUT.postalAddress}</> : null}. We&apos;ll reply within {PRIVACY.responseDays} days. Members can
             also update their details by uploading a newer bill, and cancel any time, from their <Link href="/account">dashboard</Link>; see the{" "}
-            <Link href="/cancellation-policy">Cancellation Policy</Link>.
+            <Link href="/cancellation-policy">Cancellation Policy</Link>. Anyone signed in can delete everything we hold about them with{" "}
+            <strong>Delete my data</strong> on the dashboard&apos;s Membership tab (cancel a membership first). Stripe keeps payment records, as the
+            law requires.
           </p>
         </section>
 

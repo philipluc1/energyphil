@@ -263,3 +263,9 @@
   margin: 0;
   text-align: center;
 }
+
+/* Launch checkpoints */
+.cpMet { border-left: 4px solid #16a34a; }
+.cpOpen { border-left: 4px solid #f0a202; }
+.cpBadge { margin-top: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--grey, #5f6b82); }
+.cpMet .cpBadge { color: #15803d; }

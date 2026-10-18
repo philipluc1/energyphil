@@ -6,7 +6,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // Each read costs us an AI call. Members get 10 a day; everyone else gets a
 // couple a day per connection, enough to try it for real before joining.
 const MAX_READS_PER_DAY = 10;
-const FREE_READS_PER_DAY = 2;
+// 3 so a visitor can add page 2 of a paper bill (a second read) and still retry once.
+const FREE_READS_PER_DAY = 3;
+/** Photos of one bill read together (page 1, page 2…). A PDF is always one file. */
+const MAX_PAGES = 3;
 // Total free (visitor) reads per day across the whole site. Raise it as traffic grows.
 const FREE_READS_ALL_VISITORS_PER_DAY = Number(process.env.FREE_READS_PER_DAY_TOTAL ?? 300);
 
@@ -188,6 +191,11 @@ const TOOL_SCHEMA = {
       offpeak_rate_cents: { type: ["number", "null"], description: "Off-peak usage rate in cents per kWh as printed, if shown." },
       controlled_load_rate_cents: { type: ["number", "null"], description: "Controlled load / dedicated circuit rate in cents per kWh as printed, if shown." },
       solar_fit_cents: { type: ["number", "null"], description: "Solar feed-in tariff in cents per kWh as printed, if shown." },
+      looks_partial: {
+        type: "boolean",
+        description:
+          "True if this looks like only part of a longer bill: for example it shows 'Page 1 of 2', or shows the account summary and amount due but not the usage and charges details. False if the usage and charges details are shown.",
+      },
       warnings: {
         type: "array",
         items: { type: "string" },
@@ -259,31 +267,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Couldn't read that upload — please try again." }, { status: 400 });
   }
 
-  const file = form.get("photo");
-  if (!(file instanceof File)) {
+  // One PDF, or up to MAX_PAGES photos of the same bill (page 1, page 2…).
+  const files = form.getAll("photo").filter((f): f is File => f instanceof File);
+  if (files.length === 0) {
     return NextResponse.json({ ok: false, message: "No file received." }, { status: 400 });
   }
-  const isPdf = file.type === "application/pdf";
-  if (!isPdf && !file.type.startsWith("image/")) {
+  const isPdf = files.some((f) => f.type === "application/pdf");
+  if (isPdf && files.length > 1) {
+    return NextResponse.json({ ok: false, message: "Send one PDF on its own, or up to 3 photos of the bill's pages." }, { status: 400 });
+  }
+  if (files.length > MAX_PAGES) {
+    return NextResponse.json({ ok: false, message: `Up to ${MAX_PAGES} pages at a time. The usage and charges pages matter most.` }, { status: 400 });
+  }
+  if (files.some((f) => f.type !== "application/pdf" && !f.type.startsWith("image/"))) {
     return NextResponse.json({ ok: false, message: "That doesn't look like an image or PDF file." }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
+  if (files.some((f) => f.size > MAX_BYTES) || files.reduce((n, f) => n + f.size, 0) > MAX_BYTES * 2) {
     return NextResponse.json(
       { ok: false, message: "That file's too large — try a smaller photo, or a shorter PDF." },
       { status: 400 },
     );
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const base64 = buffer.toString("base64");
-  const mediaType = file.type === "image/jpg" ? "image/jpeg" : file.type;
   // Claude reads a PDF as a "document" content block (it handles the pages
-  // itself — no server-side rasterizing needed) and a photo as an "image"
-  // block. If PDF reads start erroring out, the model above is the first
-  // thing to try bumping to a newer/larger one.
-  const contentBlock = isPdf
-    ? { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: base64 } }
-    : { type: "image" as const, source: { type: "base64" as const, media_type: mediaType, data: base64 } };
+  // itself — no server-side rasterizing needed) and each photo as an "image"
+  // block, all in one request. If PDF reads start erroring out, the model
+  // above is the first thing to try bumping to a newer/larger one.
+  const contentBlocks = await Promise.all(
+    files.map(async (file) => {
+      const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+      return file.type === "application/pdf"
+        ? { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: base64 } }
+        : { type: "image" as const, source: { type: "base64" as const, media_type: file.type === "image/jpg" ? "image/jpeg" : file.type, data: base64 } };
+    }),
+  );
+  const what = isPdf ? "a PDF" : files.length > 1 ? `${files.length} photos of the pages` : "a photo";
 
   let anthropicRes: Response;
   try {
@@ -303,11 +321,13 @@ export async function POST(req: NextRequest) {
           {
             role: "user",
             content: [
-              contentBlock,
+              ...contentBlocks,
               {
                 type: "text",
                 text:
-                  `This is a ${isPdf ? "PDF" : "photo"} of an Australian residential energy bill (electricity, gas or both). Read it ` +
+                  `This is ${what} of an Australian residential energy bill (electricity, gas or both). ` +
+                  (files.length > 1 ? "The photos are pages of the same bill: read them together as one bill. " : "") +
+                  "Read it " +
                   "carefully and call extract_bill_fields with your best-effort reading. Leave a field null " +
                   "rather than guessing if it isn't clearly shown, and note anything uncertain in warnings. " +
                   "Victorian distributor names can appear with extra wording (e.g. 'CitiPower', 'Jemena " +
@@ -349,13 +369,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        message: `Couldn't make sense of that ${isPdf ? "PDF" : "photo"} — please try a clearer one or enter details manually.`,
+        message: `Couldn't make sense of that ${isPdf ? "PDF" : files.length > 1 ? "bill" : "photo"} — please try a clearer one or enter details manually.`,
       },
       { status: 200 },
     );
   }
 
-  const extracted = sanitizeExtractedBill(toolUse.input);
+  const extracted = { ...sanitizeExtractedBill(toolUse.input), pages: isPdf ? 1 : files.length };
 
   if (!extracted.isElectricityBill && extracted.fuel !== "gas") {
     return NextResponse.json(

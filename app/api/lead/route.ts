@@ -1,9 +1,10 @@
 import { resultEmail } from "@/lib/emailTemplates";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { DISTRIBUTORS, rankPlans, type Distributor, type UsageInput } from "@/lib/plans";
-import { vdoBillForUsage } from "@/lib/profileUsage";
+import { DISTRIBUTORS, bestPlan, type Distributor } from "@/lib/plans";
+import { usageOrAverage, vdoBillForUsage } from "@/lib/profileUsage";
 import { emailConfigured, sendEmail } from "@/lib/email";
+import { SRC_COOKIE, sourceValue } from "@/lib/attribution";
 
 // Saves a free check ("email me this result"). Written by the server only:
 // the browser can't insert into `leads` directly, so nobody can plant rows
@@ -31,7 +32,8 @@ export async function POST(req: NextRequest) {
   if ((count ?? 0) >= 5) return NextResponse.json({ ok: false, message: "We've already saved this. Check your inbox." }, { status: 429 });
 
   const hasSolar = b?.hasSolar === true;
-  const usage: UsageInput = {
+  // Not enough usage sent? Use the average Victorian home, as the page does.
+  const { usage, average } = usageOrAverage({
     days,
     peak: num(b?.peak, 100000),
     shoulder: num(b?.shoulder, 100000),
@@ -39,15 +41,15 @@ export async function POST(req: NextRequest) {
     anytime: num(b?.anytime, 100000),
     cl: num(b?.cl, 100000),
     solarExportKwh: hasSolar ? num(b?.solarExportKwh, 100000) : 0,
-  };
+  });
   const profile = b?.homeProfile && typeof b.homeProfile === "object" ? b.homeProfile : null;
   const ev = (profile as { ev?: unknown } | null)?.ev === true;
-  const top = rankPlans(distributor, usage, { ev })[0] ?? null;
+  const top = bestPlan(distributor, usage, { ev, hasSolar }) ?? null;
   const bill = num(b?.currentBill, 20000);
-  const bench = bill > 0 ? bill : vdoBillForUsage(distributor, usage);
+  const bench = bill > 0 && !average ? bill : vdoBillForUsage(distributor, usage);
   const save = top ? bench - top.total : null;
 
-  const { data: inserted, error } = await supabaseAdmin.from("leads").insert({
+  const row = {
     email,
     distributor,
     billing_days: days,
@@ -71,7 +73,15 @@ export async function POST(req: NextRequest) {
     has_solar: hasSolar,
     solar_export_kwh: hasSolar ? usage.solarExportKwh : null,
     home_profile: profile,
-  }).select("id").single();
+  };
+  // Where they came from (partner, referral or campaign), if we know.
+  const source = sourceValue(req.cookies.get(SRC_COOKIE)?.value);
+  const withSource: Record<string, unknown> = source ? { ...row, source } : row;
+  let { data: inserted, error } = await supabaseAdmin.from("leads").insert(withSource).select("id").single();
+  // Database not upgraded yet (schema.sql not re-run): save without the source.
+  if (error && source && /source|schema cache/i.test(error.message)) {
+    ({ data: inserted, error } = await supabaseAdmin.from("leads").insert(row).select("id").single());
+  }
   if (error) {
     console.error("lead insert failed", error.message);
     return NextResponse.json({ ok: false, message: "Couldn't save that. Please try again." }, { status: 500 });

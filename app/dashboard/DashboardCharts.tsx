@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { DashboardStats, SubscriberStats } from "@/lib/dashboardStats";
+import type { DashboardStats, FunnelStats, SubscriberStats } from "@/lib/dashboardStats";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { findPlan, fmtPrice } from "@/lib/pricingPlans";
 import styles from "./dashboard.module.css";
@@ -57,9 +57,11 @@ function fmtDateTime(iso: string): string {
 export default function DashboardCharts({
   stats,
   subscriberStats,
+  funnel,
 }: {
   stats: DashboardStats;
   subscriberStats?: SubscriberStats;
+  funnel?: FunnelStats;
 }) {
   const scheme = useColorScheme();
   const colors = PALETTE[scheme];
@@ -96,6 +98,8 @@ export default function DashboardCharts({
           Log out
         </button>
       </header>
+
+      {funnel && <LaunchFunnel funnel={funnel} />}
 
       {/* ---------------- Business performance ---------------- */}
       <div className={styles.sectionHeader}>
@@ -383,5 +387,95 @@ export default function DashboardCharts({
         </p>
       </div>
     </div>
+  );
+}
+
+/** Launch checkpoints, the check funnel and where people came from. */
+function LaunchFunnel({ funnel }: { funnel: FunnelStats }) {
+  const fmtVal = (v: number, kind: "count" | "rate") => (kind === "rate" ? fmtPct(v) : v.toLocaleString("en-AU"));
+  return (
+    <>
+      <div className={styles.sectionHeader}>
+        <span className={styles.sectionTitle}>Launch checkpoints</span>
+        <span className={styles.sectionNote}>Anonymous check counts against new members. Targets from the launch plan.</span>
+      </div>
+      <div className={styles.statRow}>
+        {funnel.checkpoints.map((c) => (
+          <div key={c.label} className={`${styles.statCard} ${c.met ? styles.cpMet : styles.cpOpen}`}>
+            <div className={styles.statValue}>{fmtVal(c.actual, c.kind)}</div>
+            <div className={styles.statLabel}>
+              {c.label}: target {fmtVal(c.target, c.kind)} by {c.due}
+            </div>
+            <div className={styles.cpBadge}>{c.met ? "On track" : "Not there yet"}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.tableCard} style={{ marginBottom: 18 }}>
+        <div className={styles.chartTitle}>The check, step by step</div>
+        {funnel.firstEvent === null ? (
+          <p className={styles.emptyNote}>No checks counted yet. Counting starts once the database is upgraded (re-run supabase/schema.sql) and people use the live site.</p>
+        ) : (
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Checks started</th>
+                  <th>Checks finished</th>
+                  <th>Clicked to join</th>
+                  <th>Went to payment</th>
+                  <th>New members</th>
+                  <th>Finished → member</th>
+                </tr>
+              </thead>
+              <tbody>
+                {funnel.windows.map((w) => (
+                  <tr key={w.label}>
+                    <td><b>{w.label}</b></td>
+                    <td>{w.started.toLocaleString("en-AU")}</td>
+                    <td>{w.completed.toLocaleString("en-AU")}</td>
+                    <td>{w.joinClicks.toLocaleString("en-AU")}</td>
+                    <td>{w.checkouts.toLocaleString("en-AU")}</td>
+                    <td>{w.members.toLocaleString("en-AU")}</td>
+                    <td>{w.conversion !== null ? fmtPct(w.conversion) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.tableCard} style={{ marginBottom: 28 }}>
+        <div className={styles.chartTitle}>Where people came from</div>
+        {funnel.bySource.length === 0 ? (
+          <p className={styles.emptyNote}>Nothing yet. Partner links (/p/code), members&apos; referral links and ad links with utm_source show up here.</p>
+        ) : (
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Checks finished</th>
+                  <th>New members</th>
+                  <th>Finished → member</th>
+                </tr>
+              </thead>
+              <tbody>
+                {funnel.bySource.map((r) => (
+                  <tr key={r.label}>
+                    <td>{r.label}</td>
+                    <td>{r.completed.toLocaleString("en-AU")}</td>
+                    <td>{r.members.toLocaleString("en-AU")}</td>
+                    <td>{r.conversion !== null ? fmtPct(r.conversion) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

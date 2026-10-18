@@ -8,6 +8,8 @@ import styles from "./Comparator.module.css";
 import snap from "./snap.module.css";
 
 const MAX_DIMENSION = 1600;
+/** Photos of one bill read together (page 1, page 2…); matches the server. */
+export const MAX_BILL_PAGES = 3;
 const JPEG_QUALITY = 0.85;
 
 // Phones can hand us 4000px, multi-megabyte photos. Resizing in the browser
@@ -44,12 +46,17 @@ export default function BillPhotoUpload({
   onApply,
   variant = "card",
   fuel = "electricity",
+  priorPages = [],
 }: {
-  onApply: (bill: ExtractedBill) => void;
-  /** "hero": the big, main way into the check. "card": the smaller reminder elsewhere. */
-  variant?: "hero" | "strip" | "card";
+  /** The read, and the photos it came from (none for a PDF), so a page can be added later. */
+  onApply: (bill: ExtractedBill, pages: Blob[]) => void;
+  /** "hero": the big, main way into the check. "card": the smaller reminder elsewhere.
+   *  "addPage": one more page of a bill already read; re-reads all pages together. */
+  variant?: "hero" | "strip" | "card" | "addPage";
   /** Gas wording for the big panel and the strip; electricity by default. */
   fuel?: "electricity" | "gas";
+  /** Pages already read (photos), sent again with the new one so the bill is read as a whole. */
+  priorPages?: Blob[];
 }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,7 +92,7 @@ export default function BillPhotoUpload({
     };
   }, []);
 
-  async function handleFile(file: File) {
+  async function handleFiles(list: File[]) {
     setStatus("reading");
     setReadingStep(0);
     setErrorMsg("");
@@ -93,11 +100,29 @@ export default function BillPhotoUpload({
     try {
       // PDFs go to the server as-is (the browser's canvas-based resize only
       // works on images) — they're sent to Claude as a document, not an
-      // image, so there's no size benefit to resizing anyway.
-      const isPdf = file.type === "application/pdf";
-      const toSend = isPdf ? file : await resizeImage(file);
+      // image, so there's no size benefit to resizing anyway. Photos are
+      // pages: any already read go again with the new ones, so the model
+      // reads the bill as a whole.
+      const pdf = list.find((f) => f.type === "application/pdf");
+      let pages: Blob[];
+      if (pdf) {
+        if (priorPages.length) {
+          setStatus("error");
+          setErrorMsg("Add the next page as a photo, or upload the whole bill as one PDF from the start.");
+          return;
+        }
+        pages = [pdf];
+      } else {
+        const fresh = await Promise.all(list.filter((f) => f.type.startsWith("image/")).map(resizeImage));
+        pages = [...priorPages, ...fresh].slice(0, MAX_BILL_PAGES);
+      }
+      if (!pages.length) {
+        setStatus("error");
+        setErrorMsg("That doesn't look like a photo or PDF.");
+        return;
+      }
       const form = new FormData();
-      form.append("photo", toSend, isPdf ? "bill.pdf" : "bill.jpg");
+      pages.forEach((p, i) => form.append("photo", p, pdf ? "bill.pdf" : `page-${i + 1}.jpg`));
 
       const session = supabase ? (await supabase.auth.getSession()).data.session : null;
       const res = await fetch("/api/extract-bill", {
@@ -114,7 +139,7 @@ export default function BillPhotoUpload({
       }
 
       setStatus("idle");
-      onApply(body.extracted as ExtractedBill);
+      onApply(body.extracted as ExtractedBill, pdf ? [] : pages);
     } catch {
       setStatus("error");
       setErrorMsg("Something went wrong reading that file — please try again, or enter your details manually below.");
@@ -122,17 +147,44 @@ export default function BillPhotoUpload({
   }
 
   function onInputChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const list = Array.from(e.target.files ?? []);
     e.target.value = ""; // allow re-selecting the same file next time
-    if (file) handleFile(file);
+    if (list.length) handleFiles(list);
   }
 
   const inputs = (
     <>
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className={styles.photoInputHidden} onChange={onInputChange} />
-      <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className={styles.photoInputHidden} onChange={onInputChange} />
+      <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className={styles.photoInputHidden} onChange={onInputChange} />
     </>
   );
+
+  if (variant === "addPage") {
+    const reading = status === "reading";
+    const next = priorPages.length + 1;
+    return (
+      <div className={snap.addPage}>
+        {reading ? (
+          <div className={snap.reading} role="status" aria-live="polite">
+            <span className={snap.spinner} aria-hidden="true" />
+            Reading {next} pages together…
+          </div>
+        ) : (
+          <div className={snap.addPageActions}>
+            <button type="button" className={snap.addPagePrimary} onClick={() => cameraInputRef.current?.click()}>
+              <Icon name="camera" size={18} /> Add page {next}
+            </button>
+            <button type="button" className={snap.addPageSecondary} onClick={() => fileInputRef.current?.click()}>
+              Choose a photo
+            </button>
+          </div>
+        )}
+        {status === "error" && <p className={snap.err}>{errorMsg}</p>}
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className={styles.photoInputHidden} onChange={onInputChange} />
+        <input ref={fileInputRef} type="file" accept="image/*" multiple className={styles.photoInputHidden} onChange={onInputChange} />
+      </div>
+    );
+  }
 
   if (variant === "strip") {
     const reading = status === "reading";
@@ -187,8 +239,8 @@ export default function BillPhotoUpload({
           ) : (
             <ul className={snap.points}>
               <li>We read your usage <b>and the rates you actually pay</b></li>
-              <li>Paper bill, PDF or a screenshot from your retailer&apos;s app</li>
-              <li>You check what we read before we work anything out</li>
+              <li>Paper bill (both pages if it has two: pick them together), PDF or a screenshot from your retailer&apos;s app</li>
+              <li>You check what we read, and can change it, before we work anything out</li>
             </ul>
           )}
           {reading ? (
@@ -258,6 +310,7 @@ export default function BillPhotoUpload({
         ref={fileInputRef}
         type="file"
         accept="image/*,application/pdf"
+        multiple
         className={styles.photoInputHidden}
         onChange={onInputChange}
       />

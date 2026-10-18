@@ -1,3 +1,4 @@
+import { BROAD_COVERAGE } from "@/lib/dataPolicy";
 import { typicalHouseholdExample } from "@/lib/savings";
 import v from "./visuals.module.css";
 import Icon from "../components/Icon";
@@ -79,6 +80,7 @@ const ROWS: { label: string; icon: string; esc: Mark; vec: Mark; us: Mark }[] = 
   { label: "Sets the default offer and the rules", icon: "scale", esc: "yes", vec: "no", us: "no" },
   { label: "Compares plans for you", icon: "search", esc: "no", vec: "yes", us: "yes" },
   { label: "Covers retailers across Victoria", icon: "map", esc: "no", vec: "yes", us: "TRACKED" },
+  { label: "Uses your own usage, not a typical home", icon: "home", esc: "no", vec: "With meter data", us: "From your bill" },
   { label: "Starts from a photo of your bill", icon: "camera", esc: "no", vec: "no", us: "yes" },
   { label: "Prices a year of smart meter data", icon: "chart", esc: "no", vec: "yes", us: "no" },
   { label: "Re-checks prices for you every day", icon: "refresh", esc: "no", vec: "no", us: "member" },
@@ -114,7 +116,7 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
           <span className={v.roleIcon} aria-hidden="true"><Icon name="bell" size={26} /></span>
           <b>Utilo</b>
           <span className={v.roleJob}>Finds it, then keeps watching</span>
-          <span className={v.roleSub}>Independent. Starts from a photo of your bill.</span>
+          <span className={v.roleSub}>Built from your bill, not a typical home.</span>
         </div>
       </div>
 
@@ -130,7 +132,7 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
             <span role="rowheader" className={v.gLabel}><span className={v.gIcon} aria-hidden="true"><Icon name={r.icon} size={17} /></span>{r.label}</span>
             <span role="cell"><Cell m={r.esc} /></span>
             <span role="cell"><Cell m={r.vec} /></span>
-            <span role="cell" className={v.gUs}><Cell m={r.us === "TRACKED" ? `The ${retailers} we track` : r.us} /></span>
+            <span role="cell" className={v.gUs}><Cell m={r.us === "TRACKED" ? (retailers >= BROAD_COVERAGE ? "yes" : `The ${retailers} we track`) : r.us} /></span>
           </div>
         ))}
       </div>

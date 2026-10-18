@@ -1,4 +1,4 @@
-import { VDO, type Distributor, type PlanRow } from "@/lib/plans";
+import { VDO, billDetail, type Distributor, type PlanRow } from "@/lib/plans";
 import type { EstimatedUsage, HomeProfile } from "@/lib/profileUsage";
 import styles from "./howworked.module.css";
 
@@ -23,8 +23,10 @@ function profileWords(p: HomeProfile): string {
 interface Usage { days: number; peak: number; shoulder: number; offpeak: number; anytime: number; cl: number; solarExportKwh?: number }
 
 export default function HowWeWorkedItOut({
-  plan, usage, bench, haveBill, distributor, profile, est, priceDate,
+  plan, usage, bench, haveBill, distributor, profile, est, priceDate, hideName = false,
 }: {
+  /** Free users: say "the cheapest plan" instead of naming it. */
+  hideName?: boolean;
   plan: PlanRow; usage: Usage; bench: number; haveBill: boolean; distributor: Distributor;
   profile: HomeProfile | null; est: EstimatedUsage | null; priceDate: string;
 }) {
@@ -49,6 +51,13 @@ export default function HowWeWorkedItOut({
     if (offpeak !== null) lines.push({ label: "Off-peak usage", sum: `${c(offpeak)} × ${k(usage.offpeak)}`, amt: offpeak * usage.offpeak });
   }
   if (clRate !== null && usage.cl > 0) lines.push({ label: "Controlled load", sum: `${c(clRate)} × ${k(usage.cl)}`, amt: clRate * usage.cl });
+  // Guaranteed discounts (no conditions) from the retailer's feed.
+  const detail = billDetail(plan, { ...usage, solarExportKwh: usage.solarExportKwh ?? 0 });
+  if (detail) {
+    const guaranteed = detail.discount - detail.conditionalDiscount;
+    if (guaranteed > 0.005) lines.push({ label: "Discount, no conditions", sum: "the retailer's published guaranteed discount", amt: -guaranteed });
+    if (detail.conditionalDiscount > 0.005) lines.push({ label: "Pay-on-time / direct-debit discount", sum: "assumes you pay on time", amt: -detail.conditionalDiscount });
+  }
   if (solar > 0) {
     if (fit !== null) lines.push({ label: "Solar credit", sum: `${c(fit)} × ${k(solar)} exported`, amt: -fit * solar });
     else lines.push({ label: "Solar credit", sum: "this plan doesn't publish a feed-in rate", amt: 0 });
@@ -84,7 +93,7 @@ export default function HowWeWorkedItOut({
         <div className={styles.step}>
           <div className={styles.n}>2</div>
           <div>
-            <b>{plan[0]} &ldquo;{plan[2]}&rdquo; at its published rates</b>
+            <b>{hideName ? "The cheapest plan" : <>{plan[0]} &ldquo;{plan[2]}&rdquo;</>} at its published rates</b>
             <table className={styles.t}>
               <tbody>
                 {lines.map((l) => (
@@ -119,7 +128,8 @@ export default function HowWeWorkedItOut({
           </div>
         </div>
         <p className={styles.note}>
-          <b>Not included:</b> sign-up credits, pay-on-time or other conditional discounts, exit fees, concessions and rebates. Rates are the
+          <b>Included:</b> each plan&apos;s discounts, assuming you pay on time (and by direct debit where that&apos;s the condition). <b>Not included:</b>
+          sign-up credits, other conditional discounts, fees, concessions and rebates (each plan lists its own under &ldquo;Rates and conditions&rdquo;). Rates are the
           retailers&apos; published figures as at {priceDate}, GST included. Confirm the price with the retailer before you switch.
         </p>
       </div>

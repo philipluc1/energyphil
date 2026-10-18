@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PLANS, RETAILER_COUNT, totalEvFriendly } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 
@@ -38,24 +39,30 @@ export default function FaqPage() {
             <details className={home.faqItem}>
               <summary>How is this different from Victorian Energy Compare?</summary>
               <p>
-                Victorian Energy Compare is the Government&apos;s free comparison site, and it&apos;s good. It covers retailers across Victoria, and if you
-                share your smart meter data it prices a full year of your use, which makes it the most precise way to compare time-of-use plans. It
-                gives you the best deal on the day you check.
+                Victorian Energy Compare is the Government&apos;s free comparison site, and it&apos;s good. If you enter your meter number it uses your
+                smart meter data, which it calls the most accurate way to compare; otherwise it estimates your use from your answers about your home. It
+                finds the best deals on the day you check.
               </p>
               <p>
-                Utilo starts from a photo of your bill, so it takes about 30 seconds and uses the rates you actually pay. Then, for members, it keeps
-                going: prices re-checked every morning, a heads-up before your discount or fixed price ends, and a re-check after the 1 July changes. We
-                track {PLANS.length} plans from {RETAILER_COUNT} retailers, not every plan in the market, so using both is a good idea.{" "}
+                Utilo is built around your bill rather than a typical household. A photo gives us how much you use and when, the rates you pay now and the
+                plan you&apos;re on, so the saving is against what you actually pay, and we can tell you if you&apos;re on an older, dearer version of a plan
+                with the same name. It takes about a minute. Then, for members, it keeps going: prices re-checked every morning, a heads-up before your
+                discount or fixed price ends, and a re-check after the 1 July changes. We track {PLANS.length} plans from {RETAILER_COUNT} retailers, not
+                every plan in the market, so using both is a good idea.{" "}
                 <Link href="/learn#compare">See who does what</Link>.
               </p>
             </details>
             <details className={home.faqItem}>
               <summary>I switched, and now something cheaper has appeared. Did I waste my time?</summary>
-              <p>No. {PRICE_CHANGE_CLAUSE} Members are only alerted when a new plan beats their current one by about $50 a year or more, and not at all in the first two months after a switch unless the saving is large.</p>
+              <p>No. {PRICE_CHANGE_CLAUSE} Members are only alerted when a new plan beats their current one by $50 a year or more (or the amount they choose on their dashboard), and not at all in the first two months after a switch unless the saving is large.</p>
             </details>
             <details className={home.faqItem}>
               <summary>What happens to my details?</summary>
-              <p>We use them to work out your result and, if you ask or join, to email you and keep checking your plan. We never sell them or pass them to retailers, and we don&apos;t keep photos of your bill, only the numbers. Your answers are also saved in your own browser so you can pick up where you left off. <Link href="/privacy">Read our privacy policy</Link>.</p>
+              <p>We use them to work out your result and, if you ask or join, to email you and keep checking your plan. We never sell them or pass them to retailers, and we don&apos;t keep photos of your bill, only the numbers. Your answers are also saved in your own browser so you can pick up where you left off. You can delete everything we hold from your dashboard at any time. <Link href="/privacy">Read our privacy policy</Link>.</p>
+            </details>
+            <details className={home.faqItem}>
+              <summary>Can I share Utilo with a friend?</summary>
+              <p>Yes, please. Members have a referral link on the Membership tab of their dashboard. A friend who joins through it gets {referralDollars(REFERRAL_FRIEND_CENTS)} off their first payment, and you get {referralDollars(REFERRAL_CREDIT_CENTS)} off your next one. <Link href="/terms#referrals">Referral terms</Link>.</p>
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;ve got an EV. Does that matter?</summary>

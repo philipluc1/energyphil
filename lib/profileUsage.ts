@@ -162,6 +162,39 @@ export function vdoBillForUsage(distributor: Distributor, u: UsageInput): number
   return v.supply * u.days + v.usage * kwh + v.cl * u.cl;
 }
 
-// The "general average" household the government benchmark assumes — shown
-// next to the estimate so the customer can see how they differ from it.
-export const TYPICAL_ANNUAL_KWH = 4000;
+// The average Victorian home: 4,000 kWh a year, the figure the Essential
+// Services Commission uses for the Victorian Default Offer. Shown next to the
+// estimate, and used whenever we don't have enough usage to go on.
+export const AVERAGE_ANNUAL_KWH = 4000;
+export const TYPICAL_ANNUAL_KWH = AVERAGE_ANNUAL_KWH;
+
+/** Usage this thin is treated as "not enough to go on": a bill covering
+ *  under a week, or under 1 kWh a day from the grid (a new account, a
+ *  partial or estimated read, an empty house). Homes with solar exports are
+ *  only held to the days rule: low grid use is normal for them. */
+export const MIN_USAGE_DAYS = 7;
+export const MIN_KWH_PER_DAY = 1;
+
+/** The average home's usage for a billing period, split into time bands the
+ *  same way as an estimate for a household that's home some of the day, so
+ *  time-of-use plans can be compared too. No controlled load, no solar. */
+export function averageUsage(days: number): UsageInput {
+  const d = days > 0 ? days : 91;
+  const general = (AVERAGE_ANNUAL_KWH * d) / 365;
+  const s = BAND_SPLIT.some;
+  const peak = Math.round(general * s.peak);
+  const shoulder = Math.round(general * s.shoulder);
+  return { days: d, peak, shoulder, offpeak: Math.round(general) - peak - shoulder, anytime: 0, cl: 0, solarExportKwh: 0 };
+}
+
+/** True when there isn't enough usage to compare on. */
+export function usageIsIncomplete(u: UsageInput): boolean {
+  const kwh = u.peak + u.shoulder + u.offpeak + u.anytime + u.cl;
+  if (!(u.days >= MIN_USAGE_DAYS) || !(kwh > 0)) return true;
+  return (u.solarExportKwh ?? 0) > 0 ? false : kwh / u.days < MIN_KWH_PER_DAY;
+}
+
+/** The usage to compare on: theirs, or the average home's when theirs isn't enough. */
+export function usageOrAverage(u: UsageInput): { usage: UsageInput; average: boolean } {
+  return usageIsIncomplete(u) ? { usage: averageUsage(u.days), average: true } : { usage: u, average: false };
+}

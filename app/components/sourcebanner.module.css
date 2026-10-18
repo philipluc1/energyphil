@@ -1,0 +1,17 @@
+/* Welcome line for partner and referral visitors. */
+.banner {
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 0 0;
+  padding: 12px 16px; border-radius: 14px;
+  background: color-mix(in srgb, var(--teal) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--teal) 30%, transparent);
+  color: var(--ink); font-size: 15px; line-height: 1.45;
+}
+.gift {
+  background: color-mix(in srgb, var(--amber) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--amber) 45%, transparent);
+}
+.icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--surface); color: var(--teal); }
+.gift .icon { color: var(--amber-ink); background: var(--amber); }
+.banner b { font-weight: 800; }
+@media (max-width: 480px) { .banner { font-size: 14.5px; } }

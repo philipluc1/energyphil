@@ -18,3 +18,4 @@
   :root:not([data-theme="light"]) .alert { background: rgba(185, 28, 28, 0.14); color: #fecaca; border-color: rgba(185, 28, 28, 0.4); }
 }
 .title small { font-size: 12.5px; font-weight: 600; color: var(--grey); }
+.list a { color: var(--navy-accent-text, #2d3f9e); font-weight: 700; }

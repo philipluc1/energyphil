@@ -84,3 +84,6 @@
   .bigOn { box-shadow: 0 0 0 3px rgba(157, 178, 255, 0.18); }
 }
 @media (prefers-reduced-motion: reduce) { .q, .barFill { animation: none; } }
+
+/* Third choice in step 3: the average home, full width under the two big buttons */
+.bigWide { grid-column: 1 / -1; padding: 12px 16px; }

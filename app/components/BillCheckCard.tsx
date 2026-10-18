@@ -1,6 +1,9 @@
 import type { BillCheck } from "@/lib/billCheck";
 import s from "./billcheck.module.css";
 
+/** The Victorian Government's own page on help paying energy bills. */
+const HELP_URL = "https://energy.vic.gov.au/households/help-paying-your-bills";
+
 const money = (n: number) => "$" + n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const whole = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
 
@@ -22,7 +25,8 @@ export interface BillCheckFacts {
  *  message, estimated reads, concessions, and a warning about debt first. */
 export default function BillCheckCard({ check, retailer, facts, title = "We checked your bill" }: { check: BillCheck; retailer: string; facts: BillCheckFacts; title?: string }) {
   const who = retailer || "your retailer";
-  const behind = (check.overdue ?? 0) > 0 || check.paymentPlan;
+  // Only a payment plan or a real amount overdue (a small one is usually a payment that crossed with the bill).
+  const behind = check.paymentPlan || (check.overdue ?? 0) >= 100;
   const { billPlanName, olderVersion, planIsCurrent, retailerBest } = facts;
   const bo = check.bestOffer;
   const checkedOn = check.checkedAt ? new Date(check.checkedAt + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : null;
@@ -33,19 +37,16 @@ export default function BillCheckCard({ check, retailer, facts, title = "We chec
         {title}
         {checkedOn && <small> · bill read {checkedOn}</small>}
       </h3>
-      {behind && (
-        <div className={s.alert}>
-          <b>
-            {check.overdue ? `Your bill shows ${money(check.overdue)} overdue` : "Your bill mentions a payment plan"}. Talk to {who} before you switch.
-          </b>
-          <span>
-            Switching can end a payment arrangement, and the debt stays with your old retailer. From 1 October 2026, Victorian retailers must move customers
-            who are struggling to pay onto their best offer, so ask for that first. Free, confidential help: National Debt Helpline{" "}
-            <a href="tel:1800007007">1800 007 007</a>.
-          </span>
-        </div>
-      )}
       <ul className={s.list}>
+        {behind && (
+          <li className={s.info}>
+            <b>{check.paymentPlan ? "Your bill mentions a payment plan." : "Your bill shows an amount overdue."}</b> If you&apos;re behind, talk to {who} before
+            you switch: retailers have to offer payment help, and switching can end a payment arrangement.{" "}
+            <a href={HELP_URL} target="_blank" rel="noopener noreferrer">
+              Where to get help ↗
+            </a>
+          </li>
+        )}
         {olderVersion && (
           <li className={s.warn}>
             <b>Same plan name, older price.</b> Your bill says &ldquo;{billPlanName}&rdquo;. {who}&apos;s current &ldquo;{olderVersion.planName}&rdquo; costs about{" "}

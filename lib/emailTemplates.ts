@@ -9,6 +9,7 @@
 import { esc } from "./email";
 import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 import { RETAILER_LINKS } from "./retailerLinks";
+import { REFERRAL_CREDIT_CENTS, referralDollars } from "./referralOffer";
 import { button, chips, dateBanner, heading, iconRow, iconRows, money, note, planCard, signOff, statusBox, step, steps, tip, unsubscribe } from "./emailParts";
 
 export interface Email { subject: string; title: string; html: string }
@@ -16,7 +17,9 @@ export interface Email { subject: string; title: string; html: string }
 const SWITCH_FACTS = ["About 10 minutes online", "Your power stays on", "10-day cooling-off"];
 const retailerLink = (r: string) => (RETAILER_LINKS[r] ? { label: `See the plan on ${esc(r)}'s site`, url: RETAILER_LINKS[r] } : null);
 
-/* ---------- 1. Your result (sent straight after a free check) ---------- */
+/* ---------- 1. Your result (sent straight after a free check) ----------
+   Free users get the saving, not the retailer: the cheapest plans are for
+   members, the same as on the results page. */
 export function resultEmail(i: {
   origin: string;
   retailer: string;
@@ -32,17 +35,17 @@ export function resultEmail(i: {
   const card = worth
     ? planCard({
         kicker: "Cheapest for you",
-        retailer: i.retailer,
-        planName: i.planName,
+        retailer: "Members see which retailer",
+        planName: "The plan name, rates and sign-up conditions are on your members' dashboard.",
         figure: { amount: i.yearly, after: i.vsBill ? "a year less than your bill." : "a year less than the default offer." },
-        link: retailerLink(i.retailer),
+        link: { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` },
       })
-    : statusBox({ kicker: "Your result", headline: "Nothing beats it by enough to bother", body: `The cheapest we found, ${esc(i.retailer)}, saves less than ${money(WORTH_SWITCHING_PER_YEAR)} a year. Stay put.`, tone: "green" });
+    : statusBox({ kicker: "Your result", headline: "Nothing beats it by enough to bother", body: `The cheapest plan we found saves less than ${money(WORTH_SWITCHING_PER_YEAR)} a year. Stay put.`, tone: "green" });
   const html = `
     <p>${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : "Here's your result, so it's easy to find later."}</p>
     ${card}
     ${!i.vsBill && worth ? tip(`This is against the default offer. <strong>Snap your bill</strong> for your exact saving: <a href="${i.origin}/check">check again with a photo</a>.`) : ""}
-    ${worth ? button(`Switch to ${esc(i.retailer)}`, RETAILER_LINKS[i.retailer] ?? `${i.origin}/check`) : button("See my result again", `${i.origin}/check`)}
+    ${worth ? button("See the cheapest plan", `${i.origin}/pricing`) : button("See my result again", `${i.origin}/check`)}
     ${worth ? chips(SWITCH_FACTS) : ""}
     ${note(`Prices change through the year. Members are re-checked every morning and told when switching is worth it. <a href="${i.origin}/pricing">$39 a year</a>.`)}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you asked for your result by email.")}`;
@@ -70,7 +73,7 @@ export function followUpMembership(i: { origin: string; unsubscribeUrl: string }
 export function followUpWeek(i: { origin: string; retailer: string | null; planName: string | null; yearly: number | null; unsubscribeUrl: string }): Email {
   const weekly = i.yearly && i.yearly >= WORTH_SWITCHING_PER_YEAR ? i.yearly / 52 : null;
   const html = `
-    <p>A week ago we found ${i.retailer ? `<strong>${esc(i.retailer)}</strong>` : "a cheaper plan"} for you.</p>
+    <p>A week ago we found a cheaper plan for you. Members see which retailer, and get it re-checked every morning: <a href="${i.origin}/pricing">$39 a year</a>.</p>
     ${weekly ? statusBox({ kicker: "Still on the old plan?", headline: `About ${money(weekly)} a week`, body: "That's what the old plan costs you each week, compared with the one we found.", tone: "amber" }) : ""}
     ${button("Check again with today's prices", `${i.origin}/check`)}
     <p>Already switched? Nice work. This is the last of these emails.</p>
@@ -109,8 +112,8 @@ export function cheaperGasForMember(i: { origin: string; retailer: string; planN
 /* ---------- 5. Cheaper plan found (free user who opted in) ---------- */
 export function cheaperForLead(i: { origin: string; previousRetailer: string | null; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null }): Email {
   const html = `
-    <p>When you checked your plan${i.previousRetailer ? `, the best match was ${esc(i.previousRetailer)}` : ""}. Prices have moved since, and there's now something cheaper.${i.offerNote ? ` ${esc(i.offerNote)}` : ""}</p>
-    ${planCard({ kicker: "New cheapest in your area", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: "a year cheaper than that earlier match." }, link: retailerLink(i.retailer), tone: "amber" })}
+    <p>Prices have moved since you checked your plan, and there's now something cheaper.</p>
+    ${planCard({ kicker: "New cheapest in your area", retailer: "Members see which retailer", planName: "The plan, its rates and sign-up conditions are on your members' dashboard.", figure: { amount: i.yearly, after: "a year cheaper than your earlier best match." }, link: { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` }, tone: "amber" })}
     ${button("Check it with my bill", `${i.origin}/check`)}
     ${tip(`Want this done for you every morning, without waiting for an email like this? <a href="${i.origin}/pricing">Membership is $39 a year</a>.`)}
     ${note(esc(PRICE_CHANGE_CLAUSE))}
@@ -181,6 +184,17 @@ export function monthlyCheck(i: {
     title: i.isJuly ? "Your 1 July re-check" : `Your ${esc(i.monthName)} check`,
     html,
   };
+}
+
+/* ---------- Referral: a friend joined with the member's link ----------
+   No friend's name or email: just that someone joined and the credit. */
+export function referralCreditEmail(i: { origin: string }): Email {
+  const credit = referralDollars(REFERRAL_CREDIT_CENTS);
+  const html = `
+    <p>Someone joined Utilo with your link. Thank you for passing it on.</p>
+    ${statusBox({ kicker: "Your credit", headline: `${credit} off your next payment`, body: "It's on your account now and comes off your next membership payment automatically.", tone: "green" })}
+    ${button("Get your link to share again", `${i.origin}/account#membership`)}`;
+  return { subject: `A friend joined: ${credit} off your next payment`, title: "A friend joined with your link", html };
 }
 
 export { signOff };

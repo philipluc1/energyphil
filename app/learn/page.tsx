@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DISTRIBUTORS, VDO, PLANS, PLAN_DATA_DATE, rankPlans, type Distributor } from "@/lib/plans";
+import { DISTRIBUTORS, VDO, PLANS, PLAN_DATA_DATE, rankPlans, topOpen, type Distributor } from "@/lib/plans";
 import { VIDEOS, VDO_HISTORY, TIMELINE, SAVE_TIPS } from "@/lib/learnContent";
 import { DATA_FACTS, PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import PriceFlow from "../components/PriceFlow";
@@ -24,8 +24,9 @@ function buildCharts() {
   const byNetwork: Record<string, RetailerRow[]> = {};
   for (const d of DISTRIBUTORS as readonly Distributor[]) {
     const ranked = rankPlans(d, USAGE).filter((m) => m.plan[3] === "MARKET");
-    if (!ranked.length) continue;
-    gaps.push({ network: d, vdo: VDO[d].annual, best: Math.round(ranked[0].total) });
+    const best = topOpen(ranked);
+    if (!best) continue;
+    gaps.push({ network: d, vdo: VDO[d].annual, best: Math.round(best.total) });
     const cheapest = new Map<string, number>();
     for (const m of ranked) {
       const r = m.plan[0];

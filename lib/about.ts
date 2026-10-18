@@ -25,7 +25,7 @@ export const PRIVACY = {
   /** Where privacy requests and complaints go, e.g. "privacy@utiloaustralia.com.au". */
   email: "",
   /** Last date the policy text was changed. Update when you edit app/privacy/page.tsx. */
-  lastUpdated: "17 October 2026",
+  lastUpdated: "18 October 2026",
   /** The Supabase project's region (Supabase > Project Settings > General), e.g. "Sydney, Australia". */
   databaseRegion: "",
   /** How long member data is kept after a membership ends, e.g. "12 months". */

@@ -31,8 +31,10 @@ import type { Distributor } from "@/lib/plans";
 import { DEFAULT_PROFILE, estimateUsage } from "@/lib/profileUsage";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
+import BillReview from "../components/BillReview";
 import type { CurrentRates, ExtractedBill } from "@/lib/billExtraction";
 import SwitchReminder from "../components/SwitchReminder";
+import { DeleteDataCard, MemberSettings } from "../components/MemberSettings";
 import styles from "./account.module.css";
 
 // Passwordless sign-in: there's no separate "create an account" step — the
@@ -142,6 +144,18 @@ export default function AccountPage() {
 
   const [sub, setSub] = useState<SubscriberSummary | null>(null);
   const [billMsg, setBillMsg] = useState("");
+  // A bill just read, waiting for the member to check it before it's saved.
+  const [pendingBill, setPendingBill] = useState<{ bill: ExtractedBill; pages: Blob[]; n: number } | null>(null);
+  const [billSaving, setBillSaving] = useState(false);
+  function onBillRead(bill: ExtractedBill, pages: Blob[]) {
+    setBillMsg("");
+    // Gas-only bills go straight through; electricity is checked first.
+    if (bill.fuel === "gas") {
+      void handleBill(bill);
+      return;
+    }
+    setPendingBill((p) => ({ bill, pages, n: (p?.n ?? 0) + 1 }));
+  }
   const [switchDate, setSwitchDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [switchBusy, setSwitchBusy] = useState(false);
   // What a non-member told us in the free check, kept in this browser.
@@ -169,7 +183,10 @@ export default function AccountPage() {
         const profile = { ...DEFAULT_PROFILE, ...(d.profile ?? {}) };
         setLocalEv(profile.ev === true);
         const days = typeof d.days === "number" ? d.days : 91;
-        const est = d.usageSource === "bill" ? null : estimateUsage(profile, days);
+        // "average": they chose the average home, so leave usage empty and the
+        // dashboard uses the average Victorian home (4,000 kWh a year).
+        const avgHome = d.usageSource === "average";
+        const est = d.usageSource === "bill" || avgHome ? null : estimateUsage(profile, days);
         setLocalCheck({
           customer_name: d.customerName || null,
           address: d.address || null,
@@ -182,11 +199,11 @@ export default function AccountPage() {
           tariff_type: null,
           usage_mode: est ? "detailed" : d.mode || null,
           billing_days: days,
-          peak_kwh: est ? est.peak : d.mode === "detailed" ? d.peak ?? null : null,
-          shoulder_kwh: est ? est.shoulder : d.mode === "detailed" ? d.shoulder ?? null : null,
-          offpeak_kwh: est ? est.offpeak : d.mode === "detailed" ? d.offpeak ?? null : null,
-          anytime_kwh: est ? 0 : d.mode === "simple" ? d.anytime ?? null : null,
-          controlled_load_kwh: est ? est.cl : d.cl ?? null,
+          peak_kwh: avgHome ? null : est ? est.peak : d.mode === "detailed" ? d.peak ?? null : null,
+          shoulder_kwh: avgHome ? null : est ? est.shoulder : d.mode === "detailed" ? d.shoulder ?? null : null,
+          offpeak_kwh: avgHome ? null : est ? est.offpeak : d.mode === "detailed" ? d.offpeak ?? null : null,
+          anytime_kwh: avgHome ? null : est ? 0 : d.mode === "simple" ? d.anytime ?? null : null,
+          controlled_load_kwh: avgHome ? null : est ? est.cl : d.cl ?? null,
           has_solar: est ? profile.hasSolar : typeof d.hasSolar === "boolean" ? d.hasSolar : null,
           solar_export_kwh: est ? est.solarExportKwh : d.hasSolar && parseFloat(d.solarExportRaw) > 0 ? parseFloat(d.solarExportRaw) : null,
           baseline_retailer: (() => { try { return JSON.parse(window.localStorage.getItem("utilo.result.v1") ?? "null")?.bestRetailer ?? null; } catch { return null; } })(),
@@ -540,6 +557,7 @@ export default function AccountPage() {
   }
 
   async function handleBill(bill: ExtractedBill) {
+    setBillSaving(true);
     setBillMsg("Working out your best plan…");
     const { data } = await supabase!.auth.getSession();
     const res = await fetch("/api/apply-bill", {
@@ -557,6 +575,7 @@ export default function AccountPage() {
       setTimeout(() => window.location.reload(), 1500);
     } else {
       setBillMsg(body?.message || "We couldn't use that bill.");
+      setBillSaving(false);
     }
   }
 
@@ -620,7 +639,8 @@ export default function AccountPage() {
   // The plan to compare rates against: today's cheapest (as in the verdict), else the last match.
   const rateDist = isMember ? sub?.distributor ?? null : localCheck?.distributor ?? null;
   const bestRow = (summary && rateDist ? findPlanRow(summary.bestRetailer, summary.bestPlan, rateDist) : null) ?? tariffPlan;
-  const bestForRates = bestRow ? { plan: bestRow, label: bestRow[0] } : null;
+  // Free users don't see the cheapest plan's name (members do).
+  const bestForRates = bestRow ? { plan: bestRow, label: isMember ? bestRow[0] : "Cheapest plan", hideName: !isMember } : null;
   const sideCards = (
     <>
       {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} />}
@@ -854,7 +874,7 @@ export default function AccountPage() {
                             <>
                               <span className={styles.stateLabel}>Your next move</span>
                               <h2 className={styles.stateHead}>Nothing to do. You&apos;re on a good deal.</h2>
-                              <p className={styles.stateSub}>We re-check every morning and email you only if something beats your plan by more than $50 a year.</p>
+                              <p className={styles.stateSub}>We re-check every morning and email you only if something beats your plan by more than your alert amount ($50 a year unless you change it on the Membership tab).</p>
                             </>
                           )}
                         </section>
@@ -916,7 +936,19 @@ export default function AccountPage() {
                               : "Snap or upload your latest bill (electricity, gas or dual fuel). We'll update your numbers and recheck every plan."}
                           </p>
                           {billMsg && <p className={styles.panelText}><b>{billMsg}</b></p>}
-                          <BillPhotoUpload onApply={handleBill} />
+                          {pendingBill ? (
+                            <BillReview
+                              key={pendingBill.n}
+                              bill={pendingBill.bill}
+                              pages={pendingBill.pages}
+                              onReread={onBillRead}
+                              onSave={(b) => void handleBill(b)}
+                              onCancel={() => { setPendingBill(null); setBillMsg(""); }}
+                              saving={billSaving}
+                            />
+                          ) : (
+                            <BillPhotoUpload onApply={onBillRead} />
+                          )}
                         </section>
 
                         <section className={styles.panelCard}>
@@ -972,9 +1004,10 @@ export default function AccountPage() {
                             <ul className={styles.perks}>
                               <li>Every plan re-priced against yours every morning</li>
                               <li>A bill read and saved check every month</li>
-                              <li>An email only when switching saves $50+ a year</li>
+                              <li>An email only when switching is worth it (you choose how much, below)</li>
                             </ul>
                           </section>
+                          <MemberSettings />
                           <UpgradePlans currentPlan={sub!.plan} onChanged={(planId, cents) => setSub((p) => (p ? { ...p, plan: planId, amount_cents: cents } : p))} />
                         </>
                       ) : (
@@ -997,6 +1030,7 @@ export default function AccountPage() {
                         </>
                       )}
                       <LearnCard />
+                      <DeleteDataCard isMember={isMember} />
                     </>
                   )}
                 </DashTabs>

@@ -5,6 +5,7 @@
 
 export interface BillCheck {
   readingType: "actual" | "estimated" | "mixed" | null;
+  /** Overdue amount and payment plan: shown once, at the moment of the check, and never stored (see forStorage). */
   overdue: number | null;
   paymentPlan: boolean;
   concession: boolean;
@@ -18,7 +19,13 @@ const num = (v: unknown, max: number): number | null => {
   return Number.isFinite(n) && n >= 0 && n < max ? Math.round(n * 100) / 100 : null;
 };
 
-/** Accept only the shape above (anything from a browser or Stripe metadata is untrusted). */
+/** The same check without anything about money owed, for saving anywhere (browser, member record, Stripe). */
+export function forStorage(c: BillCheck): BillCheck {
+  return { ...c, overdue: null, paymentPlan: false };
+}
+
+/** Accept only the shape above (anything from a browser or Stripe metadata is untrusted).
+ *  Anything about money owed is dropped: we only use that on screen during the check. */
 export function cleanBillCheck(x: unknown): BillCheck | null {
   if (!x || typeof x !== "object") return null;
   const r = x as Record<string, unknown>;
@@ -34,8 +41,8 @@ export function cleanBillCheck(x: unknown): BillCheck | null {
   const checkedAt = typeof r.checkedAt === "string" && /^\d{4}-\d{2}-\d{2}/.test(r.checkedAt) ? r.checkedAt.slice(0, 10) : null;
   return {
     readingType: reading,
-    overdue: num(r.overdue, 100000),
-    paymentPlan: r.paymentPlan === true,
+    overdue: null,
+    paymentPlan: false,
     concession: r.concession === true,
     bestOffer,
     checkedAt,
@@ -56,6 +63,6 @@ export function billCheckFromBill(b: {
     paymentPlan: b.paymentPlan === true,
     concession: b.concessionApplied === true,
     bestOffer: b.bestOffer ?? null,
-    checkedAt: new Date().toISOString().slice(0, 10),
+    checkedAt: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD in local time
   };
 }

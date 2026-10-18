@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
 import { Fill, MailLink } from "../components/Fill";
 import { ABOUT } from "@/lib/about";
 import SiteHeader from "../components/SiteHeader";
@@ -7,7 +8,7 @@ import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 
 export const metadata = { title: "Terms of Service | Utilo" };
 
-const LAST_UPDATED = "6 October 2026";
+const LAST_UPDATED = "18 October 2026";
 
 // Plain-English terms. Draft for review by a lawyer before launch.
 export default function TermsPage() {
@@ -43,8 +44,10 @@ export default function TermsPage() {
           <h2>2. Results are estimates</h2>
           <p>
             We price plans from each retailer&apos;s published rates on the date shown with every result, using the usage you give
-            us or an estimate from your answers about your home. Results exclude sign-up credits, conditional discounts, exit fees,
-            concessions and rebates, and cover only the plans we can see. They are a guide to help you decide, not a quote or
+            us or an estimate from your answers about your home. Results include each plan&apos;s discounts, assuming you pay on time (and by
+            direct debit where that is the condition), and exclude sign-up credits, other conditional discounts, fees, concessions and
+            rebates, which we list with each plan as the retailer publishes them. Offers that need a membership or that only some customers can get are listed but not picked as the best
+            plan. Results cover only the plans we can see. They are a guide to help you decide, not a quote or
             financial advice. Always confirm the price and conditions with the retailer before switching.
           </p>
         </section>
@@ -75,6 +78,17 @@ export default function TermsPage() {
             single payment and never renews. Cancelling stops future charges; you keep access to
             the end of the period you&apos;ve paid for. Refund rules are in the{" "}
             <Link href="/cancellation-policy">Cancellation Policy</Link>. Bill reading is limited to a fair number of reads a day.
+          </p>
+        </section>
+
+        <section className={styles.section} id="referrals">
+          <h2>5a. Referrals</h2>
+          <p>
+            Members can share a personal referral link. Someone who joins through it gets {referralDollars(REFERRAL_FRIEND_CENTS)} off their first
+            payment. Once their payment has gone through, the member who shared the link gets {referralDollars(REFERRAL_CREDIT_CENTS)} credited to
+            their account, which comes off their next membership payment. Credits have no cash value and can&apos;t be transferred. Your own link
+            doesn&apos;t work for you. We may change or end the offer for future referrals at any time, and we may withhold credits where the offer
+            is misused.
           </p>
         </section>
 

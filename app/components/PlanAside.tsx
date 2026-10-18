@@ -46,7 +46,7 @@ function Row({ label, value }: { label: string; value: string | null }) {
 
 /** "Your plan now": the customer's own plan, rates and supply details, kept in
  *  view beside the dashboard on wide screens. */
-export default function PlanAside({ d, uploadHref, best }: { d: PlanAsideData; uploadHref: string; best?: { plan: PlanRow; label: string } | null }) {
+export default function PlanAside({ d, uploadHref, best }: { d: PlanAsideData; uploadHref: string; best?: { plan: PlanRow; label: string; hideName?: boolean } | null }) {
   const r = d.rates;
   const rateRows: [string, string | null][] = r
     ? [
@@ -97,7 +97,7 @@ export default function PlanAside({ d, uploadHref, best }: { d: PlanAsideData; u
       {best ? (
         <div className={s.rates}>
           <span className={s.ratesTitle}>Your rates vs the cheapest plan</span>
-          <span className={s.ratesSub}>{best.label}: {best.plan[2]}</span>
+          <span className={s.ratesSub}>{best.hideName ? "Members see which retailer and plan" : `${best.label}: ${best.plan[2]}`}</span>
           <RatesCompare current={r} plan={best.plan} planLabel={best.label} compact />
         </div>
       ) : (

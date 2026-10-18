@@ -1,4 +1,5 @@
-import { DISTRIBUTORS, benchmarkBill, rankPlans, type UsageInput } from "./plans";
+import { DISTRIBUTORS, benchmarkBill, bestPlan, computeBill, type Distributor, type UsageInput } from "./plans";
+import { DEFAULT_PROFILE, averageUsage, estimateUsage, vdoBillForUsage, type HomeProfile } from "./profileUsage";
 
 export interface PeriodBreakdown {
   quarterly: number;
@@ -54,7 +55,7 @@ export function typicalHouseholdExample(): TypicalExample {
   let count = 0;
   for (const distributor of DISTRIBUTORS) {
     const bench = benchmarkBill(distributor, DAYS, null);
-    const best = rankPlans(distributor, usage)[0];
+    const best = bestPlan(distributor, usage);
     if (!best) continue;
     totalSave += Math.max(0, bench - best.total);
     totalBench += bench;
@@ -70,6 +71,72 @@ export function typicalHouseholdExample(): TypicalExample {
     annualBench: totalBench * perYear,
     annualBest: totalBest * perYear,
   };
+}
+
+// --- Three homes (home page) ---
+//
+// The point of reading a bill: the cheapest plan, and what it saves, depend on
+// the home. We price three homes on one network with today's plan data: the
+// 4,000 kWh "typical household" (the regulator's figure), a single person in
+// a flat, and a family of five with electric heating and hot water. Live
+// figures from the same pricing as the check; the page labels them as
+// estimates from our household model.
+
+export const THREE_HOMES_NETWORK: Distributor = "Powercor"; // Melbourne's west and western Victoria
+
+export interface HomeExample {
+  key: "typical" | "single" | "family";
+  title: string;
+  detail: string;
+  annualKwh: number;
+  /** A year on the cheapest plan this home can get. */
+  best: number;
+  /** A year on the Victorian Default Offer, for the same usage. */
+  vdo: number;
+  saving: number;
+  /** True when this home's cheapest plan isn't the typical home's pick. */
+  differentPlan: boolean;
+  /** What the typical home's pick would cost this home a year on top of its own cheapest (0 when the same). */
+  typicalPickCostsMore: number | null;
+}
+
+const HOMES: { key: HomeExample["key"]; title: string; detail: string; profile: Partial<HomeProfile> | null }[] = [
+  { key: "single", title: "One person in a flat", detail: "Out at work, gas heating, no air-con", profile: { people: 1, cooling: false, daytimeHome: "away" } },
+  { key: "typical", title: "The \u201ctypical household\u201d", detail: "4,000 kWh a year, the regulator\u2019s \u201ctypical\u201d figure", profile: null },
+  { key: "family", title: "A family of five", detail: "Reverse-cycle heating, electric hot water on controlled load", profile: { people: 5, heating: "reverse_cycle", hotWater: "electric_controlled", daytimeHome: "away" } },
+];
+
+function homeUsage(profile: Partial<HomeProfile> | null, days: number): UsageInput {
+  if (!profile) return averageUsage(days);
+  const e = estimateUsage({ ...DEFAULT_PROFILE, ...profile }, days);
+  return { days, peak: e.peak, shoulder: e.shoulder, offpeak: e.offpeak, anytime: 0, cl: e.cl, solarExportKwh: e.solarExportKwh };
+}
+
+export function threeHomesExample(network: Distributor = THREE_HOMES_NETWORK): HomeExample[] {
+  const DAYS = 365;
+  const typicalPick = bestPlan(network, averageUsage(DAYS));
+  const out: HomeExample[] = [];
+  for (const h of HOMES) {
+    const u = homeUsage(h.profile, DAYS);
+    const best = bestPlan(network, u);
+    if (!best) continue;
+    const vdo = vdoBillForUsage(network, u);
+    const pickCost = typicalPick ? computeBill(typicalPick.plan, u) : null;
+    const differentPlan = !!typicalPick && best.plan !== typicalPick.plan;
+    out.push({
+      key: h.key,
+      title: h.title,
+      detail: h.detail,
+      annualKwh: Math.round(u.peak + u.shoulder + u.offpeak + u.anytime + u.cl),
+      best: best.total,
+      vdo,
+      saving: Math.max(0, vdo - best.total),
+      differentPlan,
+      // null: the typical home's pick can't price this home (e.g. no controlled-load rate).
+      typicalPickCostsMore: pickCost === null ? null : Math.max(0, pickCost - best.total),
+    });
+  }
+  return out;
 }
 
 // --- Accumulated savings (subscriber account history) ---

@@ -74,7 +74,7 @@ export function costFromRates(r: CurrentRates | null, usage: UsageInput): RatesC
   if (!hasSingle && !hasTou) return { ok: false, reason: "incomplete" };
   if (usage.cl > 0 && r.cl === null) return { ok: false, reason: "needCl" };
   const row: PlanRow = ["Your plan", "", "Your plan", "MARKET", r.supply, hasSingle ? r.anytime : null, hasSingle ? null : r.peak, hasSingle ? null : r.shoulder, hasSingle ? null : r.offpeak, r.cl, r.solarFit];
-  const total = computeBill(row, usage);
+  const total = computeBill(row, usage, { discounts: false });
   if (total === null) return { ok: false, reason: hasTou && !hasSingle ? "needSplit" : "incomplete" };
   return { ok: true, total };
 }

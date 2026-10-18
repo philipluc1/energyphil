@@ -1,12 +1,12 @@
 import { costFromRates } from "@/lib/currentRates";
-import { billCheckFromBill } from "@/lib/billCheck";
+import { billCheckFromBill, forStorage } from "@/lib/billCheck";
 import type { CurrentRates } from "@/lib/billExtraction";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActiveMember } from "@/lib/memberAccess";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { DISTRIBUTORS, rankPlans, type Distributor, type UsageInput } from "@/lib/plans";
+import { DISTRIBUTORS, bestPlan, type Distributor, type UsageInput } from "@/lib/plans";
 import { vdoBillForUsage } from "@/lib/profileUsage";
-import { GAS_ZONES, gasBenchmark, rankGasPlans, type GasZone } from "@/lib/gasPlans";
+import { GAS_ZONES, bestGasPlan, gasBenchmark, type GasZone } from "@/lib/gasPlans";
 
 // After a member's bill has been read, store its figures on their membership
 // (so the monthly checks use real numbers) and record this month's check.
@@ -30,8 +30,7 @@ export async function POST(req: NextRequest) {
     const mj = num(b?.gasMj);
     const gTotal = num(b?.gasBillTotal);
     if (!zone || !gDays || !mj) return null;
-    const ranked = rankGasPlans(zone, { days: gDays, mj });
-    const best = ranked[0] ?? null;
+    const best = bestGasPlan(zone, { days: gDays, mj }) ?? null;
     const bench = gasBenchmark(zone, { days: gDays, mj }, gTotal);
     const { data: subG } = await supabaseAdmin!
       .from("subscribers").select("id").eq("email", memberEmail).eq("status", "active")
@@ -93,7 +92,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   // EV-only plans count only for members who told us they charge an EV.
   const ev = !!sub?.home_profile && (sub.home_profile as { ev?: unknown }).ev === true;
-  const top = rankPlans(distributor, usage, { ev })[0];
+  const top = bestPlan(distributor, usage, { ev, currentRetailer: typeof b?.retailerName === "string" ? b.retailerName : null });
   if (!top) return NextResponse.json({ ok: false, message: "No comparable plans for that bill." });
   const currentBill = num(b?.currentBill);
   // What they pay now: the bill total, or their own plan priced from the
@@ -146,7 +145,7 @@ export async function POST(req: NextRequest) {
     if (ratesErr) console.warn("apply-bill: pricing columns not saved (run supabase/schema.sql)", ratesErr.message);
     const { error: checkErr } = await supabaseAdmin
       .from("subscribers")
-      .update({ bill_check: billCheckFromBill(b ?? {}) })
+      .update({ bill_check: forStorage(billCheckFromBill(b ?? {})) })
       .eq("id", sub.id);
     if (checkErr) console.warn("apply-bill: bill_check not saved (run supabase/schema.sql)", checkErr.message);
   }

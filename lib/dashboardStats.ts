@@ -1,3 +1,5 @@
+import { sourceLabel } from "./attribution";
+
 export interface LeadRow {
   id: string;
   created_at: string;
@@ -191,4 +193,107 @@ export function computeSubscriberStats(subs: SubscriberRow[], now: Date = new Da
   const recent = subs.slice(0, 25);
 
   return { totalSubscribers, activeSubscribers, totalCollectedCents, byPlan, revenuePerDay, recent };
+}
+
+// --- Launch funnel (check_events + subscribers) ------------------------------
+// Anonymous counts of checks started and finished (lib/track.ts), set against
+// new members, overall and by where people came from. Powers the "Launch
+// checkpoints" section of the owner dashboard.
+
+
+export interface CheckEventRow {
+  created_at: string;
+  event: string;
+  source: string | null;
+}
+export interface MemberSourceRow {
+  created_at: string;
+  status: string;
+  source: string | null;
+}
+export interface FunnelWindow {
+  label: string;
+  started: number;
+  completed: number;
+  joinClicks: number;
+  checkouts: number;
+  members: number;
+  /** New members ÷ finished checks; null when there are no finished checks. */
+  conversion: number | null;
+}
+export interface SourceFunnelRow {
+  label: string;
+  completed: number;
+  members: number;
+  conversion: number | null;
+}
+export interface Checkpoint {
+  label: string;
+  due: string;
+  target: number;
+  actual: number;
+  kind: "count" | "rate";
+  met: boolean;
+}
+export interface FunnelStats {
+  windows: FunnelWindow[];
+  bySource: SourceFunnelRow[];
+  checkpoints: Checkpoint[];
+  firstEvent: string | null;
+}
+
+/** The targets from the launch plan (strategy notes, 18 Oct 2026). */
+export const LAUNCH_CHECKPOINTS = [
+  { key: "checks", label: "Finished checks", due: "31 January 2027", target: 1000 },
+  { key: "conversion", label: "Finished checks that become members", due: "31 January 2027", target: 0.025 },
+  { key: "members", label: "Active members", due: "30 April 2027", target: 100 },
+] as const;
+
+export function computeFunnelStats(
+  events: CheckEventRow[],
+  members: MemberSourceRow[],
+  now: Date = new Date(),
+  partnerName?: (code: string) => string | null,
+): FunnelStats {
+  const day = 86_400_000;
+  const windowOf = (label: string, from: number): FunnelWindow => {
+    const ev = events.filter((e) => new Date(e.created_at).getTime() >= from);
+    const count = (name: string) => ev.filter((e) => e.event === name).length;
+    const completed = count("check_completed");
+    const joined = members.filter((m) => new Date(m.created_at).getTime() >= from).length;
+    return {
+      label,
+      started: count("check_started"),
+      completed,
+      joinClicks: count("unlock_clicked"),
+      checkouts: count("checkout_started"),
+      members: joined,
+      conversion: completed > 0 ? joined / completed : null,
+    };
+  };
+  const t = now.getTime();
+  const windows = [windowOf("Last 7 days", t - 7 * day), windowOf("Last 30 days", t - 30 * day), windowOf("Since launch", 0)];
+
+  const bySourceMap = new Map<string, { completed: number; members: number }>();
+  const bump = (raw: string | null, key: "completed" | "members") => {
+    const label = sourceLabel(raw, partnerName);
+    const row = bySourceMap.get(label) ?? { completed: 0, members: 0 };
+    row[key]++;
+    bySourceMap.set(label, row);
+  };
+  for (const e of events) if (e.event === "check_completed") bump(e.source, "completed");
+  for (const m of members) bump(m.source, "members");
+  const bySource = Array.from(bySourceMap.entries())
+    .map(([label, r]) => ({ label, ...r, conversion: r.completed > 0 ? r.members / r.completed : null }))
+    .sort((a, b) => b.completed - a.completed || b.members - a.members);
+
+  const all = windows[2];
+  const active = members.filter((m) => m.status === "active").length;
+  const checkpoints: Checkpoint[] = LAUNCH_CHECKPOINTS.map((c) => {
+    const actual = c.key === "checks" ? all.completed : c.key === "conversion" ? all.conversion ?? 0 : active;
+    return { label: c.label, due: c.due, target: c.target, actual, kind: c.key === "conversion" ? "rate" : "count", met: actual >= c.target };
+  });
+
+  const times = events.map((e) => e.created_at).sort();
+  return { windows, bySource, checkpoints, firstEvent: times[0] ?? null };
 }

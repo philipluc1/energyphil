@@ -1608,7 +1608,7 @@
   .getPlan .switchBtn { grid-column: 1 / -1; text-align: center; }
 }
 
-.resultHeroBad { background: linear-gradient(135deg, #7f1d1d, #b45309); }
+.resultHeroBad { background: radial-gradient(520px 260px at 100% 0%, rgba(253, 224, 71, 0.22), transparent 60%), linear-gradient(135deg, #065f46 0%, #0f766e 55%, #155e75 100%); }
 .resultHeroGood { background: linear-gradient(135deg, #14532d, #0d6f78); }
 .resultHeroGood .resultHeroNum { font-size: clamp(30px, 6vw, 46px); color: #86efac; }
 .billNudge { margin-top: 14px; padding: 12px 16px; border-radius: 14px; background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,0.4); font-size: 14px; line-height: 1.5; }
@@ -1680,3 +1680,21 @@
 .bestCard .saveLine, .bestCard .scaleNote { margin-left: auto; margin-right: auto; max-width: 560px; }
 .bestCard .getPlan, .bestCard .rateBreakdown { text-align: left; }
 .stayCard { text-align: left; }
+
+/* "Use the average home" under the step's blocking note */
+.blockAction { margin-left: 4px; padding: 0; border: 0; background: none; font: inherit; font-weight: 800; color: var(--navy-accent-text, #2d3f9e); text-decoration: underline; cursor: pointer; }
+
+/* Results based on the average home (no usage, or too little to go on) */
+.avgNote { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; padding: 14px 16px; border-radius: 14px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; text-align: left; }
+.avgNote svg { flex: none; margin-top: 2px; }
+.avgNote b { display: block; font-size: 15px; }
+.avgNote p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.5; color: #1e3a8a; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .avgNote { background: rgba(59, 130, 246, 0.12); border-color: rgba(147, 197, 253, 0.3); color: #dbeafe; }
+  :root:not([data-theme="light"]) .avgNote p { color: #dbeafe; }
+}
+:root[data-theme="dark"] .avgNote { background: rgba(59, 130, 246, 0.12); border-color: rgba(147, 197, 253, 0.3); color: #dbeafe; }
+:root[data-theme="dark"] .avgNote p { color: #dbeafe; }
+
+/* Referred visitors: the friend's discount, under the plan cards. */
+.referralNote { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #1c1403; background: #fde68a; }

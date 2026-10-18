@@ -78,9 +78,36 @@
 .story { margin: 0 0 12px; max-width: 42em; font-size: 16px; line-height: 1.65; color: var(--ink); }
 .sign { margin: 4px 0 0; font-weight: 700; color: var(--grey); }
 
+.lede em { font-style: normal; font-weight: 800; color: var(--ink); }
+
+/* Three things only your bill knows */
+.knows { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.knows li { padding: 22px 20px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+.knows h3 { margin: 12px 0 6px; font-size: 18px; font-weight: 800; color: var(--ink); }
+.knows p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--grey); }
+.knowIcon { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: color-mix(in srgb, var(--teal) 14%, transparent); color: var(--teal); }
+
+/* Same prices, three homes */
+.homes { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+.homes li { position: relative; display: flex; flex-direction: column; padding: 22px 20px 18px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+.homes h3 { margin: 0 0 4px; font-size: 18px; font-weight: 800; color: var(--ink); }
+.homeDetail { margin: 0 0 14px; font-size: 14px; line-height: 1.45; color: var(--grey); }
+.homes dl { margin: 0; display: grid; gap: 8px; }
+.homes dl div { display: flex; justify-content: space-between; gap: 12px; font-size: 14.5px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.homes dt { color: var(--grey); }
+.homes dd { margin: 0; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+.homes .homeSave { border-bottom: none; padding-bottom: 0; align-items: baseline; }
+.homes .homeSave dt { color: var(--ink); font-weight: 700; }
+.homes .homeSave dd { color: var(--teal); font-size: 22px; font-weight: 900; white-space: nowrap; }
+.homes .homeSave dd small { font-size: 13px; font-weight: 700; }
+.homeNote { margin: 14px 0 0; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.homeTypical { border: 2px dashed var(--grey-soft) !important; background: var(--bg) !important; }
+.homeTag { align-self: flex-start; margin: -4px 0 10px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; background: var(--track); color: var(--grey); }
+
 @media (max-width: 820px) {
   .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 32px; }
   .steps { grid-template-columns: 1fr; gap: 32px; }
+  .knows, .homes { grid-template-columns: 1fr; }
   .shot { height: 300px; }
   .founder { flex-direction: column; }
 }

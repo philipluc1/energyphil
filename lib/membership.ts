@@ -6,6 +6,8 @@ import { findPlan } from "./pricingPlans";
 import { sendEmail } from "./email";
 import { welcomeEmail } from "./welcomeEmail";
 import { PLANS } from "./plans";
+import { cleanReferralCode, sourceValue } from "./attribution";
+import { creditReferrer, newReferralCode } from "./referrals";
 
 const KNOWN_RETAILERS = new Set(PLANS.map((p) => p[0]));
 
@@ -83,8 +85,17 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     current_price_fixed_until: /^\d{4}-\d{2}-\d{2}$/.test(md.priceFixedUntil ?? "") ? md.priceFixedUntil : null,
     discount_ends_at: /^\d{4}-\d{2}-\d{2}$/.test(md.discountEndsAt ?? "") ? md.discountEndsAt : null,
     bill_check: cleanBillCheck(parseJson(md.billCheck)),
+    // Where they came from, who referred them, and their own code to share.
+    source: sourceValue(md.source),
+    referred_by: cleanReferralCode(md.referredBy),
+    referral_code: newReferralCode(),
   };
   let { data: inserted, error } = await supabaseAdmin.from("subscribers").insert({ ...core, ...extras }).select("id").single();
+  // Two members drawing the same referral code is very unlikely; draw again.
+  for (let tries = 0; tries < 3 && error && /duplicate key.*referral_code/i.test(error.message); tries++) {
+    extras.referral_code = newReferralCode();
+    ({ data: inserted, error } = await supabaseAdmin.from("subscribers").insert({ ...core, ...extras }).select("id").single());
+  }
   // If the database is missing a newer optional column (schema.sql not re-run),
   // still create the membership with the core fields rather than fail.
   if (error && /column|schema cache/i.test(error.message)) {
@@ -97,6 +108,12 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
   if (error) {
     console.error("Failed to save subscriber", error);
     return { ok: false, created: false, message: error.message };
+  }
+
+  // A friend's referral: credit the member who sent them (once per checkout).
+  const referredBy = cleanReferralCode(md.referredBy);
+  if (referredBy) {
+    await creditReferrer({ code: referredBy, checkoutSessionId: session.id, friendEmail: email, origin }).catch((e) => console.error("referral credit", e));
   }
 
   if (opts.sendWelcome !== false) {

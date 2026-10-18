@@ -3,7 +3,10 @@
 // as retailers redesign their sites). The customer searches for the plan
 // name shown once they land there. Checked October 2026 — worth a periodic
 // click-through to make sure none of these have moved.
-export const RETAILER_LINKS: Record<string, string> = {
+import { RETAILER_DIRECTORY } from "./retailerDirectory";
+
+// Hand-checked links for the big retailers.
+const CHECKED: Record<string, string> = {
   AGL: "https://www.agl.com.au",
   "Alinta Energy": "https://www.alintaenergy.com.au",
   "Blue NRG": "https://www.bluenrg.com.au",
@@ -20,3 +23,13 @@ export const RETAILER_LINKS: Record<string, string> = {
   Sumo: "https://www.sumo.com.au",
   "Tango Energy": "https://www.tangoenergy.com",
 };
+
+// Every other retailer with plans on the site: its home page from Energy Made
+// Easy's retailer register (lib/retailerDirectory.ts, refreshed daily).
+const FROM_REGISTER: Record<string, string> = Object.fromEntries(
+  Object.entries(RETAILER_DIRECTORY)
+    .filter(([, d]) => typeof d.website === "string" && d.website.startsWith("https://"))
+    .map(([name, d]) => [name, d.website as string]),
+);
+
+export const RETAILER_LINKS: Record<string, string> = { ...FROM_REGISTER, ...CHECKED };

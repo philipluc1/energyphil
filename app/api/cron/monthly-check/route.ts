@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { monthlyCheck } from "@/lib/emailTemplates";
-import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
+import { GAS_ZONES, bestGasPlan, type GasZone } from "@/lib/gasPlans";
 import { computeBest } from "@/lib/priceWatch";
 import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
@@ -127,7 +127,7 @@ function hasEv(profile: unknown): boolean {
 function gasSummary(sub: Row): { retailer: string; planName: string; yearly: number } | null {
   if (!sub.gas_zone || !GAS_ZONES.includes(sub.gas_zone as GasZone) || !sub.gas_mj || !sub.gas_reference_total) return null;
   const days = sub.gas_billing_days ?? 91;
-  const top = rankGasPlans(sub.gas_zone as GasZone, { days, mj: sub.gas_mj })[0];
+  const top = bestGasPlan(sub.gas_zone as GasZone, { days, mj: sub.gas_mj });
   if (!top) return null;
   return { retailer: top.plan[0], planName: top.plan[2], yearly: ((sub.gas_reference_total - top.total) * 365) / days };
 }

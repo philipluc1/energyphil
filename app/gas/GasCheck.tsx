@@ -10,6 +10,8 @@ import Link from "next/link";
 import { GAS_PLANS, GAS_PLAN_DATA_DATE, GAS_RETAILER_COUNT, GAS_ZONES, TYPICAL_MJ_PER_DAY, gasBenchmark, gasDataReady, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
+import { describeOffer, topOpen } from "@/lib/planExtras";
+import OfferTerms, { OfferChips } from "../components/OfferTerms";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import styles from "../components/Comparator.module.css";
@@ -109,7 +111,9 @@ export default function GasCheck() {
   const usage = useMemo(() => ({ days, mj: mjOk ? mj : 0 }), [days, mj, mjOk]);
   const ranked = useMemo(() => (mjOk ? rankGasPlans(zone, usage) : []), [zone, usage, mjOk]);
   const bench = useMemo(() => (mjOk ? gasBenchmark(zone, usage, haveBill ? bill : null) : null), [zone, usage, bill, haveBill, mjOk]);
-  const top = ranked[0];
+  // Cheapest gas plan anyone can get; members-only offers and the like stay in the list.
+  const top = topOpen(ranked);
+  const offerFor = (p: (typeof ranked)[number]["plan"]) => describeOffer("G", p[0], p[2], p[1], { hasSolar: false });
   const perYear = (v: number) => (v / Math.max(1, days)) * 365;
   const yearly = top && bench ? perYear(bench.value - top.total) : 0;
   const worth = yearly >= WORTH_SWITCHING_PER_YEAR;
@@ -246,7 +250,7 @@ export default function GasCheck() {
               <div className={styles.resultHeroLabel}>{haveBill ? "You could save about" : "The cheapest gas plan saves up to"}</div>
               <div className={styles.resultHeroNum}>{money0(Math.max(0, yearly))}</div>
               <div className={styles.resultHeroSub}>a year with {top.plan[0]}{haveBill ? ", vs your gas bill" : ". Add your gas charges for your own saving."}</div>
-              {RETAILER_LINKS[top.plan[0]] && <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.resultHeroBtn}>See the plan →</a>}
+              {RETAILER_LINKS[top.plan[0]] && <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={zone} data-fuel="G" target="_blank" rel="noopener noreferrer" className={styles.resultHeroBtn}>See the plan →</a>}
               <span className={styles.resultHeroFine}>From this bill, scaled to a year. Gas use swings with the seasons, so treat it as a guide. {PRICE_CHANGE_CLAUSE}</span>
             </div>
           )}
@@ -267,6 +271,7 @@ export default function GasCheck() {
                 ? <><b>{money(bench.value - top.total)} less</b> than {bench.label} for the same gas</>
                 : <><b>{money(top.total - bench.value)} more</b> than {bench.label}</>}
             </p>
+            <OfferTerms o={offerFor(top.plan)} retailer={top.plan[0]} dark />
             {RETAILER_LINKS[top.plan[0]] && (
               <div className={styles.getPlan}>
                 <div className={styles.getPlanLogo} aria-hidden="true">{top.plan[0].split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
@@ -274,7 +279,7 @@ export default function GasCheck() {
                   <b>Get this plan from {top.plan[0]}</b>
                   <span>Look for &ldquo;{top.plan[2]}&rdquo;. If you take electricity from them too, ask about a dual-fuel discount.</span>
                 </div>
-                <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={styles.switchBtn}>Go to {top.plan[0]} →</a>
+                <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={zone} data-fuel="G" target="_blank" rel="noopener noreferrer" className={styles.switchBtn}>Go to {top.plan[0]} →</a>
               </div>
             )}
           </div>
@@ -308,7 +313,7 @@ export default function GasCheck() {
                       <div className={styles.left}>
                         <span className={styles.rk}>#{i + 1}</span>
                         <span className={styles.rname}>{m.plan[0]}</span>
-                        <div className={styles.pname}><span className={styles.pnameText}>{m.plan[2]}</span> <OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></div>
+                        <div className={styles.pname}><span className={styles.pnameText}>{m.plan[2]}</span> <OfferDate retailer={m.plan[0]} plan={m.plan[2]} /> <OfferChips o={offerFor(m.plan)} /></div>
                       </div>
                       <div className={styles.right}>
                         <div className={styles.tot}>{money(m.total)}</div>
@@ -318,7 +323,7 @@ export default function GasCheck() {
                   </div>
                 ))}
               </div>
-              <p className={styles.helper}>{GAS_PLANS.filter((p) => p[1] === zone).length} gas plans on {zone}, from the retailers we track. Not every plan in the market. Excludes conditional discounts and fees.</p>
+              <p className={styles.helper}>{GAS_PLANS.filter((p) => p[1] === zone).length} gas plans on {zone}, from the retailers we track. Not every plan in the market. Includes each plan&apos;s discounts, assuming you pay on time; leaves out sign-up credits, fees and concessions.</p>
             </div>
           </details>
         </>

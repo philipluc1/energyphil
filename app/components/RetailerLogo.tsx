@@ -4,7 +4,7 @@ import s from "./retailerlogo.module.css";
 // A retailer's logo where we have the file (public/images/retailers/<slug>.png
 // or .svg), otherwise a coloured badge with their initials.
 
-const COLOURS = ["#2d3f9e", "#0d9488", "#c2410c", "#7c3aed", "#0369a1", "#b91c1c", "#15803d", "#a16207", "#be185d", "#4338ca"];
+const COLOURS = ["#2d3f9e", "#0d9488", "#e11d48", "#7c3aed", "#0369a1", "#b91c1c", "#15803d", "#0891b2", "#be185d", "#4338ca"];
 
 export function retailerSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

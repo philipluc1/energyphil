@@ -95,7 +95,8 @@ export default function CancellationPolicyPage() {
             Cancelling your subscription stops billing and ongoing monitoring — it doesn&apos;t automatically
             delete your account or history. Your savings history stays visible in your dashboard if you sign back
             in, and you&apos;re welcome to resubscribe at any time. If you&apos;d prefer we delete your data
-            entirely, just ask — see our <Link href="/privacy">Privacy Policy</Link>.
+            entirely, use <b>Delete my data</b> on the Membership tab of your dashboard once you&apos;ve cancelled, or just ask: see our{" "}
+            <Link href="/privacy">Privacy Policy</Link>.
           </p>
         </section>
 

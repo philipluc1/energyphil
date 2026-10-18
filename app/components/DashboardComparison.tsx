@@ -4,16 +4,18 @@ import OfferDate from "./OfferDate";
 import Icon from "./Icon";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { RETAILER_COUNT, rankPlans, isEvFriendly, fmtRateCents, fmtRatePerDay, type Distributor, type UsageInput, type PlanRow } from "@/lib/plans";
+import { RETAILER_COUNT, billDetail, rankPlans, topOpen, isEvFriendly, fmtRateCents, fmtRatePerDay, type Distributor, type UsageInput, type PlanRow } from "@/lib/plans";
+import { describeOffer } from "@/lib/planExtras";
+import OfferTerms, { OfferChips } from "./OfferTerms";
 import { planPriceType, PRICE_TYPE_LABEL, PRICE_TYPE_HELP, type PriceType } from "@/lib/planTerms";
 import type { CurrentRates } from "@/lib/billExtraction";
 import SwitchReminder from "./SwitchReminder";
 import type { ResultsChartPalette } from "@/lib/dashThemes";
-import { vdoBillForUsage } from "@/lib/profileUsage";
+import { AVERAGE_ANNUAL_KWH, usageOrAverage, vdoBillForUsage } from "@/lib/profileUsage";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { WORTH_SWITCHING_PER_YEAR, OVERPRICED_PER_YEAR, OVERPRICED_SHARE } from "@/lib/dataPolicy";
 import { useCountUp } from "@/lib/useCountUp";
-import ResultsChart, { type ChartItem } from "./ResultsChart";
+import PriceLine from "./PriceLine";
 import FunEquivalents from "./FunEquivalents";
 import RetailerLogo from "./RetailerLogo";
 import type { BillCheckFacts } from "./BillCheckCard";
@@ -83,19 +85,31 @@ export interface ComparisonSummary {
 /** Shared maths for the verdict, the table and the Savings tab, so every
  *  figure on the dashboard comes from the same calculation. */
 function compute(input: ComparisonInput) {
-  const usage: UsageInput = { days: input.days, peak: input.peak, shoulder: input.shoulder, offpeak: input.offpeak, anytime: input.anytime, cl: input.cl, solarExportKwh: input.solarExportKwh };
-  const matches = rankPlans(input.distributor, usage, { ev: input.ev === true });
-  const top = matches[0];
+  // Not enough usage on file (none, under a week, or under 1 kWh a day
+  // without solar)? Use the average Victorian home, 4,000 kWh a year.
+  const { usage, average } = usageOrAverage({ days: input.days, peak: input.peak, shoulder: input.shoulder, offpeak: input.offpeak, anytime: input.anytime, cl: input.cl, solarExportKwh: input.solarExportKwh });
+  const household = { hasSolar: input.solarExportKwh > 0, currentRetailer: input.currentRetailer ?? null };
+  const matches = rankPlans(input.distributor, usage, { ev: input.ev === true, ...household });
+  // Cheapest plan this household can get; offers needing a membership and so on stay listed.
+  const top = topOpen(matches);
   if (!top || input.days <= 0) return null;
+  const offerFor = (p: PlanRow) => describeOffer("E", p[0], p[2], p[1], household);
   const perYear = 365 / input.days;
-  const haveBill = input.billTotal !== null && input.billTotal > 0;
+  // A bill total for usage that thin can't be compared with the average home.
+  const haveBill = !average && input.billTotal !== null && input.billTotal > 0;
   const vdo = vdoBillForUsage(input.distributor, usage);
   const you = haveBill ? (input.billTotal as number) : vdo;
   const savingYear = Math.max(0, (you - top.total) * perYear);
   const cheapest = haveBill && savingYear < WORTH_SWITCHING_PER_YEAR;
   const verdict: ComparisonSummary["verdict"] = haveBill ? (cheapest ? "good" : "bad") : "estimate";
   const severe = verdict === "bad" && (savingYear >= OVERPRICED_PER_YEAR || savingYear >= you * perYear * OVERPRICED_SHARE);
-  return { matches, top, haveBill, you, vdo, savingYear, cheapest, verdict, severe, perYear };
+  return { matches, top, haveBill, you, vdo, savingYear, cheapest, verdict, severe, perYear, usage, offerFor, average };
+}
+
+/** Free users: the two cheapest plans (and anything above the cheapest one
+ *  anyone can get) are for members, the same rule as the results page. */
+function lockedTopFor(c: NonNullable<ReturnType<typeof compute>>, member: boolean) {
+  return member ? [] : c.matches.slice(0, Math.max(2, c.matches.indexOf(c.top) + 1));
 }
 
 /** Facts for the "We checked your bill" card, from the same maths as the verdict. Null without a bill. */
@@ -110,7 +124,7 @@ export function billCheckFacts(input: ComparisonInput): BillCheckFacts | null {
       : null;
   const gap = todays ? c.you - todays.total : 0;
   const older = !!todays && gap * c.perYear >= 20;
-  const rb = retailer ? c.matches.find((m) => m.plan[0] === retailer) ?? null : null;
+  const rb = retailer ? c.matches.find((m) => m.plan[0] === retailer && !m.restricted) ?? null : null;
   return {
     billPlanName,
     olderVersion: older && todays ? { planName: todays.plan[2], perMonth: (gap * (365 / 12)) / input.days, perYear: gap * c.perYear } : null,
@@ -185,10 +199,20 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         <div className={styles.arrow} aria-hidden="true">→</div>
         <div className={`${styles.side} ${styles.sideBest}`}>
           <span className={styles.sideLabel}>Cheapest we found</span>
-          <b>{top.plan[0]}</b>
-          <span className={styles.sidePlan}>{top.plan[2]}</span>
+          {member ? (
+            <>
+              <b>{top.plan[0]}</b>
+              <span className={styles.sidePlan}>{top.plan[2]}</span>
+            </>
+          ) : (
+            <>
+              <b className={styles.sideLocked}><Icon name="lock" size={16} /> Members see which</b>
+              <span className={styles.sidePlan}>Retailer and plan hidden</span>
+            </>
+          )}
           <span className={styles.sideCost}>{money(top.total * k)}</span>
-          {bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
+          {member && bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
+          {member && <span className={styles.sideChips}><OfferChips o={c.offerFor(top.plan)} /></span>}
         </div>
         {verdict !== "good" && savingYear > 0 && (
           <>
@@ -196,7 +220,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             <div className={`${styles.side} ${styles.sideSave}`}>
               <span className={styles.sideLabel}>You save</span>
               <b>By switching</b>
-              <span className={styles.sidePlan}>{PERIOD_LABEL[period]}, to {top.plan[0]}</span>
+              <span className={styles.sidePlan}>{PERIOD_LABEL[period]}, to {member ? top.plan[0] : "the cheapest plan"}</span>
               <span className={styles.sideCost}>{money((you - top.total) * k)}</span>
             </div>
           </>
@@ -204,16 +228,21 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
       </div>
       {verdict !== "good" && savingYear > 0 && <FunEquivalents dollars={savingYear} />}
       <div className={styles.verdictActions}>
-        {verdict !== "good" && RETAILER_LINKS[top.plan[0]] && (
-          <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} target="_blank" rel="noopener noreferrer" className={styles.go}>Go to {top.plan[0]} →</a>
+        {!member && (
+          <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> See which retailer →</a>
         )}
-        {verdict !== "good" && savingYear > 0 && (
+        {member && verdict !== "good" && RETAILER_LINKS[top.plan[0]] && (
+          <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={input.distributor} target="_blank" rel="noopener noreferrer" className={styles.go}>Go to {top.plan[0]} →</a>
+        )}
+        {member && verdict !== "good" && savingYear > 0 && (
           <SwitchReminder retailer={top.plan[0]} plan={top.plan[2]} savingYear={savingYear} link={RETAILER_LINKS[top.plan[0]]} nmi={input.nmi} dark />
         )}
         {!haveBill && <a href={member ? "#savings" : "/check"} className={styles.ghost}>Upload your bill for your real numbers</a>}
       </div>
       <p className={styles.fine}>
-        Priced today from {source === "bill" ? "your last bill" : "your answers"} ({days}-day period, shown {PERIOD_LABEL[period]}).
+        {c.average
+          ? `Priced today for the average Victorian home (${AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year), because we don't have enough of your usage yet. Upload a full bill for your own numbers.`
+          : `Priced today from ${source === "bill" ? "your last bill" : "your answers"}`}{" "}({days}-day period, shown {PERIOD_LABEL[period]}).
         {member ? " We re-run this every morning and email you only when a move is worth it." : " Estimates only; confirm with the retailer before switching."}
       </p>
     </section>
@@ -222,38 +251,43 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
 
 /** The Compare tab: chart plus every comparable plan, ranked. Table on wide
  *  screens, one card per retailer on phones. */
-export function CompareSection({ input, member, period, chartPalette }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette }) {
+export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette }) {
   const [showAll, setShowAll] = useState(false);
   const c = useMemo(() => compute(input), [input]);
   if (!c) return null;
-  const { matches, top, haveBill, you, vdo, cheapest } = c;
+  const { matches, top, haveBill, you, vdo, offerFor } = c;
   const { distributor, days, currentRetailer, currentPlanName, source } = input;
   const k = PERIOD_DAYS[period] / days;
   // Each plan against the Victorian Default Offer for the same usage, as a percentage.
   const vsVdo = (total: number) => (vdo > 0 ? (total - vdo) / vdo : 0);
   const pct = (x: number) => { const n = Math.round(x * 100); return `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n)}%`; };
-  const kwhPeriod = (input.peak + input.shoulder + input.offpeak + input.anytime + input.cl) * k;
-  const kwhDay = days > 0 ? (input.peak + input.shoulder + input.offpeak + input.anytime + input.cl) / days : 0;
+  const u = c.usage;
+  const kwhPeriod = (u.peak + u.shoulder + u.offpeak + u.anytime + u.cl) * k;
+  const kwhDay = days > 0 ? (u.peak + u.shoulder + u.offpeak + u.anytime + u.cl) / days : 0;
   const tariffWords =
     (input.currentRates
       ? input.currentRates.anytime !== null ? "a single-rate tariff" : input.currentRates.peak !== null ? "a time-of-use tariff" : "your tariff"
       : input.peak + input.shoulder + input.offpeak > 0 ? "a time-of-use tariff" : "a single-rate tariff") +
     (input.cl > 0 ? " with controlled load" : "");
-  const youLabel = haveBill ? "Your current bill" : "Default offer (VDO)";
-  const retailerBest = currentRetailer ? matches.find((m) => m.plan[0] === currentRetailer) ?? null : null;
-
-  const chartItems: ChartItem[] = [
-    ...matches.slice(0, 5).map((m, i) => ({ label: m.plan[0], sublabel: m.plan[2], value: m.total * k, kind: (i === 0 ? "cheapest" : "plan") as ChartItem["kind"] })),
-    { label: haveBill ? "Your bill" : "Default offer (VDO)", sublabel: youLabel, value: you * k, kind: haveBill ? (cheapest ? "referenceGood" : "referenceBad") : "reference" },
-  ];
+  const retailerBest = currentRetailer ? matches.find((m) => m.plan[0] === currentRetailer && !m.restricted) ?? null : null;
+  const topOffer = offerFor(top.plan);
+  const topDetail = billDetail(top.plan, c.usage);
+  const lockedTop = lockedTopFor(c, member);
+  const isLocked = (m: (typeof matches)[number] | null) => !!m && lockedTop.includes(m);
   const rows = showAll ? matches : matches.slice(0, 10);
 
   return (
     <>
-      {retailerBest && retailerBest !== top && (
+      {retailerBest && retailerBest !== top && isLocked(retailerBest) && (
+        <div className={styles.stay}>
+          <b>Staying with {currentRetailer}?</b> One of the {lockedTop.length} cheapest plans is theirs, at {money(retailerBest.total * k)} {PERIOD_LABEL[period]}.
+          Members see which one, so you can ask {currentRetailer} to move you without changing company.
+        </div>
+      )}
+      {retailerBest && retailerBest !== top && !isLocked(retailerBest) && (
         <div className={styles.stay}>
           <b>Staying with {currentRetailer}?</b> Their cheapest current plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at {money(retailerBest.total * k)} {PERIOD_LABEL[period]},{" "}
-          <span className={styles.stayGap}>{whole((retailerBest.total - top.total) * k)} more</span> than {top.plan[0]}.
+          <span className={styles.stayGap}>{whole((retailerBest.total - top.total) * k)} more</span> than {member ? top.plan[0] : "the cheapest plan"}.
           {!haveBill && <> You may be on an older, dearer {currentRetailer} plan: upload your bill to see what you actually pay.</>}
         </div>
       )}
@@ -263,7 +297,15 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
           <h3>Retailer comparison</h3>
           <p>{matches.length} plans from the {RETAILER_COUNT} retailers we track on the {distributor} network (not every plan in the market), cheapest first, {PERIOD_LABEL[period]}. Tap a retailer to visit their website.</p>
         </div>
-        <div className={styles.chart}><ResultsChart items={chartItems} palette={chartPalette} /></div>
+        <div className={styles.chart}>
+          <PriceLine
+            items={matches.slice(0, 8).map((m) => ({ retailer: m.plan[0], plan: m.plan[2], value: m.total * k, locked: isLocked(m), cheapest: m === top }))}
+            you={you * k}
+            youLabel={haveBill ? "Your bill" : "The default offer"}
+            vdo={haveBill ? vdo * k : null}
+            per={PERIOD_LABEL[period]}
+          />
+        </div>
 
         {/* What we're comparing against, right before the results */}
         <div className={styles.youBox}>
@@ -279,10 +321,15 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
                 {vsVdo(you) > 0 ? (
                   <>That&apos;s <b className={styles.neg}>{pct(vsVdo(you))}</b> against the default offer ({money(vdo * k)} {PERIOD_LABEL[period]}) for the same usage.</>
                 ) : you - top.total > 0.005 ? (
-                  <>You&apos;re under the default offer, but {top.plan[0]} would still cost <b className={styles.pos}>{money((you - top.total) * k)} {PERIOD_LABEL[period]} less</b>.</>
+                  <>You&apos;re under the default offer, but {member ? top.plan[0] : "the cheapest plan"} would still cost <b className={styles.pos}>{money((you - top.total) * k)} {PERIOD_LABEL[period]} less</b>.</>
                 ) : (
                   <>You&apos;re under the default offer and nothing we found is cheaper.</>
                 )}
+              </>
+            ) : c.average ? (
+              <>
+                We don&apos;t have enough of your usage yet, so this is the average Victorian home: <b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year</b>{" "}
+                (about {Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}), priced on the default offer. Upload a full bill for your own numbers.
               </>
             ) : (
               <>
@@ -302,26 +349,43 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
               {rows.map((m, i) => {
                 const diff = (you - m.total) * k;
                 const mine = currentRetailer && m.plan[0] === currentRetailer;
+                if (isLocked(m)) {
+                  return (
+                    <tr key={`locked-${i}`} className={styles.rowLocked}>
+                      <td>{i + 1}</td>
+                      <td colSpan={3}>
+                        <span className={styles.lockedCell}>
+                          <span className={styles.lockBadge}><Icon name="lock" size={14} /></span>
+                          <span className={styles.lockedBar} aria-hidden="true" />
+                          <a href="#membership">{i === 0 ? "The cheapest plan: members see which" : "Members see this plan"}</a>
+                        </span>
+                      </td>
+                      <td className={styles.num}>{money(m.total * k)}</td>
+                      <td className={`${styles.num} ${diff >= 0 ? styles.pos : styles.neg}`}>{diff >= 0 ? `save ${money(diff)}` : `+${money(-diff)}`}</td>
+                      <td className={`${styles.num} ${Math.round(vsVdo(m.total) * 100) < 0 ? styles.pos : Math.round(vsVdo(m.total) * 100) > 0 ? styles.neg : styles.flat}`}>{pct(vsVdo(m.total))}</td>
+                    </tr>
+                  );
+                }
                 return (
-                  <tr key={m.plan[0] + m.plan[2] + i} className={i === 0 ? styles.rowBest : mine ? styles.rowMine : ""} style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+                  <tr key={m.plan[0] + m.plan[2] + i} className={m === top ? styles.rowBest : mine ? styles.rowMine : ""} style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
                     <td>{i + 1}</td>
                     <td>
                       <span className={styles.retailerCell}>
                         <RetailerLogo name={m.plan[0]} size={28} />
                         <RetailerLink name={m.plan[0]} />
                       </span>
-                      {i === 0 && <span className={styles.tagBest}>Cheapest</span>}
+                      {m === top && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
                       {mine && <span className={styles.tagMine}>Your retailer</span>}
                       {input.ev && isEvFriendly(m.plan) && <span className={styles.tagEv}><Icon name="bolt" size={12} /> EV charging</span>}
                     </td>
-                    <td className={styles.planName}>{m.plan[2]}<br /><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></td>
+                    <td className={styles.planName}>{m.plan[2]}<br /><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /><span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /></span></td>
                     <td title={chargeHelp(m.plan)}>
                       {chargeLabel(m.plan)}
                       {planPriceType(m.plan[0], m.plan[2]) === "fixed" && <span className={styles.ptFixed}> · <Icon name="lock" size={12} /> Fixed</span>}
                     </td>
                     <td className={styles.num}>{money(m.total * k)}</td>
                     <td className={`${styles.num} ${diff >= 0 ? styles.pos : styles.neg}`}>{diff >= 0 ? `save ${money(diff)}` : `+${money(-diff)}`}</td>
-                    <td className={`${styles.num} ${vsVdo(m.total) <= 0 ? styles.pos : styles.neg}`}>{pct(vsVdo(m.total))}</td>
+                    <td className={`${styles.num} ${Math.round(vsVdo(m.total) * 100) < 0 ? styles.pos : Math.round(vsVdo(m.total) * 100) > 0 ? styles.neg : styles.flat}`}>{pct(vsVdo(m.total))}</td>
                   </tr>
                 );
               })}
@@ -334,18 +398,37 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
           {rows.map((m, i) => {
             const diff = (you - m.total) * k;
             const mine = currentRetailer && m.plan[0] === currentRetailer;
+            if (isLocked(m)) {
+              return (
+                <li key={`locked-${i}`} className={`${styles.pc} ${styles.rowLocked}`}>
+                  <span className={styles.pcRank}>{i + 1}</span>
+                  <div className={styles.pcMain}>
+                    <div className={styles.pcTop}>
+                      <span className={styles.lockBadge}><Icon name="lock" size={14} /></span>
+                      <span className={styles.lockedBar} aria-hidden="true" />
+                    </div>
+                    <a className={styles.pcPlan} href="#membership">Members see this plan</a>
+                  </div>
+                  <div className={styles.pcNums}>
+                    <b>{whole(m.total * k)}</b>
+                    <span className={diff >= 0 ? styles.pos : styles.neg}>{diff >= 0 ? `save ${whole(diff)}` : `+${whole(-diff)}`}</span>
+                  </div>
+                </li>
+              );
+            }
             return (
-              <li key={m.plan[0] + m.plan[2] + i} className={`${styles.pc} ${i === 0 ? styles.rowBest : mine ? styles.rowMine : ""}`}>
+              <li key={m.plan[0] + m.plan[2] + i} className={`${styles.pc} ${m === top ? styles.rowBest : mine ? styles.rowMine : ""}`}>
                 <span className={styles.pcRank}>{i + 1}</span>
                 <div className={styles.pcMain}>
                   <div className={styles.pcTop}>
                     <RetailerLogo name={m.plan[0]} size={26} />
                     <RetailerLink name={m.plan[0]} />
-                    {i === 0 && <span className={styles.tagBest}>Cheapest</span>}
+                    {m === top && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Best you can get"}</span>}
                     {mine && <span className={styles.tagMine}>Yours</span>}
                   </div>
                   <span className={styles.pcPlan}>{m.plan[2]} · {chargeLabel(m.plan)}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · Fixed price" : ""}</span>
                   <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
+                  <span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /></span>
                 </div>
                 <div className={styles.pcNums}>
                   <b>{whole(m.total * k)}</b>
@@ -364,6 +447,7 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
         )}
         <div className={styles.legend}>
           <span><b>vs VDO</b>: each plan against the Victorian Default Offer (the government-set reference price) for the same usage. Minus is cheaper.</span>
+          <span><b>Labels</b>: ✓ green discounts are in the price (we assume you pay on time); blue ones (credits, other conditions) aren&apos;t; amber ! means who can get it is limited, or a fee to know about. Concessions aren&apos;t counted.</span>
           <span><b>Same price all day</b>: one rate for every kWh.</span>
           <span><b>Cheaper at night</b>: dearer late afternoon to evening, cheaper overnight.</span>
           <span><b><Icon name="lock" size={12} /> Fixed</b>: price locked for a set time. Everything else can change with notice, usually around 1 July.</span>
@@ -377,7 +461,30 @@ export function CompareSection({ input, member, period, chartPalette }: Omit<Pro
         )}
       </section>
 
-      <CurrentPricing input={input} best={top.plan} bestTotal={top.total} you={you} haveBill={haveBill} />
+      {!member ? (
+        <section className={styles.table}>
+          <div className={styles.tableHead}>
+            <h3>Before you switch</h3>
+            <p>Members see the cheapest plan&apos;s retailer, discounts, sign-up conditions, credits and fees here, from the retailer&apos;s own price feed.</p>
+          </div>
+          <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> Unlock the cheapest plans →</a>
+        </section>
+      ) : (
+      <section className={styles.table}>
+        <div className={styles.tableHead}>
+          <h3>Before you switch to {top.plan[0]}</h3>
+          <p>Discounts, what you need to sign up, credits and fees for &ldquo;{top.plan[2]}&rdquo;, from {top.plan[0]}&apos;s own price feed.</p>
+        </div>
+        <OfferTerms
+          o={topOffer}
+          retailer={top.plan[0]}
+          title={null}
+          payLateCost={topDetail && topDetail.conditionalDiscount * k >= 0.5 ? `${money(topDetail.conditionalDiscount * k)} ${PERIOD_LABEL[period]}` : null}
+        />
+      </section>
+      )}
+
+      <CurrentPricing input={input} usage={c.usage} best={top.plan} bestTotal={top.total} you={you} haveBill={haveBill} hideName={!member} />
     </>
   );
 }
@@ -390,10 +497,10 @@ function fmtDay(iso: string): string {
 
 /** Your current plan's rates (read off your bill) beside the cheapest plan's,
  *  plus fixed or variable, and the all-in average cents per kWh. */
-function CurrentPricing({ input, best, bestTotal, you, haveBill }: { input: ComparisonInput; best: PlanRow; bestTotal: number; you: number; haveBill: boolean }) {
+function CurrentPricing({ input, usage, best, bestTotal, you, haveBill, hideName = false }: { input: ComparisonInput; usage: UsageInput; best: PlanRow; bestTotal: number; you: number; haveBill: boolean; hideName?: boolean }) {
   const r = input.currentRates ?? null;
   const [, , , , bSupply, bAny, bPeak, bShoulder, bOff, bCl, bFit] = best;
-  const kwh = input.peak + input.shoulder + input.offpeak + input.anytime + input.cl;
+  const kwh = usage.peak + usage.shoulder + usage.offpeak + usage.anytime + usage.cl;
   const bestTerms = planPriceType(best[0], best[2]);
   const touBest = bAny === null;
   const touYou = r ? r.anytime === null && (r.peak !== null || r.offpeak !== null) : touBest;
@@ -421,7 +528,7 @@ function CurrentPricing({ input, best, bestTotal, you, haveBill }: { input: Comp
     <section className={styles.table}>
       <div className={styles.tableHead}>
         <h3>Your rates vs the cheapest</h3>
-        <p>What you pay per day and per kWh now, beside {best[0]}. All prices include GST.</p>
+        <p>What you pay per day and per kWh now, beside {hideName ? "the cheapest plan" : best[0]}. All prices include GST.</p>
       </div>
       <div className={styles.rates}>
         <div className={styles.ratesHead}>
@@ -435,7 +542,7 @@ function CurrentPricing({ input, best, bestTotal, you, haveBill }: { input: Comp
           </div>
           <div>
             <b>Cheapest</b>
-            <span>{best[0]} · {best[2]}</span>
+            <span>{hideName ? "Members see which retailer" : `${best[0]} · ${best[2]}`}</span>
             <em className={bestTerms === "fixed" ? styles.badgeFixed : styles.badge}>{PRICE_TYPE_LABEL[bestTerms]}</em>
           </div>
         </div>

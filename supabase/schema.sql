@@ -262,3 +262,32 @@ alter table subscribers add column if not exists deal_alert_sent_for date;
 -- estimated read, overdue amount or payment plan, concession applied, and the
 -- retailer's own "best offer" message. Shown on the dashboard.
 alter table subscribers add column if not exists bill_check jsonb;
+
+-- 18 Oct 2026: growth tracking, referrals and member settings.
+-- Anonymous check counts (lib/track.ts → /api/event). No name, email or IP
+-- address: just the step, a random per-tab id, the network and the source.
+create table if not exists public.check_events (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  sid text not null,
+  event text not null,                 -- 'check_started' | 'check_completed' | 'unlock_clicked' | 'checkout_started'
+  source text,                         -- 'p:<partner>' | 'r:<CODE>' | 'u:<source>/<medium>/<campaign>' | null
+  distributor text,
+  usage_source text                    -- 'bill' | 'estimate' | 'average'
+);
+create unique index if not exists check_events_sid_event on public.check_events (sid, event);
+create index if not exists check_events_created on public.check_events (created_at desc);
+alter table public.check_events enable row level security;
+-- No policies: only the server (secret key) writes and reads these.
+
+-- Where people came from (partner link, a member's referral link or an ad).
+alter table public.leads add column if not exists source text;
+alter table public.subscribers add column if not exists source text;
+-- Referrals: each membership's own code, who referred it, and whether the
+-- referrer has been credited.
+alter table public.subscribers add column if not exists referral_code text;
+create unique index if not exists subscribers_referral_code on public.subscribers (referral_code) where referral_code is not null;
+alter table public.subscribers add column if not exists referred_by text;
+alter table public.subscribers add column if not exists referral_credited boolean not null default false;
+-- The member's own alert minimum (A$ a year). Null = the default ($50).
+alter table public.subscribers add column if not exists alert_min_saving numeric;

@@ -48,6 +48,10 @@ export interface ExtractedBill {
   paymentPlan: boolean;
   concessionApplied: boolean;
   bestOffer: { planName: string | null; savingPerYear: number | null; saysOnBest: boolean } | null;
+  /** Looks like only part of a longer bill (e.g. "Page 1 of 2", or the summary page without usage and charges). */
+  looksPartial: boolean;
+  /** How many pages (photos) this read came from. */
+  pages?: number;
   warnings: string[];
 }
 
@@ -164,6 +168,47 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
             saysOnBest: r.best_offer_says_on_best === true,
           }
         : null,
+    looksPartial: r.looks_partial === true,
     warnings,
   };
+}
+
+// --- What a read is missing ----------------------------------------------
+// A photo of a bill's first page often has the amount due but not the usage,
+// the billing period or the rates, which are usually on page 2. These say what
+// is missing, so the page can ask for another page or point to the fields.
+
+export type BillGapKey = "usage" | "days" | "network" | "total" | "rates";
+export interface BillGap {
+  key: BillGapKey;
+  label: string;
+  /** Needed to compare plans at all (the others make the result more exact). */
+  needed: boolean;
+}
+
+export function billHasUsage(b: ExtractedBill): boolean {
+  return b.usageMode === "simple" ? b.anytimeKwh !== null : b.peakKwh !== null || b.offpeakKwh !== null || b.anytimeKwh !== null;
+}
+
+export function billGaps(b: ExtractedBill): BillGap[] {
+  if (b.fuel === "gas") return [];
+  const gaps: BillGap[] = [];
+  if (!billHasUsage(b)) gaps.push({ key: "usage", label: "how much electricity you used", needed: true });
+  if (b.billingDays === null) gaps.push({ key: "days", label: "the billing period", needed: true });
+  if (!b.distributor && !b.postcode && !b.nmi) gaps.push({ key: "network", label: "your network or postcode", needed: false });
+  if (b.currentBill === null) gaps.push({ key: "total", label: "the bill total", needed: false });
+  if (!b.currentRates) gaps.push({ key: "rates", label: "the rates you pay", needed: false });
+  return gaps;
+}
+
+/** Worth asking for another page: something needed is missing, or the read
+ *  looks like a summary page and is missing the total or the rates. */
+export function shouldAskForAnotherPage(b: ExtractedBill): boolean {
+  const gaps = billGaps(b);
+  return gaps.some((g) => g.needed) || (b.looksPartial && gaps.some((g) => g.key === "total" || g.key === "rates"));
+}
+
+/** "a, b and c" */
+export function listWords(items: string[]): string {
+  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }

@@ -3,6 +3,8 @@
 // blocks: stepped usage rates in $/MJ. Each block applies up to `upTo` MJ
 // (per day when perDay is true, otherwise per billing period); the last
 // block has upTo null and covers everything above the previous threshold.
+import { extrasFor, pricedDiscount, restrictionFor, topOpen } from "./planExtras";
+
 export interface GasBlock { upTo: number | null; rate: number }
 export type GasPlanRow = [string, string, string, string, number, GasBlock[], boolean];
 
@@ -22,9 +24,12 @@ export interface GasUsage {
   mj: number; // total MJ for the period
 }
 
-/** Bill = supply × days + stepped usage. Blocks per day are scaled by days. */
+/** Bill = supply × days + stepped usage − discounts (guaranteed, pay on time,
+ *  direct debit). Blocks per day are scaled by days. Other conditional
+ *  discounts, credits and fees are shown with the offer, not priced
+ *  (lib/planExtras.ts). */
 export function computeGasBill(plan: GasPlanRow, u: GasUsage): number | null {
-  const [, , , , supply, blocks, perDay] = plan;
+  const [retailer, zone, planName, , supply, blocks, perDay] = plan;
   if (!blocks.length || u.days <= 0) return null;
   let remaining = u.mj;
   let variable = 0;
@@ -38,19 +43,31 @@ export function computeGasBill(plan: GasPlanRow, u: GasUsage): number | null {
     if (remaining <= 0) break;
   }
   if (remaining > 0) variable += remaining * blocks[blocks.length - 1].rate;
-  return supply * u.days + variable;
+  const fixed = supply * u.days;
+  const discount = pricedDiscount(extrasFor("G", retailer, planName, zone), { supply: fixed, usage: variable, solarCredit: 0 });
+  return fixed + variable - discount;
 }
 
-export interface RankedGas { plan: GasPlanRow; total: number }
+export interface RankedGas {
+  plan: GasPlanRow;
+  total: number;
+  /** Why most households can't get it (membership, existing customers…), or null. */
+  restricted: string | null;
+}
 
-export function rankGasPlans(zone: GasZone, u: GasUsage): RankedGas[] {
+export function rankGasPlans(zone: GasZone, u: GasUsage, currentRetailer: string | null = null): RankedGas[] {
   const out: RankedGas[] = [];
   for (const p of GAS_PLANS) {
     if (p[1] !== zone) continue;
     const total = computeGasBill(p, u);
-    if (total !== null) out.push({ plan: p, total });
+    if (total !== null) out.push({ plan: p, total, restricted: restrictionFor(extrasFor("G", p[0], p[2], p[1]), p[0], p[2], { hasSolar: false, currentRetailer }) });
   }
   return out.sort((a, b) => a.total - b.total);
+}
+
+/** The cheapest gas plan anyone can get. */
+export function bestGasPlan(zone: GasZone, u: GasUsage, currentRetailer: string | null = null): RankedGas | undefined {
+  return topOpen(rankGasPlans(zone, u, currentRetailer));
 }
 
 /** Victoria has no regulated default offer for gas, so the benchmark is the

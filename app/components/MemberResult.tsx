@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { rankPlans, type Distributor, type UsageInput } from "@/lib/plans";
+import { rankPlans, topOpen, type Distributor, type UsageInput } from "@/lib/plans";
 import { vdoBillForUsage } from "@/lib/profileUsage";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import ResultsChart, { type ChartItem } from "./ResultsChart";
@@ -23,7 +23,7 @@ export default function MemberResult({
   const [period, setPeriod] = useState<"month" | "quarter" | "year">("year");
   const usage: UsageInput = useMemo(() => ({ days, peak, shoulder, offpeak, anytime, cl, solarExportKwh }), [days, peak, shoulder, offpeak, anytime, cl, solarExportKwh]);
   const matches = useMemo(() => rankPlans(distributor, usage), [distributor, usage]);
-  const top = matches[0];
+  const top = topOpen(matches);
   if (!top || days <= 0) return null;
   const haveBill = referenceTotal !== null && referenceTotal > 0;
   const bench = haveBill ? (referenceTotal as number) : vdoBillForUsage(distributor, usage);
@@ -31,7 +31,7 @@ export default function MemberResult({
   const saving = bench - top.total;
   const verdict = haveBill ? (saving <= 1 ? "good" : "bad") : "estimate";
   const items: ChartItem[] = [
-    ...matches.slice(0, 5).map((m, i) => ({ label: m.plan[0], sublabel: m.plan[2], value: m.total * k, kind: (i === 0 ? "cheapest" : "plan") as ChartItem["kind"] })),
+    ...matches.slice(0, 5).map((m) => ({ label: m.plan[0], sublabel: m.plan[2], value: m.total * k, kind: (m === top ? "cheapest" : "plan") as ChartItem["kind"] })),
     { label: haveBill ? "Your bill" : "Default offer (VDO)", sublabel: haveBill ? "What you pay now" : `VDO for ${distributor}`, value: bench * k, kind: haveBill ? (saving <= 1 ? "referenceGood" : "referenceBad") : "reference" },
   ];
   return (

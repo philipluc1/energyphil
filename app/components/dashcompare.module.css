@@ -137,3 +137,19 @@
 .youText { margin: 6px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--ink, inherit); }
 .pcVdo { display: block; font-size: 11.5px; color: var(--grey); font-weight: 600; margin-top: 2px; }
 .retailerCell { display: inline-flex; align-items: center; gap: 8px; }
+.flat { color: var(--grey); font-weight: 700; }
+
+/* Offer discount and condition labels */
+.offerChips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.sideChips { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 6px; }
+
+/* Free users: the cheapest plans are for members */
+.sideLocked { display: inline-flex; align-items: center; gap: 6px; }
+.rowLocked td, li.rowLocked { background: rgba(253, 224, 71, 0.1); }
+.lockedCell { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lockedCell a, .rowLocked .pcPlan { font-weight: 800; color: #9a5b00; text-decoration: none; }
+.lockedCell a:hover { text-decoration: underline; }
+.lockBadge { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #1b2a6b, #2d3f9e); color: #fde047; }
+.lockedBar { display: inline-block; width: 120px; height: 12px; border-radius: 6px; background: rgba(140, 150, 170, 0.3); filter: blur(1.5px); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lockedCell a, :root:not([data-theme="light"]) .rowLocked .pcPlan { color: #fcd34d; } }
+:root[data-theme="dark"] .lockedCell a, :root[data-theme="dark"] .rowLocked .pcPlan { color: #fcd34d; }

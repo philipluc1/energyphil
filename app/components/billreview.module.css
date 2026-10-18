@@ -1,0 +1,19 @@
+/* Members' "check what we read" form on the dashboard. */
+.review { margin-top: 12px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 14px 0 0; }
+.field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 700; color: var(--grey); }
+.field select, .inputWrap {
+  min-height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+}
+.field select { padding: 0 10px; font: 600 15px/1 inherit; }
+.inputWrap { display: flex; align-items: center; padding: 0 10px; gap: 6px; }
+.inputWrap input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 700 16px/1 inherit; outline: none; }
+.inputWrap small { color: var(--grey); font-weight: 700; }
+.inputWrap:focus-within, .field select:focus { border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 20%, transparent); }
+.missing span:first-child { color: #b45309; }
+.missing .inputWrap, .missing select { border-color: #f5b041; background: color-mix(in srgb, #f5a623 8%, var(--surface)); }
+.modeRow { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
+.mode { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font: 700 13.5px/1 inherit; cursor: pointer; }
+.modeOn { background: var(--navy); border-color: var(--navy); color: #fff; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+.hint { font-size: 13px; color: var(--grey); }

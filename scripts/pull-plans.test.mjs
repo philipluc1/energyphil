@@ -31,3 +31,89 @@ assert.equal(dates["AGL|Saver"].priceChanged, "2026-10-17");
 assert.equal(dates["AGL|Saver"].seen, null);
 assert.equal(dates["GloBird Energy|GloSave"].seen, "2026-10-17");
 console.log("offer dates ok");
+
+// Discounts, credits, fees and sign-up conditions.
+import { parseExtras, buildExtras, writeExtrasSource, tidyText } from "./pull-plans.mjs";
+const withTerms = {
+  additionalInformation: { termsUri: "https://example.com/terms", eligibilityUri: "http://insecure.example.com" },
+  electricityContract: {
+    isFixed: false, pricingModel: "SINGLE_RATE", paymentOption: ["DIRECT_DEBIT", "BPAY", "DIRECT_DEBIT"], termType: "ONGOING", benefitPeriod: "12 months",
+    coolingOffDays: 10, onExpiryDescription: "<p>After 12 months the discount ends.</p>",
+    discounts: [
+      { displayName: "Guaranteed discount", type: "GUARANTEED", category: "GUARANTEED_DISCOUNT", methodUType: "percentOfUse", percentOfUse: { rate: "0.05" } },
+      { displayName: "Pay on time", type: "CONDITIONAL", category: "PAY_ON_TIME", methodUType: "percentOfBill", percentOfBill: { rate: "0.03" }, endDate: "2027-06-30T00:00:00Z", description: "Pay  in full\nby the due date" },
+      { displayName: "Odd", type: "CONDITIONAL", methodUType: "somethingNew" },
+    ],
+    incentives: [{ displayName: "$50 welcome credit", category: "ACCOUNT_CREDIT", description: "Credited on your first bill.", eligibility: "New customers" }],
+    fees: [{ type: "EXIT", term: "1_YEAR", amount: "0" }, { type: "PAPER_BILL", term: "FIXED", amount: "1.75", description: "Per bill" }, { type: "CC_PROCESSING", term: "PERCENT_OF_BILL", rate: "0.0095" }],
+    eligibility: [{ type: "ONLINE_ONLY", information: "Manage your account online" }],
+    tariffPeriod: [],
+  },
+};
+const ex = parseExtras(withTerms);
+assert.equal(ex.discounts.length, 2);
+assert.deepEqual(ex.discounts[0], { name: "Guaranteed discount", type: "GUARANTEED", category: "GUARANTEED_DISCOUNT", method: "percentOfUse", rate: 0.05, amount: null, threshold: null, endDate: null, description: null });
+assert.equal(ex.discounts[1].rate, 0.03);
+assert.equal(ex.discounts[1].endDate, "2027-06-30");
+assert.equal(ex.discounts[1].description, "Pay in full by the due date");
+assert.deepEqual(ex.payment, ["DIRECT_DEBIT", "BPAY"]);
+assert.equal(ex.incentives[0].category, "ACCOUNT_CREDIT");
+assert.deepEqual(ex.fees.map((f) => [f.type, f.amount, f.rate]), [["EXIT", 0, null], ["PAPER_BILL", 1.75, null], ["CC_PROCESSING", null, 0.0095]]);
+assert.equal(ex.eligibility[0].type, "ONLINE_ONLY");
+assert.equal(ex.term, "ONGOING");
+assert.equal(ex.coolingOffDays, 10);
+assert.equal(ex.onExpiry, "After 12 months the discount ends.");
+assert.equal(ex.termsUrl, "https://example.com/terms");
+assert.equal(ex.eligibilityUrl, null); // only https links are kept
+assert.equal(parseExtras({ electricityContract: { tariffPeriod: [] } }).discounts.length, 0);
+assert.equal(parseExtras({}), null);
+assert.equal(tidyText("See [our terms](https://x.com) <b>now</b>"), "See our terms now");
+// Shared entries: the usual extras for the plan, plus a network key only where one differs.
+const other = { ...ex, discounts: [] };
+const built = buildExtras([
+  { fuel: "E", retailer: "AGL", plan: "Saver", network: "Citipower", extras: ex },
+  { fuel: "E", retailer: "AGL", plan: "Saver", network: "Jemena", extras: ex },
+  { fuel: "E", retailer: "AGL", plan: "Saver", network: "Powercor", extras: other },
+  { fuel: "G", retailer: "AGL", plan: "Saver", network: "Multinet", extras: other },
+]);
+assert.equal(built.list.length, 2);
+assert.equal(built.index["E|AGL|Saver"], 0);
+assert.equal(built.index["E|AGL|Saver|Powercor"], 1);
+assert.equal(built.index["E|AGL|Saver|Citipower"], undefined);
+assert.equal(built.index["G|AGL|Saver"], 1);
+const srcIn = 'x\nexport const PLAN_EXTRAS_DATE: string | null = null;\n\nexport const PLAN_EXTRAS_LIST: PlanExtras[] = [];\n\nexport const PLAN_EXTRAS_INDEX: Record<string, number> = {};\ny';
+const srcOut = writeExtrasSource(srcIn, built, "2026-10-18");
+assert.match(srcOut, /PLAN_EXTRAS_DATE: string \| null = "2026-10-18";/);
+assert.equal(JSON.parse(srcOut.match(/PLAN_EXTRAS_INDEX: Record<string, number> = (.*);$/m)[1])["E|AGL|Saver|Powercor"], 1);
+assert.equal(JSON.parse(srcOut.match(/PLAN_EXTRAS_LIST: PlanExtras\[\] = (.*);$/m)[1]).length, 2);
+assert.ok(srcOut.startsWith("x\n") && srcOut.endsWith("\ny"));
+console.log("offer conditions ok");
+
+// Every retailer in the register: its organisations come as an object keyed by id.
+import { registryTargets, registryDirectory, siteRetailerName, websiteOf, KNOWN } from "./pull-plans.mjs";
+const reg = { data: { organisations: {
+  1: { cdrCode: "kogan", orgName: "Kogan Energy", orgStatus: "active", websiteURL: "www.koganenergy.com.au", residentialContact: "1300 005 123" },
+  2: { cdrCode: "globird", orgName: "Globird Energy", orgStatus: "active", websiteURL: "www.globirdenergy.com.au" },
+  3: { cdrCode: "sumo-gas", orgName: "Sumo", orgStatus: "inactive", websiteURL: "www.sumo.com.au" },
+  4: { cdrCode: "lumo", orgName: "Lumo Energy (NSW)", orgStatus: "active", websiteURL: "www.lumoenergy.com.au" },
+  5: { cdrCode: "lumo", orgName: "Lumo Energy", orgStatus: "active", websiteURL: "www.lumoenergy.com.au" },
+  6: { cdrCode: "future-x", orgName: "Sunswitch Energy Pty Ltd", orgStatus: "active", websiteURL: "sunswitchenergy.com.au/" },
+  7: { cdrCode: "macarthur", orgName: "Macarthur Energy Retail", orgStatus: "active", websiteURL: "ww.macarthurenergy.com.au" },
+  8: { orgName: "No code", orgStatus: "active" },
+} } };
+const t = registryTargets(reg);
+assert.deepEqual(t.map((x) => [x.code, x.name]), [["future-x", "Sunswitch Energy"], ["globird", "GloBird Energy"], ["kogan", "Kogan Energy"], ["lumo", "Lumo Energy"], ["macarthur", "Macarthur Energy Retail"]]);
+assert.deepEqual(registryTargets(reg, { knownOnly: true }).map((x) => x.code), ["globird", "kogan", "lumo"]);
+assert.equal(registryDirectory(reg)["Kogan Energy"].website, "https://www.koganenergy.com.au");
+assert.equal(registryDirectory(reg)["Kogan Energy"].phone, "1300 005 123");
+assert.equal(websiteOf("ww.macarthurenergy.com.au"), "https://www.macarthurenergy.com.au");
+assert.equal(websiteOf("www.amber.com.au/plan/energy-made-easy?x=1"), "https://www.amber.com.au");
+assert.equal(websiteOf("Telstra.com"), "https://telstra.com");
+assert.equal(websiteOf(""), null);
+// Plans are named by their own brand (one CDR code can carry several).
+assert.equal(siteRetailerName("1st Energy", "Cooperative Power", "energy-locals"), "1st Energy");
+assert.equal(siteRetailerName(null, "Cooperative Power", "energy-locals"), "Cooperative Power");
+assert.equal(siteRetailerName("Sumo Power", null, "sumo-power"), "Sumo");
+assert.equal(siteRetailerName(undefined, undefined, "red-energy"), "Red Energy");
+assert.equal(KNOWN["blue-nrg"], "Blue NRG");
+console.log("all retailers ok");

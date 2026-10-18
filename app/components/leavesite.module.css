@@ -31,3 +31,10 @@
   .stay, .go { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .backdrop, .dialog { animation: none; } }
+
+/* "Have these ready" before switching. */
+.ready { margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--bg, #f4f6fb); border: 1px solid var(--border, #e1e6f0); font-size: 13.5px; line-height: 1.5; }
+.ready b { display: block; margin-bottom: 4px; font-size: 14px; }
+.ready ul { margin: 0 0 6px; padding-left: 18px; list-style: disc; }
+.ready li { margin: 2px 0; }
+.ready span { color: var(--grey, #5f6b82); }

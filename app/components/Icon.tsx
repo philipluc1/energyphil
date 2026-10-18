@@ -28,6 +28,10 @@ const PATHS: Record<string, React.ReactNode> = {
   bulb: (<><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3Z" /></>),
   flame: (<path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5.5.3 1.5 1 2.5 2 3 0-2.5-.5-5 .5-7.5Z" />),
   car: (<><path d="M4 16.5v-4l2.2-5h11.6l2.2 5v4Z" /><path d="M4 12.5h16" /><circle cx="7.5" cy="17.5" r="1.8" /><circle cx="16.5" cy="17.5" r="1.8" /></>),
+  tag: (<><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z" /><circle cx="7.5" cy="7.5" r="1.5" /></>),
+  gift: (<><rect x="3.5" y="9" width="17" height="11" rx="1.5" /><path d="M2.5 9h19v3.5h-19ZM12 9v11" /><path d="M12 9c-1.5-3.5-5-4.5-5-2s3.5 2 5 2c1.5 0 5 .5 5-2s-3.5-1.5-5 2Z" /></>),
+  alert: (<><path d="M12 4 2.5 20h19L12 4Z" /><path d="M12 10v4.5M12 17.5v.01" /></>),
+  id: (<><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2.2" /><path d="M5.8 16c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M14.5 10h4M14.5 13.5h3" /></>),
 };
 
 export type IconName = keyof typeof PATHS;

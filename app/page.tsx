@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PLANS, PLAN_DATA_DATE } from "@/lib/plans";
-import { typicalHouseholdExample } from "@/lib/savings";
+import { THREE_HOMES_NETWORK, threeHomesExample } from "@/lib/savings";
 import { ABOUT, hasFounderStory } from "@/lib/about";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import SiteHeader from "./components/SiteHeader";
 import StateWaitlist from "./components/StateWaitlist";
 import Icon from "./components/Icon";
+import SourceBanner from "./components/SourceBanner";
 import styles from "./components/Comparator.module.css";
 import h from "./home2.module.css";
 
@@ -18,40 +19,112 @@ function fmtDate(): string {
 }
 
 export default function Home() {
-  const ex = typicalHouseholdExample();
-  const gap = Math.max(0, ex.annualBench - ex.annualBest);
+  const homes = threeHomesExample();
+  const typical = homes.find((x) => x.key === "typical");
+  const savings = homes.map((x) => x.saving);
+  const lowSave = Math.min(...savings);
+  const highSave = Math.max(...savings);
 
   return (
     <>
       <SiteHeader active="home" />
 
       <main className={h.page}>
-        {/* 1. What it is */}
+        <SourceBanner />
+
+        {/* 1. The hook: built for your home, not a typical one */}
         <section className={h.hero}>
           <div className={h.heroText}>
-            <p className={h.eyebrow}>For Victorian households</p>
-            <h1 className={h.title}>Are you paying too much for electricity?</h1>
+            <p className={h.eyebrow}>Built from your bill, not a typical household</p>
+            <h1 className={h.title}>Small, medium or large? Your home is none of them.</h1>
             <p className={h.lede}>
-              Take a photo of your bill. We read what you use and what you pay, compare it with the {PLANS.length} plans we track from {RETAILER_COUNT} retailers,
-              and tell you plainly whether switching is worth it.
+              A &ldquo;typical household&rdquo; estimate can be hundreds of dollars out. Utilo reads your bill instead: how much power you use and when,
+              the rates you pay now, and the plan you&apos;re on. Then it prices the {PLANS.length} plans we track from {RETAILER_COUNT} retailers for{" "}
+              <em>your</em> home, and tells you plainly whether switching is worth it.
             </p>
             <div className={h.actions}>
               <Link href="/check" className={h.primary}>
-                <Icon name="camera" size={20} /> Check my bill
+                <Icon name="camera" size={20} /> Price my bill
               </Link>
-              <Link href="/check?start=questions" className={h.textLink}>No bill? Answer a few questions</Link>
+              <Link href="/check?start=questions" className={h.textLink}>No bill? We&apos;ll estimate from a few questions</Link>
             </div>
-            <p className={h.fine}>Free, no sign-up. Gas too: <Link href="/gas">check a gas bill</Link>.</p>
+            <p className={h.fine}>Free, no sign-up, about a minute. Gas too: <Link href="/gas">check a gas bill</Link>.</p>
           </div>
           <div className={h.heroShot}>
             <div className={h.phone}>
-              <Image src="/images/product/3-result.png" alt="A Utilo result on a phone: you could save about $394 a year with Alinta Energy" width={390} height={780} priority />
+              <Image src="/images/product/3-result.png" alt="A Utilo result on a phone: you could save about $293 a year on the cheapest plan" width={390} height={780} priority />
             </div>
             <p className={h.caption}>A result from the check, using an example bill.</p>
           </div>
         </section>
 
-        {/* 2. How it works */}
+        {/* 2. What only a bill can tell us */}
+        <section className={h.section}>
+          <h2 className={h.h2}>Three things only your bill knows</h2>
+          <p className={h.sub}>
+            A typical-household comparison has to guess all three. They&apos;re what decide your cheapest plan and what it really saves you.
+          </p>
+          <ul className={h.knows}>
+            <li>
+              <span className={h.knowIcon}><Icon name="chart" size={22} /></span>
+              <h3>How you use power</h3>
+              <p>Your usage at peak, off-peak and shoulder times, any controlled load and your solar exports, for the days on your bill.</p>
+            </li>
+            <li>
+              <span className={h.knowIcon}><Icon name="receipt" size={22} /></span>
+              <h3>What you pay now</h3>
+              <p>Your own rates and your bill total, so the saving we show is against what you actually pay, not against a headline price.</p>
+            </li>
+            <li>
+              <span className={h.knowIcon}><Icon name="tag" size={22} /></span>
+              <h3>Which plan you&apos;re on</h3>
+              <p>
+                Retailers reuse plan names. Around 360,000 Victorians are on an older, dearer version of a plan with a cheaper twin of the same name. Your
+                bill shows which one you have, and we&apos;ll tell you.
+              </p>
+            </li>
+          </ul>
+        </section>
+
+        {/* 3. Proof: same prices, three homes, three answers */}
+        {homes.length === 3 && typical && (
+          <section className={h.section}>
+            <h2 className={h.h2}>Same prices, three homes, three different answers</h2>
+            <p className={h.sub}>
+              We priced every plan we track for three homes on the {THREE_HOMES_NETWORK} network, against the default offer, using the latest prices we have. A
+              typical-household figure would tell all three they save {money(typical.saving)} a year.
+            </p>
+            <ol className={h.homes}>
+              {homes.map((x) => (
+                <li key={x.key} className={x.key === "typical" ? h.homeTypical : undefined}>
+                  {x.key === "typical" && <span className={h.homeTag}>What a typical estimate assumes</span>}
+                  <h3>{x.title}</h3>
+                  <p className={h.homeDetail}>{x.detail}</p>
+                  <dl>
+                    <div><dt>Uses</dt><dd>{x.annualKwh.toLocaleString("en-AU")} kWh a year</dd></div>
+                    <div><dt>Cheapest plan</dt><dd>{money(x.best)} a year</dd></div>
+                    <div className={h.homeSave}><dt>Saving vs the default offer</dt><dd>{money(x.saving)}<small> a year</small></dd></div>
+                  </dl>
+                  {x.key !== "typical" && (
+                    <p className={h.homeNote}>
+                      {x.differentPlan && x.typicalPickCostsMore === null
+                        ? "A different cheapest plan: the typical home's pick doesn't even price its controlled load."
+                        : x.differentPlan && (x.typicalPickCostsMore ?? 0) >= 1
+                          ? `A different cheapest plan: the typical home's pick would cost it ${money(x.typicalPickCostsMore ?? 0)} a year more.`
+                          : `Same cheapest plan as the typical home, but it saves ${money(Math.abs(x.saving - typical.saving))} a year ${x.saving < typical.saving ? "less" : "more"}.`}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+            <p className={h.note}>
+              The saving runs from {money(lowSave)} to {money(highSave)} a year. Estimates from our household model, prices checked {fmtDate()}, discounts for paying on time
+              included. Your bill will be different again, which is why we read it. <Link href="/learn">How we price plans</Link>
+            </p>
+          </section>
+        )}
+
+        {/* 4. How it works */}
         <section className={h.section}>
           <h2 className={h.h2}>How it works</h2>
           <ol className={h.steps}>
@@ -76,27 +149,7 @@ export default function Home() {
           </ol>
         </section>
 
-        {/* 3. A worked example */}
-        <section className={h.section}>
-          <h2 className={h.h2}>An example: a typical home on the default offer</h2>
-          <p className={h.sub}>
-            The Victorian Default Offer is the government-set price many households are still on. Here&apos;s what it costs against the cheapest plan we track.
-          </p>
-          <table className={h.table}>
-            <tbody>
-              <tr><th>Electricity used</th><td>{ex.annualUsageKwh.toLocaleString("en-AU")} kWh a year</td></tr>
-              <tr><th>On the default offer</th><td>{money(ex.annualBench)} a year</td></tr>
-              <tr><th>On the cheapest plan we track</th><td>{money(ex.annualBest)} a year</td></tr>
-              <tr className={h.total}><th>Difference</th><td>{money(gap)} a year</td></tr>
-            </tbody>
-          </table>
-          <p className={h.note}>
-            Single-rate usage, averaged across Victoria&apos;s five networks, prices checked {fmtDate()}. Your bill will be different, which is why we read it.{" "}
-            <Link href="/learn">How we price plans</Link>
-          </p>
-        </section>
-
-        {/* 4. Why keep watching */}
+        {/* 5. Why keep watching */}
         <section className={h.section}>
           <h2 className={h.h2}>Prices don&apos;t stay put</h2>
           <p className={h.sub}>
@@ -106,14 +159,15 @@ export default function Home() {
           <ul className={h.watch}>
             <li><Icon name="bell" size={20} /><span><b>A month before</b> your discount or fixed price ends</span></li>
             <li><Icon name="calendar" size={20} /><span><b>After 1 July</b>, when retailers reprice</span></li>
-            <li><Icon name="refresh" size={20} /><span><b>Whenever a plan</b> beats yours by {money(WORTH_SWITCHING_PER_YEAR)} a year or more</span></li>
+            <li><Icon name="refresh" size={20} /><span><b>Whenever a plan</b> beats yours by {money(WORTH_SWITCHING_PER_YEAR)} a year or more (or the amount you choose)</span></li>
           </ul>
           <p className={h.note}>
-            Already use another comparison site? <Link href="/learn#compare">Here&apos;s how we fit alongside it</Link>.
+            Used Victorian Energy Compare? Good: it&apos;s the Government&apos;s site and well worth a look. It finds the best deal on the day; we
+            start from your bill and keep checking. <Link href="/learn#compare">How the two fit together</Link>.
           </p>
         </section>
 
-        {/* 5. Price */}
+        {/* 6. Price */}
         <section className={h.section}>
           <div className={h.price}>
             <div>

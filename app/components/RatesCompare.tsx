@@ -97,7 +97,7 @@ export default function RatesCompare({
         {current
           ? "Including GST. Green is the better rate on each line."
           : "Including GST. Upload a bill and we fill in your column from it."}{" "}
-        A feed-in tariff only matters if you have solar.
+        A feed-in tariff only matters if you have solar. Plan rates are as published, before discounts; the plan&apos;s price already takes its discounts off (assuming you pay on time).
       </p>
     </div>
   );

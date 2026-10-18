@@ -9,6 +9,10 @@ export const PRICE_CHANGE_CLAUSE =
 
 /** Don't nag: a new plan has to beat the current one by this much a year. */
 export const WORTH_SWITCHING_PER_YEAR = 50;
+/** With this many retailers in the data (the daily pull takes every retailer
+ *  in Energy Made Easy's register), copy stops saying "not every retailer". */
+export const BROAD_COVERAGE = 25;
+export { ALERT_MIN_CHOICES } from "./alertChoices";
 /** After a confirmed switch, hold alerts for this long unless the saving is big. */
 export const QUIET_DAYS_AFTER_SWITCH = 60;
 export const BIG_SAVING_PER_YEAR = 150;
@@ -24,8 +28,9 @@ export const DATA_FACTS = {
   monthlyEmail: "On the 1st of each month, members get a summary of what changed and what they're saving.",
   defaultOffer: "The default offer (VDO) is updated each 1 July from the Essential Services Commission's final decision.",
   howPriced:
-    "We price every plan the same way: daily supply charge × days, plus each rate × the kWh used in that time band, plus controlled load, minus any solar credit. Nothing is weighted or sponsored.",
-  notIncluded: "Sign-up credits, conditional discounts, exit fees, concessions and rebates. We tell you to confirm with the retailer before switching.",
+    "We price every plan the same way: daily supply charge × days, plus each rate × the kWh used in that time band, plus controlled load, minus the plan's discounts (guaranteed ones, and pay-on-time or direct-debit ones, assuming you pay on time), minus any solar credit. Nothing is weighted or sponsored.",
+  notIncluded:
+    "Sign-up credits and gifts, discounts with other conditions (such as bundles), fees, concessions and rebates. Each plan lists its own from the retailer's feed. Offers only some people can get, like members-only plans, are listed but never picked as your best plan.",
 };
 
 /** When the verdict turns red rather than a warm "you could pay less":

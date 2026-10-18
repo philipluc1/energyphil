@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Pulls every current residential electricity plan for Victoria from the
 // retailers' public Consumer Data Right (CDR) feeds and regenerates
-// lib/plans.ts. No login or key is needed. Run by GitHub Actions every day
+// lib/plans.ts (rates), lib/gasPlans.ts, lib/planTerms.ts (fixed/variable and
+// offer dates) and lib/planExtras.ts (discounts, credits, fees and sign-up
+// conditions). No login or key is needed. Run by GitHub Actions every day
 // (.github/workflows/pull-plans.yml) and by hand with:
 //
-//   node scripts/pull-plans.mjs            # fetch and rewrite lib/plans.ts
+//   node scripts/pull-plans.mjs            # every retailer in the register: fetch and rewrite lib/*.ts
 //   node scripts/pull-plans.mjs --dry-run  # fetch and report, change nothing
-//   node scripts/pull-plans.mjs --all      # every active retailer, not just the known list
+//   node scripts/pull-plans.mjs --known    # only the KNOWN list below (a quick test)
 //
 // Endpoints (no auth):
 //   registry:  https://api.energymadeeasy.gov.au/refdata2?keys=organisations
@@ -38,14 +40,17 @@ function noteDates(retailerName, name, detail, p) {
 }
 const DATA_DIR = path.join(ROOT, "data");
 const DRY = process.argv.includes("--dry-run");
-const ALL = process.argv.includes("--all");
+const KNOWN_ONLY = process.argv.includes("--known");
+const DIRECTORY_TS = path.join(ROOT, "lib", "retailerDirectory.ts");
 
-// Retailers we show by default. Keys are the CDR codes, values the name the
-// site uses (must match lib/retailerLinks.ts). Add a line to add a retailer.
-const KNOWN = {
+// Every retailer in Energy Made Easy's register is pulled; retailers with no
+// Victorian residential plans simply add no rows. KNOWN is the fallback list
+// if the register can't be read, and gives the site's name for each CDR code
+// (must match lib/retailerLinks.ts).
+export const KNOWN = {
   agl: "AGL",
   alinta: "Alinta Energy",
-  bluenrg: "Blue NRG",
+  "blue-nrg": "Blue NRG",
   covau: "CovaU",
   dodo: "Dodo",
   energyaustralia: "EnergyAustralia",
@@ -55,10 +60,78 @@ const KNOWN = {
   momentum: "Momentum Energy",
   origin: "Origin Energy",
   powershop: "Powershop",
-  red: "Red Energy",
-  sumo: "Sumo",
+  "red-energy": "Red Energy",
+  "sumo-power": "Sumo",
+  "sumo-gas": "Sumo",
   tango: "Tango Energy",
 };
+
+// Feed brand names that differ from the name the site uses (lower case → site name).
+const NAME_FIX = {
+  "globird energy": "GloBird Energy", globird: "GloBird Energy",
+  "sumo power": "Sumo", "sumo gas": "Sumo", sumo: "Sumo",
+  "blue nrg": "Blue NRG", bluenrg: "Blue NRG",
+  "red energy": "Red Energy",
+  "dodo power & gas": "Dodo", "dodo power and gas": "Dodo", dodo: "Dodo",
+  "energy australia": "EnergyAustralia", energyaustralia: "EnergyAustralia",
+  "agl energy": "AGL", agl: "AGL",
+  origin: "Origin Energy", "origin energy": "Origin Energy",
+  alinta: "Alinta Energy", "alinta energy": "Alinta Energy",
+  lumo: "Lumo Energy", "lumo energy": "Lumo Energy",
+  momentum: "Momentum Energy", "momentum energy": "Momentum Energy",
+  powershop: "Powershop", "powershop australia": "Powershop",
+  tango: "Tango Energy", "tango energy": "Tango Energy",
+  kogan: "Kogan Energy", "kogan energy": "Kogan Energy",
+  covau: "CovaU", "covau energy": "CovaU",
+};
+
+/** The name the site shows for a retailer: the plan's brand where the feed gives one. */
+export function siteRetailerName(brandName, orgName, code) {
+  const raw = String(brandName || KNOWN[code] || orgName || code || "")
+    .replace(/\s*\((?:NSW|QLD|SA|VIC|ACT|TAS|Old)\)\s*$/i, "")
+    .replace(/\s+Pty\.?\s*Ltd\.?$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return NAME_FIX[raw.toLowerCase()] ?? raw;
+}
+
+/** A retailer's home page from the register's website field: https and the host only. */
+export function websiteOf(v) {
+  if (typeof v !== "string" || !v.trim()) return null;
+  let host = v.trim().replace(/^https?:\/\//i, "").split(/[/?#]/)[0].toLowerCase();
+  if (host.startsWith("ww.")) host = "w" + host;
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(host) ? `https://${host}` : null;
+}
+
+/** Retailers to pull, one per CDR code, from the register (its organisations
+ *  come as an object keyed by id, or as a list in older versions). */
+export function registryTargets(registry, { knownOnly = false } = {}) {
+  const raw = registry?.data?.organisations ?? registry?.organisations ?? [];
+  const orgs = Array.isArray(raw) ? raw : Object.values(raw);
+  const byCode = new Map();
+  for (const o of orgs) {
+    const code = typeof o?.cdrCode === "string" ? o.cdrCode.trim() : "";
+    if (!code) continue;
+    const status = String(o.orgStatus ?? o.status ?? "").toUpperCase();
+    if (/INACTIVE|CLOSED|SUSPEND|REVOKED/.test(status)) continue;
+    if (knownOnly && !KNOWN[code]) continue;
+    if (!byCode.has(code)) byCode.set(code, { code, name: siteRetailerName(null, o.orgName ?? o.name, code), website: websiteOf(o.websiteURL), phone: o.residentialContact ?? null });
+  }
+  return [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code));
+}
+
+/** Website and phone by the site's retailer name, for every organisation in the register. */
+export function registryDirectory(registry) {
+  const raw = registry?.data?.organisations ?? registry?.organisations ?? [];
+  const orgs = Array.isArray(raw) ? raw : Object.values(raw);
+  const out = {};
+  for (const o of orgs) {
+    const name = siteRetailerName(null, o.orgName ?? o.name, o.cdrCode);
+    if (!name || out[name]) continue;
+    out[name] = { website: websiteOf(o.websiteURL), phone: typeof o.residentialContact === "string" ? o.residentialContact.trim() : null };
+  }
+  return out;
+}
 
 // The five Victorian networks, as the site names them, with the words the
 // CDR feed uses for each (matched case-insensitively).
@@ -102,10 +175,10 @@ export function parseGasPlan(detail) {
   return { supply: gst(supply), blocks, perDay };
 }
 
-async function pullGasRetailer(cdrCode, retailerName, log) {
+async function pullGasRetailer(cdrCode, orgName, log) {
   const base = `https://cdr.energymadeeasy.gov.au/${cdrCode}/cds-au/v1/energy/plans`;
-  const list = await getJson(`${base}?fuelType=GAS&type=ALL&effective=CURRENT&page-size=1000`, 1);
-  const plans = (list.data?.plans ?? []).filter((p) => String(p.customerType ?? "RESIDENTIAL").toUpperCase() === "RESIDENTIAL" && gasZones(p).length > 0);
+  const plans = (await listPlans(`${base}?fuelType=GAS&type=ALL&effective=CURRENT`)).filter((p) => String(p.customerType ?? "RESIDENTIAL").toUpperCase() === "RESIDENTIAL" && gasZones(p).length > 0);
+  const retailerName = siteRetailerName(plans[0]?.brandName, orgName, cdrCode);
   const rows = [];
   for (const p of plans) {
     await sleep(1000);
@@ -114,11 +187,16 @@ async function pullGasRetailer(cdrCode, retailerName, log) {
     const g = parseGasPlan(detail);
     if (!g) continue;
     const name = String(detail.displayName ?? p.displayName ?? p.planId).replace(/\s+/g, " ").trim();
+    const brand = siteRetailerName(detail.brandName ?? p.brandName, orgName, cdrCode);
     const offerType = String(p.type ?? detail.type ?? "MARKET").toUpperCase() === "STANDING" ? "STANDING" : "MARKET";
-    noteDates(retailerName, name, detail, p);
-    for (const z of gasZones(detail.geography ? detail : p)) rows.push([retailerName, z, name, offerType, g.supply, g.blocks, g.perDay]);
+    noteDates(brand, name, detail, p);
+    const extras = parseExtras(detail);
+    for (const z of gasZones(detail.geography ? detail : p)) {
+      rows.push([brand, z, name, offerType, g.supply, g.blocks, g.perDay]);
+      if (extras) EXTRAS.push({ fuel: "G", retailer: brand, plan: name, network: z, extras });
+    }
   }
-  log(`  ${retailerName} gas: ${plans.length} VIC residential plans listed, ${rows.length} rows priced`);
+  if (plans.length) log(`  ${retailerName} gas: ${plans.length} VIC residential plans listed, ${rows.length} rows priced`);
   return rows;
 }
 
@@ -133,6 +211,20 @@ async function getJson(url, version, attempt = 1) {
   }
   if (!res.ok) throw new Error(`${res.status} from ${url}`);
   return res.json();
+}
+
+/** Every plan in a retailer's list, following the feed's "next" links. */
+async function listPlans(url) {
+  const plans = [];
+  let next = `${url}&page-size=1000`;
+  for (let page = 0; next && page < 20; page++) {
+    const body = await getJson(next, 1);
+    plans.push(...(body.data?.plans ?? []));
+    const link = body.links?.next;
+    next = typeof link === "string" && link.startsWith("https://cdr.energymadeeasy.gov.au/") && link !== next ? link : null;
+    if (next) await sleep(1000);
+  }
+  return plans;
 }
 
 /** Which VIC networks a plan applies to, from its geography block. */
@@ -187,13 +279,128 @@ export function parsePlan(detail) {
   return { supply: gst(supply), anytime: gst(anytime), peak: gst(peak), shoulder: gst(shoulder), offpeak: gst(offpeak), cl: gst(cl), solarFit };
 }
 
-async function pullRetailer(cdrCode, retailerName, log) {
+// ---------------------------------------------------------------------------
+// Discounts, credits, fees and sign-up conditions (lib/planExtras.ts).
+
+const EXTRAS_TS = path.join(ROOT, "lib", "planExtras.ts");
+// One entry per fuel + retailer + network + plan name.
+const EXTRAS = [];
+
+/** Plain text: no HTML tags or markdown links, one line, at most n characters. */
+export function tidyText(v, n = 240) {
+  if (v === null || v === undefined) return null;
+  const t = String(v)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) return null;
+  return t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t;
+}
+const url = (v) => (typeof v === "string" && /^https:\/\//i.test(v.trim()) ? v.trim() : null);
+const oneOf = (v, list, fallback) => { const u = String(v ?? "").toUpperCase(); return list.includes(u) ? u : fallback; };
+
+/** The offer's discounts, incentives, fees, eligibility and contract terms,
+ *  from a CDR plan detail (electricity or gas). Amounts are kept as the
+ *  retailer publishes them; percentages as fractions (0.03 = 3%). */
+export function parseExtras(detail) {
+  const c = detail?.electricityContract ?? detail?.gasContract;
+  if (!c) return null;
+  const discounts = [];
+  for (const d of c.discounts ?? []) {
+    const method = ["percentOfBill", "percentOfUse", "fixedAmount", "percentOverThreshold"].includes(d.methodUType) ? d.methodUType : null;
+    if (!method) continue;
+    const body = d[method] ?? {};
+    discounts.push({
+      name: tidyText(d.displayName, 80) ?? "Discount",
+      type: oneOf(d.type, ["GUARANTEED", "CONDITIONAL", "OTHER"], "OTHER"),
+      category: d.category ? oneOf(d.category, ["PAY_ON_TIME", "DIRECT_DEBIT", "GUARANTEED_DISCOUNT", "OTHER"], "OTHER") : null,
+      method,
+      rate: method === "fixedAmount" ? null : num(body.rate),
+      amount: method === "fixedAmount" ? num(body.amount) : null,
+      threshold: method === "percentOverThreshold" ? num(body.usageAmount) : null,
+      endDate: isoDay(d.endDate),
+      description: tidyText(d.description),
+    });
+  }
+  const incentives = (c.incentives ?? []).map((i) => ({
+    name: tidyText(i.displayName, 80) ?? "Incentive",
+    category: oneOf(i.category, ["GIFT", "ACCOUNT_CREDIT", "OTHER"], "OTHER"),
+    description: tidyText(i.description),
+    eligibility: tidyText(i.eligibility, 160),
+  }));
+  const fees = (c.fees ?? []).map((f) => ({
+    type: String(f.type ?? "OTHER").toUpperCase(),
+    term: f.term ? String(f.term).toUpperCase() : null,
+    amount: num(f.amount),
+    rate: num(f.rate),
+    description: tidyText(f.description, 200),
+  }));
+  const eligibility = (c.eligibility ?? []).map((e) => ({
+    type: String(e.type ?? "OTHER").toUpperCase(),
+    information: tidyText(e.information, 200),
+    description: tidyText(e.description, 200),
+  }));
+  const info = detail.additionalInformation ?? {};
+  return {
+    discounts,
+    incentives,
+    fees,
+    eligibility,
+    payment: [...new Set((c.paymentOption ?? []).map((p) => String(p).toUpperCase()))],
+    term: c.termType ? String(c.termType).toUpperCase() : null,
+    benefitPeriod: tidyText(c.benefitPeriod, 160),
+    coolingOffDays: Number.isFinite(Number(c.coolingOffDays)) && c.coolingOffDays !== null && c.coolingOffDays !== undefined ? Number(c.coolingOffDays) : null,
+    onExpiry: tidyText(c.onExpiryDescription),
+    termsUrl: url(info.termsUri),
+    eligibilityUrl: url(info.eligibilityUri),
+  };
+}
+
+/** Shared entries plus a lookup: "fuel|retailer|plan" for the plan's usual
+ *  extras (the one most networks share), and "fuel|retailer|plan|network"
+ *  only where a network differs. Keeps the file small. */
+export function buildExtras(entries) {
+  const list = [];
+  const seen = new Map();
+  const idOf = (x) => {
+    const j = JSON.stringify(x);
+    if (!seen.has(j)) { seen.set(j, list.length); list.push(x); }
+    return seen.get(j);
+  };
+  const byPlan = new Map();
+  for (const e of entries) {
+    const k = `${e.fuel}|${e.retailer}|${e.plan}`;
+    if (!byPlan.has(k)) byPlan.set(k, []);
+    byPlan.get(k).push(e);
+  }
+  const index = {};
+  for (const [k, es] of [...byPlan.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const counts = new Map();
+    for (const e of es) { const id = idOf(e.extras); counts.set(id, (counts.get(id) ?? 0) + 1); }
+    const usual = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+    index[k] = usual;
+    for (const e of es) { const id = idOf(e.extras); if (id !== usual) index[`${k}|${e.network}`] = id; }
+  }
+  return { list, index };
+}
+
+/** Rewrite the three generated lines in lib/planExtras.ts. */
+export function writeExtrasSource(src, built, today) {
+  return src
+    .replace(/^export const PLAN_EXTRAS_DATE: string \| null = .*;$/m, `export const PLAN_EXTRAS_DATE: string | null = ${JSON.stringify(today)};`)
+    .replace(/^export const PLAN_EXTRAS_LIST: PlanExtras\[\] = .*;$/m, () => `export const PLAN_EXTRAS_LIST: PlanExtras[] = ${JSON.stringify(built.list)};`)
+    .replace(/^export const PLAN_EXTRAS_INDEX: Record<string, number> = .*;$/m, () => `export const PLAN_EXTRAS_INDEX: Record<string, number> = ${JSON.stringify(built.index)};`);
+}
+
+async function pullRetailer(cdrCode, orgName, log) {
   const base = `https://cdr.energymadeeasy.gov.au/${cdrCode}/cds-au/v1/energy/plans`;
-  const list = await getJson(`${base}?fuelType=ELECTRICITY&type=ALL&effective=CURRENT&page-size=1000`, 1);
-  const plans = (list.data?.plans ?? []).filter((p) => {
+  const plans = (await listPlans(`${base}?fuelType=ELECTRICITY&type=ALL&effective=CURRENT`)).filter((p) => {
     const ct = String(p.customerType ?? "RESIDENTIAL").toUpperCase();
     return ct === "RESIDENTIAL" && vicDistributors(p).length > 0;
   });
+  const retailerName = siteRetailerName(plans[0]?.brandName, orgName, cdrCode);
   const rows = [];
   for (const p of plans) {
     await sleep(1000);
@@ -207,14 +414,18 @@ async function pullRetailer(cdrCode, retailerName, log) {
     const rates = parsePlan(detail);
     if (!rates) continue;
     const name = String(detail.displayName ?? p.displayName ?? p.planId).replace(/\s+/g, " ").trim();
+    // One CDR code can carry several brands (e.g. energy-locals): name each plan by its own brand.
+    const brand = siteRetailerName(detail.brandName ?? p.brandName, orgName, cdrCode);
     const offerType = String(p.type ?? detail.type ?? "MARKET").toUpperCase() === "STANDING" ? "STANDING" : "MARKET";
-    if (detail.electricityContract?.isFixed === true) FIXED.add(`${retailerName}|${name}`);
-    noteDates(retailerName, name, detail, p);
+    if (detail.electricityContract?.isFixed === true) FIXED.add(`${brand}|${name}`);
+    noteDates(brand, name, detail, p);
+    const extras = parseExtras(detail);
     for (const d of vicDistributors(detail.geography ? detail : p)) {
-      rows.push([retailerName, d, name, offerType, rates.supply, rates.anytime, rates.peak, rates.shoulder, rates.offpeak, rates.cl, rates.solarFit]);
+      rows.push([brand, d, name, offerType, rates.supply, rates.anytime, rates.peak, rates.shoulder, rates.offpeak, rates.cl, rates.solarFit]);
+      if (extras) EXTRAS.push({ fuel: "E", retailer: brand, plan: name, network: d, extras });
     }
   }
-  log(`  ${retailerName}: ${plans.length} VIC residential plans listed, ${rows.length} rows priced`);
+  if (plans.length) log(`  ${retailerName}: ${plans.length} VIC residential plans listed, ${rows.length} rows priced`);
   return rows;
 }
 
@@ -255,11 +466,16 @@ export function buildPlanDates(termsSrc, previousPlansSrc, rows, today, previous
 
 async function main() {
   const log = (m) => console.log(m);
-  const registry = await getJson("https://api.energymadeeasy.gov.au/refdata2?keys=organisations", 1);
-  const orgs = (registry.organisations ?? registry.data?.organisations ?? []).filter((o) => o.cdrCode);
-  const targets = ALL
-    ? orgs.filter((o) => (o.status ?? "ACTIVE").toUpperCase() === "ACTIVE").map((o) => [o.cdrCode, KNOWN[o.cdrCode] ?? o.name ?? o.cdrCode])
-    : Object.entries(KNOWN);
+  // Every retailer in the register; the KNOWN list if the register can't be read.
+  let registry = null;
+  try {
+    registry = await getJson("https://api.energymadeeasy.gov.au/refdata2?keys=organisations", 1);
+  } catch (e) {
+    log(`Register not available (${e.message}); using the KNOWN list.`);
+  }
+  let found = registry ? registryTargets(registry, { knownOnly: KNOWN_ONLY }) : [];
+  if (found.length < 10) found = Object.entries(KNOWN).map(([code, name]) => ({ code, name, website: null, phone: null }));
+  const targets = found.map((t) => [t.code, t.name]);
   log(`Pulling ${targets.length} retailers${DRY ? " (dry run)" : ""}…`);
 
   const results = await Promise.allSettled(targets.map(([code, name]) => pullRetailer(code, name, log)));
@@ -310,6 +526,27 @@ async function main() {
   const gasBefore = fs.existsSync(GAS_TS) ? fs.readFileSync(GAS_TS, "utf8") : "";
   fs.writeFileSync(TERMS_TS, buildPlanDates(termsSrc, current, unique, today, gasBefore, gasUnique));
   log(`${FIXED.size} fixed-price plans.`);
+  // Discounts, credits, fees and conditions, for the rows we kept.
+  const keptElec = new Set(unique.map((r) => `${r[0]}|${r[1]}|${r[2]}`));
+  const keptGas = new Set(gasUnique.map((r) => `${r[0]}|${r[1]}|${r[2]}`));
+  const keptExtras = EXTRAS.filter((e) => (e.fuel === "E" ? keptElec : keptGas).has(`${e.retailer}|${e.network}|${e.plan}`));
+  const built = buildExtras(keptExtras);
+  fs.writeFileSync(EXTRAS_TS, writeExtrasSource(fs.readFileSync(EXTRAS_TS, "utf8"), built, today));
+  const withDiscounts = built.list.filter((x) => x.discounts.length > 0).length;
+  log(`${built.list.length} distinct sets of offer conditions (${withDiscounts} with discounts) for ${Object.keys(built.index).length} plan keys.`);
+  // Retailer websites and phone numbers, for the "Go to" links of retailers
+  // without a hand-checked link (lib/retailerLinks.ts).
+  const directory = registry ? registryDirectory(registry) : {};
+  const shown = [...new Set([...unique, ...gasUnique].map((r) => r[0]))].sort();
+  const byCode = new Map(found.map((t) => [t.name, t]));
+  const dirOut = Object.fromEntries(shown.map((n) => [n, directory[n] ?? { website: byCode.get(n)?.website ?? null, phone: byCode.get(n)?.phone ?? null }]));
+  if (fs.existsSync(DIRECTORY_TS)) {
+    const dsrc = fs.readFileSync(DIRECTORY_TS, "utf8")
+      .replace(/export const RETAILER_DIRECTORY_DATE: string \| null = .*?;/, `export const RETAILER_DIRECTORY_DATE: string | null = "${today}";`)
+      .replace(/export const RETAILER_DIRECTORY: Record<string, RetailerContact> = \{.*?\};/s, `export const RETAILER_DIRECTORY: Record<string, RetailerContact> = ${JSON.stringify(dirOut)};`);
+    fs.writeFileSync(DIRECTORY_TS, dsrc);
+  }
+  log(`${shown.length} retailers shown: ${shown.join(", ")}`);
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(DATA_DIR, `plans-${today}.json`), JSON.stringify({ pulled: today, rows: unique }, null, 0));
   // Gas file: same shape, only rewritten when the pull found something.

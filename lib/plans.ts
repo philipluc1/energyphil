@@ -3,6 +3,8 @@
 // solarFit is the plan's solar feed-in credit in $/kWh exported — null where the
 // retailer's CDR feed didn't publish one for this plan (not necessarily $0; treat
 // as "unknown" rather than "no credit").
+import { conditionalDiscount, extrasFor, pricedDiscount, restrictionFor, topOpen } from "./planExtras";
+
 export type PlanRow = [string, string, string, string, number, number | null, number | null, number | null, number | null, number | null, number | null];
 
 export const PLAN_DATA_DATE = "2026-09-22";
@@ -36,14 +38,34 @@ export interface UsageInput {
   solarExportKwh?: number;
 }
 
+export interface PriceOptions {
+  /** Take the offer's discounts off (default true). Off for the customer's
+   *  own rates, which are what they already pay. */
+  discounts?: boolean;
+}
+
+/** A plan's bill split into its parts, all GST-inclusive dollars. */
+export interface BillDetail {
+  supply: number;
+  /** Usage charges, including controlled load. */
+  usage: number;
+  solarCredit: number;
+  /** Every discount taken off `total`: guaranteed, plus pay on time and direct debit. */
+  discount: number;
+  /** The pay-on-time / direct-debit part of `discount`: what paying late
+   *  (or not by direct debit) would add back. */
+  conditionalDiscount: number;
+  total: number;
+}
+
 /** Validated 1:1 against the Excel pricing engine (VIC_Bill_Comparator_Live.xlsx):
  * single-rate plans price off total usage across all bands; TOU plans are only
  * comparable, and only priced, when a real Peak/Shoulder/Off-Peak split is supplied.
  * Solar feed-in is a straight credit (export kWh x the plan's solarFit rate) —
  * real per-plan data from the same CDR pull as every other rate here, not an
  * estimate — subtracted after the usage/supply charges are totalled. */
-export function computeBill(plan: PlanRow, u: UsageInput): number | null {
-  const [, , , , supply, pAnytime, pPeak, pShoulder, pOffpeak, pCl, pSolarFit] = plan;
+export function billDetail(plan: PlanRow, u: UsageInput, opts: PriceOptions = {}): BillDetail | null {
+  const [retailer, network, planName, , supply, pAnytime, pPeak, pShoulder, pOffpeak, pCl, pSolarFit] = plan;
   const hasBand = (u.peak + u.shoulder + u.offpeak) > 0;
   const comparable = pAnytime !== null || (pPeak !== null && hasBand);
   if (!comparable) return null;
@@ -71,11 +93,22 @@ export function computeBill(plan: PlanRow, u: UsageInput): number | null {
   }
   const varCl = pCl !== null ? pCl * u.cl : 0;
   const solarCredit = pSolarFit !== null ? pSolarFit * (u.solarExportKwh ?? 0) : 0;
+  // Guaranteed discounts come off, and so do pay-on-time and direct-debit
+  // ones (we assume the customer pays on time). Other conditional discounts,
+  // credits and fees are only shown. Concessions are never applied: they
+  // depend on the customer, not the offer.
+  const extras = opts.discounts === false ? null : extrasFor("E", retailer, planName, network);
+  const parts = { supply: fixed, usage: variable + varCl, solarCredit };
+  const discount = pricedDiscount(extras, parts);
   // Not clamped at 0: a generous feed-in credit can genuinely outweigh usage
   // charges for a billing period, and clamping would make two plans with
   // different (large) credits look identical when ranking — the negative
   // total is real and worth showing as "you're in credit".
-  return fixed + variable + varCl - solarCredit;
+  return { ...parts, discount, conditionalDiscount: conditionalDiscount(extras, parts), total: fixed + variable + varCl - discount - solarCredit };
+}
+
+export function computeBill(plan: PlanRow, u: UsageInput, opts: PriceOptions = {}): number | null {
+  return billDetail(plan, u, opts)?.total ?? null;
 }
 
 /** The solar credit component alone, for display (RateBreakdown etc.) — null
@@ -96,6 +129,9 @@ export function benchmarkBill(distributor: Distributor, days: number, currentBil
 export interface RankedMatch {
   plan: PlanRow;
   total: number;
+  /** Why this household probably can't get the offer (a membership, existing
+   *  customers only…), or null. Still listed; never picked as the best. */
+  restricted: string | null;
 }
 
 export interface RankOptions {
@@ -103,20 +139,32 @@ export interface RankOptions {
    *  very cheap or free overnight window (isEvFriendly) are only shown then:
    *  for everyone else that window doesn't reflect what they'd really pay. */
   ev?: boolean;
+  /** Defaults to "exports solar" when solarExportKwh > 0. */
+  hasSolar?: boolean;
+  /** So "existing customers only" offers count for their own retailer. */
+  currentRetailer?: string | null;
 }
 
 export function rankPlans(distributor: Distributor, u: UsageInput, opts: RankOptions = {}): RankedMatch[] {
   const matches: RankedMatch[] = [];
+  const household = { hasSolar: opts.hasSolar ?? (u.solarExportKwh ?? 0) > 0, currentRetailer: opts.currentRetailer ?? null };
   for (const plan of PLANS) {
     if (plan[1] !== distributor) continue;
     if (!opts.ev && isEvFriendly(plan)) continue;
     const total = computeBill(plan, u);
     if (total === null) continue;
-    matches.push({ plan, total });
+    matches.push({ plan, total, restricted: restrictionFor(extrasFor("E", plan[0], plan[2], plan[1]), plan[0], plan[2], household) });
   }
   matches.sort((a, b) => a.total - b.total);
   return matches;
 }
+
+/** The cheapest plan this household can get: the headline everywhere. */
+export function bestPlan(distributor: Distributor, u: UsageInput, opts: RankOptions = {}): RankedMatch | undefined {
+  return topOpen(rankPlans(distributor, u, opts));
+}
+
+export { topOpen };
 
 export function countComparable(distributor: Distributor, peak: number, shoulder: number, offpeak: number): number {
   const hasBand = peak + shoulder + offpeak > 0;

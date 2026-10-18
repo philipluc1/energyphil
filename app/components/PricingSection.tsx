@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { track } from "@/lib/track";
+import { parseSource, readSourceCookie } from "@/lib/attribution";
+import { REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
 import type { PlanId } from "@/lib/pricingPlans";
 import PlanCards from "./PlanCards";
 import PlanBand from "./PlanBand";
@@ -61,6 +64,11 @@ export default function PricingSection({
 }) {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState("");
+  const [referred, setReferred] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReferred(parseSource(readSourceCookie())?.kind === "referral"), 0);
+    return () => clearTimeout(t);
+  }, []);
 
   async function handleChoose(planId: PlanId) {
     setError("");
@@ -69,6 +77,7 @@ export default function PricingSection({
       return;
     }
     setLoadingPlan(planId);
+    track("checkout_started", { distributor: profile.distributor });
     try {
       const res = await fetch("/api/create-checkout-session", {
         method: "POST",
@@ -108,6 +117,7 @@ export default function PricingSection({
         <label htmlFor="subEmail">Step 1: your email, then pick a plan</label>
         <input id="subEmail" type="email" placeholder="you@example.com" value={email} onChange={(e) => onEmailChange(e.target.value)} />
       </div>
+      {referred && <p className={styles.referralNote}>A friend sent you: {referralDollars(REFERRAL_FRIEND_CENTS)} comes off your first payment at checkout.</p>}
       {error && <p className={styles.leadErr}>{error}</p>}
     </PlanBand>
   );

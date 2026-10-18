@@ -1,4 +1,5 @@
-import { computeDashboardStats, computeSubscriberStats, LeadRow, SubscriberRow } from "@/lib/dashboardStats";
+import { computeDashboardStats, computeFunnelStats, computeSubscriberStats, LeadRow, SubscriberRow, type CheckEventRow, type MemberSourceRow } from "@/lib/dashboardStats";
+import { partnerName } from "@/lib/partners";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import DashboardCharts from "./DashboardCharts";
 import styles from "./dashboard.module.css";
@@ -54,5 +55,23 @@ export default async function DashboardPage() {
     .limit(2000);
   const subscriberStats = computeSubscriberStats((subData ?? []) as SubscriberRow[], now);
 
-  return <DashboardCharts stats={stats} subscriberStats={subscriberStats} />;
+  // Launch funnel: anonymous check counts (check_events) against new members,
+  // by where people came from. Both queries tolerate an older database
+  // (schema.sql not re-run yet): the section then shows what it can.
+  const { data: evData } = await supabaseAdmin
+    .from("check_events")
+    .select("created_at, event, source")
+    .order("created_at", { ascending: false })
+    .limit(50000);
+  const { data: srcData, error: srcErr } = await supabaseAdmin
+    .from("subscribers")
+    .select("created_at, status, source")
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  const memberRows: MemberSourceRow[] = srcErr
+    ? ((subData ?? []) as SubscriberRow[]).map((r) => ({ created_at: r.created_at, status: r.status, source: null }))
+    : ((srcData ?? []) as MemberSourceRow[]);
+  const funnel = computeFunnelStats((evData ?? []) as CheckEventRow[], memberRows, now, partnerName);
+
+  return <DashboardCharts stats={stats} subscriberStats={subscriberStats} funnel={funnel} />;
 }

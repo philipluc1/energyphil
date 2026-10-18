@@ -3,6 +3,7 @@ import { BIG_SAVING_PER_YEAR, QUIET_DAYS_AFTER_SWITCH } from "@/lib/dataPolicy";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
+import { topOpen } from "@/lib/planExtras";
 import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, resultEmail } from "@/lib/emailTemplates";
 import { computeBest, isMeaningfullyCheaper, priceOfPlan } from "@/lib/priceWatch";
 import { offerDates } from "@/lib/planTerms";
@@ -123,6 +124,14 @@ export async function GET(req: NextRequest) {
     errors++;
   }
 
+  // Each member's own alert minimum (A$ a year), if they've set one. Loaded
+  // separately so an older database without the column still sends alerts.
+  const alertMin = new Map<string, number>();
+  {
+    const { data: mins, error: minErr } = await supabaseAdmin.from("subscribers").select("id, alert_min_saving").eq("status", "active").not("alert_min_saving", "is", null);
+    if (!minErr) for (const m of (mins ?? []) as { id: string; alert_min_saving: number | null }[]) if (typeof m.alert_min_saving === "number") alertMin.set(m.id, m.alert_min_saving);
+  }
+
   for (const sub of (subsData ?? []) as SubscriberWatchRow[]) {
     try {
       const profile = {
@@ -147,7 +156,7 @@ export async function GET(req: NextRequest) {
       const pickToday = priceOfPlan(profile, pickRetailer, pickPlan);
       const previousBest = pickToday ?? sub.last_notified_total ?? sub.baseline_total;
       const days = sub.billing_days ?? 91;
-      if (!isMeaningfullyCheaper(best.bestTotal, previousBest, days)) continue;
+      if (!isMeaningfullyCheaper(best.bestTotal, previousBest, days, alertMin.get(sub.id))) continue;
       // Just switched? Leave them alone for a while unless the saving is big.
       if (sub.switched_at) {
         const sinceSwitch = (Date.now() - new Date(sub.switched_at).getTime()) / 86_400_000;
@@ -183,7 +192,7 @@ export async function GET(req: NextRequest) {
         // before reference_total existed just won't get a new episode — no
         // history to extend.
         const billingDays = sub.billing_days ?? 91;
-        if (sub.reference_total !== null && billingDays > 0) {
+        if (sub.reference_total !== null && billingDays > 0 && !best.average) {
           await supabaseAdmin
             .from("savings_episodes")
             .update({ ended_at: notifiedAt })
@@ -309,7 +318,7 @@ export async function GET(req: NextRequest) {
         : null;
       const when = new Date(`${due.date}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "UTC" });
       const days = sub.billing_days ?? 91;
-      const yearly = best && sub.reference_total ? ((sub.reference_total - best.bestTotal) * 365) / days : null;
+      const yearly = best && sub.reference_total && !best.average ? ((sub.reference_total - best.bestTotal) * 365) / days : null;
       const e = dealEnding({
         origin,
         what: due.what,
@@ -389,7 +398,7 @@ export async function GET(req: NextRequest) {
   }
 
   // --- Gas: members with a gas bill on file are re-priced too, and told when a
-  // gas plan beats our last gas pick by the same $50-a-year rule.
+  // gas plan beats our last gas pick by the member's alert minimum ($50 a year unless they changed it).
   let gasAlerts = 0;
   const { data: gasSubs, error: gasErr } = await supabaseAdmin
     .from("subscribers")
@@ -404,12 +413,12 @@ export async function GET(req: NextRequest) {
       if (!GAS_ZONES.includes(sub.gas_zone as GasZone) || !sub.gas_mj) continue;
       const gDays = sub.gas_billing_days ?? 91;
       const gasRanked = rankGasPlans(sub.gas_zone as GasZone, { days: gDays, mj: sub.gas_mj });
-      const top = gasRanked[0];
+      const top = topOpen(gasRanked);
       if (!top) continue;
       // Re-price our last gas pick at today's prices, as for electricity.
       const pickToday = gasRanked.find((m) => m.plan[0] === sub.gas_best_retailer && m.plan[2] === sub.gas_best_plan_name)?.total ?? null;
       const previous = pickToday ?? sub.gas_best_total ?? sub.gas_reference_total;
-      if (!isMeaningfullyCheaper(top.total, previous, gDays)) continue;
+      if (!isMeaningfullyCheaper(top.total, previous, gDays, alertMin.get(sub.id))) continue;
       const e = cheaperGasForMember({
         origin,
         retailer: top.plan[0],

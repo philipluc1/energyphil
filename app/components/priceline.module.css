@@ -1,0 +1,46 @@
+/* The price line: retailer bubbles over a green-to-red line, your bill as a red pin. */
+.wrap { margin: 4px 0 0; padding: 14px 16px 12px; border-radius: 16px; background: linear-gradient(180deg, rgba(22, 163, 74, 0.06), rgba(245, 166, 35, 0.05) 60%, rgba(220, 38, 38, 0.05)); border: 1px solid var(--border, #e1e6f0); }
+.scale { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.scale span:first-child { color: #15803d; }
+.scale span:last-child { color: #b91c1c; }
+.plot { position: relative; margin: 26px 4px 0; }
+.track {
+  position: absolute; left: 0; right: 0; height: 10px; border-radius: 999px;
+  background: linear-gradient(90deg, #16a34a 0%, #84cc16 30%, #f5a623 62%, #f97316 80%, #dc2626 100%);
+  box-shadow: 0 2px 10px rgba(245, 166, 35, 0.25);
+}
+
+.bubble {
+  position: absolute; transform: translateX(-50%); width: 56px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  animation: pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; z-index: 1;
+}
+@keyframes pop { from { opacity: 0; transform: translate(-50%, 10px) scale(0.8); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+.face { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--surface, #fff); border: 3px solid var(--surface, #fff); box-shadow: 0 4px 12px rgba(20, 24, 60, 0.18); }
+.face > span { border-radius: 50% !important; }
+.lock { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #1b2a6b, #2d3f9e); color: #fde047; }
+.price { font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink, #12141c); background: var(--surface, #fff); padding: 1px 6px; border-radius: 999px; box-shadow: 0 1px 4px rgba(20, 24, 60, 0.12); }
+.stem { width: 2px; background: linear-gradient(180deg, rgba(120, 130, 160, 0.5), rgba(120, 130, 160, 0.15)); margin-top: 1px; }
+.best .face { border-color: #f5a623; box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.28), 0 6px 16px rgba(245, 166, 35, 0.35); }
+.best .price { background: #f5a623; color: #1c1403; }
+.star { position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; line-height: 1; background: #f5a623; color: #1c1403; border: 2px solid var(--surface, #fff); }
+
+.pin { position: absolute; z-index: 2; width: 20px; height: 20px; margin-left: -10px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #dc2626; border: 3px solid var(--surface, #fff); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); animation: pulse 2s ease-out infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45); } 70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+.youLabel { position: absolute; z-index: 2; font-size: 12.5px; white-space: nowrap; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.tick { position: absolute; width: 3px; height: 22px; margin-left: -1.5px; border-radius: 2px; background: #64748b; z-index: 1; }
+.vdoLabel { position: absolute; font-size: 11.5px; white-space: nowrap; color: var(--grey, #5f6b82); font-variant-numeric: tabular-nums; }
+
+.caption { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--grey, #5f6b82); }
+.caption b { color: var(--ink, #12141c); }
+.caption .bad { color: #b91c1c; }
+.caption .good { color: #15803d; }
+
+@media (prefers-reduced-motion: reduce) { .bubble, .pin { animation: none; } }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .youLabel { background: rgba(220, 38, 38, 0.15); border-color: rgba(252, 165, 165, 0.35); color: #fca5a5; }
+  :root:not([data-theme="light"]) .caption .bad { color: #fca5a5; }
+  :root:not([data-theme="light"]) .caption .good { color: #86efac; }
+  }
+:root[data-theme="dark"] .youLabel { background: rgba(220, 38, 38, 0.15); border-color: rgba(252, 165, 165, 0.35); color: #fca5a5; }
+:root[data-theme="dark"] .caption .bad { color: #fca5a5; }
+:root[data-theme="dark"] .caption .good { color: #86efac; }
