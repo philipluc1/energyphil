@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { DISTRIBUTORS, VDO, PLANS, PLAN_DATA_DATE, rankPlans, topOpen, type Distributor } from "@/lib/plans";
-import { VIDEOS, VDO_HISTORY, TIMELINE, SAVE_TIPS } from "@/lib/learnContent";
+import { VIDEOS, VDO_HISTORY, PRICE_CYCLE, VDO_CHANGE_2026, SAVE_TIPS, nextCycleStage } from "@/lib/learnContent";
 import { DATA_FACTS, PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import PriceFlow from "../components/PriceFlow";
+import Icon from "../components/Icon";
+import MarketPulse from "../components/MarketPulse";
 import SiteHeader from "../components/SiteHeader";
 import VideoSlot from "../components/VideoSlot";
 import styles from "../components/Comparator.module.css";
@@ -18,6 +20,8 @@ export const metadata = {
 
 // A typical home: 4,000 kWh a year, single rate. Illustrative only.
 const USAGE = { days: 365, peak: 0, shoulder: 0, offpeak: 0, anytime: 4000, cl: 0 };
+const maxDrop = Math.max(...VDO_CHANGE_2026.byNetwork.map((n) => Math.abs(n.change)));
+const fmtDay = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
 
 function buildCharts() {
   const gaps: NetworkGap[] = [];
@@ -43,6 +47,7 @@ function buildCharts() {
 export default function LearnPage() {
   const { gaps, byNetwork } = buildCharts();
   const retailers = new Set(PLANS.map((p) => p[0])).size;
+  const nextStage = nextCycleStage();
   return (
     <>
       <SiteHeader active="learn" />
@@ -96,6 +101,13 @@ export default function LearnPage() {
           <NetworkGapChart data={gaps} />
 
           <h3 className={learn.h3}>Who&apos;s cheapest on your network</h3>
+          <p className={learn.assume}>
+            <span className={learn.assumeIcon}><Icon name="home" size={18} /></span>
+            <span>
+              <b>Assumes a residential home using 4,000 kWh a year</b>, the regulator&apos;s typical figure, on a single-rate plan with no solar. Yearly
+              cost of each retailer&apos;s cheapest plan, pay-on-time discounts included, prices checked {fmtDay(PLAN_DATA_DATE)}.
+            </span>
+          </p>
           <RetailerRankChart byNetwork={byNetwork} />
 
           <h3 className={learn.h3}>Default offer: yearly change</h3>
@@ -108,18 +120,60 @@ export default function LearnPage() {
 
         <section id="timeline" className={learn.block}>
           <h2 className={home.h2}>When prices change</h2>
-          <p className={home.sub}>The default offer resets every 1 July. Retailers adjust their own plans through the year.</p>
-          <ol className={learn.timeline}>
-            {TIMELINE.map((t) => (
-              <li key={t.when + t.title} className={t.status === "done" ? learn.done : learn.exp}>
-                <span className={learn.when}>{t.when}{t.status === "expected" ? " · expected" : ""}</span>
-                <b>{t.title}</b>
-                <p>{t.detail}</p>
+          <p className={home.sub}>There are two kinds of price, and they change on different clocks.</p>
+
+          <div className={learn.clocks}>
+            <div className={learn.clock}>
+              <span className={`${learn.clockIcon} ${learn.ciNavy}`}><Icon name="calendar" size={22} /></span>
+              <div>
+                <b>The default offer</b>
+                <p>A price set by the regulator (the ESC) for anyone not on a retailer&apos;s own plan. It changes <strong>once a year, on 1 July</strong>.</p>
+              </div>
+            </div>
+            <div className={learn.clock}>
+              <span className={`${learn.clockIcon} ${learn.ciTeal}`}><Icon name="refresh" size={22} /></span>
+              <div>
+                <b>Retailers&apos; own plans</b>
+                <p>Set by each retailer. They can change prices <strong>at any time of year</strong>, and new plans keep appearing.</p>
+              </div>
+            </div>
+          </div>
+          <MarketPulse compact />
+
+          <h3 className={learn.h3}>This year: the default offer fell {Math.abs(VDO_CHANGE_2026.average)}% on {VDO_CHANGE_2026.from}</h3>
+          <div className={learn.change}>
+            <div className={learn.changeBig}>
+              <span className={learn.changePct}>{VDO_CHANGE_2026.average}%</span>
+              <span>average for homes, about <b>${VDO_CHANGE_2026.averageDollars} a year less</b> on a typical bill</span>
+            </div>
+            <ul className={learn.changeBars} aria-label="Change by network">
+              {VDO_CHANGE_2026.byNetwork.map((n) => (
+                <li key={n.network}>
+                  <span className={learn.cbName}>{n.network}</span>
+                  <span className={learn.cbTrack}><span style={{ width: `${Math.round((Math.abs(n.change) / maxDrop) * 100)}%` }} /></span>
+                  <b>{n.change}%</b>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <h3 className={learn.h3}>The yearly cycle</h3>
+          <ol className={learn.cycle}>
+            {PRICE_CYCLE.map((s, i) => (
+              <li key={s.title} className={i < nextStage ? learn.cyDone : i === nextStage ? learn.cyNext : undefined}>
+                <span className={learn.cyDot}>{i < nextStage ? <Icon name="check" size={16} /> : i + 1}</span>
+                {i === nextStage && <span className={learn.cyHere}>Next up</span>}
+                <b>{s.title}</b>
+                <p>{s.detail}</p>
+                <dl>
+                  <div><dt>Last time</dt><dd>{s.last}</dd></div>
+                  <div><dt>{s.confirmed ? "Next" : "Next, expected"}</dt><dd>{s.next}</dd></div>
+                </dl>
               </li>
             ))}
           </ol>
           <p className={learn.note}>
-            Dates marked expected follow past years and are not confirmed. See the{" "}
+            Expected dates follow past years and are not confirmed. See the{" "}
             <a href="https://www.esc.vic.gov.au" target="_blank" rel="noopener noreferrer">ESC website</a> for official dates.
           </p>
         </section>

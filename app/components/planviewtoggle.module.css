@@ -1,0 +1,11 @@
+.toggle { width: fit-content; align-self: flex-start; justify-self: start; display: inline-flex; gap: 4px; padding: 4px; margin: 10px 0 0; border-radius: 999px; background: var(--track); }
+.toggle button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 0; border-radius: 999px;
+  font: inherit; font-size: 13.5px; font-weight: 700; color: var(--grey); background: transparent; cursor: pointer;
+}
+.toggle button span { padding: 1px 7px; border-radius: 999px; font-size: 12px; background: color-mix(in srgb, var(--grey) 14%, transparent); }
+.toggle button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(16, 22, 58, 0.12); }
+.toggle button[aria-pressed="true"] span { background: color-mix(in srgb, var(--teal) 18%, transparent); color: var(--teal); }
+.toggle button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.dark { background: rgba(255, 255, 255, 0.1); }
+.dark button { color: rgba(255, 255, 255, 0.75); }

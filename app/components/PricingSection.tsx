@@ -64,6 +64,7 @@ export default function PricingSection({
 }) {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState("");
+  const [alreadyMember, setAlreadyMember] = useState(false);
   const [referred, setReferred] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setReferred(parseSource(readSourceCookie())?.kind === "referral"), 0);
@@ -72,6 +73,7 @@ export default function PricingSection({
 
   async function handleChoose(planId: PlanId) {
     setError("");
+    setAlreadyMember(false);
     if (!email || !email.includes("@")) {
       setError("Enter your email above first so we know where to send your alerts.");
       return;
@@ -87,6 +89,7 @@ export default function PricingSection({
       const body = await res.json().catch(() => ({ ok: false, message: "Something went wrong." }));
       if (!body.ok) {
         setError(body.message || "Couldn't start checkout.");
+        setAlreadyMember(body.alreadyMember === true);
         setLoadingPlan(null);
         return;
       }
@@ -99,13 +102,13 @@ export default function PricingSection({
 
   return (
     <PlanBand
-      title={yearlySaving >= 20 && profile.referenceTotal !== null ? `Keep that $${Math.round(yearlySaving).toLocaleString("en-AU")} a year? We'll keep checking it for $39 a year.` : "We keep comparing, so you don't have to"}
+      title={yearlySaving >= 20 && profile.referenceTotal !== null ? `Keep that $${Math.round(yearlySaving).toLocaleString("en-AU")} a year? Offers change every week. We'll keep checking for $7 a month.` : "Offers change every week. We keep checking, so you don't have to."}
       intro={
         yearlySaving >= 20 ? (
           <>
-            Retailers change prices all year, so a cheap plan doesn&apos;t stay cheap on its own. <strong>Join and we re-price{" "}
+            Retailers launch new plans and change prices all year, so a cheap plan doesn&apos;t stay cheap on its own. <strong>Join and we re-price{" "}
             {bestRetailer ? `${bestRetailer} and every other plan we track on your network` : "every plan we track on your network"} every morning</strong>, and email you only
-            when switching is worth it.
+            when switching is worth it. No fine print to follow, no comparing to do.
           </>
         ) : (
           <>The check above is free, every time. <strong>Join and we do the checking for you</strong>, with a bill read and a saved result each month.</>
@@ -118,7 +121,17 @@ export default function PricingSection({
         <input id="subEmail" type="email" placeholder="you@example.com" value={email} onChange={(e) => onEmailChange(e.target.value)} />
       </div>
       {referred && <p className={styles.referralNote}>A friend sent you: {referralDollars(REFERRAL_FRIEND_CENTS)} comes off your first payment at checkout.</p>}
-      {error && <p className={styles.leadErr}>{error}</p>}
+      {error && (
+        <p className={styles.leadErr}>
+          {error}
+          {alreadyMember && (
+            <>
+              {" "}
+              <a href="/account" className={styles.leadErrLink}>Log in to my dashboard →</a>
+            </>
+          )}
+        </p>
+      )}
     </PlanBand>
   );
 }

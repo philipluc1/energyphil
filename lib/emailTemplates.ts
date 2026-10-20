@@ -157,6 +157,8 @@ export function monthlyCheck(i: {
   unsubscribeUrl: string;
   /** Members with a gas bill on file: the cheapest gas plan vs their gas bill. */
   gas?: { retailer: string; planName: string; yearly: number } | null;
+  /** New offers and price changes on their network this month, e.g. "8 new offers and 21 price changes". */
+  activity?: string | null;
 }): Email {
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
   const gasWorth = !!i.gas && i.gas.yearly >= WORTH_SWITCHING_PER_YEAR;
@@ -172,7 +174,7 @@ export function monthlyCheck(i: {
     ? planCard({ kicker: "You could pay less", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: "a year less than your last bill." }, link: retailerLink(i.retailer), tone: "amber" })
     : statusBox({ kicker: `Your ${esc(i.monthName)} check`, headline: "You're on a good deal", body: `Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more. We'll keep watching.`, tone: "green" });
   const html = `
-    <p>${lead}</p>
+    <p>${lead}${i.activity ? ` This month retailers made ${esc(i.activity)} on your network, and we checked every one against your home.` : ""}</p>
     ${i.gas ? heading("Electricity") : ""}
     ${card}
     ${i.gas ? heading("Gas") + gasBlock : ""}
@@ -195,6 +197,16 @@ export function referralCreditEmail(i: { origin: string }): Email {
     ${statusBox({ kicker: "Your credit", headline: `${credit} off your next payment`, body: "It's on your account now and comes off your next membership payment automatically.", tone: "green" })}
     ${button("Get your link to share again", `${i.origin}/account#membership`)}`;
   return { subject: `A friend joined: ${credit} off your next payment`, title: "A friend joined with your link", html };
+}
+
+/* ---------- A second payment by mistake (already a member) ----------
+   Sent once, when the duplicate is cancelled and refunded. */
+export function duplicatePaymentEmail(i: { origin: string }): Email {
+  const html = `
+    <p>You were already a Utilo member under this email, so we've cancelled the second membership and refunded that payment in full. Your original membership carries on as normal.</p>
+    ${statusBox({ kicker: "Refund", headline: "On its way back to your card", body: "Refunds usually show within 5 to 10 business days, depending on your bank.", tone: "green" })}
+    ${button("Open my dashboard", `${i.origin}/account#membership`)}`;
+  return { subject: "You were already a member: we've refunded the second payment", title: "Second payment refunded", html };
 }
 
 export { signOff };

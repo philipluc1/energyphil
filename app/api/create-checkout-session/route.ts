@@ -4,6 +4,8 @@ import { stripe } from "@/lib/stripeClient";
 import { findPlan } from "@/lib/pricingPlans";
 import { SRC_COOKIE, parseSource, sourceValue } from "@/lib/attribution";
 import { ensureFriendCoupon, referrerFor } from "@/lib/referrals";
+import { checkoutGuard } from "@/lib/membershipGuard";
+import { canonicalEmail } from "@/lib/emailIdentity";
 
 export const maxDuration = 30;
 
@@ -36,6 +38,16 @@ export async function POST(req: NextRequest) {
   const email = typeof body.email === "string" ? body.email.trim() : "";
   if (!email || !email.includes("@")) {
     return NextResponse.json({ ok: false, message: "Please enter a valid email." }, { status: 400 });
+  }
+
+  // One membership per email: an existing member is sent to log in instead,
+  // and a past member's Stripe customer is reused.
+  const guard = await checkoutGuard(email);
+  if (guard.active) {
+    return NextResponse.json(
+      { ok: false, alreadyMember: true, message: "That email already has a Utilo membership. Log in to your dashboard to see it, change plan or cancel." },
+      { status: 409 },
+    );
   }
 
   const profile = body.profile ?? {};
@@ -84,7 +96,8 @@ export async function POST(req: NextRequest) {
   const src = parseSource(sourceRaw);
   if (src?.kind === "referral") {
     const ref = await referrerFor(src.code);
-    if (ref && ref.email.toLowerCase() !== email.toLowerCase()) {
+    // New members only, and not your own link (however the address is written).
+    if (ref && !guard.everMember && canonicalEmail(ref.email) !== canonicalEmail(email)) {
       const coupon = await ensureFriendCoupon();
       if (coupon) {
         discounts = [{ coupon }];
@@ -98,7 +111,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: plan.mode,
-      customer_email: email,
+      ...(guard.customerId ? { customer: guard.customerId } : { customer_email: email }),
       // Stripe's "Managed Payments" (merchant-of-record) feature is on by
       // default for newer accounts and requires every product to carry a
       // tax code, which this app doesn't set up. Turning it off restores

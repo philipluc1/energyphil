@@ -8,6 +8,8 @@ import { welcomeEmail } from "./welcomeEmail";
 import { PLANS } from "./plans";
 import { cleanReferralCode, sourceValue } from "./attribution";
 import { creditReferrer, newReferralCode } from "./referrals";
+import { stripe } from "./stripeClient";
+import { refundDuplicate } from "./membershipGuard";
 
 const KNOWN_RETAILERS = new Set(PLANS.map((p) => p[0]));
 
@@ -41,6 +43,23 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
 
   const { data: existing } = await supabaseAdmin.from("subscribers").select("id").eq("stripe_checkout_session_id", session.id).limit(1).maybeSingle();
   if (existing) return { ok: true, created: false };
+
+  // A subscription that has since ended (e.g. an old checkout found by the
+  // dashboard's sync) doesn't make anyone a member today.
+  const subId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+  if (stripe && subId) {
+    const sub = await stripe.subscriptions.retrieve(subId).catch(() => null);
+    if (sub && (sub.status === "canceled" || sub.status === "incomplete_expired")) return { ok: true, created: false, message: "That subscription has ended" };
+  }
+
+  // One membership per email: a second payment in the last 30 days for an
+  // email that's already a member (two tabs, a double click) is cancelled and
+  // refunded rather than made into a second membership.
+  const { data: live } = await supabaseAdmin.from("subscribers").select("id").eq("email", email).in("status", ["active", "past_due"]).limit(1).maybeSingle();
+  if (live && Date.now() / 1000 - session.created < 30 * 86400) {
+    await refundDuplicate(session, email, origin);
+    return { ok: true, created: false, message: "Already a member: second payment refunded" };
+  }
 
   const billingDays = toNum(md.billingDays);
   // These come from the browser via checkout metadata: keep only plausible values.

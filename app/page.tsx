@@ -4,15 +4,21 @@ import { PLANS, PLAN_DATA_DATE } from "@/lib/plans";
 import { THREE_HOMES_NETWORK, threeHomesExample } from "@/lib/savings";
 import { ABOUT, hasFounderStory } from "@/lib/about";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
+import { findPlan, fmtPrice, savePct, type PricingPlan } from "@/lib/pricingPlans";
 import SiteHeader from "./components/SiteHeader";
 import StateWaitlist from "./components/StateWaitlist";
 import Icon from "./components/Icon";
 import SourceBanner from "./components/SourceBanner";
+import MarketPulse from "./components/MarketPulse";
 import styles from "./components/Comparator.module.css";
 import h from "./home2.module.css";
 
 const RETAILER_COUNT = new Set(PLANS.map((p) => p[0])).size;
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
+// Prices from the price list so the home page never drifts from checkout.
+const MONTHLY = findPlan("monthly") as PricingPlan;
+const ANNUAL = findPlan("annual") as PricingPlan;
+const ANNUAL_SAVE = savePct(ANNUAL);
 
 function fmtDate(): string {
   return new Date(PLAN_DATA_DATE + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
@@ -58,73 +64,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 2. What only a bill can tell us */}
-        <section className={h.section}>
-          <h2 className={h.h2}>Three things only your bill knows</h2>
-          <p className={h.sub}>
-            A typical-household comparison has to guess all three. They&apos;re what decide your cheapest plan and what it really saves you.
-          </p>
-          <ul className={h.knows}>
-            <li>
-              <span className={h.knowIcon}><Icon name="chart" size={22} /></span>
-              <h3>How you use power</h3>
-              <p>Your usage at peak, off-peak and shoulder times, any controlled load and your solar exports, for the days on your bill.</p>
-            </li>
-            <li>
-              <span className={h.knowIcon}><Icon name="receipt" size={22} /></span>
-              <h3>What you pay now</h3>
-              <p>Your own rates and your bill total, so the saving we show is against what you actually pay, not against a headline price.</p>
-            </li>
-            <li>
-              <span className={h.knowIcon}><Icon name="tag" size={22} /></span>
-              <h3>Which plan you&apos;re on</h3>
-              <p>
-                Retailers reuse plan names. Around 360,000 Victorians are on an older, dearer version of a plan with a cheaper twin of the same name. Your
-                bill shows which one you have, and we&apos;ll tell you.
-              </p>
-            </li>
-          </ul>
-        </section>
-
-        {/* 3. Proof: same prices, three homes, three answers */}
-        {homes.length === 3 && typical && (
-          <section className={h.section}>
-            <h2 className={h.h2}>Same prices, three homes, three different answers</h2>
-            <p className={h.sub}>
-              We priced every plan we track for three homes on the {THREE_HOMES_NETWORK} network, against the default offer, using the latest prices we have. A
-              typical-household figure would tell all three they save {money(typical.saving)} a year.
-            </p>
-            <ol className={h.homes}>
-              {homes.map((x) => (
-                <li key={x.key} className={x.key === "typical" ? h.homeTypical : undefined}>
-                  {x.key === "typical" && <span className={h.homeTag}>What a typical estimate assumes</span>}
-                  <h3>{x.title}</h3>
-                  <p className={h.homeDetail}>{x.detail}</p>
-                  <dl>
-                    <div><dt>Uses</dt><dd>{x.annualKwh.toLocaleString("en-AU")} kWh a year</dd></div>
-                    <div><dt>Cheapest plan</dt><dd>{money(x.best)} a year</dd></div>
-                    <div className={h.homeSave}><dt>Saving vs the default offer</dt><dd>{money(x.saving)}<small> a year</small></dd></div>
-                  </dl>
-                  {x.key !== "typical" && (
-                    <p className={h.homeNote}>
-                      {x.differentPlan && x.typicalPickCostsMore === null
-                        ? "A different cheapest plan: the typical home's pick doesn't even price its controlled load."
-                        : x.differentPlan && (x.typicalPickCostsMore ?? 0) >= 1
-                          ? `A different cheapest plan: the typical home's pick would cost it ${money(x.typicalPickCostsMore ?? 0)} a year more.`
-                          : `Same cheapest plan as the typical home, but it saves ${money(Math.abs(x.saving - typical.saving))} a year ${x.saving < typical.saving ? "less" : "more"}.`}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ol>
-            <p className={h.note}>
-              The saving runs from {money(lowSave)} to {money(highSave)} a year. Estimates from our household model, prices checked {fmtDate()}, discounts for paying on time
-              included. Your bill will be different again, which is why we read it. <Link href="/learn">How we price plans</Link>
-            </p>
-          </section>
-        )}
-
-        {/* 4. How it works */}
+        {/* 2. How it works (straight after the hero, so people see the three steps first) */}
         <section className={h.section}>
           <h2 className={h.h2}>How it works</h2>
           <ol className={h.steps}>
@@ -149,13 +89,93 @@ export default function Home() {
           </ol>
         </section>
 
-        {/* 5. Why keep watching */}
+        {/* 3. What only a bill can tell us */}
         <section className={h.section}>
-          <h2 className={h.h2}>Prices don&apos;t stay put</h2>
+          <h2 className={h.h2}>Three things only your bill knows</h2>
+          <p className={h.sub}>A typical-household estimate has to guess them. We read them.</p>
+          <ul className={h.knows}>
+            <li>
+              <span className={`${h.knowIcon} ${h.kTeal}`}><Icon name="chart" size={22} /></span>
+              <div>
+                <h3>How you use power</h3>
+                <p>Peak, off-peak, controlled load and solar.</p>
+              </div>
+            </li>
+            <li>
+              <span className={`${h.knowIcon} ${h.kAmber}`}><Icon name="receipt" size={22} /></span>
+              <div>
+                <h3>What you pay now</h3>
+                <p>Your own rates, not a headline price.</p>
+              </div>
+            </li>
+            <li>
+              <span className={`${h.knowIcon} ${h.kNavy}`}><Icon name="tag" size={22} /></span>
+              <div>
+                <h3>Which plan you&apos;re on</h3>
+                <p>Retailers reuse plan names. We&apos;ll tell you if yours is the dearer version.</p>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        {/* 4. Proof: same prices, three homes, three answers */}
+        {homes.length === 3 && typical && (
+          <section className={h.section}>
+            <h2 className={h.h2}>Same prices, three homes, three different answers</h2>
+            <p className={h.sub}>
+              A typical-household estimate would tell all three they save <b>{money(typical.saving)} a year</b>. Here&apos;s what each one really saves.
+            </p>
+            <ol className={h.homes}>
+              {homes.map((x) => {
+                const isTypical = x.key === "typical";
+                const note = isTypical
+                  ? "One figure for every home."
+                  : x.differentPlan && x.typicalPickCostsMore === null
+                    ? "Needs a different plan. The typical pick doesn't price its controlled load."
+                    : x.differentPlan && (x.typicalPickCostsMore ?? 0) >= 1
+                      ? `Needs a different plan. The typical pick costs it ${money(x.typicalPickCostsMore ?? 0)} a year more.`
+                      : `Same plan as the typical home, but saves ${money(Math.abs(x.saving - typical.saving))} a year ${x.saving < typical.saving ? "less" : "more"}.`;
+                return (
+                  <li key={x.key} className={isTypical ? h.homeTypical : undefined}>
+                    {isTypical && <span className={h.homeTag}>What a typical estimate assumes</span>}
+                    <h3>{x.title}</h3>
+                    <p className={h.homeDetail}>{isTypical ? x.detail : `${x.detail} · ${x.annualKwh.toLocaleString("en-AU")} kWh a year`}</p>
+                    <div className={h.homeSave}>
+                      <p><b>{money(x.saving)}</b> a year saved</p>
+                      <span className={h.bar} aria-hidden="true"><span style={{ width: `${Math.max(8, Math.round((x.saving / highSave) * 100))}%` }} /></span>
+                    </div>
+                    <p className={h.homeNote}>{note}</p>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className={h.note}>
+              Savings from switching to each home&apos;s cheapest plan, against the default offer on the {THREE_HOMES_NETWORK} network. Estimates from our household
+              model, prices checked {fmtDate()}, pay-on-time discounts included. Your bill will be different again, which is why we read it.{" "}
+              <Link href="/learn">How we price plans</Link>
+            </p>
+          </section>
+        )}
+
+        {/* 5. Why keep watching: offers never stop changing; members don't have to keep up */}
+        <section className={h.section}>
+          <h2 className={h.h2}>New offers every week. We check them every morning.</h2>
           <p className={h.sub}>
-            Many discounts only last the first year, retailers change prices around 1 July, and new plans appear all the time. A plan that&apos;s cheapest
-            today often isn&apos;t a year later. Members are re-checked every morning and hear from us only when it matters:
+            Retailers launch plans, change prices, attach conditions to discounts and reuse old plan names all year. Keeping up is a part-time job.
+            Members hand it to us: every plan is re-priced against your home each morning, and you hear from us only when switching is worth it.
           </p>
+          <MarketPulse />
+          <div className={h.trackLabel}>The confusing stuff we keep track of, so you don&apos;t have to</div>
+          <ul className={h.chips}>
+            <li>New plans</li>
+            <li>Price changes</li>
+            <li>Discounts and their conditions</li>
+            <li>Older versions of plans with the same name</li>
+            <li>Time-of-use and solar rates</li>
+            <li>1 July price rises</li>
+            <li>Your discount or fixed price ending</li>
+          </ul>
+          <div className={h.trackLabel}>You only hear from us when it matters</div>
           <ul className={h.watch}>
             <li><Icon name="bell" size={20} /><span><b>A month before</b> your discount or fixed price ends</span></li>
             <li><Icon name="calendar" size={20} /><span><b>After 1 July</b>, when retailers reprice</span></li>
@@ -167,19 +187,26 @@ export default function Home() {
           </p>
         </section>
 
-        {/* 6. Price */}
+        {/* 6. Price: lead with the small number */}
         <section className={h.section}>
-          <div className={h.price}>
+          <div className={h.priceCard}>
             <div>
-              <h2 className={h.h2}>$39 a year to keep it watched</h2>
-              <p className={h.sub}>
-                The check is free. Membership covers electricity and gas: re-checked every morning, an email only when switching is worth it, and a short
-                summary each month. Or $7 a month. Cancel any time.
-              </p>
+              <p className={h.priceEyebrow}>Membership · electricity and gas</p>
+              <h2 className={h.priceTitle}>Never chase an energy deal again.</h2>
+              <ul className={h.priceTicks}>
+                <li><Icon name="check" size={18} /> Every plan re-checked against your bill, every morning</li>
+                <li><Icon name="check" size={18} /> An email only when switching is worth it</li>
+                <li><Icon name="check" size={18} /> Your discount or fixed price ending? We&apos;ll warn you</li>
+              </ul>
             </div>
-            <div className={h.priceActions}>
+            <div className={h.priceBox}>
+              <p className={h.bigPrice}>{fmtPrice(MONTHLY.priceCents)}<small> a month</small></p>
+              <p className={h.priceAlt}>
+                or <b>{fmtPrice(ANNUAL.priceCents)} a year</b>: less than $1 a week
+                {ANNUAL_SAVE ? <span className={h.saveTag}>Save {ANNUAL_SAVE}%</span> : null}
+              </p>
               <Link href="/check" className={h.primary}><Icon name="camera" size={20} /> Start with the free check</Link>
-              <Link href="/pricing" className={h.textLink}>What&apos;s included</Link>
+              <p className={h.priceFine}>The check is free. Cancel any time. <Link href="/pricing">What&apos;s included</Link></p>
             </div>
           </div>
         </section>

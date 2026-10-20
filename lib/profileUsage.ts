@@ -68,19 +68,143 @@ export function normaliseProfile(saved: Partial<HomeProfile> & Record<string, un
   return p;
 }
 
+// Calibration (Oct 2026). Whole-home averages for Melbourne (climate zone 6):
+//  - AER residential consumption benchmarks (Dec 2020), kWh a year:
+//    1 person 2,953 · 2 people 4,840 · 3 people 5,077 · 4 people 5,805 · 5+ 7,351
+//    (seasons summed; winter is about 31% of the year).
+//  - ESC Victorian energy usage profiles: 1 person 7.2 kWh a day, 2–3 people
+//    11.8, 4+ 15.5; homes with mains gas 4,432 a year, without 6,871;
+//    controlled load homes 6,537, without 4,618.
+// Those averages mix gas and all-electric homes. "Everyday" below is a home
+// with gas (or no) heating and gas hot water; the extras are added on top.
+// With typical shares of electric hot water, heating and cooling, a home of
+// each size lands near the AER figure (e.g. 3 people: about 5,050).
+
 // Annual kWh for lighting, fridge, cooking, laundry, electronics, etc.
-const BASE_BY_PEOPLE: Record<number, number> = { 1: 2600, 2: 3500, 3: 4300, 4: 5000, 5: 5600, 6: 6200 };
+const BASE_BY_PEOPLE: Record<number, number> = { 1: 1900, 2: 3000, 3: 3500, 4: 4100, 5: 4600, 6: 5100 };
+// Share of general use that happens in daylight, when solar can cover it.
+// Without a battery, evening and overnight use still come from the grid.
+const DAYLIGHT_SHARE: Record<DaytimeHome, number> = { away: 0.25, some: 0.33, home: 0.42 };
 const HEATING_KWH: Record<Heating, number> = { gas_none: 0, reverse_cycle: 900, resistive: 1800 };
 const COOLING_KWH = 350;
-const HOT_WATER_KWH: Record<HotWater, number> = {
-  gas_solar: 0,
-  electric_controlled: 1700,
-  electric_general: 1700,
-  heat_pump: 600,
-};
+const WORK_FROM_HOME_KWH = 300;
+// Electric hot water grows with the people using it: tank losses (~350 kWh a
+// year) plus ~550 kWh a person. A heat pump uses about a third of that.
+const HOT_WATER_BASE = 350;
+const HOT_WATER_PER_PERSON = 550;
+const HEAT_PUMP_SHARE = 0.35;
 const POOL_KWH = 1200;
 const EV_KWH = 2400; // ~12,000 km/yr
 const SOLAR_KWH_PER_KW_YEAR = 1300; // typical Victorian yield
+
+// How each part of the year's use falls across the months (Jan..Dec).
+// Everyday use rises a little in winter (lights, dryer, more time inside);
+// heating is May–Sep; cooling Dec–Mar; hot water works harder in winter;
+// the pool pump runs more in summer; solar makes ~3x more in Jan than Jun.
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const EVERYDAY_SHAPE = [0.95, 0.95, 0.95, 0.98, 1.03, 1.1, 1.12, 1.08, 1.0, 0.96, 0.94, 0.94];
+const HEATING_SHARE = [0, 0, 0, 4, 12, 22, 26, 22, 11, 3, 0, 0]; // % of the year's heating
+const COOLING_SHARE = [32, 27, 12, 2, 0, 0, 0, 0, 0, 2, 8, 17]; // % of the year's cooling
+const HOT_WATER_SHAPE = [0.88, 0.88, 0.92, 0.98, 1.05, 1.12, 1.15, 1.12, 1.05, 0.98, 0.95, 0.92];
+const POOL_SHAPE = [1.35, 1.3, 1.15, 0.95, 0.75, 0.65, 0.65, 0.7, 0.85, 1.0, 1.2, 1.45];
+const SOLAR_SHARE = [13.0, 11.0, 9.8, 7.0, 5.0, 3.9, 4.4, 5.9, 7.7, 9.9, 10.9, 11.5]; // % of the year's generation, Melbourne
+
+export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** Per-month weights (summing to 1) from a shape applied to each day. */
+function dayWeighted(shape: number[]): number[] {
+  const raw = shape.map((f, i) => f * MONTH_DAYS[i]);
+  const sum = raw.reduce((a, b) => a + b, 0);
+  return raw.map((x) => x / sum);
+}
+const pct = (shares: number[]) => shares.map((x) => x / 100);
+
+/** A year's estimated use by category (kWh), before solar. */
+export interface UsageBreakdown {
+  everyday: number;
+  hotWater: number;
+  heating: number;
+  cooling: number;
+  pool: number;
+  ev: number;
+  /** Solar used in the home instead of grid power (taken off the total). */
+  solarSelfUse: number;
+  /** Solar sent to the grid. */
+  solarExport: number;
+  /** From the grid, including controlled load: everything above less solar self-use. */
+  total: number;
+}
+
+export interface MonthEstimate {
+  /** 0 = January. */
+  month: number;
+  /** From the grid, including controlled load. */
+  kwh: number;
+  solarExportKwh: number;
+}
+
+function peopleKey(p: HomeProfile) {
+  return Math.min(6, Math.max(1, Math.round(p.people)));
+}
+
+function hotWaterKwh(p: HomeProfile): number {
+  if (p.hotWater === "gas_solar") return 0;
+  const electric = HOT_WATER_BASE + HOT_WATER_PER_PERSON * peopleKey(p);
+  return p.hotWater === "heat_pump" ? Math.round((electric * HEAT_PUMP_SHARE) / 10) * 10 : electric;
+}
+
+/**
+ * The year month by month, plus the totals by category. This is the one
+ * model: estimateUsage() prices plans from the same numbers.
+ */
+export function monthlyEstimate(p: HomeProfile): { months: MonthEstimate[]; breakdown: UsageBreakdown } {
+  const everyday = (BASE_BY_PEOPLE[peopleKey(p)] ?? 3500) + (p.daytimeHome === "home" ? WORK_FROM_HOME_KWH : 0);
+  const heating = HEATING_KWH[p.heating];
+  const cooling = p.cooling ? COOLING_KWH : 0;
+  const hotWater = hotWaterKwh(p);
+  const pool = p.pool ? POOL_KWH : 0;
+  const ev = p.ev ? EV_KWH : 0;
+  const generated = p.hasSolar && p.solarKw > 0 ? p.solarKw * SOLAR_KWH_PER_KW_YEAR : 0;
+  const onCl = p.hotWater === "electric_controlled";
+  const daytime = DAYLIGHT_SHARE[p.daytimeHome];
+
+  const wEveryday = dayWeighted(EVERYDAY_SHAPE);
+  const wHot = dayWeighted(HOT_WATER_SHAPE);
+  const wPool = dayWeighted(POOL_SHAPE);
+  const wHeat = pct(HEATING_SHARE);
+  const wCool = pct(COOLING_SHARE);
+  const wSolar = pct(SOLAR_SHARE);
+  const wDays = MONTH_DAYS.map((d) => d / 365);
+
+  let selfUseYear = 0;
+  let exportYear = 0;
+  const months: MonthEstimate[] = MONTH_DAYS.map((_, m) => {
+    const hot = hotWater * wHot[m];
+    // "General" use: everything except controlled load and the car.
+    const general = everyday * wEveryday[m] + heating * wHeat[m] + cooling * wCool[m] + pool * wPool[m] + (onCl ? 0 : hot);
+    const cl = onCl ? hot : 0;
+    const car = ev * wDays[m];
+    const gen = generated * wSolar[m];
+    // Solar covers daytime use first; what the home can't use goes to the grid.
+    const selfUse = Math.min(gen * (1 - EXPORT_SHARE[p.daytimeHome]), general * daytime);
+    selfUseYear += selfUse;
+    exportYear += gen - selfUse;
+    return { month: m, kwh: Math.round(general + cl + car - selfUse), solarExportKwh: Math.round(gen - selfUse) };
+  });
+
+  const breakdown: UsageBreakdown = {
+    everyday: Math.round(everyday),
+    hotWater,
+    heating,
+    cooling,
+    pool,
+    ev,
+    solarSelfUse: Math.round(selfUseYear),
+    solarExport: Math.round(exportYear),
+    total: Math.round(everyday + hotWater + heating + cooling + pool + ev - selfUseYear),
+  };
+  return { months, breakdown };
+}
 
 // Share of general (non-controlled-load) usage falling in each tariff band.
 // Real Victorian TOU windows differ a little by retailer; these are typical.
@@ -102,17 +226,17 @@ export interface EstimatedUsage {
   annualKwh: number; // same, scaled to a year
 }
 
+/** Usage for a billing period: the year's estimate (an average across the
+ *  seasons) scaled to `days`, split into tariff bands. Plans are compared on
+ *  the average so the answer holds all year, not just this month. */
 export function estimateUsage(p: HomeProfile, days: number): EstimatedUsage {
   const scale = days / 365;
-  const base = BASE_BY_PEOPLE[Math.min(6, Math.max(1, Math.round(p.people)))] ?? 4300;
-  const heatCool = HEATING_KWH[p.heating] + (p.cooling ? COOLING_KWH : 0);
-  const wfh = p.daytimeHome === "home" ? 300 : 0;
-  const hotWater = HOT_WATER_KWH[p.hotWater];
+  const { breakdown: b } = monthlyEstimate(p);
   const onCl = p.hotWater === "electric_controlled";
 
-  let general = (base + heatCool + wfh + (onCl ? 0 : hotWater) + (p.pool ? POOL_KWH : 0)) * scale;
-  const cl = onCl ? hotWater * scale : 0;
-  const ev = p.ev ? EV_KWH * scale : 0;
+  let general = (b.everyday + b.heating + b.cooling + b.pool + (onCl ? 0 : b.hotWater)) * scale;
+  const cl = onCl ? b.hotWater * scale : 0;
+  const ev = b.ev * scale;
 
   const split = BAND_SPLIT[p.daytimeHome];
   let peak = general * split.peak;
@@ -127,11 +251,9 @@ export function estimateUsage(p: HomeProfile, days: number): EstimatedUsage {
     }
   }
 
-  let solarExportKwh = 0;
-  if (p.hasSolar && p.solarKw > 0) {
-    const generated = p.solarKw * SOLAR_KWH_PER_KW_YEAR * scale;
-    solarExportKwh = generated * EXPORT_SHARE[p.daytimeHome];
-    const selfUsed = generated - solarExportKwh;
+  const solarExportKwh = b.solarExport * scale;
+  const selfUsed = b.solarSelfUse * scale;
+  if (selfUsed > 0) {
     // Self-consumed solar displaces daytime (shoulder) grid usage first, then peak.
     const fromShoulder = Math.min(shoulder, selfUsed);
     shoulder -= fromShoulder;

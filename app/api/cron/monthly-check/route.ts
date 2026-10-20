@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { activityWords, marketActivity } from "@/lib/marketActivity";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { monthlyCheck } from "@/lib/emailTemplates";
@@ -105,6 +106,7 @@ export async function GET(req: NextRequest) {
           yearly: (saving * 365) / days,
           unsubscribeUrl: `${origin}/api/unsubscribe?type=subscriber&id=${sub.id}`,
           gas: gasSummary(sub),
+          activity: (() => { const a = marketActivity({ network: sub.distributor, days: 31 }); return a.ready ? activityWords(a) || null : null; })(),
         });
         const ok = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
         if (ok) emailed++;

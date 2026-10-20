@@ -76,7 +76,8 @@ export default function TermsPage() {
             Membership is billed through Stripe at the price shown when you join. Monthly, quarterly and half-yearly memberships
             renew automatically until you cancel, which you can do at any time from My Dashboard. The once-off membership is a
             single payment and never renews. Cancelling stops future charges; you keep access to
-            the end of the period you&apos;ve paid for. Refund rules are in the{" "}
+            the end of the period you&apos;ve paid for. There&apos;s one membership per email address: if you&apos;re charged twice for
+            the same email by mistake, we cancel the second membership and refund it in full. Refund rules are in the{" "}
             <Link href="/cancellation-policy">Cancellation Policy</Link>. Bill reading is limited to a fair number of reads a day.
           </p>
         </section>
@@ -84,8 +85,8 @@ export default function TermsPage() {
         <section className={styles.section} id="referrals">
           <h2>5a. Referrals</h2>
           <p>
-            Members can share a personal referral link. Someone who joins through it gets {referralDollars(REFERRAL_FRIEND_CENTS)} off their first
-            payment. Once their payment has gone through, the member who shared the link gets {referralDollars(REFERRAL_CREDIT_CENTS)} credited to
+            Members can share a personal referral link. Someone who hasn&apos;t been a Utilo member before and joins through it gets{" "}
+            {referralDollars(REFERRAL_FRIEND_CENTS)} off their first payment. Once their payment has gone through, the member who shared the link gets {referralDollars(REFERRAL_CREDIT_CENTS)} credited to
             their account, which comes off their next membership payment. Credits have no cash value and can&apos;t be transferred. Your own link
             doesn&apos;t work for you. We may change or end the offer for future referrals at any time, and we may withhold credits where the offer
             is misused.

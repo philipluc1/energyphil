@@ -31,7 +31,6 @@ import s2 from "./step2.module.css";
 import {
   DEFAULT_PROFILE,
   AVERAGE_ANNUAL_KWH,
-  TYPICAL_ANNUAL_KWH,
   averageUsage,
   usageIsIncomplete,
   estimateUsage,
@@ -50,6 +49,9 @@ import PricingSection from "./PricingSection";
 import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
 import MemberLock, { MEMBER_PRICE_LINE } from "./MemberLock";
+import PlanViewToggle from "./PlanViewToggle";
+import EstimatePanel, { EstimateStrip } from "./EstimatePanel";
+import { cheapestPerRetailer } from "@/lib/onePerRetailer";
 import r from "./results.module.css";
 import RatesCompare from "./RatesCompare";
 import RetailerLogo from "./RetailerLogo";
@@ -221,6 +223,8 @@ export default function Comparator() {
   const [stage, setStage] = useState<Stage>("input");
   const [inputStep, setInputStep] = useState<InputStep>(1);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  // The plan list shows each retailer's cheapest plan unless they ask for all.
+  const [allPlans, setAllPlans] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
   const [suburb, setSuburb] = useState("");
@@ -311,7 +315,8 @@ export default function Comparator() {
         if (typeof d.cl === "number") setCl(d.cl);
         if (typeof d.showCl === "boolean") setShowCl(d.showCl);
         if (d.profile) setProfile(normaliseProfile(d.profile));
-        if (d.usageSource === "bill" || d.usageSource === "estimate" || d.usageSource === "average") setUsageSource(d.usageSource);
+        // A ?start= link says how they want to go this time; it beats the saved choice.
+        if (!start && (d.usageSource === "bill" || d.usageSource === "estimate" || d.usageSource === "average")) setUsageSource(d.usageSource);
         if (typeof d.hasSolar === "boolean") setHasSolar(d.hasSolar);
         if (typeof d.solarExportRaw === "string") setSolarExportRaw(d.solarExportRaw);
         if (typeof d.currentBillRaw === "string") setCurrentBillRaw(d.currentBillRaw);
@@ -451,6 +456,10 @@ export default function Comparator() {
     });
   }
   const useEst = usageSource === "estimate";
+  // No bill: every question on one page, with the usage estimate updating live.
+  const onePage = useEst;
+  const onStep1 = onePage || inputStep === 1;
+  const qn = (k: number) => (onePage ? k - 1 : k);
   // Victorian postcodes start with 3 (or 8 for PO boxes). Others can't be priced yet.
   const nonVic = postcode.length === 4 && !/^[38]/.test(postcode);
   const nmiStatus = checkNmi(nmiRaw);
@@ -603,23 +612,23 @@ export default function Comparator() {
   };
   // Why the customer can't move on yet (shown under the step), if anything.
   const blockReason =
-    inputStep === 1 && propertyType !== "home"
+    onStep1 && propertyType !== "home"
       ? "Utilo compares home electricity plans for now."
-      : inputStep === 1 && nonVic
+      : onStep1 && nonVic
       ? "We can only check Victorian addresses for now."
-      : inputStep === 1 && postcode.length < 4
+      : onStep1 && postcode.length < 4
       ? "Enter your postcode so we can work out your network."
-      : inputStep === 1 && loc.status === "poBox"
+      : onStep1 && loc.status === "poBox"
       ? `${postcode} is a PO Box postcode. Use the postcode of the home's street address.`
-      : inputStep === 1 && loc.status === "unknown"
+      : onStep1 && loc.status === "unknown"
       ? `We can't find postcode ${postcode} in Victoria. Check it against your bill.`
-      : inputStep === 1 && loc.status === "needSuburb"
+      : onStep1 && loc.status === "needSuburb"
       ? "Pick your suburb."
-      : inputStep === 1 && loc.status === "mismatch"
+      : onStep1 && loc.status === "mismatch"
       ? `${suburb} is in postcode ${loc.suburbPostcodes.join(" or ")}, not ${postcode}. Fix the postcode or the suburb.`
-      : inputStep === 1 && addressNote
+      : onStep1 && addressNote
       ? "Answer the note about your address first."
-      : inputStep === 1 && !networkKnown
+      : onStep1 && !networkKnown
       ? "Pick your network, or enter your meter number (NMI) from your bill."
       : billFlag
       ? "Check the note above about your bill first."
@@ -754,11 +763,13 @@ export default function Comparator() {
   // Free list: the two cheapest plans (and anything above the cheapest one
   // anyone can get) are locked, with price and saving but no name. The next
   // three are open; the rest sit behind the members' teaser.
-  const lockedTop = locked && top ? matches.slice(0, Math.max(TOP_LOCKED, matches.indexOf(top) + 1)) : [];
+  const perRetailer = cheapestPerRetailer(matches, top);
+  const listed = allPlans ? matches : perRetailer;
+  const lockedTop = locked && top ? listed.slice(0, Math.max(TOP_LOCKED, listed.indexOf(top) + 1)) : [];
   const isLockedPlan = (m: (typeof matches)[number] | null | undefined) => !!m && lockedTop.includes(m);
-  const listRows = locked ? matches.slice(lockedTop.length, lockedTop.length + FREE_ROWS) : matches;
-  const hiddenRows = locked ? matches.slice(lockedTop.length + FREE_ROWS) : [];
-  const rankOf = (m: (typeof matches)[number]) => matches.indexOf(m) + 1;
+  const listRows = locked ? listed.slice(lockedTop.length, lockedTop.length + FREE_ROWS) : listed;
+  const hiddenRows = locked ? listed.slice(lockedTop.length + FREE_ROWS) : [];
+  const rankOf = (m: (typeof matches)[number]) => listed.indexOf(m) + 1;
   // The best plan's pay-on-time / direct-debit discount (in its price).
   const topDetail = top ? billDetail(top.plan, usage) : null;
   const topOffer = top ? offerFor(top.plan) : null;
@@ -931,7 +942,7 @@ export default function Comparator() {
           </div>
         )}
 
-        <div className={styles.wizardSteps}>
+        {!onePage && <div className={styles.wizardSteps}>
           {INPUT_STEPS.map((n, idx) => (
             <div className={styles.wizardStepItem} key={n}>
               <div className={styles.wizardDotGroup}>
@@ -949,9 +960,9 @@ export default function Comparator() {
               {idx < INPUT_STEPS.length - 1 && <span className={styles.wizardDotLine} />}
             </div>
           ))}
-        </div>
+        </div>}
 
-        {inputStep === 1 && (
+        {onStep1 && (
           <div className={styles.card}>
             <div className={styles.stepHead}>
               <div className={styles.stepIcon}>
@@ -1198,7 +1209,7 @@ export default function Comparator() {
           </div>
         )}
 
-        {inputStep === 2 && (
+        {(onePage ? propertyType === "home" && !nonVic : inputStep === 2) && (
           <div className={styles.card}>
             <div className={styles.stepHead}>
               <div className={`${styles.stepIcon} ${styles.stepIconTeal}`}>
@@ -1208,9 +1219,10 @@ export default function Comparator() {
                 <div className={styles.stepLabel}>
                   <span className={styles.stepNum}>2</span> About your home
                 </div>
-                <span className={styles.stepSub}>Rough answers are fine. They tell us when you use power.</span>
+                <span className={styles.stepSub}>Rough answers are fine. They tell us how much power you use, and when.</span>
               </div>
             </div>
+            {useEst && <EstimateStrip profile={profile} />}
 
             <div className={s2.grid}>
               <div>
@@ -1376,7 +1388,7 @@ export default function Comparator() {
           </div>
         )}
 
-        {inputStep === 3 && (
+        {(onePage ? propertyType === "home" && !nonVic : inputStep === 3) && (
           <div className={styles.card}>
             <div className={styles.stepHead}>
               <div className={`${styles.stepIcon} ${styles.stepIconAmber}`}>
@@ -1384,14 +1396,27 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>3</span> Your bill
+                  <span className={styles.stepNum}>3</span> {onePage ? "Your usage" : "Your bill"}
                 </div>
-                <span className={styles.stepSub}>A few numbers from your bill make this exact. No bill? We&apos;ll estimate.</span>
+                <span className={styles.stepSub}>
+                  {onePage
+                    ? "Worked out from your answers above. Change them and it updates."
+                    : "A few numbers from your bill make this exact. No bill? We'll estimate."}
+                </span>
               </div>
             </div>
 
+            {onePage && (
+              <p className={w.switchLine}>
+                Got a bill after all?{" "}
+                <button type="button" onClick={() => { setUsageSource("bill"); setInputStep(3); }}>Type in its numbers</button>{" "}
+                or snap it at the top for exact figures. Not sure about your home?{" "}
+                <button type="button" onClick={() => { setUsageSource("average"); setInputStep(3); }}>Use the average home</button>
+              </p>
+            )}
+
             {/* Q: bill or estimate */}
-            <section className={w.q}>
+            {!onePage && <section className={w.q}>
               <div className={w.qHead}>
                 <span className={w.qNum}>1</span>
                 <div>
@@ -1416,12 +1441,12 @@ export default function Comparator() {
                   <span className={w.tick} aria-hidden="true">✓</span>
                 </button>
               </div>
-            </section>
+            </section>}
 
             {/* Q: how long is the bill */}
             <section className={w.q}>
               <div className={w.qHead}>
-                <span className={w.qNum}>2</span>
+                <span className={w.qNum}>{qn(2)}</span>
                 <div>
                   <h3 className={w.qTitle}>{usageSource !== "bill" ? "How often do you get a bill?" : "How long does your bill cover?"}</h3>
                   <p className={w.qSub}>{usageSource !== "bill" ? "So we show costs for the same period." : "Look for the billing period, e.g. “1 Jul to 30 Sep”."}</p>
@@ -1452,43 +1477,18 @@ export default function Comparator() {
               <>
                 <section className={w.q}>
                   <div className={w.qHead}>
-                    <span className={w.qNum}>3</span>
+                    <span className={w.qNum}>{qn(3)}</span>
                     <div>
                       <h3 className={w.qTitle}>Here&apos;s what we think your home uses</h3>
-                      <p className={w.qSub}>From your answers in step 2. Change those and this updates.</p>
+                      <p className={w.qSub}>{onePage ? "From your answers above." : "From your answers in step 2."} Change those and this updates.</p>
                     </div>
                   </div>
-                  <div className={w.estimate}>
-                    <div className={w.estBig}>
-                      About <b>{(est.annualKwh / 365).toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh a day</b>, or ~{est.totalKwh.toLocaleString("en-AU")} kWh a bill.
-                    </div>
-                    <div className={w.bars}>
-                      <div className={w.barRow}>
-                        <span>Your home</span>
-                        <span className={w.barTrack}><span className={w.barFill} style={{ display: "block", width: `${Math.min(100, (est.annualKwh / Math.max(est.annualKwh, TYPICAL_ANNUAL_KWH)) * 100)}%` }} /></span>
-                        <b>{est.annualKwh.toLocaleString("en-AU")}</b>
-                      </div>
-                      <div className={w.barRow}>
-                        <span>Typical home</span>
-                        <span className={w.barTrack}><span className={`${w.barFill} ${w.barFillTypical}`} style={{ display: "block", width: `${Math.min(100, (TYPICAL_ANNUAL_KWH / Math.max(est.annualKwh, TYPICAL_ANNUAL_KWH)) * 100)}%` }} /></span>
-                        <b>{TYPICAL_ANNUAL_KWH.toLocaleString("en-AU")}</b>
-                      </div>
-                    </div>
-                    <span className={w.rateHint}>
-                      kWh a year from the grid.{" "}
-                      {est.annualKwh > TYPICAL_ANNUAL_KWH * 1.1
-                        ? `About ${Math.round((est.annualKwh / TYPICAL_ANNUAL_KWH - 1) * 100)}% more than a typical Victorian home.`
-                        : est.annualKwh < TYPICAL_ANNUAL_KWH * 0.9
-                          ? `About ${Math.round((1 - est.annualKwh / TYPICAL_ANNUAL_KWH) * 100)}% less than a typical Victorian home.`
-                          : "Close to a typical Victorian home."}{" "}
-                      It&apos;s an estimate, so a bill gives a sharper answer.
-                    </span>
-                  </div>
+                  <EstimatePanel profile={profile} billDays={days} />
                 </section>
 
                 <section className={w.q}>
                   <div className={w.qHead}>
-                    <span className={w.qNum}>4</span>
+                    <span className={w.qNum}>{qn(4)}</span>
                     <div>
                       <h3 className={w.qTitle}>Roughly what do you pay? <span className={w.opt}>(optional)</span></h3>
                       <p className={w.qSub}>For one bill. Leave it blank and we&apos;ll compare against the Victorian Default Offer.</p>
@@ -1635,7 +1635,7 @@ export default function Comparator() {
           </div>
         )}
 
-        {blockReason && !(inputStep === 1 && propertyType !== "home") && (
+        {blockReason && !(onStep1 && propertyType !== "home") && (
           <p className={styles.blockNote} role="status">
             {blockReason}
             {inputStep === 3 && usageSource === "bill" && !billFlag && (
@@ -1649,7 +1649,7 @@ export default function Comparator() {
           </p>
         )}
         <div className={styles.wizardNav}>
-          {inputStep > 1 ? (
+          {inputStep > 1 && !onePage ? (
             <button
               type="button"
               className={styles.wizardBackBtn}
@@ -1663,7 +1663,7 @@ export default function Comparator() {
           ) : (
             <span />
           )}
-          {inputStep < 3 ? (
+          {inputStep < 3 && !onePage ? (
             <button
               type="button"
               className={styles.heroCta}
@@ -1690,7 +1690,7 @@ export default function Comparator() {
           )}
         </div>
         <div className={styles.stickyBar}>
-          {inputStep < 3 ? (
+          {inputStep < 3 && !onePage ? (
             <button type="button" className={styles.stickyBtn} disabled={!!blockReason} onClick={() => { setInputStep((s) => nextInputStep(s)); scrollToTop(); }}>
               Next · step {inputStep} of 3 →
             </button>
@@ -2108,7 +2108,8 @@ export default function Comparator() {
                   </ul>
                 </details>
                   <div className={r.listHead}>
-                    <b>{locked ? `${matches.length} plans, cheapest first` : `All ${matches.length} plans, cheapest first`}</b>
+                    <b>{allPlans ? `All ${matches.length} plans, cheapest first` : `Each retailer's cheapest plan, cheapest first`}</b>
+                    <PlanViewToggle all={allPlans} onChange={setAllPlans} retailers={perRetailer.length} plans={matches.length} />
                     <span>
                       Prices are {PERIOD_LABEL[period]} for your usage. The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}.
                     </span>
@@ -2242,7 +2243,7 @@ export default function Comparator() {
                     <MemberLock
                       variant="list"
                       startRank={lockedTop.length + listRows.length + 1}
-                      title={`${hiddenRows.length} more plans on your network`}
+                      title={`${hiddenRows.length} more ${allPlans ? "plans" : "retailers"} on your network`}
                       body={
                         <>
                           From {fmtCurrency(Math.min(...hiddenRows.map((x) => x.total)) * k)} to {fmtCurrency(Math.max(...hiddenRows.map((x) => x.total)) * k)}{" "}

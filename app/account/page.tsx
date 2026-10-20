@@ -35,6 +35,7 @@ import BillReview from "../components/BillReview";
 import type { CurrentRates, ExtractedBill } from "@/lib/billExtraction";
 import SwitchReminder from "../components/SwitchReminder";
 import { DeleteDataCard, MemberSettings } from "../components/MemberSettings";
+import { activityWords, marketActivity } from "@/lib/marketActivity";
 import styles from "./account.module.css";
 
 // Passwordless sign-in: there's no separate "create an account" step — the
@@ -985,6 +986,7 @@ export default function AccountPage() {
                       {isMember ? (
                         <>
                           <ValueTally sub={sub!} saved={switchedAt ? accumulated.total : 0} switched={!!switchedAt} />
+                          <WorkingForYou sub={sub!} />
                           <section className={styles.panelCard}>
                             <div className={styles.panelTitleRow}>
                               <div>
@@ -1112,6 +1114,22 @@ function ValueTally({ sub, saved, switched }: { sub: SubscriberSummary; saved: n
             ? `You're about ${money(ahead)} ahead after paying for membership.`
             : `Not ahead yet: savings build up month by month after you switch.`}{" "}
         Savings are estimates from your usage and today&apos;s prices.
+      </p>
+    </section>
+  );
+}
+
+/** What membership has been doing: new offers and price changes on their network since they joined, all checked. */
+function WorkingForYou({ sub }: { sub: SubscriberSummary }) {
+  if (!sub.distributor) return null;
+  const a = marketActivity({ network: sub.distributor, since: sub.created_at });
+  if (!a.ready || a.newOffers + a.priceChanges === 0) return null;
+  return (
+    <section className={styles.panelCard}>
+      <div className={styles.panelTitle}>Working for you</div>
+      <p className={styles.panelText}>
+        Since you joined on {fmtDate(sub.created_at)}, retailers have made <b>{activityWords(a)}</b> on the {sub.distributor} network. We&apos;ve
+        re-priced every one against your home, so you don&apos;t have to keep up.
       </p>
     </section>
   );

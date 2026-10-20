@@ -16,6 +16,8 @@ import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { WORTH_SWITCHING_PER_YEAR, OVERPRICED_PER_YEAR, OVERPRICED_SHARE } from "@/lib/dataPolicy";
 import { useCountUp } from "@/lib/useCountUp";
 import PriceLine from "./PriceLine";
+import PlanViewToggle from "./PlanViewToggle";
+import { cheapestPerRetailer } from "@/lib/onePerRetailer";
 import FunEquivalents from "./FunEquivalents";
 import RetailerLogo from "./RetailerLogo";
 import type { BillCheckFacts } from "./BillCheckCard";
@@ -253,9 +255,13 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
  *  screens, one card per retailer on phones. */
 export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette }) {
   const [showAll, setShowAll] = useState(false);
+  const [allPlans, setAllPlans] = useState(false);
   const c = useMemo(() => compute(input), [input]);
   if (!c) return null;
-  const { matches, top, haveBill, you, vdo, offerFor } = c;
+  const { matches: allMatches, top, haveBill, you, vdo, offerFor } = c;
+  // One row per retailer (its cheapest plan) unless they ask for every plan.
+  const perRetailer = cheapestPerRetailer(allMatches, top);
+  const matches = allPlans ? allMatches : perRetailer;
   const { distributor, days, currentRetailer, currentPlanName, source } = input;
   const k = PERIOD_DAYS[period] / days;
   // Each plan against the Victorian Default Offer for the same usage, as a percentage.
@@ -269,7 +275,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
       ? input.currentRates.anytime !== null ? "a single-rate tariff" : input.currentRates.peak !== null ? "a time-of-use tariff" : "your tariff"
       : input.peak + input.shoulder + input.offpeak > 0 ? "a time-of-use tariff" : "a single-rate tariff") +
     (input.cl > 0 ? " with controlled load" : "");
-  const retailerBest = currentRetailer ? matches.find((m) => m.plan[0] === currentRetailer && !m.restricted) ?? null : null;
+  const retailerBest = currentRetailer ? allMatches.find((m) => m.plan[0] === currentRetailer && !m.restricted) ?? null : null;
   const topOffer = offerFor(top.plan);
   const topDetail = billDetail(top.plan, c.usage);
   const lockedTop = lockedTopFor(c, member);
@@ -295,7 +301,13 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
       <section className={styles.table}>
         <div className={styles.tableHead}>
           <h3>Retailer comparison</h3>
-          <p>{matches.length} plans from the {RETAILER_COUNT} retailers we track on the {distributor} network (not every plan in the market), cheapest first, {PERIOD_LABEL[period]}. Tap a retailer to visit their website.</p>
+          <p>
+            {allPlans
+              ? `All ${allMatches.length} plans from the retailers we track on the ${distributor} network`
+              : `Each retailer's cheapest plan for you on the ${distributor} network`}{" "}
+            (not every plan in the market), cheapest first, {PERIOD_LABEL[period]}. Tap a retailer to visit their website.
+          </p>
+          <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setShowAll(false); }} retailers={perRetailer.length} plans={allMatches.length} />
         </div>
         <div className={styles.chart}>
           <PriceLine
@@ -442,7 +454,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
 
         {matches.length > 10 && (
           <button type="button" className={styles.more} onClick={() => setShowAll((v) => !v)}>
-            {showAll ? "Show the top 10" : `Show all ${matches.length} plans`}
+            {showAll ? "Show the top 10" : allPlans ? `Show all ${matches.length} plans` : `Show all ${matches.length} retailers`}
           </button>
         )}
         <div className={styles.legend}>

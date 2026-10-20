@@ -295,7 +295,7 @@ export default function GasCheck() {
               <b>Keep both bills watched</b>
               <span>Members get gas and electricity re-checked every morning, and an email only when switching saves {money0(WORTH_SWITCHING_PER_YEAR)}+ a year.</span>
             </div>
-            <Link href="/pricing" className={g.memberBtn}>$39 a year →</Link>
+            <Link href="/pricing" className={g.memberBtn}>Join for $7 a month →</Link>
           </div>
 
           <details className={styles.detailsBox}>

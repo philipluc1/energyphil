@@ -31,23 +31,38 @@ export const VDO_HISTORY: VdoYear[] = [
   { year: "2026–27", change: -5, note: "Lower wholesale and network costs. About $84 less for an average household." },
 ];
 
-export interface TimelineItem {
-  when: string;
-  title: string;
-  detail: string;
-  status: "done" | "expected";
-}
-export const TIMELINE: TimelineItem[] = [
-  { when: "14 Nov 2025", title: "ESC asks for comment", detail: "The regulator publishes a paper and asks retailers and the public for input on 2026–27.", status: "done" },
-  { when: "12 Mar 2026", title: "Draft decision", detail: "First look at the new default prices, followed by a public forum on 23 March.", status: "done" },
-  { when: "20 May 2026", title: "Final decision", detail: "Residential prices fall by 5% on average: AusNet -8%, CitiPower, Jemena and Powercor -4%, United Energy -3%.", status: "done" },
-  { when: "1 Jul 2026", title: "New default prices start", detail: "Prices run to 30 June 2027. Retailers update their own offers around the same time.", status: "done" },
-  { when: "22 Sep 2026", title: "Utilo's latest plan data", detail: "135 plans from 15 retailers, pulled from retailers' published data.", status: "done" },
-  { when: "About Nov 2026", title: "2027–28 review opens", detail: "Based on past years. The ESC has not published this timetable yet.", status: "expected" },
-  { when: "About Mar 2027", title: "Draft decision", detail: "Expected on the same pattern as this year.", status: "expected" },
-  { when: "About May 2027", title: "Final decision", detail: "Expected before the new prices start.", status: "expected" },
-  { when: "1 Jul 2027", title: "New default prices start", detail: "The default offer is reset every 1 July.", status: "expected" },
+/**
+ * The default offer's yearly cycle, as four stages: when each happened last
+ * time (2026–27) and when it's expected next (2027–28, following past years;
+ * the ESC hasn't published that timetable yet). `nextIso` places "you are here".
+ */
+export interface CycleStage { title: string; detail: string; last: string; next: string; nextIso: string; confirmed: boolean }
+export const PRICE_CYCLE: CycleStage[] = [
+  { title: "Review opens", detail: "The ESC asks retailers and the public for input.", last: "14 Nov 2025", next: "About Nov 2026", nextIso: "2026-11-14", confirmed: false },
+  { title: "Draft decision", detail: "A first look at next year's default prices.", last: "12 Mar 2026", next: "About Mar 2027", nextIso: "2027-03-12", confirmed: false },
+  { title: "Final decision", detail: "The new default prices are set.", last: "20 May 2026", next: "About May 2027", nextIso: "2027-05-20", confirmed: false },
+  { title: "New prices start", detail: "The default offer resets. Many retailers reprice their own plans around now too.", last: "1 Jul 2026", next: "1 Jul 2027", nextIso: "2027-07-01", confirmed: false },
 ];
+
+/** Index of the next stage still to come (PRICE_CYCLE.length when all have passed). */
+export function nextCycleStage(now = Date.now()): number {
+  const i = PRICE_CYCLE.findIndex((s) => Date.parse(`${s.nextIso}T00:00:00+11:00`) > now);
+  return i === -1 ? PRICE_CYCLE.length : i;
+}
+
+/** This year's default-offer change (1 July 2026), by network. ESC final decision, 20 May 2026. */
+export const VDO_CHANGE_2026 = {
+  from: "1 July 2026",
+  average: -5,
+  averageDollars: 84,
+  byNetwork: [
+    { network: "AusNet Services", change: -8 },
+    { network: "CitiPower", change: -4 },
+    { network: "Jemena", change: -4 },
+    { network: "Powercor", change: -4 },
+    { network: "United Energy", change: -3 },
+  ],
+};
 
 export interface SaveTip {
   group: "Plan" | "Usage" | "Upgrades";

@@ -87,3 +87,7 @@
 
 /* Third choice in step 3: the average home, full width under the two big buttons */
 .bigWide { grid-column: 1 / -1; padding: 12px 16px; }
+
+/* One-page estimate: a quiet way back to the bill or the average home */
+.switchLine { margin: 0 0 4px; padding: 10px 14px; border-radius: 12px; background: var(--bg); font-size: 14px; line-height: 1.55; color: var(--grey); }
+.switchLine button { padding: 0; border: 0; background: none; font: inherit; font-weight: 700; color: var(--navy-accent-text); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }

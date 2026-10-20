@@ -1,16 +1,16 @@
 import Link from "next/link";
-import { TIMELINE } from "@/lib/learnContent";
+import { PRICE_CYCLE, nextCycleStage } from "@/lib/learnContent";
 import styles from "./learncard.module.css";
 
 /** Learn, inside the dashboard: the next price event and quick links. */
 export default function LearnCard() {
-  const next = TIMELINE.find((t) => t.status === "expected");
+  const next = PRICE_CYCLE[nextCycleStage()];
   return (
     <div className={styles.card}>
       <div className={styles.title}>Learn</div>
       {next && (
         <p className={styles.next}>
-          <b>Next price event:</b> {next.title}, {next.when.replace(/^About /, "about ")}. {next.detail}
+          <b>Next price event:</b> {next.title}, {next.next.replace(/^About /, "about ")}. {next.detail}
         </p>
       )}
       <div className={styles.links}>

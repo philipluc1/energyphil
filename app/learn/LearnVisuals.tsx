@@ -137,7 +137,7 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
         ))}
       </div>
       <p className={v.gNote}>
-        Utilo prices {planCount} plans from {retailers} retailers, not every plan in the market. Membership is $39 a year.
+        Utilo prices {planCount} plans from {retailers} retailers, not every plan in the market. Membership is $7 a month, or $39 a year.
       </p>
     </>
   );

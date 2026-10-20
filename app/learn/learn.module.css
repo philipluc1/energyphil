@@ -20,13 +20,68 @@
 .pillOn { background: #0d9488; border-color: #0d9488; color: #fff; }
 .hist { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; font-size: 14px; color: var(--grey); }
 .hist b { color: inherit; margin-right: 6px; }
-.timeline { list-style: none; margin: 18px 0 0; padding: 0 0 0 22px; border-left: 3px solid var(--border); display: grid; gap: 18px; }
-.timeline li { position: relative; }
-.timeline li::before { content: ""; position: absolute; left: -30px; top: 4px; width: 13px; height: 13px; border-radius: 50%; background: #0d9488; border: 3px solid var(--bg, #fff); }
-.timeline li.exp::before { background: var(--bg, #fff); border-color: #0d9488; }
-.timeline li.exp { opacity: 0.85; }
-.when { display: block; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #0d9488; }
-.timeline p { margin: 2px 0 0; font-size: 14px; color: var(--grey); line-height: 1.5; }
+/* Chart assumption strip */
+.assume {
+  display: flex; gap: 12px; align-items: flex-start; margin: 0 0 12px; padding: 12px 14px; border-radius: 14px;
+  font-size: 14.5px; line-height: 1.5; color: var(--ink);
+  background: color-mix(in srgb, var(--amber) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+}
+.assumeIcon { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--amber); color: var(--amber-ink); }
+
+/* When prices change: two clocks */
+.clocks { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 6px 0 14px; }
+.clock { display: flex; gap: 14px; align-items: flex-start; padding: 18px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+.clock b { font-size: 17px; }
+.clock p { margin: 4px 0 0; font-size: 15px; line-height: 1.5; color: color-mix(in srgb, var(--ink) 80%, var(--bg)); }
+.clock strong { color: var(--ink); }
+.clockIcon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; }
+.ciNavy { background: color-mix(in srgb, var(--navy-accent-text) 13%, transparent); color: var(--navy-accent-text); }
+.ciTeal { background: color-mix(in srgb, var(--teal) 15%, transparent); color: var(--teal); }
+
+/* This year's change: one big number, then a bar per network */
+.change { display: grid; grid-template-columns: minmax(200px, 0.8fr) 1.6fr; gap: 24px; align-items: center; padding: 22px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); }
+.changeBig { display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.45; color: color-mix(in srgb, var(--ink) 80%, var(--bg)); }
+.changeBig b { color: var(--ink); }
+.changePct { font: 900 64px/1 "Archivo", sans-serif; letter-spacing: -0.03em; color: #16a34a; }
+.changeBars { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.changeBars li { display: grid; grid-template-columns: 120px 1fr 44px; gap: 12px; align-items: center; font-size: 14px; }
+.changeBars b { text-align: right; font-variant-numeric: tabular-nums; color: #16a34a; }
+.cbName { font-weight: 700; }
+.cbTrack { height: 12px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.cbTrack > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #16a34a, #4ade80); }
+
+/* The yearly cycle: four steps on a line */
+.cycle { position: relative; list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.cycle::before { content: ""; position: absolute; top: 17px; left: 12.5%; right: 12.5%; height: 3px; background: var(--border); }
+.cycle li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.cycle b { margin-top: 12px; font-size: 16px; }
+.cycle p { margin: 4px 0 10px; font-size: 14px; line-height: 1.45; color: color-mix(in srgb, var(--ink) 80%, var(--bg)); }
+.cycle dl { margin: auto 0 0; width: 100%; display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; }
+.cycle dl div { display: flex; justify-content: space-between; gap: 8px; }
+.cycle dt { color: var(--grey); }
+.cycle dd { margin: 0; font-weight: 700; text-align: right; white-space: nowrap; }
+.cycle dt { white-space: nowrap; }
+.cyDot {
+  position: relative; z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  font-weight: 800; font-size: 15px; background: var(--surface); color: var(--grey); border: 3px solid var(--border);
+}
+.cyDone .cyDot { background: var(--teal); border-color: var(--teal); color: #fff; }
+.cyNext .cyDot { background: var(--amber); border-color: var(--amber); color: var(--amber-ink); box-shadow: 0 0 0 6px color-mix(in srgb, var(--amber) 25%, transparent); }
+.cyNext dl { border-color: var(--amber); }
+.cyHere { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; background: var(--amber-light); color: var(--amber-ink); }
+.cycle { margin-top: 34px; }
+
+@media (max-width: 760px) {
+  .clocks, .change { grid-template-columns: 1fr; }
+  .changeBars li { grid-template-columns: 104px 1fr 40px; }
+  .cycle { grid-template-columns: 1fr; gap: 16px; margin-top: 18px; }
+  .cycle::before { top: 0; bottom: 0; left: 17px; right: auto; width: 3px; height: auto; }
+  .cycle li { display: grid; grid-template-columns: 36px 1fr; column-gap: 14px; align-items: start; text-align: left; }
+  .cycle li > :not(.cyDot) { grid-column: 2; }
+  .cyDot { grid-row: 1 / span 4; }
+  .cycle b { margin-top: 6px; }
+  .cyHere { position: static; justify-self: start; transform: none !important; margin-top: 6px; }
+}
 .tips { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .tip { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; }
 .tip p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--grey); }

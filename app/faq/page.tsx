@@ -62,7 +62,7 @@ export default function FaqPage() {
             </details>
             <details className={home.faqItem}>
               <summary>Can I share Utilo with a friend?</summary>
-              <p>Yes, please. Members have a referral link on the Membership tab of their dashboard. A friend who joins through it gets {referralDollars(REFERRAL_FRIEND_CENTS)} off their first payment, and you get {referralDollars(REFERRAL_CREDIT_CENTS)} off your next one. <Link href="/terms#referrals">Referral terms</Link>.</p>
+              <p>Yes, please. Members have a referral link on the Membership tab of their dashboard. A friend who joins through it (and hasn&apos;t been a member before) gets {referralDollars(REFERRAL_FRIEND_CENTS)} off their first payment, and you get {referralDollars(REFERRAL_CREDIT_CENTS)} off your next one. <Link href="/terms#referrals">Referral terms</Link>.</p>
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;ve got an EV. Does that matter?</summary>

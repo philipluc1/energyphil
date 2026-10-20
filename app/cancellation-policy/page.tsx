@@ -73,7 +73,9 @@ export default function CancellationPolicyPage() {
             Outside of the usual consumer guarantees under Australian Consumer Law (for example, if the service
             doesn&apos;t work as described), we don&apos;t offer refunds for the unused portion of a billing
             period you&apos;ve already paid for — see above for why: you keep the benefit for that whole period
-            regardless of when within it you cancel. If something&apos;s gone wrong with your billing or you
+            regardless of when within it you cancel. There&apos;s one membership per email address: if you&apos;re charged twice
+            for the same email by mistake, we cancel the second membership and refund it in full, automatically. If something
+            else has gone wrong with your billing or you
             think you&apos;ve been charged in error, contact us at{" "}
             <MailLink email={ABOUT.contactEmail} label="contact email" /> and we&apos;ll sort
             it out.
