@@ -6,7 +6,9 @@ import {
   DEFAULT_PROFILE,
   averageUsage,
   estimateUsage,
+  forecastFromBill,
   monthlyEstimate,
+  scaleEstimate,
   usageIsIncomplete,
   usageOrAverage,
   type HomeProfile,
@@ -72,3 +74,27 @@ for (const n of [1, 2, 3, 4, 5]) {
   assert.ok(Math.abs(mixed / AER[n] - 1) < 0.15, `${n} people: ${Math.round(mixed)} vs AER ${AER[n]}`);
 }
 console.log("household estimate ok");
+
+// Forecasting the year from one bill.
+const twoP = home({ people: 2, heating: "gas_none", hotWater: "electric_general", daytimeHome: "some" });
+// A bill that matches the answers exactly gives back the same year.
+const winterModel = two.months[5].kwh + two.months[6].kwh + two.months[7].kwh; // Jun–Aug, 92 days
+const same = forecastFromBill(twoP, { kwh: winterModel, days: 92, endMonth: 7 })!;
+assert.ok(Math.abs(same.factor - 1) < 0.01 && Math.abs(same.annual - two.breakdown.total) <= 12);
+assert.deepEqual(same.covered.map((d, i) => (d ? i : -1)).filter((i) => i >= 0), [5, 6, 7]);
+// A 1,200 kWh winter quarter: a straight ×4 would say ~4,760 a year; the seasonal forecast is lower.
+const winter = forecastFromBill(twoP, { kwh: 1200, days: 92, endMonth: 7 })!;
+assert.ok(winter.annual < Math.round((1200 * 365) / 92) - 250, `winter forecast ${winter.annual}`);
+// The same kWh over a summer quarter means a heavier home, so a bigger year.
+const summer = forecastFromBill(twoP, { kwh: 1200, days: 90, endMonth: 1 })!;
+assert.ok(summer.annual > winter.annual);
+// A month that runs back into the previous year (December–January).
+const dec = forecastFromBill(twoP, { kwh: 400, days: 45, endMonth: 0 })!;
+assert.equal(dec.covered[0] + dec.covered[11], 45);
+// Silly figures are held to a sensible range; nothing entered, nothing back.
+assert.equal(forecastFromBill(twoP, { kwh: 1_000_000, days: 91, endMonth: 8 })!.factor, 5);
+assert.equal(forecastFromBill(twoP, { kwh: 0, days: 91, endMonth: 8 }), null);
+// Pricing follows the forecast.
+const scaled = scaleEstimate(estimateUsage(twoP, 91), 1.2);
+assert.equal(scaled.annualKwh, Math.round(estimateUsage(twoP, 91).annualKwh * 1.2));
+console.log("bill forecast ok");

@@ -34,6 +34,8 @@ import {
   averageUsage,
   usageIsIncomplete,
   estimateUsage,
+  forecastFromBill,
+  scaleEstimate,
   normaliseProfile,
   panelsToKw,
   type SolarAge,
@@ -50,7 +52,7 @@ import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
 import MemberLock, { MEMBER_PRICE_LINE } from "./MemberLock";
 import PlanViewToggle from "./PlanViewToggle";
-import EstimatePanel, { EstimateStrip } from "./EstimatePanel";
+import EstimatePanel, { EstimateStrip, thisMonth } from "./EstimatePanel";
 import { cheapestPerRetailer } from "@/lib/onePerRetailer";
 import r from "./results.module.css";
 import RatesCompare from "./RatesCompare";
@@ -259,6 +261,9 @@ export default function Comparator() {
   const [hasSolar, setHasSolar] = useState(false);
   const [solarExportRaw, setSolarExportRaw] = useState("");
   const [currentBillRaw, setCurrentBillRaw] = useState("");
+  // No-bill path: a bill's kWh (and the month it ended) to forecast the year from.
+  const [calKwhRaw, setCalKwhRaw] = useState("");
+  const [calEndMonth, setCalEndMonth] = useState(() => (thisMonth() + 11) % 12);
   const [email, setEmail] = useState("");
   const [wantsAlerts, setWantsAlerts] = useState(false);
   const [leadStatus, setLeadStatus] = useState<LeadStatus>("idle");
@@ -320,6 +325,8 @@ export default function Comparator() {
         if (typeof d.hasSolar === "boolean") setHasSolar(d.hasSolar);
         if (typeof d.solarExportRaw === "string") setSolarExportRaw(d.solarExportRaw);
         if (typeof d.currentBillRaw === "string") setCurrentBillRaw(d.currentBillRaw);
+        if (typeof d.calKwhRaw === "string") setCalKwhRaw(d.calKwhRaw);
+        if (typeof d.calEndMonth === "number" && d.calEndMonth >= 0 && d.calEndMonth <= 11) setCalEndMonth(d.calEndMonth);
         if (typeof d.email === "string") setEmail(d.email);
         if (typeof d.currentRetailer === "string") setCurrentRetailer(d.currentRetailer);
         if (typeof d.customerName === "string") setCustomerName(d.customerName);
@@ -369,12 +376,12 @@ export default function Comparator() {
     try {
       window.localStorage.setItem(
         SAVE_KEY,
-        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressOk: addressHintOff, billCheck: billCheck ? forStorage(billCheck) : null }),
+        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, calKwhRaw, calEndMonth, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressOk: addressHintOff, billCheck: billCheck ? forStorage(billCheck) : null }),
       );
     } catch {
       /* storage unavailable */
     }
-  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressHintOff, billCheck, hydrated]);
+  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, calKwhRaw, calEndMonth, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressHintOff, billCheck, hydrated]);
 
   // The suburb list is ~20 KB gzipped, so it loads after the page, not with it.
   useEffect(() => {
@@ -471,7 +478,15 @@ export default function Comparator() {
   const addressNote = propertyType === "home" && !addressHintOff ? addressHint(address) : null;
   // Known when it came from the meter number, the bill, the postcode or the customer.
   const networkKnown = networkFrom !== null;
-  const est = useMemo(() => estimateUsage(profile, days), [profile, days]);
+  // With a bill's kWh, the answers set the shape of the year and the bill sets the level.
+  const billForecast = useMemo(() => {
+    const kwh = parseFloat(calKwhRaw);
+    return useEst && kwh > 0 ? forecastFromBill(profile, { kwh, days, endMonth: calEndMonth }) : null;
+  }, [useEst, calKwhRaw, profile, days, calEndMonth]);
+  const est = useMemo(() => {
+    const e = estimateUsage(profile, days);
+    return billForecast ? scaleEstimate(e, billForecast.factor) : e;
+  }, [profile, days, billForecast]);
   // Not enough to go on: they picked the average, or their bill's usage is
   // too thin to compare on (under a week, or under 1 kWh a day without solar).
   // Then we use the average Victorian home, 4,000 kWh a year.
@@ -1222,7 +1237,7 @@ export default function Comparator() {
                 <span className={styles.stepSub}>Rough answers are fine. They tell us how much power you use, and when.</span>
               </div>
             </div>
-            {useEst && <EstimateStrip profile={profile} />}
+            {useEst && <EstimateStrip profile={profile} forecast={billForecast} />}
 
             <div className={s2.grid}>
               <div>
@@ -1483,7 +1498,11 @@ export default function Comparator() {
                       <p className={w.qSub}>{onePage ? "From your answers above." : "From your answers in step 2."} Change those and this updates.</p>
                     </div>
                   </div>
-                  <EstimatePanel profile={profile} billDays={days} />
+                  <EstimatePanel
+                    profile={profile}
+                    billDays={days}
+                    bill={{ kwhRaw: calKwhRaw, endMonth: calEndMonth, onKwh: setCalKwhRaw, onEndMonth: setCalEndMonth, forecast: billForecast }}
+                  />
                 </section>
 
                 <section className={w.q}>
@@ -1763,7 +1782,7 @@ export default function Comparator() {
               )}
               {worthSwitching && (
                 <div className={r.hero}>
-                  <span className={r.kicker}>{useAvg ? "Based on an average Victorian home" : useEst ? "Estimated from your answers" : haveBill ? "Based on your bill" : "Based on your usage"}</span>
+                  <span className={r.kicker}>{useAvg ? "Based on an average Victorian home" : useEst ? (billForecast ? "Forecast from your bill's kWh" : "Estimated from your answers") : haveBill ? "Based on your bill" : "Based on your usage"}</span>
                   <div className={r.heroLabel}>{haveBill ? "You could save" : "The cheapest plan could save you up to"}</div>
                   <div className={r.heroNum}>
                     ${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")}
@@ -2130,7 +2149,7 @@ export default function Comparator() {
                       <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
                     </div>
                     <p>
-                      {useAvg ? "The average Victorian home" : useEst ? "Estimated from your answers" : haveBill ? "From your bill" : "For your usage"}: about{" "}
+                      {useAvg ? "The average Victorian home" : useEst ? (billForecast ? "Forecast from your bill's kWh" : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
                       <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day) on{" "}
                       {usagePeak + usageShoulder + usageOffpeak > 0 ? "a time-of-use tariff" : "a single-rate tariff"}
                       {clKwh > 0 ? " with controlled load" : ""}

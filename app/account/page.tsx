@@ -28,7 +28,7 @@ import PlanBand from "../components/PlanBand";
 import PlanCards from "../components/PlanCards";
 import UpgradePlans from "../components/UpgradePlans";
 import type { Distributor } from "@/lib/plans";
-import { DEFAULT_PROFILE, estimateUsage } from "@/lib/profileUsage";
+import { DEFAULT_PROFILE, estimateWithBill } from "@/lib/profileUsage";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import BillReview from "../components/BillReview";
@@ -187,7 +187,12 @@ export default function AccountPage() {
         // "average": they chose the average home, so leave usage empty and the
         // dashboard uses the average Victorian home (4,000 kWh a year).
         const avgHome = d.usageSource === "average";
-        const est = d.usageSource === "bill" || avgHome ? null : estimateUsage(profile, days);
+        // A bill's kWh typed into the estimate scales it, the same as on the check.
+        const calKwh = parseFloat(d.calKwhRaw);
+        const est =
+          d.usageSource === "bill" || avgHome
+            ? null
+            : estimateWithBill(profile, days, calKwh > 0 && typeof d.calEndMonth === "number" ? { kwh: calKwh, endMonth: d.calEndMonth } : null);
         setLocalCheck({
           customer_name: d.customerName || null,
           address: d.address || null,

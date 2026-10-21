@@ -2,44 +2,43 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** Counts from 0 to `value` once, when scrolled into view. With reduced
- * motion (or no IntersectionObserver) it simply shows the final number. */
-export default function CountUp({ value, prefix = "", suffix = "", durationMs = 1400, decimals = 0 }: { value: number; prefix?: string; suffix?: string; durationMs?: number; decimals?: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [shown, setShown] = useState<number | null>(null);
-
+/**
+ * A number that counts up from 0 when it scrolls into view. The real number
+ * is in the page from the start (for search engines and no-JS), and stays put
+ * for people who prefer reduced motion.
+ */
+export default function CountUp({ value, duration = 900 }: { value: number; duration?: number }) {
+  const [shown, setShown] = useState(value);
+  const ref = useRef<HTMLSpanElement | null>(null);
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!el || value <= 0) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     let raf = 0;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-        obs.disconnect();
-        const start = performance.now();
-        const tick = (now: number) => {
-          const t = Math.min(1, (now - start) / durationMs);
-          const eased = 1 - Math.pow(1 - t, 3);
-          setShown(value * eased);
-          if (t < 1) raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
+    const run = () => {
+      const t0 = performance.now();
+      const tick = (t: number) => {
+        const p = Math.min(1, (t - t0) / duration);
+        setShown(Math.round(value * (1 - Math.pow(1 - p, 3))));
+        if (p < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          setShown(0);
+          run();
+        }
       },
       { threshold: 0.4 },
     );
-    obs.observe(el);
+    io.observe(el);
     return () => {
-      obs.disconnect();
+      io.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [value, durationMs]);
-
-  const n = shown ?? value;
-  return (
-    <span ref={ref}>
-      {prefix}
-      {n.toLocaleString("en-AU", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
-      {suffix}
-    </span>
-  );
+  }, [value, duration]);
+  return <span ref={ref}>{shown.toLocaleString("en-AU")}</span>;
 }

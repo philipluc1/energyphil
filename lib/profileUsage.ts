@@ -274,6 +274,59 @@ export function estimateUsage(p: HomeProfile, days: number): EstimatedUsage {
   };
 }
 
+/** A year forecast from one bill: the home's seasonal shape (from their
+ *  answers), scaled so the months the bill covers add up to its kWh. */
+export interface BillForecast {
+  /** Forecast grid kWh for each calendar month (Jan..Dec). */
+  months: MonthEstimate[];
+  annual: number;
+  /** Bill ÷ what the answers alone said for the same stretch (1 = spot on). */
+  factor: number;
+  /** Days of the bill falling in each month (Jan..Dec). */
+  covered: number[];
+  /** What the answers alone said for the bill's stretch. */
+  modelKwh: number;
+}
+
+/**
+ * Forecast the year from a bill's kWh. The bill is taken to end on the last
+ * day of `endMonth` (0 = January) and run back `days` days. A winter bill
+ * isn't simply multiplied up: it's compared with the same winter months in
+ * the model, so the forecast year isn't inflated (or a summer one deflated).
+ */
+export function forecastFromBill(p: HomeProfile, bill: { kwh: number; days: number; endMonth: number }): BillForecast | null {
+  if (!(bill.kwh > 0) || !(bill.days > 0)) return null;
+  const { months } = monthlyEstimate(p);
+  const covered = new Array(12).fill(0) as number[];
+  let left = Math.min(365, Math.round(bill.days));
+  let m = ((Math.round(bill.endMonth) % 12) + 12) % 12;
+  while (left > 0) {
+    const take = Math.min(left, MONTH_DAYS[m]);
+    covered[m] += take;
+    left -= take;
+    m = (m + 11) % 12;
+  }
+  const modelKwh = months.reduce((a, x) => a + x.kwh * (covered[x.month] / MONTH_DAYS[x.month]), 0);
+  if (!(modelKwh > 0)) return null;
+  // A typo (an extra zero, or a daily figure) shouldn't produce a silly year.
+  const factor = Math.min(5, Math.max(0.2, bill.kwh / modelKwh));
+  const scaled = months.map((x) => ({ ...x, kwh: Math.round(x.kwh * factor) }));
+  return { months: scaled, annual: scaled.reduce((a, x) => a + x.kwh, 0), factor, covered, modelKwh: Math.round(modelKwh) };
+}
+
+/** An estimate for a billing period, scaled (e.g. to match a bill). Solar exports stay as they are. */
+export function scaleEstimate(e: EstimatedUsage, factor: number): EstimatedUsage {
+  const r = (n: number) => Math.round(n * factor);
+  return { ...e, peak: r(e.peak), shoulder: r(e.shoulder), offpeak: r(e.offpeak), cl: r(e.cl), totalKwh: r(e.totalKwh), annualKwh: r(e.annualKwh) };
+}
+
+/** The estimate for a billing period, matched to a bill's kWh when there is one. */
+export function estimateWithBill(p: HomeProfile, days: number, bill?: { kwh: number; endMonth: number } | null): EstimatedUsage {
+  const e = estimateUsage(p, days);
+  const fc = bill && bill.kwh > 0 ? forecastFromBill(p, { kwh: bill.kwh, days, endMonth: bill.endMonth }) : null;
+  return fc ? scaleEstimate(e, fc.factor) : e;
+}
+
 /** What the Victorian Default Offer would cost for THIS usage (supply +
  * single-rate usage at the VDO benchmark rate + controlled load), rather
  * than the generic typical-household annual figure. No solar credit is
