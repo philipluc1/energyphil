@@ -72,10 +72,24 @@ export default function WelcomePage() {
 
       setSetupStep(3);
       await new Promise((r) => setTimeout(r, 700));
-      // Already read a bill? Straight to the dashboard.
+      // Their free check came through checkout with them (network, usage,
+      // address, home answers, rates). If it's on file, don't ask for it
+      // again: straight to the dashboard. Only ask for a bill when there's
+      // nothing to go on.
+      const { data: mine } = await supabase
+        .from("subscribers")
+        .select("distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      const m = mine as Record<string, number | string | null> | null;
+      const kwh = m ? ["peak_kwh", "shoulder_kwh", "offpeak_kwh", "anytime_kwh", "controlled_load_kwh"].reduce((s, k) => s + (Number(m[k]) || 0), 0) : 0;
+      if (m && m.distributor && Number(m.billing_days) > 0 && kwh > 0) return router.replace("/account?welcome=1");
+      // Or a bill already read some other way.
       const { data: existing } = await supabase.from("bill_checks").select("id").eq("source", "bill").limit(1);
       if (cancelled) return;
-      if (existing && existing.length > 0) return router.replace("/account");
+      if (existing && existing.length > 0) return router.replace("/account?welcome=1");
       setStage("upload");
     }
     run();

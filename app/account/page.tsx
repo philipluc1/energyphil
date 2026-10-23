@@ -159,6 +159,18 @@ export default function AccountPage() {
   }
   const [switchDate, setSwitchDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [switchBusy, setSwitchBusy] = useState(false);
+  // Just arrived from checkout (/welcome sends ?welcome=1): say the free check came with them.
+  const [justJoined, setJustJoined] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("welcome") !== "1") return;
+    const t = setTimeout(() => setJustJoined(true), 0);
+    // Tidy the address bar so a refresh doesn't show it again.
+    params.delete("welcome");
+    const q = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`);
+    return () => clearTimeout(t);
+  }, []);
   // What a non-member told us in the free check, kept in this browser.
   const [localCheck, setLocalCheck] = useState<ProfileData | null>(null);
   // Bill checks from the free check in this browser (members' come from their record).
@@ -762,6 +774,16 @@ export default function AccountPage() {
 
               {subLoading && <p className={styles.note}>Loading your plan…</p>}
               {subError && <p className={styles.error}>{subError}</p>}
+              {justJoined && isMember && (
+                <div className={styles.welcomeNote} role="status">
+                  <Icon name="check" size={18} />
+                  <span>
+                    <b>Welcome aboard.</b> Your free check came with you: your home, usage and best plan are already here, and we&apos;ll re-check them
+                    every morning. Upload a bill any time for exact figures.
+                  </span>
+                  <button type="button" className={styles.linkBtn} onClick={() => setJustJoined(false)} aria-label="Dismiss">×</button>
+                </div>
+              )}
 
               {!subLoading && !isMember && syncReason && (
                 <div className={styles.syncNote}>

@@ -52,7 +52,7 @@ import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
 import MemberLock, { MEMBER_PRICE_LINE } from "./MemberLock";
 import PlanViewToggle from "./PlanViewToggle";
-import EstimatePanel, { EstimateStrip, thisMonth } from "./EstimatePanel";
+import EstimatePanel, { BillKwhCard, EstimateStrip, thisMonth } from "./EstimatePanel";
 import { cheapestPerRetailer } from "@/lib/onePerRetailer";
 import r from "./results.module.css";
 import RatesCompare from "./RatesCompare";
@@ -1237,6 +1237,14 @@ export default function Comparator() {
                 <span className={styles.stepSub}>Rough answers are fine. They tell us how much power you use, and when.</span>
               </div>
             </div>
+            {useEst && (
+              <BillKwhCard
+                bill={{ kwhRaw: calKwhRaw, endMonth: calEndMonth, onKwh: setCalKwhRaw, onEndMonth: setCalEndMonth, forecast: billForecast }}
+                days={days}
+                onDays={setDays}
+                profile={profile}
+              />
+            )}
             {useEst && <EstimateStrip profile={profile} forecast={billForecast} />}
 
             <div className={s2.grid}>
@@ -1502,6 +1510,7 @@ export default function Comparator() {
                     profile={profile}
                     billDays={days}
                     bill={{ kwhRaw: calKwhRaw, endMonth: calEndMonth, onKwh: setCalKwhRaw, onEndMonth: setCalEndMonth, forecast: billForecast }}
+                    showInput={false}
                   />
                 </section>
 

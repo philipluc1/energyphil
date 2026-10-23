@@ -2,9 +2,10 @@
 import assert from "node:assert/strict";
 import { activityWords, dailyChanges, marketActivity, marketEvents } from "./marketActivity";
 import { PLANS } from "./plans";
+import { PLAN_DATES, PLAN_TERMS_DATE } from "./planTerms";
 
-// Starter data: no offer dates yet, so nothing is claimed.
-assert.equal(marketActivity().ready, false);
+// Ready only once the daily pull has dated offers (starter data: nothing is claimed).
+assert.equal(marketActivity().ready, !!PLAN_TERMS_DATE && Object.keys(PLAN_DATES).length > 0);
 
 const now = Date.parse("2026-11-20T00:00:00Z");
 const [a, b, c] = Array.from(new Set(PLANS.filter((p) => p[1] === "Powercor").map((p) => `${p[0]}|${p[2]}`))).slice(0, 3);
@@ -41,5 +42,5 @@ assert.equal(days[29].date, "2026-11-20");
 assert.equal(days.reduce((s, d) => s + d.newOffers + d.priceChanges, 0), 3);
 assert.equal(days.find((d) => d.date === "2026-11-01")!.priceChanges, 1);
 // Nothing to show on the starter data.
-assert.deepEqual(marketEvents(), []);
+if (!PLAN_TERMS_DATE) assert.deepEqual(marketEvents(), []);
 console.log("market activity ok");

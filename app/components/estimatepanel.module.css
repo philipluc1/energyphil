@@ -80,3 +80,22 @@
   .partTrack { grid-column: 1 / -1; grid-row: 2; }
   .vs { text-align: left; }
 }
+
+/* "Got a recent bill? Start with its kWh": first thing on the no-bill page */
+.top1 { display: grid; gap: 12px; margin: 0 0 20px; padding: 18px 20px; border-radius: 16px; border: 2px solid color-mix(in srgb, var(--navy-accent-text) 30%, transparent); background: color-mix(in srgb, var(--navy-accent-text) 6%, var(--surface)); }
+.top1On { border-color: color-mix(in srgb, var(--teal) 55%, transparent); background: color-mix(in srgb, var(--teal) 7%, var(--surface)); }
+.top1Head { display: flex; gap: 12px; align-items: flex-start; }
+.top1Icon { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--navy-accent-text); color: #fff; }
+.top1Title { margin: 0; font-size: 18px; font-weight: 800; color: var(--ink); }
+.top1Sub { margin: 4px 0 0; font-size: 14.5px; line-height: 1.5; color: color-mix(in srgb, var(--ink) 78%, var(--bg)); }
+.top1Row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.lengths { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: var(--track); }
+.lengths button { padding: 8px 12px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 14.5px; font-weight: 700; color: var(--grey); cursor: pointer; }
+.lengths button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(16, 22, 58, 0.12); }
+.lengths button:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+.lengthOther { align-self: center; padding: 0 8px; font-size: 14.5px; font-weight: 700; color: var(--ink); }
+.top1Result { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font-size: 15px; color: var(--ink); }
+.top1Result svg { color: var(--teal); }
+.top1Result span { color: var(--grey); }
+.top1Skip { margin: 0; font-size: 13.5px; color: var(--grey); }
+@media (max-width: 560px) { .top1 { padding: 16px; } .calKwh input { width: 90px; } }

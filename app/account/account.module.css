@@ -520,3 +520,9 @@ details[open] > .panelSummary::after { content: " ▴"; }
 
 .billCheckWrap { margin: -2px 0 14px; }
 .billCheckWrap > section { margin-top: 0; }
+
+/* Just joined: the free check came with them */
+.welcomeNote { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; padding: 14px 16px; border-radius: 14px; font-size: 14.5px; line-height: 1.5; color: var(--ink); background: color-mix(in srgb, var(--teal) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--teal) 35%, transparent); }
+.welcomeNote > svg { flex: none; margin-top: 2px; color: var(--teal); }
+.welcomeNote > span { flex: 1; }
+.welcomeNote > button { font-size: 18px; line-height: 1; padding: 0 4px; }

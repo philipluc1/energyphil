@@ -5,7 +5,8 @@ import { supabaseAdmin } from "./supabaseAdmin";
 import { findPlan } from "./pricingPlans";
 import { sendEmail } from "./email";
 import { welcomeEmail } from "./welcomeEmail";
-import { PLANS } from "./plans";
+import { PLANS, VDO, type Distributor } from "./plans";
+import { vdoBillForUsage } from "./profileUsage";
 import { cleanReferralCode, sourceValue } from "./attribution";
 import { creditReferrer, newReferralCode } from "./referrals";
 import { stripe } from "./stripeClient";
@@ -109,16 +110,27 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     referred_by: cleanReferralCode(md.referredBy),
     referral_code: newReferralCode(),
   };
-  let { data: inserted, error } = await supabaseAdmin.from("subscribers").insert({ ...core, ...extras }).select("id").single();
-  // Two members drawing the same referral code is very unlikely; draw again.
-  for (let tries = 0; tries < 3 && error && /duplicate key.*referral_code/i.test(error.message); tries++) {
-    extras.referral_code = newReferralCode();
-    ({ data: inserted, error } = await supabaseAdmin.from("subscribers").insert({ ...core, ...extras }).select("id").single());
+  // The free check rides along in full: if the database is missing a newer
+  // optional column (schema.sql not re-run), drop just that column and keep
+  // everything else, so the member never has to type their check in again.
+  const row: Record<string, unknown> = { ...core, ...extras };
+  const insertRow = () => supabaseAdmin!.from("subscribers").insert(row).select("id").single();
+  let { data: inserted, error } = await insertRow();
+  for (let tries = 0; tries < 12 && error; tries++) {
+    if (/duplicate key.*referral_code/i.test(error.message)) {
+      // Two members drawing the same referral code is very unlikely; draw again.
+      row.referral_code = newReferralCode();
+    } else {
+      const missing = missingColumn(error.message);
+      if (!missing || !(missing in row) || missing in core) break;
+      console.error(`subscriber insert: the database has no "${missing}" column yet (re-run supabase/schema.sql); saving without it`);
+      delete row[missing];
+    }
+    ({ data: inserted, error } = await insertRow());
   }
-  // If the database is missing a newer optional column (schema.sql not re-run),
-  // still create the membership with the core fields rather than fail.
+  // Last resort: an unrecognised schema problem. Save the core fields rather than fail.
   if (error && /column|schema cache/i.test(error.message)) {
-    console.error("subscriber insert: retrying without optional columns", error.message);
+    console.error("subscriber insert: retrying with core fields only", error.message);
     ({ data: inserted, error } = await supabaseAdmin.from("subscribers").insert(core).select("id").single());
   }
   // The webhook and the dashboard's sync can race; the unique index on
@@ -153,6 +165,31 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     await sendEmail({ to: email, subject: w.subject, title: w.title, html: w.html }).catch((e) => console.error("welcome email failed", e));
   }
 
+  // The free check becomes this month's saved check, so the dashboard opens
+  // with a result on file. Against their bill when they gave one, otherwise
+  // against the default offer for the same usage (as the check showed it).
+  if (inserted && baselineTotal !== null && billingDays && billingDays > 0 && md.distributor && md.distributor in VDO) {
+    const usage = { days: billingDays, peak: toNum(md.peak) ?? 0, shoulder: toNum(md.shoulder) ?? 0, offpeak: toNum(md.offpeak) ?? 0, anytime: toNum(md.anytime) ?? 0, cl: toNum(md.cl) ?? 0 };
+    const reference = referenceTotal ?? Math.round(vdoBillForUsage(md.distributor as Distributor, usage) * 100) / 100;
+    const now = new Date();
+    const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+    const { error: checkErr } = await supabaseAdmin.from("bill_checks").upsert(
+      {
+        email,
+        month,
+        source: extras.bill_check ? "bill" : "manual",
+        billing_days: Math.round(billingDays),
+        reference_total: reference,
+        best_total: baselineTotal,
+        best_retailer: baselineRetailer,
+        best_plan_name: md.baselinePlanName || null,
+        saving: reference - baselineTotal,
+      },
+      { onConflict: "email,month,source" },
+    );
+    if (checkErr) console.error("Failed to save the free check as the first monthly check", checkErr);
+  }
+
   if (inserted && referenceTotal !== null && baselineTotal !== null && billingDays && billingDays > 0) {
     const dailyRate = Math.max(0, (referenceTotal - baselineTotal) / billingDays);
     const { error: episodeErr } = await supabaseAdmin.from("savings_episodes").insert({
@@ -166,6 +203,14 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     if (episodeErr) console.error("Failed to open savings episode", episodeErr);
   }
   return { ok: true, created: true };
+}
+
+/** The column a PostgREST "missing column" error names, e.g.
+ *  `Could not find the 'source' column of 'subscribers' in the schema cache`
+ *  or `column "source" of relation "subscribers" does not exist`. */
+export function missingColumn(message: string): string | null {
+  const m = /could not find the '([a-z0-9_]+)' column/i.exec(message) ?? /column "([a-z0-9_]+)" of relation/i.exec(message);
+  return m ? m[1] : null;
 }
 
 /** Rates from checkout metadata are untrusted: keep known keys as plausible numbers. */

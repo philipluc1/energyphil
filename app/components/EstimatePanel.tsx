@@ -57,13 +57,70 @@ export interface BillKwhInput {
   forecast: BillForecast | null;
 }
 
+const BILL_LENGTHS: [number, string][] = [[30, "a month"], [61, "2 months"], [91, "3 months"]];
+
+/**
+ * The first thing on the no-bill page: "Got a recent bill? Enter its kWh".
+ * One real figure beats any amount of guessing, so it sits above the
+ * questions; the questions then only set how use moves through the year.
+ */
+export function BillKwhCard({ bill, days, onDays, profile }: { bill: BillKwhInput; days: number; onDays: (d: number) => void; profile: HomeProfile }) {
+  const options = useMemo(() => recentMonths(), []);
+  const answersOnly = useMemo(() => monthlyEstimate(profile).breakdown.total, [profile]);
+  const fc = bill.forecast;
+  return (
+    <section className={`${s.top1} ${fc ? s.top1On : ""}`} aria-labelledby="bill-kwh-title">
+      <div className={s.top1Head}>
+        <span className={s.top1Icon} aria-hidden="true"><Icon name="receipt" size={22} /></span>
+        <div>
+          <h3 id="bill-kwh-title" className={s.top1Title}>Got a recent bill? Start with its kWh</h3>
+          <p className={s.top1Sub}>It&apos;s the most accurate thing you can tell us. Then answer the questions below so we know how your use moves through the year.</p>
+        </div>
+      </div>
+      <div className={s.top1Row}>
+        <label className={s.calKwh}>
+          <span className={s.srOnly}>kWh used on the bill</span>
+          <input type="number" inputMode="decimal" min={0} placeholder="e.g. 1,150" value={bill.kwhRaw} onChange={(e) => bill.onKwh(e.target.value)} />
+          <span>kWh</span>
+        </label>
+        <span className={s.calWords}>over</span>
+        <div className={s.lengths} role="group" aria-label="How long the bill covers">
+          {BILL_LENGTHS.map(([d, label]) => (
+            <button key={d} type="button" aria-pressed={days === d} onClick={() => onDays(d)}>{label}</button>
+          ))}
+          {!BILL_LENGTHS.some(([d]) => d === days) && <span className={s.lengthOther}>{days} days</span>}
+        </div>
+        <span className={s.calWords}>ending</span>
+        <label className={s.calMonth}>
+          <span className={s.srOnly}>Month the bill ended</span>
+          <select value={bill.endMonth} onChange={(e) => bill.onEndMonth(parseInt(e.target.value, 10))}>
+            {options.map(([mm, label]) => <option key={label} value={mm}>{label}</option>)}
+          </select>
+        </label>
+        {bill.kwhRaw && <button type="button" className={s.calClear} onClick={() => bill.onKwh("")}>Clear</button>}
+      </div>
+      <small className={s.calHint}>
+        On your bill, add up the usage lines: peak, shoulder, off-peak and controlled load. Odd bill length? Set the exact days under &ldquo;Your usage&rdquo; below.
+      </small>
+      {fc ? (
+        <p className={s.top1Result}>
+          <Icon name="check" size={16} /> Forecast from your bill: <b>{n(fc.annual)} kWh a year</b>
+          <span> (your answers alone would say {n(answersOnly)})</span>
+        </p>
+      ) : (
+        <p className={s.top1Skip}>No bill handy? Skip this: we&apos;ll estimate from your answers.</p>
+      )}
+    </section>
+  );
+}
+
 /**
  * What we think the home uses, and why: the year by category, each month as
  * a bar (this month highlighted), and how it compares with a typical home.
  * With a bill's kWh, the same shape is scaled to the bill and becomes a
- * 12-month forecast.
+ * 12-month forecast. `showInput` false when the kWh is asked at the top of the page.
  */
-export default function EstimatePanel({ profile, billDays, bill }: { profile: HomeProfile; billDays: number; bill?: BillKwhInput }) {
+export default function EstimatePanel({ profile, billDays, bill, showInput = true }: { profile: HomeProfile; billDays: number; bill?: BillKwhInput; showInput?: boolean }) {
   const { months: modelMonths, breakdown: b } = useMemo(() => monthlyEstimate(profile), [profile]);
   const fc = bill?.forecast ?? null;
   const months = fc ? fc.months : modelMonths;
@@ -89,7 +146,7 @@ export default function EstimatePanel({ profile, billDays, bill }: { profile: Ho
 
   return (
     <div className={s.panel}>
-      {bill && (
+      {bill && showInput && (
         <div className={`${s.cal} ${fc ? s.calOn : ""}`}>
           <div className={s.calHead}>
             <span className={s.calIcon} aria-hidden="true"><Icon name="receipt" size={18} /></span>
