@@ -3,7 +3,7 @@
 import OfferDate from "./OfferDate";
 import Icon from "./Icon";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   DISTRIBUTORS,
   Distributor,
@@ -48,7 +48,7 @@ import type { ExtractedBill } from "@/lib/billExtraction";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { periodBreakdown } from "@/lib/savings";
 import BillPhotoUpload from "./BillPhotoUpload";
-import PricingSection from "./PricingSection";
+import PricingSection, { type SubscribeProfile } from "./PricingSection";
 import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
 import MemberLock, { MEMBER_PRICE_LINE } from "./MemberLock";
@@ -798,6 +798,56 @@ export default function Comparator() {
   const listRows = locked ? listed.slice(lockedTop.length, lockedTop.length + FREE_ROWS) : listed;
   const hiddenRows = locked ? listed.slice(lockedTop.length + FREE_ROWS) : [];
   const rankOf = (m: (typeof matches)[number]) => listed.indexOf(m) + 1;
+  // Where "your bill" sits among the plans: just before the first one that costs more.
+  const billAt = listRows.findIndex((m) => m.total > bench + 0.005);
+  const beatBill = listed.filter((m) => m.total < bench - 0.005).length;
+  // Every shown plan beats the bill and some members-only ones do too: the marker goes below those.
+  const billAfterHidden = billAt === -1 && hiddenRows.some((m) => m.total < bench - 0.005);
+  const billMark = (
+    <div className={r.billMark} role="note">
+      <span className={r.billPin}><Icon name="receipt" size={15} /> {haveBill ? "Your bill" : "The default offer"}</span>
+      <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
+      <span className={r.billMarkNote}>
+        {billAt === 0
+          ? haveBill ? "Every plan below costs more than you pay now" : "Every plan below costs more than the default offer"
+          : billAt === -1
+            ? haveBill ? "Every plan above is cheaper than your bill" : "Every plan above is cheaper than the default offer"
+            : haveBill ? "Plans above are cheaper than your bill, plans below cost more" : "Plans above are cheaper than the default offer"}
+      </span>
+    </div>
+  );
+  // What the check knows about this home: sent to checkout, and to a member's record when they save a check.
+  const subscribeProfile: SubscribeProfile = {
+    distributor,
+    billingDays: days,
+    usageMode: useEst || useAvg ? "detailed" : mode,
+    peak: usagePeak,
+    shoulder: usageShoulder,
+    offpeak: usageOffpeak,
+    anytime: usageAnytime,
+    cl: clKwh,
+    baselineTotal: top ? top.total : null,
+    baselineRetailer: top ? top.plan[0] : null,
+    baselinePlanName: top ? top.plan[2] : null,
+    // Only a real bill (typed, read, or priced from their rates) counts
+    // as "what you pay now"; never the default offer.
+    referenceTotal: haveBill ? bench : null,
+    customerName,
+    address,
+    suburb,
+    postcode,
+    hasSolar: hasSolarEff,
+    solarExportKwh,
+    // Always sent: the EV answer decides which plans they're shown.
+    homeProfile: profile as unknown as Record<string, unknown>,
+    currentRates: myRates,
+    billCheck: billCheck ? forStorage(billCheck) : null,
+    priceType: ratesForm.priceType === "unsure" ? null : ratesForm.priceType,
+    priceFixedUntil: ratesForm.priceType === "fixed" && ratesForm.fixedUntil ? ratesForm.fixedUntil : null,
+    discountEndsAt: ratesForm.discountEnds || null,
+    currentPlanName: ratesForm.planName || null,
+    currentRetailer,
+  };
   // The best plan's pay-on-time / direct-debit discount (in its price).
   const topDetail = top ? billDetail(top.plan, usage) : null;
   const topOffer = top ? offerFor(top.plan) : null;
@@ -1825,6 +1875,18 @@ export default function Comparator() {
             </span>
           )}
         </section>
+          {top && (
+            <SaveCheck
+              variant="top"
+              billingDays={days}
+              referenceTotal={bench}
+              bestTotal={top.total}
+              bestRetailer={top.plan[0]}
+              bestPlanName={top.plan[2]}
+              source={haveBill ? "bill" : "manual"}
+              profile={subscribeProfile}
+            />
+          )}
 
           {!top ? (
             <div className={styles.emptyState}>
@@ -1986,11 +2048,20 @@ export default function Comparator() {
                       </span>
                     </div>
 
-                    <div className={r.youBox}>
+                    <div className={`${r.youBox} ${haveBill ? r.youBoxBill : ""}`}>
                       <div className={r.youTop}>
-                        <span>{haveBill ? "Your current bill" : "The default offer (VDO)"}</span>
+                        <span><Icon name="receipt" size={16} /> {haveBill ? "Your bill now" : "The default offer (VDO)"}</span>
                         <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
                       </div>
+                      {listed.length > 0 && (
+                        <p className={r.youBeat}>
+                          {beatBill === 0
+                            ? <>None of the {listed.length} {allPlans ? "plans" : "retailers"} below beats {haveBill ? "it" : "the default offer"}.</>
+                            : beatBill === listed.length
+                              ? <><b>Every one</b> of the {listed.length} {allPlans ? "plans" : "retailers"} below is cheaper than {haveBill ? "your bill" : "the default offer"}.</>
+                              : <><b>{beatBill} of {listed.length}</b> {allPlans ? "plans" : "retailers"} {beatBill === 1 ? "is" : "are"} cheaper than {haveBill ? "your bill" : "the default offer"}. Look for the marker in the list.</>}
+                        </p>
+                      )}
                       <p>
                         {useAvg ? "The average Victorian home" : useEst ? (billForecast ? "Forecast from your bill's kWh" : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
                         <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day) on{" "}
@@ -2048,7 +2119,9 @@ export default function Comparator() {
                         const isTop = m === top;
                         const offer = offerFor(m.plan);
                         return (
-                          <div className={`${r.row} ${isTop ? r.rowTop : ""}`} key={rowKey}>
+                          <Fragment key={rowKey}>
+                          {i === billAt && billMark}
+                          <div className={`${r.row} ${isTop ? r.rowTop : ""}`}>
                             <button type="button" className={r.rowMain} onClick={() => setExpandedKey((x) => (x === rowKey ? null : rowKey))} aria-expanded={isOpen}>
                               <span className={r.avatar}><RetailerLogo name={m.plan[0]} size={48} /></span>
                               <span className={r.info}>
@@ -2098,8 +2171,10 @@ export default function Comparator() {
                               </div>
                             )}
                           </div>
+                          </Fragment>
                         );
                       })}
+                      {billAt === -1 && listRows.length > 0 && !billAfterHidden && billMark}
                     </div>
                     {hiddenRows.length > 0 && (
                       <MemberLock
@@ -2116,6 +2191,7 @@ export default function Comparator() {
                         onJoin={joinScroll}
                       />
                     )}
+                    {billAfterHidden && billMark}
               </section>
               {haveBill && (
                 <div className={styles.billNudge}>
@@ -2355,16 +2431,6 @@ export default function Comparator() {
                   </ul>
                 </details>
 
-              {top && (
-                <SaveCheck
-                  billingDays={days}
-                  referenceTotal={bench}
-                  bestTotal={top.total}
-                  bestRetailer={top.plan[0]}
-                  bestPlanName={top.plan[2]}
-                  source={haveBill ? "bill" : "manual"}
-                />
-              )}
 
                 </div>
               </details>
@@ -2377,37 +2443,7 @@ export default function Comparator() {
                 onEmailChange={setEmail}
                 yearlySaving={top && bench - top.total > 0 ? periodBreakdown(bench - top.total, days).annual : 0}
                 bestRetailer={top && !locked ? top.plan[0] : ""}
-                profile={{
-                  distributor,
-                  billingDays: days,
-                  usageMode: useEst || useAvg ? "detailed" : mode,
-                  peak: usagePeak,
-                  shoulder: usageShoulder,
-                  offpeak: usageOffpeak,
-                  anytime: usageAnytime,
-                  cl: clKwh,
-                  baselineTotal: top ? top.total : null,
-                  baselineRetailer: top ? top.plan[0] : null,
-                  baselinePlanName: top ? top.plan[2] : null,
-                  // Only a real bill (typed, read, or priced from their rates) counts
-                  // as "what you pay now"; never the default offer.
-                  referenceTotal: haveBill ? bench : null,
-                  customerName,
-                  address,
-                  suburb,
-                  postcode,
-                  hasSolar: hasSolarEff,
-                  solarExportKwh,
-                  // Always sent: the EV answer decides which plans they're shown.
-                  homeProfile: profile as unknown as Record<string, unknown>,
-                  currentRates: myRates,
-                  billCheck: billCheck ? forStorage(billCheck) : null,
-                  priceType: ratesForm.priceType === "unsure" ? null : ratesForm.priceType,
-                  priceFixedUntil: ratesForm.priceType === "fixed" && ratesForm.fixedUntil ? ratesForm.fixedUntil : null,
-                  discountEndsAt: ratesForm.discountEnds || null,
-                  currentPlanName: ratesForm.planName || null,
-                  currentRetailer,
-                }}
+                profile={subscribeProfile}
               />
 
             </>

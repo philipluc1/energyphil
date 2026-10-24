@@ -162,3 +162,16 @@ button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; di
   .unlockBox > button { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .blurBar, .blurName { animation: none; } }
+
+/* "Your bill": easy to find, in the box and as a marker in the list */
+.youBoxBill { border-left-color: #e8590c; background: color-mix(in srgb, #e8590c 7%, var(--surface)); border-color: color-mix(in srgb, #e8590c 35%, var(--border)); }
+.youTop span { display: inline-flex; align-items: center; gap: 6px; }
+.youBoxBill .youTop span { color: #c2410c; }
+.youBoxBill .youTop b { font-size: 26px; }
+.youBeat { margin: 4px 0 0; font-size: 14px; color: var(--ink); }
+.billMark { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 4px 0; padding: 10px 14px; border-radius: 12px; border: 2px dashed #e8590c; background: color-mix(in srgb, #e8590c 8%, var(--surface)); }
+.billPin { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800; background: #e8590c; color: #fff; }
+.billMark > b { font-size: 18px; font-weight: 900; color: var(--ink); }
+.billMark > b small { font-size: 12.5px; font-weight: 600; color: var(--grey); }
+.billMarkNote { font-size: 13.5px; font-weight: 600; color: #c2410c; }
+@media (prefers-color-scheme: dark) { .billMarkNote, .youBoxBill .youTop span { color: #fb9366; } }

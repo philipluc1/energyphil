@@ -213,8 +213,58 @@ export function missingColumn(message: string): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * A member's own details from a check they ran (typed in or read off a bill),
+ * ready to update their record so the dashboard shows them: retailer, plan,
+ * rates, usage, solar, address. Untrusted (it comes from the browser), so
+ * only plausible values are kept, and blanks never wipe what's on file.
+ */
+export function memberFieldsFromCheck(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object") return {};
+  const p = raw as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  const n = (v: unknown, max: number) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v < max ? v : null);
+  const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() !== "" ? v.trim().slice(0, max) : null);
+  const date = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+
+  if (typeof p.distributor === "string" && p.distributor in VDO) out.distributor = p.distributor;
+  const days = n(p.billingDays, 367);
+  const kwh = ["peak", "shoulder", "offpeak", "anytime", "cl"].map((k) => n(p[k], 20000));
+  // Usage only as a set, and only when there's some.
+  if (days && days >= 1 && kwh.every((x) => x !== null) && kwh.reduce((a, b) => a + (b ?? 0), 0) > 0) {
+    out.billing_days = Math.round(days);
+    out.usage_mode = p.usageMode === "simple" || p.usageMode === "detailed" ? p.usageMode : "detailed";
+    [out.peak_kwh, out.shoulder_kwh, out.offpeak_kwh, out.anytime_kwh, out.controlled_load_kwh] = kwh;
+  }
+  const ref = n(p.referenceTotal, 20000);
+  if (ref !== null && ref > 0) out.reference_total = ref;
+  const retailer = str(p.currentRetailer, 80);
+  if (retailer) out.current_retailer = retailer;
+  const plan = str(p.currentPlanName, 120);
+  if (plan) out.current_plan_name = plan;
+  const rates = cleanRates(p.currentRates);
+  if (rates) out.current_rates = rates;
+  if (p.priceType === "fixed" || p.priceType === "variable") out.current_price_type = p.priceType;
+  const fixed = date(p.priceFixedUntil);
+  if (fixed) out.current_price_fixed_until = fixed;
+  const disc = date(p.discountEndsAt);
+  if (disc) out.discount_ends_at = disc;
+  if (typeof p.hasSolar === "boolean") out.has_solar = p.hasSolar;
+  const exp = n(p.solarExportKwh, 20000);
+  if (exp !== null) out.solar_export_kwh = exp;
+  if (p.homeProfile && typeof p.homeProfile === "object" && JSON.stringify(p.homeProfile).length < 2000) out.home_profile = p.homeProfile;
+  const bc = cleanBillCheck(p.billCheck);
+  if (bc) out.bill_check = bc;
+  for (const [key, col, max] of [["customerName", "customer_name", 120], ["address", "address", 200], ["suburb", "suburb", 80]] as const) {
+    const v = str(p[key], max);
+    if (v) out[col] = v;
+  }
+  if (typeof p.postcode === "string" && /^\d{4}$/.test(p.postcode)) out.postcode = p.postcode;
+  return out;
+}
+
 /** Rates from checkout metadata are untrusted: keep known keys as plausible numbers. */
-function cleanRates(v: unknown): Record<string, number | null> | null {
+export function cleanRates(v: unknown): Record<string, number | null> | null {
   if (!v || typeof v !== "object") return null;
   const r = v as Record<string, unknown>;
   const out: Record<string, number | null> = {};

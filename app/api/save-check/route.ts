@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireActiveMember } from "@/lib/memberAccess";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { memberFieldsFromCheck, missingColumn } from "@/lib/membership";
 
 // Saves this month's check to a member's dashboard. Members only.
 export async function POST(req: NextRequest) {
@@ -38,5 +39,33 @@ export async function POST(req: NextRequest) {
     console.error("save-check failed", error);
     return NextResponse.json({ ok: false, message: "Couldn't save that — please try again." }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
+
+  // The details behind the check (retailer, plan, rates, usage, solar,
+  // address) go onto the member's record, so the dashboard shows what they
+  // typed or what their bill says, not what they had when they joined.
+  const fields = memberFieldsFromCheck(b?.profile);
+  let detailsSaved = false;
+  if (Object.keys(fields).length > 0) {
+    const { data: sub } = await supabaseAdmin
+      .from("subscribers")
+      .select("id")
+      .eq("email", member.email)
+      .in("status", ["active", "past_due"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sub) {
+      let { error: upErr } = await supabaseAdmin.from("subscribers").update(fields).eq("id", sub.id);
+      // A database missing a newer column: drop just that column and keep the rest.
+      for (let tries = 0; tries < 10 && upErr; tries++) {
+        const missing = missingColumn(upErr.message);
+        if (!missing || !(missing in fields)) break;
+        delete fields[missing];
+        ({ error: upErr } = await supabaseAdmin.from("subscribers").update(fields).eq("id", sub.id));
+      }
+      if (upErr) console.error("save-check: member details not updated", upErr.message);
+      else detailsSaved = true;
+    }
+  }
+  return NextResponse.json({ ok: true, detailsSaved });
 }

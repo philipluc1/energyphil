@@ -1709,3 +1709,9 @@
 .whyKeep { margin: 14px auto 0; max-width: 640px; padding: 12px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.9); text-align: left; }
 .whyKeep > summary { cursor: pointer; font-weight: 800; color: #fff; }
 .whyKeep p { margin: 10px 0 0; font-size: 14.5px; line-height: 1.55; }
+/* Members: save this check to the dashboard (top of the results) */
+.saveTop { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 14px; padding: 12px 16px; border-radius: 14px; border: 2px solid var(--teal); background: color-mix(in srgb, var(--teal) 9%, var(--surface)); font-size: 14.5px; line-height: 1.5; color: var(--ink); }
+.saveTop > span { flex: 1 1 320px; }
+.saveTopDone { border-color: color-mix(in srgb, var(--teal) 45%, transparent); }
+.saveTopBtn { padding: 10px 18px; border: 0; border-radius: 10px; background: var(--teal); color: #fff; font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.saveTopBtn:disabled { opacity: 0.6; }
