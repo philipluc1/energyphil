@@ -80,3 +80,12 @@
 }
 .stepper span { font-size: 14px; color: var(--grey); }
 .solarSum { margin: 4px 0 0; font-size: 14.5px; color: var(--ink); }
+.retailerSelect { max-width: 420px; margin-top: 8px; font-weight: 600; }
+/* Solar: what the bill says (export kWh, feed-in rate) */
+.solarBill { display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.solarBillRow { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+.solarBillRow label { display: grid; gap: 4px; font-size: 14px; font-weight: 700; color: var(--ink); }
+.unitIn { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--grey); }
+.unitIn input { width: 110px; padding: 9px 10px; border-radius: 9px; border: 1.5px solid var(--border); background: var(--bg); color: var(--ink); font: inherit; font-size: 15px; }
+.unitIn input:focus { outline: 2px solid var(--amber); outline-offset: 1px; border-color: var(--amber); }
+.fitTip { margin: 2px 0 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--amber) 12%, var(--surface)); font-size: 14px; line-height: 1.5; color: var(--ink); }

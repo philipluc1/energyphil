@@ -35,6 +35,7 @@ import {
   usageIsIncomplete,
   estimateUsage,
   forecastFromBill,
+  kwhFromBillDollars,
   scaleEstimate,
   normaliseProfile,
   panelsToKw,
@@ -52,7 +53,8 @@ import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
 import MemberLock, { MEMBER_PRICE_LINE } from "./MemberLock";
 import PlanViewToggle from "./PlanViewToggle";
-import EstimatePanel, { BillKwhCard, EstimateStrip, thisMonth } from "./EstimatePanel";
+import BillExplainer from "./BillExplainer";
+import EstimatePanel, { BillKwhCard, EstimateStrip, thisMonth, type BillFigure } from "./EstimatePanel";
 import { cheapestPerRetailer } from "@/lib/onePerRetailer";
 import r from "./results.module.css";
 import RatesCompare from "./RatesCompare";
@@ -70,6 +72,12 @@ import { EMPTY_RATES_FORM, costFromRates, ratesFromForm, ratesToForm, type Rates
 import { BROAD_COVERAGE, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 
 const RETAILERS = Array.from(new Set(PLANS.map((p) => p[0]))).sort();
+/** The highest solar feed-in any plan pays on a network ($ a kWh), and whose it is. */
+function bestFitOn(distributor: string): { rate: number; retailer: string } | null {
+  let best: { rate: number; retailer: string } | null = null;
+  for (const p of PLANS) if (p[1] === distributor && p[10] !== null && p[10] > (best?.rate ?? 0)) best = { rate: p[10], retailer: p[0] };
+  return best;
+}
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import SiteHeader from "./SiteHeader";
@@ -263,6 +271,8 @@ export default function Comparator() {
   const [currentBillRaw, setCurrentBillRaw] = useState("");
   // No-bill path: a bill's kWh (and the month it ended) to forecast the year from.
   const [calKwhRaw, setCalKwhRaw] = useState("");
+  // Can't find the kWh? They can give the bill's dollar total instead (stored in currentBillRaw).
+  const [calFigure, setCalFigure] = useState<BillFigure>("kwh");
   const [calEndMonth, setCalEndMonth] = useState(() => (thisMonth() + 11) % 12);
   const [email, setEmail] = useState("");
   const [wantsAlerts, setWantsAlerts] = useState(false);
@@ -326,6 +336,7 @@ export default function Comparator() {
         if (typeof d.solarExportRaw === "string") setSolarExportRaw(d.solarExportRaw);
         if (typeof d.currentBillRaw === "string") setCurrentBillRaw(d.currentBillRaw);
         if (typeof d.calKwhRaw === "string") setCalKwhRaw(d.calKwhRaw);
+        if (d.calFigure === "kwh" || d.calFigure === "dollars") setCalFigure(d.calFigure);
         if (typeof d.calEndMonth === "number" && d.calEndMonth >= 0 && d.calEndMonth <= 11) setCalEndMonth(d.calEndMonth);
         if (typeof d.email === "string") setEmail(d.email);
         if (typeof d.currentRetailer === "string") setCurrentRetailer(d.currentRetailer);
@@ -376,12 +387,12 @@ export default function Comparator() {
     try {
       window.localStorage.setItem(
         SAVE_KEY,
-        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, calKwhRaw, calEndMonth, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressOk: addressHintOff, billCheck: billCheck ? forStorage(billCheck) : null }),
+        JSON.stringify({ distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, calKwhRaw, calEndMonth, calFigure, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressOk: addressHintOff, billCheck: billCheck ? forStorage(billCheck) : null }),
       );
     } catch {
       /* storage unavailable */
     }
-  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, calKwhRaw, calEndMonth, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressHintOff, billCheck, hydrated]);
+  }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, calKwhRaw, calEndMonth, calFigure, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressHintOff, billCheck, hydrated]);
 
   // The suburb list is ~20 KB gzipped, so it loads after the page, not with it.
   useEffect(() => {
@@ -479,10 +490,11 @@ export default function Comparator() {
   // Known when it came from the meter number, the bill, the postcode or the customer.
   const networkKnown = networkFrom !== null;
   // With a bill's kWh, the answers set the shape of the year and the bill sets the level.
+  const kwhFromDollars = useMemo(() => kwhFromBillDollars(distributor, parseFloat(currentBillRaw), days), [distributor, currentBillRaw, days]);
   const billForecast = useMemo(() => {
-    const kwh = parseFloat(calKwhRaw);
+    const kwh = calFigure === "dollars" ? kwhFromDollars ?? 0 : parseFloat(calKwhRaw);
     return useEst && kwh > 0 ? forecastFromBill(profile, { kwh, days, endMonth: calEndMonth }) : null;
-  }, [useEst, calKwhRaw, profile, days, calEndMonth]);
+  }, [useEst, calFigure, kwhFromDollars, calKwhRaw, profile, days, calEndMonth]);
   const est = useMemo(() => {
     const e = estimateUsage(profile, days);
     return billForecast ? scaleEstimate(e, billForecast.factor) : e;
@@ -498,7 +510,8 @@ export default function Comparator() {
     usageIsIncomplete({ days, peak: mode === "detailed" ? peak : 0, shoulder: mode === "detailed" ? shoulder : 0, offpeak: mode === "detailed" ? offpeak : 0, anytime: mode === "simple" ? anytime : 0, cl, solarExportKwh: typedSolarExport });
   const usageSig = JSON.stringify([days, mode, anytime, peak, shoulder, offpeak, cl]);
   const useAvg = usageSource === "average" || (billUsageThin && keepUsageFor !== usageSig);
-  const solarExportKwh = useEst ? est.solarExportKwh : useAvg ? 0 : typedSolarExport;
+  // With no bill, a solar export figure typed from a bill beats the model's guess.
+  const solarExportKwh = useEst ? (typedSolarExport > 0 ? typedSolarExport : est.solarExportKwh) : useAvg ? 0 : typedSolarExport;
   const hasSolarEff = useEst ? profile.hasSolar : hasSolar || profile.hasSolar;
   const clKwh = useEst ? est.cl : useAvg ? 0 : cl;
 
@@ -889,7 +902,23 @@ export default function Comparator() {
               <span className={snap.readTick} aria-hidden="true">✓</span>
               {scanBanner?.retailer ? `Got it: your ${scanBanner.retailer} bill` : "Got it: we've read your bill"}
             </div>
-            <p className={snap.readSub}>If anything looks wrong, change it before we work it out.</p>
+            <BillExplainer
+              f={{
+                retailer: scanBanner?.retailer ?? (currentRetailer || null),
+                planName: ratesForm.planName || null,
+                days,
+                anytime: usageAnytime,
+                peak: usagePeak,
+                shoulder: usageShoulder,
+                offpeak: usageOffpeak,
+                cl: clKwh,
+                solarExportKwh,
+                rates: myRates,
+                total: typedBill !== null && !Number.isNaN(typedBill) ? typedBill : null,
+                distributor,
+              }}
+            />
+            <p className={snap.readSub}><b>The numbers we read.</b> If anything looks wrong, change it before we work it out.</p>
             <dl className={snap.facts}>
               <div className={snap.fact}><dt>Network</dt><dd>{distributor}{postcode ? ` · ${postcode}` : ""}</dd></div>
               <div className={snap.fact}><dt>Bill period</dt><dd>{days} days</dd></div>
@@ -1132,19 +1161,18 @@ export default function Comparator() {
 
             {/* 2. Retailer first: customers know who they pay, not their network. */}
             <div className={s1.q}>
-              <span className={s1.qLabel}>Who do you pay for electricity now? <span className={s1.opt}>(optional)</span></span>
-              <div className={styles.choiceRow}>
-                {RETAILERS.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className={`${styles.choiceBtn} ${r === currentRetailer ? styles.choiceBtnActive : ""}`}
-                    onClick={() => setCurrentRetailer(r === currentRetailer ? "" : r)}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
+              <label className={s1.qLabel} htmlFor="currentRetailer">Who do you pay for electricity now? <span className={s1.opt}>(optional)</span></label>
+              <select
+                id="currentRetailer"
+                className={`${s1.select} ${s1.retailerSelect}`}
+                value={currentRetailer}
+                onChange={(e) => setCurrentRetailer(e.target.value)}
+              >
+                <option value="">Choose your retailer (it&apos;s on your bill)</option>
+                {/* A retailer read off a bill that we don't track still shows as chosen. */}
+                {currentRetailer && !RETAILERS.includes(currentRetailer) && <option value={currentRetailer}>{currentRetailer}</option>}
+                {RETAILERS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
               <span className={s1.qHint}>We&apos;ll also show their best plan for you, in case you&apos;d rather stay.</span>
               {currentRetailer && (
                 <div className={`${styles.accuracyNote} ${styles.mt16}`}>
@@ -1243,6 +1271,11 @@ export default function Comparator() {
                 days={days}
                 onDays={setDays}
                 profile={profile}
+                figure={calFigure}
+                onFigure={setCalFigure}
+                dollarsRaw={currentBillRaw}
+                onDollars={setCurrentBillRaw}
+                kwhFromDollars={kwhFromDollars}
               />
             )}
             {useEst && <EstimateStrip profile={profile} forecast={billForecast} />}
@@ -1404,6 +1437,43 @@ export default function Comparator() {
                       </p>
                     </>
                   )}
+                  <div className={s1.solarBill}>
+                    <span className={s1.solarLabel}>From your bill <span className={s1.opt}>(optional, but it sharpens the answer)</span></span>
+                    <div className={s1.solarBillRow}>
+                      <label>
+                        <span>Solar sent to the grid</span>
+                        <span className={s1.unitIn}>
+                          <input type="number" inputMode="decimal" min={0} placeholder="e.g. 160" value={solarExportRaw} onChange={(e) => setSolarExportRaw(e.target.value)} />
+                          kWh
+                        </span>
+                      </label>
+                      <label>
+                        <span>Feed-in tariff you get now</span>
+                        <span className={s1.unitIn}>
+                          <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 3.3" value={ratesForm.fit} onChange={(e) => patchRates({ fit: e.target.value })} />
+                          c/kWh
+                        </span>
+                      </label>
+                    </div>
+                    <span className={s1.qHint}>
+                      Look for a &ldquo;solar credit&rdquo;, &ldquo;feed-in&rdquo; or &ldquo;export&rdquo; line on your bill. The kWh is for the whole bill ({days} days).
+                    </span>
+                    {(() => {
+                      const best = bestFitOn(distributor);
+                      const yours = parseFloat(ratesForm.fit);
+                      const exp = typedSolarExport > 0 ? typedSolarExport : est.solarExportKwh;
+                      if (!best || !(yours >= 0) || ratesForm.fit.trim() === "") return null;
+                      const gap = (best.rate - yours / 100) * exp;
+                      return best.rate * 100 > yours + 0.05 ? (
+                        <p className={s1.fitTip}>
+                          You get {yours.toLocaleString("en-AU", { maximumFractionDigits: 2 })}c. The best feed-in on {distributor} pays up to {(best.rate * 100).toLocaleString("en-AU", { maximumFractionDigits: 2 })}c
+                          {exp > 0 && gap >= 1 ? <>: on {Math.round(exp).toLocaleString("en-AU")} kWh that&apos;s up to <b>{fmtCurrency(gap)} more a bill</b></> : null}. Some plans pay their top rate only on the first few kWh a day, and your results weigh feed-in against each plan&apos;s other prices.
+                        </p>
+                      ) : (
+                        <p className={s1.fitTip}>Your feed-in is as good as any plan on {distributor}.</p>
+                      );
+                    })()}
+                  </div>
                   <span className={styles.unitNote}>We use each plan&apos;s real feed-in rate ({totalWithSolarFit()} of {PLAN_COUNT} publish one).</span>
                 </div>
               )}
@@ -1789,6 +1859,29 @@ export default function Comparator() {
                   </div>
                 </div>
               )}
+              {(!haveBill || useEst || useAvg) && (
+                <div className={styles.exactTop}>
+                  <BillPhotoUpload
+                    variant="strip"
+                    onApply={handleBillExtracted}
+                    stripTitle="Get your exact answer in about a minute"
+                    stripSub={
+                      useAvg
+                        ? "These figures use the average Victorian home. A photo of your bill gives your real usage and rates."
+                        : !haveBill
+                          ? `We don't know what you pay now${currentRetailer ? ` or which ${currentRetailer} plan you're on` : ""}, so we've compared against the default offer. A photo of your bill fixes that.`
+                          : "Your usage is estimated from your answers. A photo of your bill makes it exact."
+                    }
+                  />
+                  <button
+                    type="button"
+                    className={styles.accuracyLink}
+                    onClick={() => { setStage("input"); setInputStep(3); setUsageSource("bill"); setShowRates(true); scrollToTop(); }}
+                  >
+                    Or type your rates and usage instead →
+                  </button>
+                </div>
+              )}
               {worthSwitching && (
                 <div className={r.hero}>
                   <span className={r.kicker}>{useAvg ? "Based on an average Victorian home" : useEst ? (billForecast ? "Forecast from your bill's kWh" : "Estimated from your answers") : haveBill ? "Based on your bill" : "Based on your usage"}</span>
@@ -1875,6 +1968,155 @@ export default function Comparator() {
                   </div>
                 </div>
               )}
+              <section className={styles.planListTop} aria-label="Plans compared">
+                    <div className={r.listHead}>
+                      <b>{allPlans ? `All ${matches.length} plans, cheapest first` : `Each retailer's cheapest plan, cheapest first`}</b>
+                      <PlanViewToggle all={allPlans} onChange={setAllPlans} retailers={perRetailer.length} plans={matches.length} />
+                      <span>
+                        Prices are {PERIOD_LABEL[period]} for your usage. The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}.
+                      </span>
+                      <span className={r.legend}>
+                        <span className={r.chipMarket}>Market offer</span> a retailer&apos;s own deal ·{" "}
+                        <span className={r.chipStanding}>Standing offer</span> the regulated default price, usually dearer ·{" "}
+                        <span className={r.chip}>−12% vs VDO</span> against the Victorian Default Offer for your usage
+                      </span>
+                      <span className={r.legend}>
+                        Prices include each plan&apos;s discounts, assuming you pay on time. Green ✓ labels are in the price; blue ones (credits, other
+                        conditions) aren&apos;t; amber ! ones are limits on who can get it or fees to know about.
+                      </span>
+                    </div>
+
+                    <div className={r.youBox}>
+                      <div className={r.youTop}>
+                        <span>{haveBill ? "Your current bill" : "The default offer (VDO)"}</span>
+                        <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
+                      </div>
+                      <p>
+                        {useAvg ? "The average Victorian home" : useEst ? (billForecast ? "Forecast from your bill's kWh" : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
+                        <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day) on{" "}
+                        {usagePeak + usageShoulder + usageOffpeak > 0 ? "a time-of-use tariff" : "a single-rate tariff"}
+                        {clKwh > 0 ? " with controlled load" : ""}
+                        {haveBill && currentRetailer ? <> with {currentRetailer}</> : null}.
+                        {haveBill && top && (
+                          vsVdo(bench) > 0 ? (
+                            <>
+                              {" "}That&apos;s <b className={r.bad}>{pctVdo(vsVdo(bench))}</b> against the default offer ({fmtCurrency(vdoForUsage * k)} {PERIOD_LABEL[period]}).
+                            </>
+                          ) : bench - top.total > 0.005 ? (
+                            <>
+                              {" "}You&apos;re under the default offer, but {locked ? "the cheapest plan" : top.plan[0]} would still cost <b className={r.good}>{fmtCurrency((bench - top.total) * k)} {PERIOD_LABEL[period]} less</b>.
+                            </>
+                          ) : (
+                            <> You&apos;re under the default offer and nothing we found is cheaper.</>
+                          )
+                        )}
+                      </p>
+                    </div>
+
+                    {lockedTop.length > 0 && (
+                      <div className={r.lockedTop}>
+                        {lockedTop.map((m, i) => {
+                          const diff = bench - m.total;
+                          return (
+                            <div className={r.lockedRow} key={`locked-${i}`}>
+                              <span className={r.lockAvatar} aria-hidden="true"><Icon name="lock" size={20} /></span>
+                              <span className={r.info}>
+                                <span className={r.nameLine}>
+                                  <span className={r.rank}>#{i + 1}</span>
+                                  <span className={r.blurBar} style={{ width: `${[62, 48, 70][i % 3]}%` }} aria-hidden="true" />
+                                </span>
+                                <span className={r.planName}>{i === 0 ? "The cheapest plan for your home" : "Members see the retailer, plan and rates"}</span>
+                              </span>
+                              <span className={r.priceCol}>
+                                <span className={r.price}>{fmtCurrency(m.total * k)}</span>
+                                <span className={r.per}>{PERIOD_LABEL[period]}</span>
+                                {diff >= 0.005 && <span className={r.save}>Save {fmtCurrency(diff * k)}</span>}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <button type="button" className={r.unlockBtn} onClick={joinScroll}>
+                          <Icon name="lock" size={16} /> See the {lockedTop.length} cheapest plans by name
+                        </button>
+                      </div>
+                    )}
+                    <div className={r.list}>
+                      {listRows.map((m, i) => {
+                        const diff = bench - m.total;
+                        const rowKey = m.plan[0] + m.plan[2] + i;
+                        const isOpen = expandedKey === rowKey;
+                        const isTop = m === top;
+                        const offer = offerFor(m.plan);
+                        return (
+                          <div className={`${r.row} ${isTop ? r.rowTop : ""}`} key={rowKey}>
+                            <button type="button" className={r.rowMain} onClick={() => setExpandedKey((x) => (x === rowKey ? null : rowKey))} aria-expanded={isOpen}>
+                              <span className={r.avatar}><RetailerLogo name={m.plan[0]} size={48} /></span>
+                              <span className={r.info}>
+                                <span className={r.nameLine}>
+                                  {locked && <span className={r.rank}>#{rankOf(m)}</span>}
+                                  <b className={r.retailer}>{m.plan[0]}</b>
+                                  {isTop && <span className={r.cheapest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
+                                  {retailerBest && m === retailerBest && currentRetailer && <span className={r.yours}>Your retailer</span>}
+                                </span>
+                                <span className={r.planName} title={m.plan[2]}>{tidyPlanName(m.plan)}</span>
+                                <span className={r.chips}>
+                                  <span className={m.plan[3] === "MARKET" ? r.chipMarket : r.chipStanding}>{m.plan[3] === "MARKET" ? "Market offer" : "Standing offer"}</span>
+                                  <span className={r.chip}>{m.plan[5] !== null ? "Single rate" : "Time of use"}</span>
+                                  <span className={Math.round(vsVdo(m.total) * 100) < 0 ? r.chipGood : Math.round(vsVdo(m.total) * 100) > 0 ? r.chipBad : r.chip} title="Against the Victorian Default Offer for the same usage">
+                                    {pctVdo(vsVdo(m.total))} vs VDO
+                                  </span>
+                                  {isEvFriendly(m.plan) && <span className={r.chip}>EV plan</span>}
+                                  {solarExportKwh > 0 && m.plan[10] !== null && m.plan[10] > 0 && <span className={r.chip}>Solar credit {(m.plan[10] * 100).toFixed(1)}c</span>}
+                                  <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
+                                  <OfferChips o={offer} />
+                                </span>
+                              </span>
+                              <span className={r.priceCol}>
+                                <span className={r.price}>{fmtCurrency(m.total * k)}</span>
+                                <span className={r.per}>{PERIOD_LABEL[period]}</span>
+                                <span className={diff >= 0.005 ? r.save : diff <= -0.005 ? r.more : r.same}>
+                                  {diff >= 0.005 ? `Save ${fmtCurrency(diff * k)}` : diff <= -0.005 ? `${fmtCurrency(-diff * k)} more` : "Same as now"}
+                                </span>
+                                <span className={r.ratesLink}>{isOpen ? "Hide details ▴" : "Rates and conditions ▾"}</span>
+                              </span>
+                            </button>
+                            {isOpen && (
+                              <div className={styles.planRowExpanded}>
+                                <p className={r.fullName}>Full plan name: {m.plan[2]}</p>
+                                <RateBreakdown plan={m.plan} solarExportKwh={solarExportKwh} />
+                                <OfferTerms
+                                  o={offer}
+                                  retailer={m.plan[0]}
+                                  compact
+                                  payLateCost={(() => { const d = billDetail(m.plan, usage); return d && d.conditionalDiscount * k >= 0.5 ? `${fmtCurrency(d.conditionalDiscount * k)} ${PERIOD_LABEL[period]}` : null; })()}
+                                />
+                                {RETAILER_LINKS[m.plan[0]] && (
+                                  <a href={RETAILER_LINKS[m.plan[0]]} data-plan={m.plan[2]} data-network={distributor} target="_blank" rel="noopener noreferrer" className={styles.rowSwitchLink}>
+                                    Go to {m.plan[0]}&apos;s site →
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {hiddenRows.length > 0 && (
+                      <MemberLock
+                        variant="list"
+                        startRank={lockedTop.length + listRows.length + 1}
+                        title={`${hiddenRows.length} more ${allPlans ? "plans" : "retailers"} on your network`}
+                        body={
+                          <>
+                            From {fmtCurrency(Math.min(...hiddenRows.map((x) => x.total)) * k)} to {fmtCurrency(Math.max(...hiddenRows.map((x) => x.total)) * k)}{" "}
+                            {PERIOD_LABEL[period]}. Members see every plan with its rates, and get an email when a cheaper one turns up.
+                          </>
+                        }
+                        cta={`See all ${matches.length} plans`}
+                        onJoin={joinScroll}
+                      />
+                    )}
+              </section>
               {haveBill && (
                 <div className={styles.billNudge}>
                   <b>Based on one bill.</b> Prices are exact for today. Members get every plan re-priced each morning and a saved result every month, so the
@@ -1896,29 +2138,6 @@ export default function Comparator() {
                     worthPerYear: WORTH_SWITCHING_PER_YEAR,
                   }}
                 />
-              )}
-              {(!haveBill || useEst || useAvg) && (
-                <div className={styles.accuracyCard}>
-                  <div className={styles.accuracyHead}>
-                    <span className={styles.accuracyBadge}>Estimate</span>
-                    <b>Get your exact answer in about a minute</b>
-                  </div>
-                  <p className={styles.helper}>
-                    {useAvg
-                      ? <>We used the average Victorian home ({AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year), so your own saving could be quite different. Add a bill for your real usage.</>
-                      : !haveBill
-                      ? <>We don&apos;t know what you pay now{currentRetailer ? <>, or which {currentRetailer} plan you&apos;re on</> : null}, so we&apos;ve compared against the default offer. Many people are on older plans that cost more than any current offer.</>
-                      : <>Your usage is estimated from your answers, so the saving could be higher or lower.</>}
-                  </p>
-                  <BillPhotoUpload onApply={handleBillExtracted} />
-                  <button
-                    type="button"
-                    className={styles.accuracyLink}
-                    onClick={() => { setStage("input"); setInputStep(3); setUsageSource("bill"); setShowRates(true); scrollToTop(); }}
-                  >
-                    Or type your rates and usage instead →
-                  </button>
-                </div>
               )}
               <div className={styles.bestCard} id="top-plan">
                 <span className={styles.bestTag}>{haveBill && worthSwitching ? "Yes, you'd save with" : haveBill ? "Cheapest we found (not worth switching)" : "Cheapest plan for a home like yours"}</span>
@@ -2135,153 +2354,6 @@ export default function Comparator() {
                     <li><b>Final bill:</b> your old retailer sends one for the days up to the switch. Pay it as normal.</li>
                   </ul>
                 </details>
-                  <div className={r.listHead}>
-                    <b>{allPlans ? `All ${matches.length} plans, cheapest first` : `Each retailer's cheapest plan, cheapest first`}</b>
-                    <PlanViewToggle all={allPlans} onChange={setAllPlans} retailers={perRetailer.length} plans={matches.length} />
-                    <span>
-                      Prices are {PERIOD_LABEL[period]} for your usage. The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}.
-                    </span>
-                    <span className={r.legend}>
-                      <span className={r.chipMarket}>Market offer</span> a retailer&apos;s own deal ·{" "}
-                      <span className={r.chipStanding}>Standing offer</span> the regulated default price, usually dearer ·{" "}
-                      <span className={r.chip}>−12% vs VDO</span> against the Victorian Default Offer for your usage
-                    </span>
-                    <span className={r.legend}>
-                      Prices include each plan&apos;s discounts, assuming you pay on time. Green ✓ labels are in the price; blue ones (credits, other
-                      conditions) aren&apos;t; amber ! ones are limits on who can get it or fees to know about.
-                    </span>
-                  </div>
-
-                  <div className={r.youBox}>
-                    <div className={r.youTop}>
-                      <span>{haveBill ? "Your current bill" : "The default offer (VDO)"}</span>
-                      <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
-                    </div>
-                    <p>
-                      {useAvg ? "The average Victorian home" : useEst ? (billForecast ? "Forecast from your bill's kWh" : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
-                      <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day) on{" "}
-                      {usagePeak + usageShoulder + usageOffpeak > 0 ? "a time-of-use tariff" : "a single-rate tariff"}
-                      {clKwh > 0 ? " with controlled load" : ""}
-                      {haveBill && currentRetailer ? <> with {currentRetailer}</> : null}.
-                      {haveBill && top && (
-                        vsVdo(bench) > 0 ? (
-                          <>
-                            {" "}That&apos;s <b className={r.bad}>{pctVdo(vsVdo(bench))}</b> against the default offer ({fmtCurrency(vdoForUsage * k)} {PERIOD_LABEL[period]}).
-                          </>
-                        ) : bench - top.total > 0.005 ? (
-                          <>
-                            {" "}You&apos;re under the default offer, but {locked ? "the cheapest plan" : top.plan[0]} would still cost <b className={r.good}>{fmtCurrency((bench - top.total) * k)} {PERIOD_LABEL[period]} less</b>.
-                          </>
-                        ) : (
-                          <> You&apos;re under the default offer and nothing we found is cheaper.</>
-                        )
-                      )}
-                    </p>
-                  </div>
-
-                  {lockedTop.length > 0 && (
-                    <div className={r.lockedTop}>
-                      {lockedTop.map((m, i) => {
-                        const diff = bench - m.total;
-                        return (
-                          <div className={r.lockedRow} key={`locked-${i}`}>
-                            <span className={r.lockAvatar} aria-hidden="true"><Icon name="lock" size={20} /></span>
-                            <span className={r.info}>
-                              <span className={r.nameLine}>
-                                <span className={r.rank}>#{i + 1}</span>
-                                <span className={r.blurBar} style={{ width: `${[62, 48, 70][i % 3]}%` }} aria-hidden="true" />
-                              </span>
-                              <span className={r.planName}>{i === 0 ? "The cheapest plan for your home" : "Members see the retailer, plan and rates"}</span>
-                            </span>
-                            <span className={r.priceCol}>
-                              <span className={r.price}>{fmtCurrency(m.total * k)}</span>
-                              <span className={r.per}>{PERIOD_LABEL[period]}</span>
-                              {diff >= 0.005 && <span className={r.save}>Save {fmtCurrency(diff * k)}</span>}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      <button type="button" className={r.unlockBtn} onClick={joinScroll}>
-                        <Icon name="lock" size={16} /> See the {lockedTop.length} cheapest plans by name
-                      </button>
-                    </div>
-                  )}
-                  <div className={r.list}>
-                    {listRows.map((m, i) => {
-                      const diff = bench - m.total;
-                      const rowKey = m.plan[0] + m.plan[2] + i;
-                      const isOpen = expandedKey === rowKey;
-                      const isTop = m === top;
-                      const offer = offerFor(m.plan);
-                      return (
-                        <div className={`${r.row} ${isTop ? r.rowTop : ""}`} key={rowKey}>
-                          <button type="button" className={r.rowMain} onClick={() => setExpandedKey((x) => (x === rowKey ? null : rowKey))} aria-expanded={isOpen}>
-                            <span className={r.avatar}><RetailerLogo name={m.plan[0]} size={48} /></span>
-                            <span className={r.info}>
-                              <span className={r.nameLine}>
-                                {locked && <span className={r.rank}>#{rankOf(m)}</span>}
-                                <b className={r.retailer}>{m.plan[0]}</b>
-                                {isTop && <span className={r.cheapest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
-                                {retailerBest && m === retailerBest && currentRetailer && <span className={r.yours}>Your retailer</span>}
-                              </span>
-                              <span className={r.planName} title={m.plan[2]}>{tidyPlanName(m.plan)}</span>
-                              <span className={r.chips}>
-                                <span className={m.plan[3] === "MARKET" ? r.chipMarket : r.chipStanding}>{m.plan[3] === "MARKET" ? "Market offer" : "Standing offer"}</span>
-                                <span className={r.chip}>{m.plan[5] !== null ? "Single rate" : "Time of use"}</span>
-                                <span className={Math.round(vsVdo(m.total) * 100) < 0 ? r.chipGood : Math.round(vsVdo(m.total) * 100) > 0 ? r.chipBad : r.chip} title="Against the Victorian Default Offer for the same usage">
-                                  {pctVdo(vsVdo(m.total))} vs VDO
-                                </span>
-                                {isEvFriendly(m.plan) && <span className={r.chip}>EV plan</span>}
-                                {solarExportKwh > 0 && m.plan[10] !== null && m.plan[10] > 0 && <span className={r.chip}>Solar credit {(m.plan[10] * 100).toFixed(1)}c</span>}
-                                <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
-                                <OfferChips o={offer} />
-                              </span>
-                            </span>
-                            <span className={r.priceCol}>
-                              <span className={r.price}>{fmtCurrency(m.total * k)}</span>
-                              <span className={r.per}>{PERIOD_LABEL[period]}</span>
-                              <span className={diff >= 0.005 ? r.save : diff <= -0.005 ? r.more : r.same}>
-                                {diff >= 0.005 ? `Save ${fmtCurrency(diff * k)}` : diff <= -0.005 ? `${fmtCurrency(-diff * k)} more` : "Same as now"}
-                              </span>
-                              <span className={r.ratesLink}>{isOpen ? "Hide details ▴" : "Rates and conditions ▾"}</span>
-                            </span>
-                          </button>
-                          {isOpen && (
-                            <div className={styles.planRowExpanded}>
-                              <p className={r.fullName}>Full plan name: {m.plan[2]}</p>
-                              <RateBreakdown plan={m.plan} solarExportKwh={solarExportKwh} />
-                              <OfferTerms
-                                o={offer}
-                                retailer={m.plan[0]}
-                                compact
-                                payLateCost={(() => { const d = billDetail(m.plan, usage); return d && d.conditionalDiscount * k >= 0.5 ? `${fmtCurrency(d.conditionalDiscount * k)} ${PERIOD_LABEL[period]}` : null; })()}
-                              />
-                              {RETAILER_LINKS[m.plan[0]] && (
-                                <a href={RETAILER_LINKS[m.plan[0]]} data-plan={m.plan[2]} data-network={distributor} target="_blank" rel="noopener noreferrer" className={styles.rowSwitchLink}>
-                                  Go to {m.plan[0]}&apos;s site →
-                                </a>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {hiddenRows.length > 0 && (
-                    <MemberLock
-                      variant="list"
-                      startRank={lockedTop.length + listRows.length + 1}
-                      title={`${hiddenRows.length} more ${allPlans ? "plans" : "retailers"} on your network`}
-                      body={
-                        <>
-                          From {fmtCurrency(Math.min(...hiddenRows.map((x) => x.total)) * k)} to {fmtCurrency(Math.max(...hiddenRows.map((x) => x.total)) * k)}{" "}
-                          {PERIOD_LABEL[period]}. Members see every plan with its rates, and get an email when a cheaper one turns up.
-                        </>
-                      }
-                      cta={`See all ${matches.length} plans`}
-                      onJoin={joinScroll}
-                    />
-                  )}
 
               {top && (
                 <SaveCheck

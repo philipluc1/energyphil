@@ -1699,3 +1699,13 @@
 /* Referred visitors: the friend's discount, under the plan cards. */
 .referralNote { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #1c1403; background: #fde68a; }
 .leadErrLink { color: inherit; font-weight: 800; text-decoration: underline; white-space: nowrap; }
+
+/* Results, Oct 2026: "get your exact answer" first, the plan list straight under the headline card. */
+.exactTop { display: grid; gap: 8px; margin: 4px 0 16px; }
+.exactTop > :first-child { margin: 0; }
+.planListTop { margin-top: 16px; padding: 18px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); display: grid; gap: 14px; }
+@media (max-width: 560px) { .planListTop { padding: 14px 12px; } }
+/* On the dark membership band: why it's a membership */
+.whyKeep { margin: 14px auto 0; max-width: 640px; padding: 12px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.9); text-align: left; }
+.whyKeep > summary { cursor: pointer; font-weight: 800; color: #fff; }
+.whyKeep p { margin: 10px 0 0; font-size: 14.5px; line-height: 1.55; }

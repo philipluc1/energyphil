@@ -327,6 +327,19 @@ export function estimateWithBill(p: HomeProfile, days: number, bill?: { kwh: num
   return fc ? scaleEstimate(e, fc.factor) : e;
 }
 
+/**
+ * Roughly how many kWh a bill's dollar total stands for, for people who can't
+ * find the kWh: take off the daily supply charge, divide by the usage rate.
+ * Uses the Victorian Default Offer's rates for the network (a fair middle of
+ * the market). Null when the amount doesn't even cover supply.
+ */
+export function kwhFromBillDollars(distributor: Distributor, dollars: number, days: number): number | null {
+  const v = VDO[distributor];
+  if (!v || !(dollars > 0) || !(days > 0)) return null;
+  const kwh = (dollars - v.supply * days) / v.usage;
+  return kwh > 0 ? Math.round(kwh) : null;
+}
+
 /** What the Victorian Default Offer would cost for THIS usage (supply +
  * single-rate usage at the VDO benchmark rate + controlled load), rather
  * than the generic typical-household annual figure. No solar credit is

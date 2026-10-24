@@ -121,6 +121,19 @@ export default function PricingSection({
         <input id="subEmail" type="email" placeholder="you@example.com" value={email} onChange={(e) => onEmailChange(e.target.value)} />
       </div>
       {referred && <p className={styles.referralNote}>A friend sent you: {referralDollars(REFERRAL_FRIEND_CENTS)} comes off your first payment at checkout.</p>}
+      <details className={styles.whyKeep}>
+        <summary>Why a membership, not a one-off fee?</summary>
+        <p>
+          Because today&apos;s cheapest plan rarely stays the cheapest. Retailers change prices and launch new plans every week, introductory discounts
+          end, and every 1 July prices reset. A one-off check is right for a day; your membership pays for the checking that catches the changes after
+          it: every plan re-priced against your home each morning, an email only when a move is worth it, and a heads-up before your discount or fixed
+          price ends.
+        </p>
+        <p>
+          You can cancel any time from your dashboard, in a couple of clicks. Staying a while? Yearly works out at $3.25 a month. The free check stays
+          free, every time.
+        </p>
+      </details>
       {error && (
         <p className={styles.leadErr}>
           {error}

@@ -28,7 +28,8 @@ import PlanBand from "../components/PlanBand";
 import PlanCards from "../components/PlanCards";
 import UpgradePlans from "../components/UpgradePlans";
 import type { Distributor } from "@/lib/plans";
-import { DEFAULT_PROFILE, estimateWithBill } from "@/lib/profileUsage";
+import { DEFAULT_PROFILE, estimateWithBill, kwhFromBillDollars } from "@/lib/profileUsage";
+import SolarCard from "../components/SolarCard";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import BillReview from "../components/BillReview";
@@ -200,7 +201,10 @@ export default function AccountPage() {
         // dashboard uses the average Victorian home (4,000 kWh a year).
         const avgHome = d.usageSource === "average";
         // A bill's kWh typed into the estimate scales it, the same as on the check.
-        const calKwh = parseFloat(d.calKwhRaw);
+        const calKwh =
+          d.calFigure === "dollars" && d.distributor
+            ? kwhFromBillDollars(d.distributor, parseFloat(d.currentBillRaw), days) ?? 0
+            : parseFloat(d.calKwhRaw);
         const est =
           d.usageSource === "bill" || avgHome
             ? null
@@ -832,7 +836,18 @@ export default function AccountPage() {
                   {tab === "home" && (
                     <>
                       {isMember ? (
-                        <ProfilePanels d={{ ...sub!, source: sub!.nmi || sub!.current_plan_name ? "bill" : "answers" }} />
+                        <>
+                          <ProfilePanels d={{ ...sub!, source: sub!.nmi || sub!.current_plan_name ? "bill" : "answers" }} />
+                          <SolarCard
+                            distributor={sub!.distributor}
+                            billingDays={sub!.billing_days}
+                            exportKwh={sub!.solar_export_kwh}
+                            fitDollars={sub!.current_rates?.solarFit ?? null}
+                            onSaved={(next) =>
+                              setSub((cur) => (cur ? { ...cur, has_solar: next.has_solar, solar_export_kwh: next.solar_export_kwh, current_rates: (next.current_rates as unknown as CurrentRates | null) ?? cur.current_rates } : cur))
+                            }
+                          />
+                        </>
                       ) : localCheck ? (
                         <ProfilePanels d={localCheck} />
                       ) : (

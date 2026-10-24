@@ -7,6 +7,7 @@ import {
   averageUsage,
   estimateUsage,
   forecastFromBill,
+  kwhFromBillDollars,
   monthlyEstimate,
   scaleEstimate,
   usageIsIncomplete,
@@ -97,4 +98,7 @@ assert.equal(forecastFromBill(twoP, { kwh: 0, days: 91, endMonth: 8 }), null);
 // Pricing follows the forecast.
 const scaled = scaleEstimate(estimateUsage(twoP, 91), 1.2);
 assert.equal(scaled.annualKwh, Math.round(estimateUsage(twoP, 91).annualKwh * 1.2));
+// Only the dollar amount: supply off, divide by the usage rate (VDO, Powercor: $1.381 a day, 28.2c).
+assert.equal(kwhFromBillDollars("Powercor", 96, 34), Math.round((96 - 1.381 * 34) / 0.282));
+assert.equal(kwhFromBillDollars("Powercor", 20, 34), null); // less than supply alone
 console.log("bill forecast ok");

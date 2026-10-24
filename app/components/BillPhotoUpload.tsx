@@ -47,6 +47,8 @@ export default function BillPhotoUpload({
   variant = "card",
   fuel = "electricity",
   priorPages = [],
+  stripTitle,
+  stripSub,
 }: {
   /** The read, and the photos it came from (none for a PDF), so a page can be added later. */
   onApply: (bill: ExtractedBill, pages: Blob[]) => void;
@@ -57,6 +59,9 @@ export default function BillPhotoUpload({
   fuel?: "electricity" | "gas";
   /** Pages already read (photos), sent again with the new one so the bill is read as a whole. */
   priorPages?: Blob[];
+  /** The strip's own wording, when it isn't sitting above the questions (e.g. on the results). */
+  stripTitle?: string;
+  stripSub?: string;
 }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,8 +198,8 @@ export default function BillPhotoUpload({
         <div className={snap.stripText}>
           <span className={snap.stripIcon} aria-hidden="true"><Icon name="camera" size={24} /></span>
           <span>
-            <b>{reading ? READING_STEPS[readingStep] : "Got your bill? Skip these questions."}</b>
-            {!reading && <small>{fuel === "gas" ? "A photo fills in your network, the days and the MJ. About 30 seconds." : "A photo fills in everything, including your real rates. About 30 seconds."}</small>}
+            <b>{reading ? READING_STEPS[readingStep] : stripTitle ?? "Got your bill? Skip these questions."}</b>
+            {!reading && <small>{stripSub ?? (fuel === "gas" ? "A photo fills in your network, the days and the MJ. About 30 seconds." : "A photo fills in everything, including your real rates. About 30 seconds.")}</small>}
           </span>
         </div>
         {reading ? (

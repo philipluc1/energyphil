@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { MONTH_NAMES, TYPICAL_ANNUAL_KWH, monthlyEstimate, type BillForecast, type HomeProfile } from "@/lib/profileUsage";
 import Icon from "./Icon";
 import s from "./estimatepanel.module.css";
@@ -64,25 +64,94 @@ const BILL_LENGTHS: [number, string][] = [[30, "a month"], [61, "2 months"], [91
  * One real figure beats any amount of guessing, so it sits above the
  * questions; the questions then only set how use moves through the year.
  */
-export function BillKwhCard({ bill, days, onDays, profile }: { bill: BillKwhInput; days: number; onDays: (d: number) => void; profile: HomeProfile }) {
+/** "Kilowatt-hours" or "just the dollar amount": two ways to tell us about a bill. */
+export type BillFigure = "kwh" | "dollars";
+
+/** Where to find the kWh: a made-up example of the usage table most bills have. */
+function KwhGuide() {
+  return (
+    <div className={s.guide}>
+      <span className={s.guideTag}>Example bill (made-up numbers)</span>
+      <table className={s.guideTable}>
+        <thead>
+          <tr><th>Meter</th><th>Start read</th><th>End read</th><th>Usage kWh</th></tr>
+        </thead>
+        <tbody>
+          <tr className={s.guideHit}><td>…/E1 (from the grid)</td><td>16,968</td><td>17,132</td><td><b>164.4</b> ← this one</td></tr>
+          <tr className={s.guideSkip}><td>…/B1 (solar to the grid)</td><td>18,886</td><td>19,050</td><td>163.5 ✗ not this</td></tr>
+        </tbody>
+      </table>
+      <ul className={s.guideList}>
+        <li>Look for <b>Usage</b>, <b>Consumption</b> or <b>Quantity</b> in kWh, in the usage or charges section (often page 2).</li>
+        <li>Several lines (peak, off-peak, shoulder, controlled load)? <b>Add them up.</b></li>
+        <li>Leave out solar export or &ldquo;feed-in&rdquo; lines: that&apos;s power you sent out, not used.</li>
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The first thing on the no-bill page: "Got a recent bill? Start with it".
+ * One real figure beats any amount of guessing, so it sits above the
+ * questions; the questions then only set how use moves through the year.
+ * People who can't find the kWh can give the dollar amount instead, and we
+ * work the kWh out from typical Victorian rates.
+ */
+export function BillKwhCard({
+  bill,
+  days,
+  onDays,
+  profile,
+  figure,
+  onFigure,
+  dollarsRaw,
+  onDollars,
+  kwhFromDollars,
+}: {
+  bill: BillKwhInput;
+  days: number;
+  onDays: (d: number) => void;
+  profile: HomeProfile;
+  figure: BillFigure;
+  onFigure: (f: BillFigure) => void;
+  /** The bill's total, shared with "Roughly what do you pay?". */
+  dollarsRaw: string;
+  onDollars: (raw: string) => void;
+  /** kWh worked out from the dollars (null when it can't be). */
+  kwhFromDollars: number | null;
+}) {
   const options = useMemo(() => recentMonths(), []);
   const answersOnly = useMemo(() => monthlyEstimate(profile).breakdown.total, [profile]);
+  const [guide, setGuide] = useState(false);
   const fc = bill.forecast;
+  const dollars = parseFloat(dollarsRaw);
   return (
     <section className={`${s.top1} ${fc ? s.top1On : ""}`} aria-labelledby="bill-kwh-title">
       <div className={s.top1Head}>
         <span className={s.top1Icon} aria-hidden="true"><Icon name="receipt" size={22} /></span>
         <div>
-          <h3 id="bill-kwh-title" className={s.top1Title}>Got a recent bill? Start with its kWh</h3>
-          <p className={s.top1Sub}>It&apos;s the most accurate thing you can tell us. Then answer the questions below so we know how your use moves through the year.</p>
+          <h3 id="bill-kwh-title" className={s.top1Title}>Got a recent bill? Start with it</h3>
+          <p className={s.top1Sub}>One real number beats our best guess. Then answer the questions below so we know how your use moves through the year.</p>
         </div>
       </div>
+      <div className={s.figure} role="group" aria-label="What you can find on your bill">
+        <button type="button" aria-pressed={figure === "kwh"} onClick={() => onFigure("kwh")}>I can see the kWh</button>
+        <button type="button" aria-pressed={figure === "dollars"} onClick={() => onFigure("dollars")}>I only know the $ amount</button>
+      </div>
       <div className={s.top1Row}>
-        <label className={s.calKwh}>
-          <span className={s.srOnly}>kWh used on the bill</span>
-          <input type="number" inputMode="decimal" min={0} placeholder="e.g. 1,150" value={bill.kwhRaw} onChange={(e) => bill.onKwh(e.target.value)} />
-          <span>kWh</span>
-        </label>
+        {figure === "kwh" ? (
+          <label className={s.calKwh}>
+            <span className={s.srOnly}>kWh used on the bill</span>
+            <input type="number" inputMode="decimal" min={0} placeholder="e.g. 1,150" value={bill.kwhRaw} onChange={(e) => bill.onKwh(e.target.value)} />
+            <span>kWh</span>
+          </label>
+        ) : (
+          <label className={s.calKwh}>
+            <span>$</span>
+            <span className={s.srOnly}>The bill&apos;s total</span>
+            <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 310" value={dollarsRaw} onChange={(e) => onDollars(e.target.value)} />
+          </label>
+        )}
         <span className={s.calWords}>over</span>
         <div className={s.lengths} role="group" aria-label="How long the bill covers">
           {BILL_LENGTHS.map(([d, label]) => (
@@ -97,11 +166,26 @@ export function BillKwhCard({ bill, days, onDays, profile }: { bill: BillKwhInpu
             {options.map(([mm, label]) => <option key={label} value={mm}>{label}</option>)}
           </select>
         </label>
-        {bill.kwhRaw && <button type="button" className={s.calClear} onClick={() => bill.onKwh("")}>Clear</button>}
+        {(figure === "kwh" ? bill.kwhRaw : dollarsRaw) && (
+          <button type="button" className={s.calClear} onClick={() => (figure === "kwh" ? bill.onKwh("") : onDollars(""))}>Clear</button>
+        )}
       </div>
-      <small className={s.calHint}>
-        On your bill, add up the usage lines: peak, shoulder, off-peak and controlled load. Odd bill length? Set the exact days under &ldquo;Your usage&rdquo; below.
-      </small>
+      {figure === "kwh" ? (
+        <>
+          <button type="button" className={s.guideBtn} aria-expanded={guide} onClick={() => setGuide((g) => !g)}>
+            {guide ? "Hide the example ▴" : "Where's the kWh on my bill? ▾"}
+          </button>
+          {guide && <KwhGuide />}
+        </>
+      ) : (
+        <small className={s.calHint}>
+          Use the charges for this bill only (&ldquo;new charges&rdquo; or &ldquo;this bill&rdquo;), not an amount owing from before. We work out the kWh from typical
+          Victorian rates, so it&apos;s close rather than exact.
+          {dollars > 0 && kwhFromDollars === null && <> That&apos;s less than the daily supply charge alone: check the amount and the bill length.</>}
+          {kwhFromDollars !== null && <> That works out at about <b>{n(kwhFromDollars)} kWh</b>.</>}
+        </small>
+      )}
+      <small className={s.calHint}>Odd bill length? Set the exact days under &ldquo;Your usage&rdquo; below.</small>
       {fc ? (
         <p className={s.top1Result}>
           <Icon name="check" size={16} /> Forecast from your bill: <b>{n(fc.annual)} kWh a year</b>

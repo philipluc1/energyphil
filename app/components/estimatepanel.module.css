@@ -99,3 +99,22 @@
 .top1Result span { color: var(--grey); }
 .top1Skip { margin: 0; font-size: 13.5px; color: var(--grey); }
 @media (max-width: 560px) { .top1 { padding: 16px; } .calKwh input { width: 90px; } }
+
+/* kWh or dollars, and where to find the kWh */
+.figure { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: var(--track); justify-self: start; }
+.figure button { padding: 8px 14px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 14.5px; font-weight: 700; color: var(--grey); cursor: pointer; }
+.figure button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(16, 22, 58, 0.12); }
+.figure button:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+.guideBtn { justify-self: start; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--navy-accent-text); cursor: pointer; }
+.guide { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+.guideTag { justify-self: start; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; background: var(--track); color: var(--grey); }
+.guideTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.guideTable th { text-align: left; padding: 6px 8px; font-weight: 800; color: var(--grey); border-bottom: 1px solid var(--border); }
+.guideTable td { padding: 7px 8px; color: var(--ink); border-bottom: 1px solid var(--border); }
+.guideTable th:last-child, .guideTable td:last-child { text-align: right; white-space: nowrap; }
+.guideHit td { background: color-mix(in srgb, var(--teal) 14%, transparent); }
+.guideHit td:last-child { color: var(--teal); }
+.guideSkip td { color: var(--grey); text-decoration: line-through; text-decoration-color: color-mix(in srgb, #c2410c 60%, transparent); }
+.guideSkip td:last-child { text-decoration: none; color: #c2410c; }
+.guideList { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; line-height: 1.5; color: color-mix(in srgb, var(--ink) 80%, var(--bg)); }
+@media (max-width: 560px) { .guideTable th:nth-child(2), .guideTable th:nth-child(3), .guideTable td:nth-child(2), .guideTable td:nth-child(3) { display: none; } }
