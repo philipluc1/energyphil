@@ -25,7 +25,7 @@ import { DASH_THEMES, DEFAULT_DASH_THEME, isDashTheme, type DashThemeId } from "
 import ProfilePanels, { type ProfileData } from "../components/ProfilePanels";
 import type { LatestCheck } from "../components/LatestCheckCard";
 import LearnCard from "../components/LearnCard";
-import { VerdictCard, CompareSection, summariseComparison, billCheckFacts, type ComparisonInput, type Period } from "../components/DashboardComparison";
+import { VerdictCard, CompareSection, MemberMarket, summariseComparison, billCheckFacts, type ComparisonInput, type Period } from "../components/DashboardComparison";
 import PlanBand from "../components/PlanBand";
 import PlanCards from "../components/PlanCards";
 import UpgradePlans from "../components/UpgradePlans";
@@ -900,7 +900,10 @@ export default function AccountPage() {
                 <DashTabs tabs={tabs} active={tab} onChange={changeTab}>
                   {tab === "compare" && (
                     cmpInput ? (
-                      <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
+                      <>
+                        <MemberMarket input={cmpInput} member={isMember} />
+                        <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
+                      </>
                     ) : (
                       <div className={styles.panelCard}>
                         <div className={styles.panelTitle}>Retailer comparison</div>

@@ -7,6 +7,7 @@ import PriceFlow from "../components/PriceFlow";
 import Icon from "../components/Icon";
 import MarketPulse from "../components/MarketPulse";
 import SiteHeader from "../components/SiteHeader";
+import FeelingCard from "../components/FeelingCard";
 import VideoSlot from "../components/VideoSlot";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
@@ -64,6 +65,7 @@ export default function LearnPage() {
             <Link href="/gas">Gas check</Link>
           </div>
         </section>
+        <FeelingCard />
 
         <section id="how" className={learn.block}>
           <h2 className={home.h2}>Three steps</h2>

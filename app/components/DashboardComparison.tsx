@@ -24,6 +24,8 @@ import type { BillCheckFacts } from "./BillCheckCard";
 import { samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { periodScale } from "@/lib/periods";
+import { marketEvents } from "@/lib/marketActivity";
+import MarketBoard, { type MarketPersonal } from "./MarketBoard";
 import styles from "./dashcompare.module.css";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -292,6 +294,59 @@ function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
       </div>
     </div>
   );
+}
+
+/**
+ * The last 30 days on the member's network, each changed offer priced against
+ * what they pay now: proof the checking happens, not just market news.
+ * Same maths as the verdict above (compute), so the numbers agree.
+ */
+export function MemberMarket({ input, member }: { input: ComparisonInput; member: boolean }) {
+  const c = useMemo(() => compute(input), [input]);
+  const personal = useMemo<MarketPersonal | null>(() => {
+    if (!c) return null;
+    const byKey = new Map(c.matches.map((m) => [`${m.plan[0]}|${m.plan[2]}`, m]));
+    const against = c.haveBill ? (c.basis === "rates" ? "your plan" : "your bill") : "the default offer";
+    const events = marketEvents({ days: 30, network: input.distributor });
+    let checked = 0;
+    let beat = 0;
+    let closest: { retailer: string; diff: number } | null = null;
+    for (const e of events) {
+      const m = byKey.get(`${e.retailer}|${e.plan}`);
+      if (!m) continue;
+      checked++;
+      if (m.restricted) continue;
+      const diff = (m.total - c.you) * c.perYear;
+      if (diff <= -WORTH_SWITCHING_PER_YEAR) beat++;
+      if (!closest || diff < closest.diff) closest = { retailer: e.retailer, diff };
+    }
+    // Non-members don't see the cheapest plans by name: don't name the retailer here either.
+    const who = (r: string) => (member ? r : "One of them");
+    const closestText = !closest
+      ? null
+      : closest.diff < 0
+        ? `Best: ${who(closest.retailer)}, about ${whole(-closest.diff)} a year less than ${against}`
+        : `Closest: ${who(closest.retailer)}, about ${whole(closest.diff)} a year more than ${against}`;
+    return {
+      against,
+      network: input.distributor,
+      checked,
+      beat,
+      worthPerYear: WORTH_SWITCHING_PER_YEAR,
+      closest: closestText,
+      vs: (e) => {
+        const m = byKey.get(`${e.retailer}|${e.plan}`);
+        if (!m) return { text: "Not one your home can use", tone: "muted" };
+        if (m.restricted) return { text: `Limited offer: ${m.restricted}`, tone: "muted" };
+        const diff = (m.total - c.you) * c.perYear;
+        const vsWhat = c.haveBill ? "you pay" : "the default offer";
+        if (Math.abs(diff) < 5) return { text: `About the same as ${vsWhat}`, tone: "muted" };
+        return diff < 0 ? { text: `${whole(-diff)} a year less than ${vsWhat}`, tone: "better" } : { text: `${whole(diff)} a year more than ${vsWhat}`, tone: "worse" };
+      },
+    };
+  }, [c, input.distributor, member]);
+  if (!c || !personal || personal.checked === 0) return null;
+  return <MarketBoard personal={personal} />;
 }
 
 /** The Compare tab: chart plus every comparable plan, ranked. Table on wide
