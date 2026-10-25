@@ -153,3 +153,17 @@
 .lockedBar { display: inline-block; width: 120px; height: 12px; border-radius: 6px; background: rgba(140, 150, 170, 0.3); filter: blur(1.5px); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lockedCell a, :root:not([data-theme="light"]) .rowLocked .pcPlan { color: #fcd34d; } }
 :root[data-theme="dark"] .lockedCell a, :root[data-theme="dark"] .rowLocked .pcPlan { color: #fcd34d; }
+
+/* The bill total on file doesn't fit the usage on file. */
+.mismatch { display: flex; gap: 12px; align-items: flex-start; margin: 4px 0 2px; padding: 12px 14px; border-radius: 14px; background: #fff7ed; border: 1px solid #fdba74; color: #7c2d12; text-align: left; }
+.mismatch svg { flex: none; margin-top: 2px; }
+.mismatch > div > b { display: block; font-size: 15px; }
+.mismatch p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.5; color: #7c2d12; }
+.mismatchActions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px !important; }
+.mismatchActions a { font-weight: 800; color: #9a3412; text-decoration: underline; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mismatch { background: rgba(249, 115, 22, 0.12); border-color: rgba(253, 186, 116, 0.35); color: #ffedd5; }
+  :root:not([data-theme="light"]) .mismatch p, :root:not([data-theme="light"]) .mismatchActions a { color: #ffedd5; }
+}
+:root[data-theme="dark"] .mismatch { background: rgba(249, 115, 22, 0.12); border-color: rgba(253, 186, 116, 0.35); color: #ffedd5; }
+:root[data-theme="dark"] .mismatch p, :root[data-theme="dark"] .mismatchActions a { color: #ffedd5; }

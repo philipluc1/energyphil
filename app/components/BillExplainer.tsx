@@ -95,6 +95,7 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
             {ratio < 0.9 ? `about ${Math.round(ratio * 100)}% of a typical Victorian home` : ratio > 1.1 ? `about ${Math.round((ratio - 1) * 100)}% more than a typical home` : "about the same as a typical home"} (
             {typicalPerDay.toLocaleString("en-AU", { maximumFractionDigits: 0 })} a day).
           </p>
+          <p className={s.hint}>A kWh (kilowatt-hour) is the unit power is sold in: a 2,000-watt heater running for half an hour uses 1 kWh.</p>
         </div>
 
         {r && (r.anytime !== null || tou) && (
@@ -128,7 +129,7 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
                 <>
                   Paid {cents(r.solarFit)} a kWh: {money(solarCredit ?? 0)} back.
                   {best !== null && best > r.solarFit + 0.0005 && fitGap >= 1 ? (
-                    <> The best plan on {f.distributor} pays up to {cents(best)}: up to <b>{money(fitGap)} more</b> on a bill like this.</>
+                    <> The best plan in your area pays up to {cents(best)}: up to <b>{money(fitGap)} more</b> on a bill like this.</>
                   ) : null}
                 </>
               ) : (
@@ -150,7 +151,7 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
               <li key={x.key}><i className={x.cls} /> {x.label} <b>{money(x.v)}</b></li>
             ))}
             {solarCredit !== null && solarCredit > 0.005 && <li><i className={s.segSolar} /> Solar credit <b>−{money(solarCredit)}</b></li>}
-            {other < 0 && <li><i className={s.segCredit} /> Discounts and credits <b>−{money(-other)}</b></li>}
+            {other < 0 && <li><i className={s.segCredit} /> Discounts, credits and other differences <b>−{money(-other)}</b></li>}
           </ul>
         </div>
       )}

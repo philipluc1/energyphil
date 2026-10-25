@@ -1,8 +1,11 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { DISTRIBUTORS, PLAN_DATA_DATE, VDO } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
 import comparatorStyles from "../components/Comparator.module.css";
 import styles from "../components/StaticPage.module.css";
+
+export const metadata = pageMeta({ title: "The Victorian Default Offer explained", description: "What the Victorian Default Offer is, who sets it, how it compares with retailers' own offers, and why the cheapest plan keeps changing.", path: "/default-offer" });
 
 function fmtUpdated(): string {
   return new Date(PLAN_DATA_DATE + "T00:00:00").toLocaleDateString("en-AU", {
@@ -71,8 +74,8 @@ export default function DefaultOfferPage() {
           </p>
           <p>
             It&apos;s also why we built the subscription tier: instead of you having to remember to re-check every
-            few months, we keep watching the market for your usage pattern and tell you the moment something
-            cheaper turns up.
+            few months, we keep watching the market for your usage pattern and email you when something cheaper
+            would save you enough to be worth switching ($50 a year, or the amount you choose).
           </p>
         </section>
 
@@ -85,13 +88,14 @@ export default function DefaultOfferPage() {
             the same as your retailer.
           </p>
           <div className={styles.card}>
+            <div className={styles.tableScroll}>
             <table className={styles.rateTable}>
               <thead>
                 <tr>
                   <th>Network</th>
                   <th className={styles.num}>Supply charge</th>
                   <th className={styles.num}>Usage rate</th>
-                  <th className={styles.num}>Controlled load</th>
+                  <th className={`${styles.num} ${styles.hideSm}`}>Controlled load</th>
                   <th className={styles.num}>Indicative annual</th>
                 </tr>
               </thead>
@@ -103,15 +107,16 @@ export default function DefaultOfferPage() {
                       <td>{d}</td>
                       <td className={styles.num}>{fmtDollars(v.supply)}/day</td>
                       <td className={styles.num}>{fmtCents(v.usage)}/kWh</td>
-                      <td className={styles.num}>{fmtCents(v.cl)}/kWh</td>
+                      <td className={`${styles.num} ${styles.hideSm}`}>{fmtCents(v.cl)}/kWh</td>
                       <td className={styles.num}>{fmtDollars(v.annual)}/yr</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+            </div>
             <p className={styles.tableNote}>
-              &ldquo;Indicative annual&rdquo; is the ESC&apos;s reference amount for a typical single-rate
+              &ldquo;Indicative annual&rdquo; is the Essential Services Commission&apos;s reference amount for a typical single-rate
               residential customer on that network — not a quote for your household. Your own usage, tariff type,
               and any concessions change what you&apos;d actually pay, which is why{" "}
               <Link href="/check">checking your real bill</Link> gives a far more accurate number than this table

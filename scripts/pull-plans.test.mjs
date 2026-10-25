@@ -7,6 +7,11 @@ assert.deepEqual(parsePlan(tou), { supply: 1.19262, anytime: null, peak: 0.44308
 const single = { electricityContract: { tariffPeriod: [{ rateBlockUType: "singleRate", dailySupplyCharges: "1.1658", singleRate: { rates: [{ unitPrice: "0.2907" }] } }] } };
 assert.deepEqual(parsePlan(single), { supply: 1.28238, anytime: 0.31977, peak: null, shoulder: null, offpeak: null, cl: null, solarFit: null });
 assert.equal(parsePlan({ electricityContract: { tariffPeriod: [{ rateBlockUType: "demandCharges", dailySupplyCharges: "1" }] } }), null);
+// A single rate with a demand charge beside it can't be priced from kWh: left out, not priced without the demand charge.
+const withDemand = { electricityContract: { tariffPeriod: [{ ...single.electricityContract.tariffPeriod[0], demandCharges: [{ amount: "0.3", measureUnit: "KW" }] }] } };
+assert.equal(parsePlan(withDemand), null);
+assert.equal(parsePlan({ ...single, displayName: "Origin Basic (Residential Demand)" }), null);
+assert.notEqual(parsePlan({ ...single, displayName: "Origin Basic" }), null);
 console.log("parser ok");
 import { parseGasPlan } from "./pull-plans.mjs";
 const gas = { gasContract: { tariffPeriod: [{ dailySupplyCharges: "0.85", singleRate: { rates: [{ unitPrice: "0.0412", volume: 50, period: "P1D", measureUnit: "MJ" }, { unitPrice: "0.0318", period: "P1D", measureUnit: "MJ" }] } }] } };
@@ -18,6 +23,15 @@ const dup = { electricityContract: { tariffPeriod: [{ rateBlockUType: "timeOfUse
   timeOfUseRates: [{ type: "PEAK", rates: [{ unitPrice: "0.40" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0.20" }] }] }] } };
 assert.equal(parsePlan(dup).offpeak, 0.22);
 console.log("duplicate band ok");
+
+// A time-of-use plan that also carries a blank singleRate block is still time of use.
+const touWithBlank = { electricityContract: { tariffPeriod: [{ ...tou.electricityContract.tariffPeriod[0], singleRate: { rates: [] } }] } };
+assert.equal(parsePlan(touWithBlank).peak, 0.44308);
+assert.equal(parsePlan(touWithBlank).anytime, null);
+// No label at all: go by which block has rates.
+const unlabelled = { electricityContract: { tariffPeriod: [{ dailySupplyCharges: "1", timeOfUseRates: [{ type: "PEAK", rates: [{ unitPrice: "0.4" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0.2" }] }] }] } };
+assert.equal(parsePlan(unlabelled).peak, 0.44);
+console.log("time-of-use labels ok");
 
 // Offer dates: a new offer gets "seen" today; a price change gets "priceChanged" today.
 import { buildPlanDates } from "./pull-plans.mjs";

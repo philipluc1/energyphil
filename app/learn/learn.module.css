@@ -17,7 +17,7 @@
 .chartFrame { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 14px 10px 6px; }
 .pillRow { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
 .pill { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; color: inherit; }
-.pillOn { background: #0d9488; border-color: #0d9488; color: #fff; }
+.pillOn { background: #0f766e; border-color: #0f766e; color: #fff; }
 .hist { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; font-size: 14px; color: var(--grey); }
 .hist b { color: inherit; margin-right: 6px; }
 /* Chart assumption strip */
@@ -45,7 +45,7 @@
 .changePct { font: 900 64px/1 "Archivo", sans-serif; letter-spacing: -0.03em; color: #16a34a; }
 .changeBars { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .changeBars li { display: grid; grid-template-columns: 120px 1fr 44px; gap: 12px; align-items: center; font-size: 14px; }
-.changeBars b { text-align: right; font-variant-numeric: tabular-nums; color: #16a34a; }
+.changeBars b { text-align: right; font-variant-numeric: tabular-nums; color: #15803d; }
 .cbName { font-weight: 700; }
 .cbTrack { height: 12px; border-radius: 999px; background: var(--track); overflow: hidden; }
 .cbTrack > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #16a34a, #4ade80); }

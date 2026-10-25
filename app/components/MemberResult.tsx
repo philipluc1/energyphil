@@ -7,9 +7,9 @@ import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import ResultsChart, { type ChartItem } from "./ResultsChart";
 import FunEquivalents from "./FunEquivalents";
 import styles from "./memberresult.module.css";
+import { periodScale } from "@/lib/periods";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const PERIOD_DAYS = { month: 365 / 12, quarter: 365 / 4, year: 365 } as const;
 const PERIOD_LABEL = { month: "a month", quarter: "a quarter", year: "a year" } as const;
 
 /** A member's live comparison, priced from the usage on file against today's
@@ -27,7 +27,7 @@ export default function MemberResult({
   if (!top || days <= 0) return null;
   const haveBill = referenceTotal !== null && referenceTotal > 0;
   const bench = haveBill ? (referenceTotal as number) : vdoBillForUsage(distributor, usage);
-  const k = PERIOD_DAYS[period] / days;
+  const k = periodScale(period, days);
   const saving = bench - top.total;
   const verdict = haveBill ? (saving <= 1 ? "good" : "bad") : "estimate";
   const items: ChartItem[] = [

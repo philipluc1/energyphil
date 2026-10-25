@@ -17,7 +17,7 @@ import s from "./leavesite.module.css";
 // discounts and sign-up conditions. The offer data loads only when needed.
 
 const SKIP_KEY = "utilo.leaveOk";
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 const HOSTS = Object.entries(RETAILER_LINKS).map(([name, url]) => [name, new URL(url).hostname.replace(/^www\./, "")] as const);
 
 function retailerFor(href: string): string | null {

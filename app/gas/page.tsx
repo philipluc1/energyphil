@@ -1,12 +1,10 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
 import styles from "../components/Comparator.module.css";
 import GasCheck from "./GasCheck";
 
-export const metadata = {
-  title: "Gas plan check | Utilo",
-  description: "Snap your gas bill and see the cheapest Victorian gas plan for your home. Free, no sign-up.",
-};
+export const metadata = pageMeta({ title: "Victorian gas plan check", description: "Snap your gas bill and see which Victorian gas plans would cost less for your home. Free, no sign-up.", path: "/gas" });
 
 export default function GasPage() {
   return (

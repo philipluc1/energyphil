@@ -46,6 +46,8 @@ export interface SubscribeProfile {
   priceFixedUntil?: string | null;
   discountEndsAt?: string | null;
   currentPlanName?: string | null;
+  /** The meter number (NMI), when read off the bill or typed. */
+  nmi?: string | null;
 }
 
 export default function PricingSection({
@@ -76,6 +78,10 @@ export default function PricingSection({
     setAlreadyMember(false);
     if (!email || !email.includes("@")) {
       setError("Enter your email above first so we know where to send your alerts.");
+      // The box is above the plan cards, often off screen: take them to it.
+      const box = document.getElementById("subEmail");
+      box?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => box?.focus({ preventScroll: true }), 350);
       return;
     }
     setLoadingPlan(planId);
@@ -111,7 +117,7 @@ export default function PricingSection({
             when switching is worth it. No fine print to follow, no comparing to do.
           </>
         ) : (
-          <>The check above is free, every time. <strong>Join and we do the checking for you</strong>, with a bill read and a saved result each month.</>
+          <>The check above is free, every time. <strong>Join and we do the checking for you</strong>, with a saved result each month and a bill read whenever a new bill arrives.</>
         )
       }
       cards={<PlanCards onChoose={handleChoose} loadingPlan={loadingPlan} dark />}

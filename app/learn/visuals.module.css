@@ -61,7 +61,7 @@
 .barGrey, .barTeal { display: block; height: 100%; border-radius: 99px; }
 .barGrey { background: #b8c0d2; }
 .barTeal { background: linear-gradient(90deg, #5eead4, #0ea5a0); }
-.saveTag { justify-self: center; margin-top: 4px; padding: 5px 12px; border-radius: 99px; background: #0ea5a0; color: #fff; font-weight: 800; font-size: 13px; }
+.saveTag { justify-self: center; margin-top: 4px; padding: 5px 12px; border-radius: 99px; background: #0f766e; color: #fff; font-weight: 800; font-size: 13px; }
 
 /* step 3: notifications */
 .s3 .pic { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
@@ -124,7 +124,7 @@
 .yes { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #0ea5a0; color: #fff; font-weight: 900; font-size: 14px; }
 .no { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(98, 108, 129, 0.1); color: #a2acc2; font-weight: 900; }
 .member { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
-.member small { font-size: 10.5px; font-weight: 800; color: #0ea5a0; text-transform: uppercase; letter-spacing: 0.04em; }
+.member small { font-size: 10.5px; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.04em; }
 .text { font-weight: 800; font-size: 13px; color: var(--ink); }
 .gNote { margin: 10px 0 0; font-size: 12.5px; color: var(--grey); }
 

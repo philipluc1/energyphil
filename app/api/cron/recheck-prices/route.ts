@@ -5,7 +5,10 @@ import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 import { topOpen } from "@/lib/planExtras";
 import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, resultEmail } from "@/lib/emailTemplates";
-import { computeBest, isMeaningfullyCheaper, priceOfPlan } from "@/lib/priceWatch";
+import { computeBest, isMeaningfullyCheaper, priceOfPlan, referenceForUsage } from "@/lib/priceWatch";
+import { ratesFromJson } from "@/lib/billReconcile";
+import { switchedPlanNow } from "@/lib/switched";
+import type { CurrentRates } from "@/lib/billExtraction";
 import { offerDates } from "@/lib/planTerms";
 import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
@@ -131,6 +134,13 @@ export async function GET(req: NextRequest) {
     const { data: mins, error: minErr } = await supabaseAdmin.from("subscribers").select("id, alert_min_saving").eq("status", "active").not("alert_min_saving", "is", null);
     if (!minErr) for (const m of (mins ?? []) as { id: string; alert_min_saving: number | null }[]) if (typeof m.alert_min_saving === "number") alertMin.set(m.id, m.alert_min_saving);
   }
+  // Each member's own rates, to check the bill total on file fits the usage
+  // on file before quoting a saving against it. Loaded separately too.
+  const ratesOf = new Map<string, CurrentRates>();
+  {
+    const { data: rs, error: rErr } = await supabaseAdmin.from("subscribers").select("id, current_rates").eq("status", "active").not("current_rates", "is", null);
+    if (!rErr) for (const x of (rs ?? []) as { id: string; current_rates: unknown }[]) { const r = ratesFromJson(x.current_rates); if (r) ratesOf.set(x.id, r); }
+  }
 
   for (const sub of (subsData ?? []) as SubscriberWatchRow[]) {
     try {
@@ -192,7 +202,9 @@ export async function GET(req: NextRequest) {
         // before reference_total existed just won't get a new episode — no
         // history to extend.
         const billingDays = sub.billing_days ?? 91;
-        if (sub.reference_total !== null && billingDays > 0 && !best.average) {
+        // The bill total, checked against the usage it's compared on.
+        const ref = referenceForUsage(profile, sub.reference_total, ratesOf.get(sub.id) ?? null);
+        if (sub.reference_total !== null && billingDays > 0 && !best.average && ref.vsBill) {
           await supabaseAdmin
             .from("savings_episodes")
             .update({ ended_at: notifiedAt })
@@ -200,7 +212,7 @@ export async function GET(req: NextRequest) {
             .is("ended_at", null);
 
           // Never negative: a plan that costs more than their bill isn't a saving.
-          const dailyRate = Math.max(0, (sub.reference_total - best.bestTotal) / billingDays);
+          const dailyRate = Math.max(0, (ref.total - best.bestTotal) / billingDays);
           const { error: episodeErr } = await supabaseAdmin.from("savings_episodes").insert({
             subscriber_id: sub.id,
             email: sub.email,
@@ -287,7 +299,7 @@ export async function GET(req: NextRequest) {
   let dealAlerts = 0;
   const { data: dealSubs, error: dealErr } = await supabaseAdmin
     .from("subscribers")
-    .select("id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, home_profile, discount_ends_at, current_price_fixed_until, deal_alert_sent_for")
+    .select("id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, home_profile, discount_ends_at, current_price_fixed_until, deal_alert_sent_for, switched_at, switched_to")
     .eq("status", "active")
     .eq("unsubscribed", false)
     .or("discount_ends_at.not.is.null,current_price_fixed_until.not.is.null");
@@ -303,8 +315,8 @@ export async function GET(req: NextRequest) {
         .filter((d) => d.days >= 0 && d.days <= DEAL_WARNING_DAYS && d.date !== sub.deal_alert_sent_for)
         .sort((x, y) => x.days - y.days)[0];
       if (!due) continue;
-      const best = sub.distributor
-        ? computeBest({
+      const watch = sub.distributor
+        ? {
             distributor: sub.distributor as Distributor,
             billingDays: sub.billing_days ?? 91,
             peak: sub.peak_kwh ?? 0,
@@ -314,11 +326,16 @@ export async function GET(req: NextRequest) {
             cl: sub.controlled_load_kwh ?? 0,
             solarExportKwh: sub.solar_export_kwh ?? 0,
             ev: hasEv(sub.home_profile),
-          })
+          }
         : null;
+      const best = watch ? computeBest(watch) : null;
       const when = new Date(`${due.date}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "UTC" });
       const days = sub.billing_days ?? 91;
-      const yearly = best && sub.reference_total && !best.average ? ((sub.reference_total - best.bestTotal) * 365) / days : null;
+      // Against the bill only when the bill total fits the usage on file.
+      // Switched? Against the plan they're on now, not the old bill.
+      const moved = watch && sub.switched_at ? switchedPlanNow(sub.switched_to, watch.distributor, { days: watch.billingDays, peak: watch.peak, shoulder: watch.shoulder, offpeak: watch.offpeak, anytime: watch.anytime, cl: watch.cl, solarExportKwh: watch.solarExportKwh }) : null;
+      const ref = moved ? { total: moved.total, vsBill: true } : watch && sub.reference_total ? referenceForUsage(watch, sub.reference_total, ratesOf.get(sub.id) ?? null) : null;
+      const yearly = best && ref?.vsBill && !best.average ? ((ref.total - best.bestTotal) * 365) / days : null;
       const e = dealEnding({
         origin,
         what: due.what,
@@ -480,6 +497,8 @@ interface DealRow {
   discount_ends_at: string | null;
   current_price_fixed_until: string | null;
   deal_alert_sent_for: string | null;
+  switched_at?: string | null;
+  switched_to?: string | null;
 }
 
 interface DripLeadRow {

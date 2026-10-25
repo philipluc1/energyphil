@@ -30,7 +30,7 @@ export default function PlanBand({
       <ScrollReveal delayMs={120} className={styles.proofs}>
         <div className={styles.proof}><span className={styles.proofNum}>Every morning</span><span>every plan we track on your network, priced against yours</span></div>
         <div className={styles.proof}><span className={styles.proofNum}>One email</span><span>only when switching is worth it: $50 a year, or the amount you choose</span></div>
-        <div className={styles.proof}><span className={styles.proofNum}>Every month</span><span>a bill read and a saved result on your dashboard</span></div>
+        <div className={styles.proof}><span className={styles.proofNum}>Every month</span><span>a saved result on your dashboard, and a bill read whenever a new bill arrives</span></div>
       </ScrollReveal>
       {children && <ScrollReveal delayMs={200} className={styles.step}>{children}</ScrollReveal>}
       <div className={styles.cards}>{cards}</div>

@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { DISTRIBUTORS, VDO, PLANS, PLAN_DATA_DATE, rankPlans, topOpen, type Distributor } from "@/lib/plans";
 import { VIDEOS, VDO_HISTORY, PRICE_CYCLE, VDO_CHANGE_2026, SAVE_TIPS, nextCycleStage } from "@/lib/learnContent";
@@ -13,10 +14,7 @@ import learn from "./learn.module.css";
 import { StepsVisual, RolesVisual } from "./LearnVisuals";
 import { NetworkGapChart, RetailerRankChart, VdoHistoryChart, type NetworkGap, type RetailerRow } from "./LearnCharts";
 
-export const metadata = {
-  title: "How Utilo works | Utilo",
-  description: "How Utilo works, how it differs from Victorian Energy Compare and the ESC, price trends, timelines and ways to save.",
-};
+export const metadata = pageMeta({ title: "How Victorian electricity prices work", description: "Who's cheapest for a typical home, when prices change each year, the Victorian Default Offer, and how Utilo differs from Victorian Energy Compare.", path: "/learn" });
 
 // A typical home: 4,000 kWh a year, single rate. Illustrative only.
 const USAGE = { days: 365, peak: 0, shoulder: 0, offpeak: 0, anytime: 4000, cl: 0 };

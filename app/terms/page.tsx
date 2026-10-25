@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
 import { Fill, MailLink } from "../components/Fill";
@@ -6,7 +7,7 @@ import SiteHeader from "../components/SiteHeader";
 import styles from "../components/StaticPage.module.css";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 
-export const metadata = { title: "Terms of Service | Utilo" };
+export const metadata = pageMeta({ title: "Terms of Service", description: "The terms for using Utilo's free check and membership.", path: "/terms" });
 
 const LAST_UPDATED = "18 October 2026";
 

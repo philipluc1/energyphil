@@ -1,6 +1,8 @@
 import "server-only";
 import { Distributor, rankPlans, topOpen, type UsageInput } from "@/lib/plans";
-import { usageOrAverage } from "@/lib/profileUsage";
+import { usageOrAverage, vdoBillForUsage } from "@/lib/profileUsage";
+import { reconcileBill } from "@/lib/billReconcile";
+import type { CurrentRates } from "@/lib/billExtraction";
 
 // Shared by app/api/cron/recheck-prices — kept separate from that route so
 // the actual "what's the cheapest plan for this profile right now" logic is
@@ -40,6 +42,20 @@ function watchUsage(profile: WatchProfile): { usage: UsageInput; average: boolea
     cl: profile.cl,
     solarExportKwh: profile.solarExportKwh ?? 0,
   });
+}
+
+/**
+ * What the member pays now, for the usage on file: the bill total when it
+ * fits that usage, their own rates on that usage when it doesn't, else the
+ * default offer for it (`vsBill` false). Same rule as the dashboard, so an
+ * email never quotes a saving the dashboard wouldn't.
+ */
+export function referenceForUsage(profile: WatchProfile, referenceTotal: number | null, rates: CurrentRates | null): { total: number; vsBill: boolean } {
+  const { usage, average } = watchUsage(profile);
+  const vdo = vdoBillForUsage(profile.distributor, usage);
+  if (average) return { total: vdo, vsBill: false };
+  const r = reconcileBill({ billTotal: referenceTotal, rates, usage, distributor: profile.distributor });
+  return r.you !== null ? { total: r.you, vsBill: true } : { total: vdo, vsBill: false };
 }
 
 export function computeBest(profile: WatchProfile): WatchResult | null {

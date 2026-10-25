@@ -46,10 +46,10 @@ function homeWords(h: Record<string, unknown>): { label: string; value: string }
 }
 
 const TARIFF_LABEL: Record<string, string> = {
-  single_rate: "Single rate",
-  time_of_use: "Time of use",
-  demand: "Demand",
-  flexible: "Flexible",
+  single_rate: "One price all day (single rate)",
+  time_of_use: "By time of day (time of use)",
+  demand: "With a demand charge",
+  flexible: "By time of day (flexible)",
 };
 
 const kwh = (n: number | null | undefined) => (n === null || n === undefined ? null : `${Math.round(n).toLocaleString("en-AU")} kWh`);
@@ -72,7 +72,12 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
   const annual = days > 0 && total > 0 ? Math.round((total / days) * 365) : null;
   const perDay = days > 0 && total > 0 ? (total / days).toFixed(1) : null;
   const addr = [d.address, d.suburb, d.postcode].filter(Boolean).join(", ");
-  const tariff = d.tariff_type ? TARIFF_LABEL[d.tariff_type] ?? d.tariff_type : d.usage_mode === "detailed" ? "Time of use" : d.usage_mode === "simple" ? "Single rate" : null;
+  // Only from a bill: an estimate from answers is split by time of day but says nothing about their tariff.
+  const tariff = d.tariff_type
+    ? TARIFF_LABEL[d.tariff_type] ?? d.tariff_type
+    : d.source === "answers"
+      ? null
+      : d.usage_mode === "detailed" ? TARIFF_LABEL.time_of_use : d.usage_mode === "simple" ? TARIFF_LABEL.single_rate : null;
 
   return (
     <div className={styles.grid}>
@@ -81,13 +86,13 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
         <Row label="Name" value={d.customer_name} />
         <Row label="Supply address" value={addr || null} />
         <Row label="Network" value={d.distributor} hint="Set on the check page" />
-        <Row label="NMI" value={d.nmi} />
+        <Row label="Meter number (NMI)" value={d.nmi} />
         <Row label="Current retailer" value={d.current_retailer} hint="Tell us on the check page" />
         <Row label="Current offer" value={d.current_plan_name} />
-        <Row label="Tariff type" value={tariff} />
+        <Row label="How you're charged" value={tariff} />
         <Row label="Solar" value={d.has_solar === null ? null : d.has_solar ? `Yes${d.solar_export_kwh ? `, ${kwh(d.solar_export_kwh)} exported per bill` : ""}` : "No"} />
         <Row label="Best match found" value={d.baseline_retailer ? `${d.baseline_retailer}${d.baseline_plan_name ? ` — ${d.baseline_plan_name}` : ""}` : null} hint="Run a check" />
-        {d.home_profile && homeWords(d.home_profile).length > 0 && (
+        {d.home_profile && d.home_profile.answered !== false && homeWords(d.home_profile).length > 0 && (
           <>
             <h4 className={styles.sub}>Your home</h4>
             {homeWords(d.home_profile).map((r) => <Row key={r.label} label={r.label} value={r.value} />)}

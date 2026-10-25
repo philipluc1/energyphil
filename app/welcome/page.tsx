@@ -38,7 +38,11 @@ export default function WelcomePage() {
       // The sign-in link puts tokens in the URL; the client picks them up asynchronously.
       setSetupStep(1);
       let session = (await supabase.auth.getSession()).data.session;
-      for (let i = 0; i < 6 && !session; i++) {
+      // Straight back from paying, with no sign-in link in the address: there's
+      // nothing to wait for, so say "check your email" now rather than spin.
+      const linkInUrl = /access_token=|code=/.test(window.location.hash + window.location.search);
+      const justPaidNoLink = new URLSearchParams(window.location.search).get("check_email") === "1" && !linkInUrl;
+      for (let i = 0; i < 6 && !session && !justPaidNoLink; i++) {
         await new Promise((r) => setTimeout(r, 500));
         session = (await supabase.auth.getSession()).data.session;
       }

@@ -1,3 +1,5 @@
+import { pageMeta } from "@/lib/seo";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import Image from "next/image";
 import Link from "next/link";
 import { PLANS, PLAN_DATA_DATE } from "@/lib/plans";
@@ -14,6 +16,8 @@ import MarketBoard from "./components/MarketBoard";
 import styles from "./components/Comparator.module.css";
 import h from "./home2.module.css";
 
+export const metadata = pageMeta({ title: "Utilo: compare Victorian electricity plans against your own bill", description: "Snap your Victorian electricity bill and see which plans would cost less for your home, priced on your own usage and rates. Free check, no sign-up.", path: "/", absoluteTitle: true });
+
 const RETAILER_COUNT = new Set(PLANS.map((p) => p[0])).size;
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
 // Prices from the price list so the home page never drifts from checkout.
@@ -28,15 +32,36 @@ function fmtDate(): string {
 // Re-render a few times a day so the "last 30 days" board stays current between deploys.
 export const revalidate = 21600;
 
+// Who we are, for search engines (Google's "Organization" and "WebSite").
+// Business details are added automatically once they're filled in lib/about.ts.
+function structuredData() {
+  const org: Record<string, unknown> = {
+    "@type": "Organization",
+    "@id": `${SITE_URL}/#organization`,
+    name: ABOUT.businessName || SITE_NAME,
+    alternateName: SITE_NAME,
+    url: SITE_URL,
+    logo: `${SITE_URL}/icon`,
+    description: "Independent electricity and gas plan comparison for Victorian households, priced against your own bill.",
+    areaServed: { "@type": "State", name: "Victoria, Australia" },
+  };
+  if (ABOUT.contactEmail) org.email = ABOUT.contactEmail;
+  if (ABOUT.abn) org.taxID = `ABN ${ABOUT.abn}`;
+  return {
+    "@context": "https://schema.org",
+    "@graph": [org, { "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: SITE_NAME, url: SITE_URL, inLanguage: "en-AU", publisher: { "@id": `${SITE_URL}/#organization` } }],
+  };
+}
+
 export default function Home() {
   const homes = threeHomesExample();
   const typical = homes.find((x) => x.key === "typical");
   const savings = homes.map((x) => x.saving);
-  const lowSave = Math.min(...savings);
   const highSave = Math.max(...savings);
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, "\\u003c") }} />
       <SiteHeader active="home" />
 
       <main className={h.page}>

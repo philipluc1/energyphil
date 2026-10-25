@@ -1575,6 +1575,7 @@
   .stickyBar { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); opacity: 0.97; backdrop-filter: blur(8px); border-top: 1px solid var(--border); }
   .stickyBtn { display: block; width: 100%; text-align: center; padding: 14px; border-radius: 999px; border: 0; font: inherit; font-size: 15px; font-weight: 900; color: #1a1a1a; background: linear-gradient(135deg, #fde68a, #fbbf24 55%, #f59e0b); box-shadow: 0 6px 20px rgba(245,166,35,0.45); text-decoration: none; cursor: pointer; }
   .wrap { padding-bottom: 84px; }
+  .stickyReason { margin: 0 4px 8px; font-size: 13px; font-weight: 700; line-height: 1.35; color: #9a3412; text-align: center; }
 }
 .stayCard { margin-top: 14px; padding: 16px 18px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); display: grid; gap: 8px; font-size: 14.5px; line-height: 1.5; }
 .stayNum { color: #0d9488; font-weight: 700; }
@@ -1715,3 +1716,23 @@
 .saveTopDone { border-color: color-mix(in srgb, var(--teal) 45%, transparent); }
 .saveTopBtn { padding: 10px 18px; border: 0; border-radius: 10px; background: var(--teal); color: #fff; font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
 .saveTopBtn:disabled { opacity: 0.6; }
+
+/* The bill total doesn't fit the usage being compared. */
+.mismatchNote { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; padding: 14px 16px; border-radius: 14px; background: #fff7ed; border: 1px solid #fdba74; color: #7c2d12; text-align: left; }
+.mismatchNote svg { flex: none; margin-top: 2px; }
+.mismatchNote > div > b { display: block; font-size: 15px; }
+.mismatchNote p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.5; color: #7c2d12; }
+.mismatchNote .inlineB { display: inline; font-size: inherit; }
+.mismatchActions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px !important; }
+.mismatchNote .blockAction { margin-left: 0; color: #9a3412; }
+.movedNote { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--card, #f8fafc); border: 1px dashed color-mix(in srgb, currentColor 22%, transparent); font-size: 13px; line-height: 1.5; text-align: left; opacity: 0.92; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mismatchNote { background: rgba(249, 115, 22, 0.12); border-color: rgba(253, 186, 116, 0.35); color: #ffedd5; }
+  :root:not([data-theme="light"]) .mismatchNote p, :root:not([data-theme="light"]) .mismatchNote .blockAction { color: #ffedd5; }
+}
+:root[data-theme="dark"] .mismatchNote { background: rgba(249, 115, 22, 0.12); border-color: rgba(253, 186, 116, 0.35); color: #ffedd5; }
+:root[data-theme="dark"] .mismatchNote p, :root[data-theme="dark"] .mismatchNote .blockAction { color: #ffedd5; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .stickyReason { color: #fdba74; }
+}
+:root[data-theme="dark"] .stickyReason { color: #fdba74; }

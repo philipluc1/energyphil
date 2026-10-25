@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { PLANS, RETAILER_COUNT, totalEvFriendly } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
@@ -6,7 +7,7 @@ import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "@
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 
-export const metadata = { title: "FAQ | Utilo" };
+export const metadata = pageMeta({ title: "Questions about Utilo", description: "Is it free, do you need a bill, is it independent, how it differs from Victorian Energy Compare, and what happens to your details.", path: "/faq" });
 
 export default function FaqPage() {
   return (
@@ -22,7 +23,7 @@ export default function FaqPage() {
           <div className={home.faq}>
             <details className={home.faqItem} open>
               <summary>Is it really free?</summary>
-              <p>Yes. The check is free and you don&apos;t need an account. Members pay a small fee for extras like monthly checks and bill reading.</p>
+              <p>Yes. The check is free, including up to 5 bill photo reads a day, and you don&apos;t need an account. Members pay for the ongoing part: every plan re-priced against their home each morning, an email when switching is worth it, and a saved result each month.</p>
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;m not in Victoria. Can I use it?</summary>
@@ -30,7 +31,7 @@ export default function FaqPage() {
             </details>
             <details className={home.faqItem}>
               <summary>Do I need my bill?</summary>
-              <p>No. We estimate your usage from your answers. If you have a bill handy, you can type in the numbers for a sharper result.</p>
+              <p>No. Answer a few questions about your home and we estimate your usage. A bill gives a sharper result: snap a photo or upload the PDF and we read it for you, or type in the numbers yourself.</p>
             </details>
             <details className={home.faqItem}>
               <summary>Are you part of the government?</summary>
@@ -66,7 +67,11 @@ export default function FaqPage() {
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;ve got an EV. Does that matter?</summary>
-              <p>It does. {totalEvFriendly()} plans have free or very cheap overnight rates, which suits home charging. We flag them in your results. Try the <Link href="/ev">EV charging calculator</Link> to see what a charge costs.</p>
+              {totalEvFriendly() > 0 ? (
+                <p>It does. {totalEvFriendly()} plans have free or very cheap overnight rates, which suits home charging. We flag them in your results. Try the <Link href="/ev">EV charging calculator</Link> to see what a charge costs.</p>
+              ) : (
+                <p>It does: charging adds a lot of use, so tick &ldquo;Electric car&rdquo; in the check and we include it. Plans with a cheap overnight rate are flagged in your results when retailers publish them.</p>
+              )}
             </details>
           </div>
         </section>

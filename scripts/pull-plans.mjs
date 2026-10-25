@@ -245,13 +245,24 @@ export function parsePlan(detail) {
   if (!c) return null;
   const period = (c.tariffPeriod ?? [])[0];
   if (!period) return null;
+  // Demand tariffs add a charge for the household's peak kW, on top of the
+  // kWh rates. We can't price that from kWh, and leaving it out makes the plan
+  // look far cheaper than it is (and most homes aren't on a demand tariff).
+  // The feed puts it beside the single or time-of-use rates, so check for it
+  // in every period, and in the name as a backstop.
+  if ((c.tariffPeriod ?? []).some((t) => (t.demandCharges ?? []).length > 0)) return null;
+  if (/\bdemand\b/i.test(String(detail.displayName ?? ""))) return null;
   // Daily supply: dollars per day. Some feeds give it per period; CDR says per day.
   const supply = num(period.dailySupplyCharges ?? period.dailySupplyCharge);
   if (supply === null) return null;
   let anytime = null, peak = null, shoulder = null, offpeak = null;
-  if (period.rateBlockUType === "singleRate" || period.singleRate) {
+  // Go by the feed's own label first: some time-of-use plans also carry a
+  // (blank or leftover) singleRate block, and reading that first dropped
+  // every time-of-use plan or priced it as single rate.
+  const block = period.rateBlockUType ?? (period.timeOfUseRates?.length ? "timeOfUseRates" : period.singleRate ? "singleRate" : null);
+  if (block === "singleRate") {
     anytime = firstRate(period.singleRate?.rates);
-  } else if (period.rateBlockUType === "timeOfUseRates" || period.timeOfUseRates) {
+  } else if (block === "timeOfUseRates") {
     // Some plans list a short free or cheap window (e.g. "free 11am-2pm") as
     // a second band of the same type. Pricing all of that band's usage at the
     // free rate would overstate savings, so when a type appears twice we keep
@@ -402,6 +413,7 @@ async function pullRetailer(cdrCode, orgName, log) {
   });
   const retailerName = siteRetailerName(plans[0]?.brandName, orgName, cdrCode);
   const rows = [];
+  let skipped = 0;
   for (const p of plans) {
     await sleep(1000);
     let detail;
@@ -412,7 +424,7 @@ async function pullRetailer(cdrCode, orgName, log) {
       continue;
     }
     const rates = parsePlan(detail);
-    if (!rates) continue;
+    if (!rates) { skipped++; continue; }
     const name = String(detail.displayName ?? p.displayName ?? p.planId).replace(/\s+/g, " ").trim();
     // One CDR code can carry several brands (e.g. energy-locals): name each plan by its own brand.
     const brand = siteRetailerName(detail.brandName ?? p.brandName, orgName, cdrCode);
@@ -425,7 +437,7 @@ async function pullRetailer(cdrCode, orgName, log) {
       if (extras) EXTRAS.push({ fuel: "E", retailer: brand, plan: name, network: d, extras });
     }
   }
-  if (plans.length) log(`  ${retailerName}: ${plans.length} VIC residential plans listed, ${rows.length} rows priced`);
+  if (plans.length) log(`  ${retailerName}: ${plans.length} VIC residential plans listed, ${rows.length} rows priced (${rows.filter((r) => r[6] !== null).length} time-of-use), ${skipped} plans skipped (demand charges or no usable rates)`);
   return rows;
 }
 

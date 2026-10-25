@@ -3,10 +3,12 @@
 import Icon from "../components/Icon";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
 import { findPlan, fmtPrice } from "@/lib/pricingPlans";
 import { accumulatedSavings, mergeChecks, monthlySavings, type SavedCheck } from "@/lib/savings";
 import { RETAILER_COUNT, findPlanRow } from "@/lib/plans";
+import { switchedPlanNow } from "@/lib/switched";
 import SiteHeader from "../components/SiteHeader";
 import { TipCarousel } from "../components/EnergyTips";
 import PlanAside, { type PlanAsideData } from "../components/PlanAside";
@@ -28,7 +30,9 @@ import PlanBand from "../components/PlanBand";
 import PlanCards from "../components/PlanCards";
 import UpgradePlans from "../components/UpgradePlans";
 import type { Distributor } from "@/lib/plans";
-import { DEFAULT_PROFILE, estimateWithBill, kwhFromBillDollars } from "@/lib/profileUsage";
+import { DEFAULT_PROFILE, estimateWithBill } from "@/lib/profileUsage";
+import { kwhFromBill } from "@/lib/billReconcile";
+import { EMPTY_RATES_FORM, ratesFromForm, ratesToForm } from "@/lib/currentRates";
 import SolarCard from "../components/SolarCard";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
@@ -38,6 +42,12 @@ import SwitchReminder from "../components/SwitchReminder";
 import { DeleteDataCard, MemberSettings } from "../components/MemberSettings";
 import { activityWords, marketActivity } from "@/lib/marketActivity";
 import styles from "./account.module.css";
+
+/** YYYY-MM-DD for today where the person is. */
+function localDay(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 // Passwordless sign-in: there's no separate "create an account" step — the
 // first time someone enters their email here, Supabase Auth creates the
@@ -132,6 +142,7 @@ function statusLabel(status: string): string {
 }
 
 export default function AccountPage() {
+  const router = useRouter();
   // Lazy initial value rather than a synchronous setState in the effect
   // below — when Supabase isn't configured there's never a session to wait
   // on, so the signed-out state is known up front.
@@ -158,7 +169,8 @@ export default function AccountPage() {
     }
     setPendingBill((p) => ({ bill, pages, n: (p?.n ?? 0) + 1 }));
   }
-  const [switchDate, setSwitchDate] = useState(() => new Date().toISOString().slice(0, 10));
+  // Today in the member's own time zone (a UTC date is yesterday before 10 or 11am in Victoria).
+  const [switchDate, setSwitchDate] = useState(() => localDay());
   const [switchBusy, setSwitchBusy] = useState(false);
   // Just arrived from checkout (/welcome sends ?welcome=1): say the free check came with them.
   const [justJoined, setJustJoined] = useState(false);
@@ -200,11 +212,13 @@ export default function AccountPage() {
         // "average": they chose the average home, so leave usage empty and the
         // dashboard uses the average Victorian home (4,000 kWh a year).
         const avgHome = d.usageSource === "average";
-        // A bill's kWh typed into the estimate scales it, the same as on the check.
-        const calKwh =
-          d.calFigure === "dollars" && d.distributor
-            ? kwhFromBillDollars(d.distributor, parseFloat(d.currentBillRaw), days) ?? 0
-            : parseFloat(d.calKwhRaw);
+        // A bill's kWh typed into the estimate scales it, the same as on the
+        // check; with only a dollar total, the kWh that total stands for.
+        let ownRates: CurrentRates | null = null;
+        try { ownRates = d.ratesForm && typeof d.ratesForm === "object" ? ratesFromForm({ ...EMPTY_RATES_FORM, ...d.ratesForm }) : null; } catch { ownRates = null; }
+        const fromDollars = d.distributor ? kwhFromBill({ billTotal: parseFloat(d.currentBillRaw), days, distributor: d.distributor, rates: ownRates }) ?? 0 : 0;
+        const typedKwh = parseFloat(d.calKwhRaw);
+        const calKwh = d.calFigure === "dollars" ? fromDollars : typedKwh > 0 ? typedKwh : fromDollars;
         const est =
           d.usageSource === "bill" || avgHome
             ? null
@@ -486,6 +500,32 @@ export default function AccountPage() {
       // Any stored reference_total is a real bill (typed, read or priced from
       // their rates); without one we compare against the default offer.
       const fromBill = (sub!.reference_total ?? 0) > 0;
+      // Switched? Then "you now" is the plan they moved to, priced today, not
+      // the old bill (which would keep telling them to switch).
+      const days = sub!.billing_days;
+      const moved = sub!.switched_at
+        ? switchedPlanNow(sub!.switched_to, sub!.distributor, {
+            days, peak: sub!.peak_kwh ?? 0, shoulder: sub!.shoulder_kwh ?? 0, offpeak: sub!.offpeak_kwh ?? 0, anytime: sub!.anytime_kwh ?? 0, cl: sub!.controlled_load_kwh ?? 0,
+            solarExportKwh: sub!.has_solar ? sub!.solar_export_kwh ?? 0 : 0,
+          })
+        : null;
+      if (moved) {
+        return {
+          distributor: sub!.distributor as Distributor,
+          days,
+          peak: sub!.peak_kwh ?? 0, shoulder: sub!.shoulder_kwh ?? 0, offpeak: sub!.offpeak_kwh ?? 0, anytime: sub!.anytime_kwh ?? 0, cl: sub!.controlled_load_kwh ?? 0,
+          solarExportKwh: sub!.has_solar ? sub!.solar_export_kwh ?? 0 : 0,
+          billTotal: moved.total,
+          billIsPriced: true,
+          currentRetailer: moved.retailer, currentPlanName: moved.plan,
+          source: "bill",
+          nmi: sub!.nmi,
+          currentRates: moved.rates,
+          currentPriceType: null,
+          currentFixedUntil: null,
+          ev: (sub!.home_profile as { ev?: unknown } | null)?.ev === true,
+        };
+      }
       return {
         distributor: sub!.distributor as Distributor,
         days: sub!.billing_days,
@@ -523,6 +563,33 @@ export default function AccountPage() {
   const dashCheckFacts = useMemo(() => (cmpInput ? billCheckFacts(cmpInput) : null), [cmpInput]);
   const savedShown = useCountUp(accumulated.total);
   const firstName = ((isMember ? sub!.customer_name : localCheck?.customer_name) ?? "").trim().split(/\s+/)[0] || "";
+
+  // "Edit details": open the check with this member's details already in it
+  // (they may be on a new phone, with nothing saved on this device), then
+  // "Update my dashboard" there saves the changes back.
+  function editDetails() {
+    if (isMember && sub) {
+      let prev: Record<string, unknown> = {};
+      try { prev = JSON.parse(window.localStorage.getItem("utilo.check.v1") ?? "{}") ?? {}; } catch { prev = {}; }
+      const detailed = (sub.peak_kwh ?? 0) + (sub.shoulder_kwh ?? 0) + (sub.offpeak_kwh ?? 0) > 0;
+      const pt = sub.current_price_type === "fixed" || sub.current_price_type === "variable" ? sub.current_price_type : "unsure";
+      const next: Record<string, unknown> = {
+        ...prev,
+        distributor: sub.distributor, networkFrom: "manual", propertyType: "home", addressOk: true,
+        postcode: sub.postcode ?? "", suburb: sub.suburb ?? "", address: sub.address ?? "", customerName: sub.customer_name ?? "", nmiRaw: sub.nmi ?? "",
+        days: sub.billing_days ?? 91, usageSource: "bill", mode: detailed ? "detailed" : "simple",
+        anytime: sub.anytime_kwh ?? 0, peak: sub.peak_kwh ?? 0, shoulder: sub.shoulder_kwh ?? 0, offpeak: sub.offpeak_kwh ?? 0,
+        cl: sub.controlled_load_kwh ?? 0, showCl: (sub.controlled_load_kwh ?? 0) > 0,
+        hasSolar: !!sub.has_solar, solarExportRaw: sub.solar_export_kwh ? String(sub.solar_export_kwh) : "",
+        currentBillRaw: sub.reference_total ? String(sub.reference_total) : "", currentRetailer: sub.current_retailer ?? "",
+        ratesForm: ratesToForm(sub.current_rates ?? null, { planName: sub.current_plan_name ?? "", priceType: pt, fixedUntil: sub.current_price_fixed_until ?? "", discountEnds: sub.discount_ends_at ?? "" }),
+      };
+      const hp = sub.home_profile as Record<string, unknown> | null;
+      if (hp && hp.answered !== false) next.profile = hp;
+      try { window.localStorage.setItem("utilo.check.v1", JSON.stringify(next)); } catch { /* storage off: the check starts empty */ }
+    }
+    router.push("/check?start=type");
+  }
 
   const tabs: TabDef<Tab>[] = [
     { id: "compare", label: "Compare", icon: "scale", hint: "All plans, ranked" },
@@ -665,7 +732,7 @@ export default function AccountPage() {
   const bestForRates = bestRow ? { plan: bestRow, label: isMember ? bestRow[0] : "Cheapest plan", hideName: !isMember } : null;
   const sideCards = (
     <>
-      {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} />}
+      {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
           <div className={styles.panelCard}>
             <div className={styles.panelTitle}>Gas</div>
             {isMember && sub!.gas_zone && sub!.gas_mj ? (
@@ -782,8 +849,17 @@ export default function AccountPage() {
                 <div className={styles.welcomeNote} role="status">
                   <Icon name="check" size={18} />
                   <span>
-                    <b>Welcome aboard.</b> Your free check came with you: your home, usage and best plan are already here, and we&apos;ll re-check them
-                    every morning. Upload a bill any time for exact figures.
+                    {dashCheck ? (
+                      <>
+                        <b>Welcome aboard.</b> The bill you checked came with you: your usage, rates and best plan are already here, and we&apos;ll
+                        re-check them every morning. Snap each new bill when it arrives.
+                      </>
+                    ) : (
+                      <>
+                        <b>Welcome aboard.</b> Your free check came with you: your home, usage and best plan are already here, and we&apos;ll re-check them
+                        every morning. Upload a bill any time for exact figures.
+                      </>
+                    )}
                   </span>
                   <button type="button" className={styles.linkBtn} onClick={() => setJustJoined(false)} aria-label="Dismiss">×</button>
                 </div>
@@ -903,7 +979,7 @@ export default function AccountPage() {
                                 <div className={styles.switchRow}>
                                   <label>
                                     Switched on{" "}
-                                    <input type="date" value={switchDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setSwitchDate(e.target.value)} />
+                                    <input type="date" value={switchDate} max={localDay()} onChange={(e) => setSwitchDate(e.target.value)} />
                                   </label>
                                   <button type="button" className={styles.btnPrimary} disabled={switchBusy} onClick={() => confirmSwitch(true)}>
                                     {switchBusy ? "Saving…" : "Save"}

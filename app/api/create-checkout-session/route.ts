@@ -85,6 +85,8 @@ export async function POST(req: NextRequest) {
     priceFixedUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(profile.priceFixedUntil ?? "")) ? String(profile.priceFixedUntil) : "",
     discountEndsAt: /^\d{4}-\d{2}-\d{2}$/.test(String(profile.discountEndsAt ?? "")) ? String(profile.discountEndsAt) : "",
     currentPlanName: String(profile.currentPlanName ?? "").slice(0, 120),
+    // The meter number off their bill, so the dashboard doesn't ask for it again.
+    nmi: /^[0-9A-Z]{10,11}$/.test(String(profile.nmi ?? "")) ? String(profile.nmi) : "",
   };
 
   // Where they came from (partner, a member's referral, an ad), from the

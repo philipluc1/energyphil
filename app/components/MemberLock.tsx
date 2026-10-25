@@ -74,7 +74,7 @@ export default function MemberLock({
           <span className={m.bar2} style={{ width: `${Math.max(30, w - 18)}%` }} />
         </div>
       </div>
-      <span className={m.price}>$1••.••</span>
+      <span className={m.price}>$••.••</span>
     </div>
   ));
 

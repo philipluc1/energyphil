@@ -1,10 +1,11 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
 import { Fill, MailLink } from "../components/Fill";
 import { ABOUT, PRIVACY } from "@/lib/about";
 import styles from "../components/StaticPage.module.css";
 
-export const metadata = { title: "Privacy Policy | Utilo" };
+export const metadata = pageMeta({ title: "Privacy Policy", description: "How Utilo collects, uses and protects your details and the bills you share.", path: "/privacy" });
 
 // Business details and the bits you'll fill in later (contact email, database
 // region, retention) come from lib/about.ts. Empty ones show as highlighted

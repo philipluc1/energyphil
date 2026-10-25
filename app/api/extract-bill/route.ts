@@ -7,7 +7,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // couple a day per connection, enough to try it for real before joining.
 const MAX_READS_PER_DAY = 10;
 // 3 so a visitor can add page 2 of a paper bill (a second read) and still retry once.
-const FREE_READS_PER_DAY = 3;
+// Per connection: households on a shared mobile or office network share one, so not too tight.
+const FREE_READS_PER_DAY = 5;
 /** Photos of one bill read together (page 1, page 2…). A PDF is always one file. */
 const MAX_PAGES = 3;
 // Total free (visitor) reads per day across the whole site. Raise it as traffic grows.
@@ -222,14 +223,18 @@ export async function POST(req: NextRequest) {
   }
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   // Record first, then count (this read included), so a burst of parallel
-  // uploads can't all slip under the limit.
-  await supabaseAdmin.from("bill_reads").insert({ email: key });
+  // uploads can't all slip under the limit. A read that never reaches the
+  // bill reader (a bad file, a network error) is taken back off the count.
+  const { data: readRow } = await supabaseAdmin.from("bill_reads").insert({ email: key }).select("id").single();
+  const readId = (readRow as { id?: string } | null)?.id ?? null;
+  const unCount = async () => { if (readId) await supabaseAdmin!.from("bill_reads").delete().eq("id", readId); };
   const { count } = await supabaseAdmin
     .from("bill_reads")
     .select("id", { count: "exact", head: true })
     .eq("email", key)
     .gte("created_at", since);
   if ((count ?? 0) > cap) {
+    await unCount();
     return NextResponse.json(
       {
         ok: false,
@@ -248,12 +253,14 @@ export async function POST(req: NextRequest) {
       .like("email", "ip:%")
       .gte("created_at", since);
     if ((allFree ?? 0) > FREE_READS_ALL_VISITORS_PER_DAY) {
+      await unCount();
       return NextResponse.json({ ok: false, message: "Free photo reading is busy today. Type the numbers in below, or try tomorrow." }, { status: 429 });
     }
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    await unCount();
     return NextResponse.json(
       { ok: false, message: "Photo reading isn't switched on yet — enter your details manually below." },
       { status: 200 },
@@ -264,25 +271,31 @@ export async function POST(req: NextRequest) {
   try {
     form = await req.formData();
   } catch {
+    await unCount();
     return NextResponse.json({ ok: false, message: "Couldn't read that upload — please try again." }, { status: 400 });
   }
 
   // One PDF, or up to MAX_PAGES photos of the same bill (page 1, page 2…).
   const files = form.getAll("photo").filter((f): f is File => f instanceof File);
   if (files.length === 0) {
+    await unCount();
     return NextResponse.json({ ok: false, message: "No file received." }, { status: 400 });
   }
   const isPdf = files.some((f) => f.type === "application/pdf");
   if (isPdf && files.length > 1) {
+    await unCount();
     return NextResponse.json({ ok: false, message: "Send one PDF on its own, or up to 3 photos of the bill's pages." }, { status: 400 });
   }
   if (files.length > MAX_PAGES) {
+    await unCount();
     return NextResponse.json({ ok: false, message: `Up to ${MAX_PAGES} pages at a time. The usage and charges pages matter most.` }, { status: 400 });
   }
   if (files.some((f) => f.type !== "application/pdf" && !f.type.startsWith("image/"))) {
+    await unCount();
     return NextResponse.json({ ok: false, message: "That doesn't look like an image or PDF file." }, { status: 400 });
   }
   if (files.some((f) => f.size > MAX_BYTES) || files.reduce((n, f) => n + f.size, 0) > MAX_BYTES * 2) {
+    await unCount();
     return NextResponse.json(
       { ok: false, message: "That file's too large — try a smaller photo, or a shorter PDF." },
       { status: 400 },
@@ -346,6 +359,7 @@ export async function POST(req: NextRequest) {
       }),
     });
   } catch {
+    await unCount();
     return NextResponse.json(
       { ok: false, message: "Couldn't reach the bill reader — please try again shortly." },
       { status: 502 },
@@ -355,6 +369,7 @@ export async function POST(req: NextRequest) {
   if (!anthropicRes.ok) {
     const errText = await anthropicRes.text().catch(() => "");
     console.error("Anthropic API error", anthropicRes.status, errText);
+    await unCount();
     return NextResponse.json(
       { ok: false, message: "The bill reader had a problem — please try again, or enter your details manually." },
       { status: 502 },

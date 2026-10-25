@@ -38,7 +38,7 @@ export const VDO_HISTORY: VdoYear[] = [
  */
 export interface CycleStage { title: string; detail: string; last: string; next: string; nextIso: string; confirmed: boolean }
 export const PRICE_CYCLE: CycleStage[] = [
-  { title: "Review opens", detail: "The ESC asks retailers and the public for input.", last: "14 Nov 2025", next: "About Nov 2026", nextIso: "2026-11-14", confirmed: false },
+  { title: "Review opens", detail: "The Essential Services Commission (Victoria's energy regulator) asks retailers and the public for input.", last: "14 Nov 2025", next: "About Nov 2026", nextIso: "2026-11-14", confirmed: false },
   { title: "Draft decision", detail: "A first look at next year's default prices.", last: "12 Mar 2026", next: "About Mar 2027", nextIso: "2027-03-12", confirmed: false },
   { title: "Final decision", detail: "The new default prices are set.", last: "20 May 2026", next: "About May 2027", nextIso: "2027-05-20", confirmed: false },
   { title: "New prices start", detail: "The default offer resets. Many retailers reprice their own plans around now too.", last: "1 Jul 2026", next: "1 Jul 2027", nextIso: "2027-07-01", confirmed: false },

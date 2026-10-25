@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import PlanCards from "../components/PlanCards";
 import PlanBand from "../components/PlanBand";
@@ -7,7 +8,7 @@ import SiteHeader from "../components/SiteHeader";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 
-export const metadata = { title: "Pricing | Utilo" };
+export const metadata = pageMeta({ title: "Membership: $7 a month or $39 a year", description: "The bill check is free. Members get every plan re-priced against their home each morning, an email when switching is worth it, and a monthly bill check.", path: "/pricing" });
 
 export default function PricingPage() {
   return (
@@ -21,7 +22,7 @@ export default function PricingPage() {
             Or $39 a year, less than $1 a week. Offers change every week. New plans, price changes, discounts with conditions, plans with the same
             name: you don&apos;t need to follow any of it. Members&apos;
             homes are re-priced against every plan every morning, with an email only when switching is worth it, a check every month, a running
-            tally of what you&apos;ve saved, and bill reading from a photo or PDF. The check itself is always free, for electricity and gas.
+            tally of what you&apos;ve saved, and more bill reads. The check itself is always free, for electricity and gas.
           </p>
           <MarketPulse />
         </section>

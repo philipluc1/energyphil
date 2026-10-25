@@ -1,7 +1,7 @@
 // Run: npx tsx lib/planExtras.test.ts
 // Discounts and eligibility in pricing, with made-up offers (not real retailer data).
 import assert from "node:assert/strict";
-import { PLAN_EXTRAS_INDEX, PLAN_EXTRAS_LIST, describeOffer, extrasLoaded, type PlanExtras } from "./planExtras";
+import { PLAN_EXTRAS_INDEX, PLAN_EXTRAS_LIST, describeOffer, extrasLoaded, restrictionFor, type PlanExtras } from "./planExtras";
 import { PLANS, billDetail, bestPlan, computeBill, rankPlans, type PlanRow, type UsageInput } from "./plans";
 import { computeGasBill, type GasPlanRow } from "./gasPlans";
 
@@ -100,5 +100,14 @@ const g: GasPlanRow = ["Test G", "Multinet", "Gas saver", "MARKET", 0.8, [{ upTo
 const before = computeGasBill(g, { days: 90, mj: 4000 }) as number;
 add("G|Test G|Gas saver", { discounts: [disc({ rate: 0.1 })] });
 assert.ok(Math.abs((computeGasBill(g, { days: 90, mj: 4000 }) as number) - (before - 16)) < 1e-9);
+
+// Free-text conditions: bundle-only, battery owners, solar owners.
+const elig = (information: string) => ({ eligibility: [{ type: "OTHER", information, description: null }] }) as unknown as PlanExtras;
+const home = { hasSolar: false, currentRetailer: null };
+assert.equal(restrictionFor(elig("This contingent plan is available to residential customers when bundled with one of GloBird's eligible electricity plans"), "X", "Gas plan", home), "Only bundled with their other fuel");
+assert.equal(restrictionFor(elig("Offer only available to customers with solar panels, battery, EV and smart meter."), "X", "Plan", { hasSolar: true, currentRetailer: null }), "Homes with a battery");
+assert.equal(restrictionFor(elig("Offer only available to customers with solar panels."), "X", "Plan", home), "Homes with solar");
+assert.equal(restrictionFor(elig("Offer only available to customers with solar panels."), "X", "Plan", { hasSolar: true, currentRetailer: null }), null);
+assert.equal(restrictionFor(elig("This plan is available to residential customers. Other conditions apply."), "X", "Plan", home), null);
 
 console.log("plan extras ok");

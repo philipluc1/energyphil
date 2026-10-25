@@ -105,6 +105,7 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     current_price_fixed_until: /^\d{4}-\d{2}-\d{2}$/.test(md.priceFixedUntil ?? "") ? md.priceFixedUntil : null,
     discount_ends_at: /^\d{4}-\d{2}-\d{2}$/.test(md.discountEndsAt ?? "") ? md.discountEndsAt : null,
     bill_check: cleanBillCheck(parseJson(md.billCheck)),
+    nmi: /^[0-9A-Z]{10,11}$/.test(md.nmi ?? "") ? md.nmi : null,
     // Where they came from, who referred them, and their own code to share.
     source: sourceValue(md.source),
     referred_by: cleanReferralCode(md.referredBy),
@@ -161,6 +162,7 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
       bestRetailer: baselineRetailer,
       bestPlanName: md.baselinePlanName || null,
       yearlySaving,
+      fromBill: !!extras.bill_check,
     });
     await sendEmail({ to: email, subject: w.subject, title: w.title, html: w.html }).catch((e) => console.error("welcome email failed", e));
   }
@@ -252,7 +254,10 @@ export function memberFieldsFromCheck(raw: unknown): Record<string, unknown> {
   if (typeof p.hasSolar === "boolean") out.has_solar = p.hasSolar;
   const exp = n(p.solarExportKwh, 20000);
   if (exp !== null) out.solar_export_kwh = exp;
-  if (p.homeProfile && typeof p.homeProfile === "object" && JSON.stringify(p.homeProfile).length < 2000) out.home_profile = p.homeProfile;
+  // Home answers only when the questions were asked: a bill check carries
+  // default answers, which mustn't replace real ones (or show as theirs).
+  if (p.homeProfile && typeof p.homeProfile === "object" && (p.homeProfile as Record<string, unknown>).answered !== false && JSON.stringify(p.homeProfile).length < 2000) out.home_profile = p.homeProfile;
+  if (typeof p.nmi === "string" && /^[0-9A-Z]{10,11}$/.test(p.nmi)) out.nmi = p.nmi;
   const bc = cleanBillCheck(p.billCheck);
   if (bc) out.bill_check = bc;
   for (const [key, col, max] of [["customerName", "customer_name", 120], ["address", "address", 200], ["suburb", "suburb", 80]] as const) {

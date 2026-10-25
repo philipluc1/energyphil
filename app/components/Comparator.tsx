@@ -18,8 +18,11 @@ import {
   rankPlans,
   topOpen,
   totalWithSolarFit,
+  VDO,
   type PlanRow,
 } from "@/lib/plans";
+import { billAtUsage, kwhFromBill, reconcileBill } from "@/lib/billReconcile";
+import { periodScale } from "@/lib/periods";
 import { describeOffer } from "@/lib/planExtras";
 import OfferTerms, { OfferChips } from "./OfferTerms";
 import { guessDistributorFromPostcode } from "@/lib/postcodeNetwork";
@@ -35,7 +38,6 @@ import {
   usageIsIncomplete,
   estimateUsage,
   forecastFromBill,
-  kwhFromBillDollars,
   scaleEstimate,
   normaliseProfile,
   panelsToKw,
@@ -185,6 +187,7 @@ function Choice<T extends string | number | boolean>({
           type="button"
           key={String(o.value)}
           className={`${styles.choiceBtn} ${o.value === value ? styles.choiceBtnActive : ""}`}
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
         >
           {o.label}
@@ -293,6 +296,11 @@ export default function Comparator() {
   // Which period the result numbers and charts are shown for.
   const [period, setPeriod] = useState<"month" | "quarter" | "year">("month");
   const [restored, setRestored] = useState(false);
+  // The saved check got as far as a result last time: "continue" goes back to it.
+  const [hadResult, setHadResult] = useState(false);
+  // The membership plans are on screen (or above): the sticky "see the
+  // cheapest plan" button would only cover them, so it steps aside.
+  const [atPricing, setAtPricing] = useState(false);
   // How they came in: "snap" (the bill photo, the main way), "wizard" (the
   // questions), or "read" (we've read a bill; show what we found).
   const [entry, setEntry] = useState<"snap" | "wizard" | "read">("snap");
@@ -352,6 +360,13 @@ export default function Comparator() {
         if (d.inputStep === 2 || d.inputStep === 3) setInputStep(d.inputStep);
         if (d.ratesForm && typeof d.ratesForm === "object") setRatesForm({ ...EMPTY_RATES_FORM, ...d.ratesForm });
         setRestored(true);
+        try { setHadResult(!!d.distributor && !!window.localStorage.getItem("utilo.result.v1")); } catch { /* ignore */ }
+        // Refreshed on the result page (same tab): stay on it.
+        try {
+          const nav = (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.type;
+          const reloaded = nav === "reload" || nav === "back_forward";
+          if (reloaded && d.distributor && window.sessionStorage.getItem("utilo.stage") === "results") setStage("results");
+        } catch { /* ignore */ }
         // "Join" links point at /check#pricing: with a saved check, go
         // straight to the result and its membership plans.
         if (window.location.hash === "#pricing" && d.distributor) {
@@ -490,11 +505,22 @@ export default function Comparator() {
   // Known when it came from the meter number, the bill, the postcode or the customer.
   const networkKnown = networkFrom !== null;
   // With a bill's kWh, the answers set the shape of the year and the bill sets the level.
-  const kwhFromDollars = useMemo(() => kwhFromBillDollars(distributor, parseFloat(currentBillRaw), days), [distributor, currentBillRaw, days]);
-  const billForecast = useMemo(() => {
-    const kwh = calFigure === "dollars" ? kwhFromDollars ?? 0 : parseFloat(calKwhRaw);
-    return useEst && kwh > 0 ? forecastFromBill(profile, { kwh, days, endMonth: calEndMonth }) : null;
-  }, [useEst, calFigure, kwhFromDollars, calKwhRaw, profile, days, calEndMonth]);
+  // Their own plan's rates, when typed or read off a bill.
+  const myRates = useMemo(() => ratesFromForm(ratesForm), [ratesForm]);
+  // A dollar total turned into kWh: at their own rates when we have them, else the default offer's.
+  const kwhFromDollars = useMemo(
+    () => kwhFromBill({ billTotal: parseFloat(currentBillRaw), days, distributor, rates: myRates }),
+    [distributor, currentBillRaw, days, myRates],
+  );
+  // The kWh the estimate is matched to: the bill's kWh, or, with only a dollar
+  // total, the kWh that total stands for. (A dollar total with usage from the
+  // answers alone priced the plans and the bill on different usage.)
+  const typedCalKwh = parseFloat(calKwhRaw);
+  const calKwh = calFigure === "dollars" ? kwhFromDollars ?? 0 : typedCalKwh > 0 ? typedCalKwh : kwhFromDollars ?? 0;
+  const billForecast = useMemo(
+    () => (useEst && calKwh > 0 ? forecastFromBill(profile, { kwh: calKwh, days, endMonth: calEndMonth }) : null),
+    [useEst, calKwh, profile, days, calEndMonth],
+  );
   const est = useMemo(() => {
     const e = estimateUsage(profile, days);
     return billForecast ? scaleEstimate(e, billForecast.factor) : e;
@@ -665,12 +691,53 @@ export default function Comparator() {
         : "";
   // Their own plan priced from the rates they typed. Used as "what you pay
   // now" when they didn't type a bill total.
-  const myRates = useMemo(() => ratesFromForm(ratesForm), [ratesForm]);
   const ratesCost = costFromRates(myRates, usage);
+  const usageKwh = usage.peak + usage.shoulder + usage.offpeak + usage.anytime + usage.cl;
+  const typedBillOk = typedBill !== null && !Number.isNaN(typedBill) && typedBill > 0;
+  // An estimate compares on the year's average for these days, but the bill
+  // covered its own months (a winter quarter uses more). Put the bill on the
+  // same usage, at its own price per kWh, before comparing.
+  // Only a dollar total, no kWh and no rates: we worked out their usage from
+  // it at the default offer's prices, so "what you pay" would just be the
+  // default offer again. Compare against the default offer, and say so,
+  // rather than call it their bill (it would claim savings they may not get).
+  const dollarsOnly = useEst && typedBillOk && !(calFigure === "kwh" && typedCalKwh > 0) && !myRates;
+  const billMoved =
+    !dollarsOnly && useEst && typedBillOk && billForecast && calKwh > 0 && Math.abs(usageKwh - calKwh) / calKwh > 0.02
+      ? { from: typedBill as number, kwh: calKwh, to: billAtUsage({ billTotal: typedBill as number, billKwh: calKwh, usageKwh, days, supplyPerDay: myRates?.supply ?? VDO[distributor].supply }) }
+      : null;
   // With the average home's usage, a bill total for their own (thin) usage
-  // can't be compared; their rates priced at the average usage can.
-  const currentBill =
-    !useAvg && typedBill !== null && !Number.isNaN(typedBill) ? typedBill : ratesCost.ok ? Math.round(ratesCost.total * 100) / 100 : null;
+  // can't be compared; their rates priced at the average usage can. And a
+  // bill total that doesn't fit the usage isn't compared as is (see billReconcile).
+  const reconciled = reconcileBill({
+    billTotal: useAvg || !typedBillOk || dollarsOnly ? null : billMoved ? billMoved.to : (typedBill as number),
+    rates: myRates,
+    usage,
+    distributor,
+  });
+  const billMismatch = reconciled.mismatch;
+  const currentBill = reconciled.you !== null ? Math.round(reconciled.you * 100) / 100 : null;
+  // "Your bill" is the bill itself; priced from their rates, it's their plan.
+  const youName = reconciled.basis === "rates" ? "Your plan" : "Your bill";
+  function applyBillKwh(kwh: number) {
+    if (useEst) {
+      setCalFigure("kwh");
+      setCalKwhRaw(String(kwh));
+    } else if (mode === "simple") {
+      setAnytime(kwh);
+    } else {
+      const sum = peak + shoulder + offpeak;
+      if (sum > 0) {
+        const f = kwh / sum;
+        setPeak(Math.round(peak * f));
+        setShoulder(Math.round(shoulder * f));
+        setOffpeak(Math.round(offpeak * f));
+      } else {
+        setMode("simple");
+        setAnytime(kwh);
+      }
+    }
+  }
 
   const matches = useMemo(
     () =>
@@ -685,6 +752,8 @@ export default function Comparator() {
       }, { ev: profile.ev, hasSolar: hasSolarEff, currentRetailer: currentRetailer || null }),
     [distributor, days, usagePeak, usageShoulder, usageOffpeak, usageAnytime, clKwh, solarExportKwh, profile.ev, hasSolarEff, currentRetailer],
   );
+  // Retailers with at least one plan priced for this home (the list's "cheapest per retailer" count).
+  const retailersHere = useMemo(() => new Set(matches.map((m) => m.plan[0])).size, [matches]);
   // Discounts, sign-up requirements, credits and fees for an offer, for this household.
   const household = { hasSolar: hasSolarEff, currentRetailer: currentRetailer || null };
   const offerFor = (p: PlanRow) => describeOffer("E", p[0], p[2], p[1], household);
@@ -699,10 +768,33 @@ export default function Comparator() {
   // Benchmark: what they pay now if given, else the Victorian Default Offer
   // priced at THIS household's usage (not the generic typical-household figure).
   const bench = haveBill ? (currentBill as number) : vdoBillForUsage(distributor, usage);
-  const PERIOD_DAYS = { month: 365 / 12, quarter: 365 / 4, year: 365 } as const;
   const PERIOD_LABEL = { month: "a month", quarter: "a quarter", year: "a year" } as const;
   // Scale from the entered billing period to the chosen display period.
-  const k = days > 0 ? PERIOD_DAYS[period] / days : 1;
+  const k = periodScale(period, days);
+
+  // The phone's Back gesture on the result goes back to the answers (not off
+  // the site), and a refresh in the same tab keeps the result on screen.
+  useEffect(() => {
+    if (!hydrated) return;
+    try { window.sessionStorage.setItem("utilo.stage", stage); } catch { /* ignore */ }
+    if (stage !== "results") return;
+    if (!(window.history.state && window.history.state.utiloResult)) window.history.pushState({ ...(window.history.state ?? {}), utiloResult: true }, "");
+    const onPop = () => setStage("input");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [stage, hydrated]);
+
+  useEffect(() => {
+    if (stage !== "results") return;
+    const check = () => {
+      const el = document.getElementById("pricing");
+      setAtPricing(!!el && el.getBoundingClientRect().top < window.innerHeight - 80);
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => { window.removeEventListener("scroll", check); window.removeEventListener("resize", check); };
+  }, [stage]);
 
   // Keep the latest result in this browser so the dashboard can show it
   // (and so a member's details are ready if they join).
@@ -773,6 +865,8 @@ export default function Comparator() {
   const vdoForUsage = vdoBillForUsage(distributor, usage);
   const vsVdo = (total: number) => (vdoForUsage > 0 ? (total - vdoForUsage) / vdoForUsage : 0);
   const pctVdo = (x: number) => { const n = Math.round(x * 100); return `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n)}%`; };
+  // The same, in words a newcomer can read on a chip.
+  const vdoWords = (x: number) => { const n = Math.round(x * 100); return n < 0 ? `${-n}% below default offer` : n > 0 ? `${n}% above default offer` : "Same as default offer"; };
   const kwhInPeriod = usagePeak + usageShoulder + usageOffpeak + usageAnytime + clKwh;
   // Plain numbers for the result: a month and a year, stay vs switch.
   const perMonth = (x: number) => (days > 0 ? (x * (365 / 12)) / days : 0);
@@ -805,7 +899,7 @@ export default function Comparator() {
   const billAfterHidden = billAt === -1 && hiddenRows.some((m) => m.total < bench - 0.005);
   const billMark = (
     <div className={r.billMark} role="note">
-      <span className={r.billPin}><Icon name="receipt" size={15} /> {haveBill ? "Your bill" : "The default offer"}</span>
+      <span className={r.billPin}><Icon name="receipt" size={15} /> {haveBill ? youName : "The default offer"}</span>
       <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
       <span className={r.billMarkNote}>
         {billAt === 0
@@ -838,8 +932,11 @@ export default function Comparator() {
     postcode,
     hasSolar: hasSolarEff,
     solarExportKwh,
-    // Always sent: the EV answer decides which plans they're shown.
-    homeProfile: profile as unknown as Record<string, unknown>,
+    // Always sent: the EV answer decides which plans they're shown. Flagged
+    // when the questions weren't asked (a bill check), so the dashboard
+    // doesn't show default answers as theirs.
+    homeProfile: { ...profile, answered: usageSource === "estimate" } as unknown as Record<string, unknown>,
+    nmi: nmiStatus.status === "network" ? nmiRaw.replace(/\s+/g, "").toUpperCase() : null,
     currentRates: myRates,
     billCheck: billCheck ? forStorage(billCheck) : null,
     priceType: ratesForm.priceType === "unsure" ? null : ratesForm.priceType,
@@ -925,12 +1022,17 @@ export default function Comparator() {
           <>
             <BillPhotoUpload variant="hero" onApply={handleBillExtracted} />
             <div className={snap.alt}>
-              {restored && (
+              {restored && (hadResult && networkKnown && (usageSource !== "bill" || usagePeak + usageShoulder + usageOffpeak + usageAnytime > 0) ? (
+                <button type="button" className={`${snap.altBtn} ${snap.altContinue}`} onClick={() => { setEntry("wizard"); setStage("results"); scrollToTop(); }}>
+                  <b>See your last result</b>
+                  <span>Saved on this device. Prices are today&apos;s →</span>
+                </button>
+              ) : (
                 <button type="button" className={`${snap.altBtn} ${snap.altContinue}`} onClick={() => { setEntry("wizard"); scrollToTop(); }}>
                   <b>Continue your last check</b>
                   <span>Your answers are saved on this device →</span>
                 </button>
-              )}
+              ))}
               <button type="button" className={snap.altBtn} onClick={() => { setUsageSource("estimate"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
                 <b>No bill handy?</b>
                 <span>Answer a few quick questions and we&apos;ll estimate →</span>
@@ -970,7 +1072,13 @@ export default function Comparator() {
             />
             <p className={snap.readSub}><b>The numbers we read.</b> If anything looks wrong, change it before we work it out.</p>
             <dl className={snap.facts}>
-              <div className={snap.fact}><dt>Network</dt><dd>{distributor}{postcode ? ` · ${postcode}` : ""}</dd></div>
+              <div className={snap.fact}>
+                <dt>Power network</dt>
+                <dd>
+                  {distributor}{postcode ? ` · ${postcode}` : ""}
+                  <span className={snap.factNote}>The poles and wires in your area, not your retailer. It decides which plans you can get.</span>
+                </dd>
+              </div>
               <div className={snap.fact}><dt>Bill period</dt><dd>{days} days</dd></div>
               <div className={snap.fact}>
                 <dt>Electricity used</dt>
@@ -1078,7 +1186,7 @@ export default function Comparator() {
                   ["embedded", "Apartment billed by the building", "Your power bill comes from the building, strata or an embedded network company"],
                   ["business", "A business", "A shop, office, warehouse or other business premises"],
                 ] as [PropertyType, string, string][]).map(([v, t, d]) => (
-                  <button key={v} type="button" className={propertyType === v ? s1.typeOn : s1.type} onClick={() => setPropertyType(v)}>
+                  <button key={v} type="button" aria-pressed={propertyType === v} className={propertyType === v ? s1.typeOn : s1.type} onClick={() => setPropertyType(v)}>
                     <b>{t}</b>
                     <span>{d}</span>
                   </button>
@@ -1173,7 +1281,11 @@ export default function Comparator() {
             )}
             {loc.status === "unknown" && (
               <div className={s1.check}>
-                <b>We can&apos;t find postcode {postcode} in Victoria.</b> Check the postcode on your bill or a letter to your home.
+                {nonVic ? (
+                  <><b>{postcode} is outside Victoria.</b> Utilo checks Victorian homes for now. <Link href="/#waitlist">Leave your email</Link> and we&apos;ll tell you when your state opens.</>
+                ) : (
+                  <><b>We can&apos;t find postcode {postcode} in Victoria.</b> Check the postcode on your bill or a letter to your home.</>
+                )}
               </div>
             )}
             {loc.status === "poBox" && (
@@ -1498,7 +1610,7 @@ export default function Comparator() {
                         </span>
                       </label>
                       <label>
-                        <span>Feed-in tariff you get now</span>
+                        <span>What you&apos;re paid now for solar you send out (feed-in tariff)</span>
                         <span className={s1.unitIn}>
                           <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 3.3" value={ratesForm.fit} onChange={(e) => patchRates({ fit: e.target.value })} />
                           c/kWh
@@ -1516,7 +1628,7 @@ export default function Comparator() {
                       const gap = (best.rate - yours / 100) * exp;
                       return best.rate * 100 > yours + 0.05 ? (
                         <p className={s1.fitTip}>
-                          You get {yours.toLocaleString("en-AU", { maximumFractionDigits: 2 })}c. The best feed-in on {distributor} pays up to {(best.rate * 100).toLocaleString("en-AU", { maximumFractionDigits: 2 })}c
+                          You get {yours.toLocaleString("en-AU", { maximumFractionDigits: 2 })}c. The best feed-in in your area pays up to {(best.rate * 100).toLocaleString("en-AU", { maximumFractionDigits: 2 })}c
                           {exp > 0 && gap >= 1 ? <>: on {Math.round(exp).toLocaleString("en-AU")} kWh that&apos;s up to <b>{fmtCurrency(gap)} more a bill</b></> : null}. Some plans pay their top rate only on the first few kWh a day, and your results weigh feed-in against each plan&apos;s other prices.
                         </p>
                       ) : (
@@ -1568,17 +1680,17 @@ export default function Comparator() {
                 </div>
               </div>
               <div className={w.big}>
-                <button type="button" className={usageSource === "bill" ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("bill")}>
+                <button type="button" aria-pressed={usageSource === "bill"} className={usageSource === "bill" ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("bill")}>
                   <span className={w.bigIcon} aria-hidden="true"><Icon name="file" size={22} /></span>
                   <span><b>Yes, I have a bill</b>Snap a photo or copy a few numbers. Most accurate.</span>
                   <span className={w.tick} aria-hidden="true">✓</span>
                 </button>
-                <button type="button" className={useEst ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("estimate")}>
+                <button type="button" aria-pressed={useEst} className={useEst ? w.bigOn : w.bigBtn} onClick={() => setUsageSource("estimate")}>
                   <span className={w.bigIcon} aria-hidden="true"><Icon name="home" size={22} /></span>
                   <span><b>No, estimate it for me</b>We&apos;ll use your answers about your home.</span>
                   <span className={w.tick} aria-hidden="true">✓</span>
                 </button>
-                <button type="button" className={`${usageSource === "average" ? w.bigOn : w.bigBtn} ${w.bigWide}`} onClick={() => setUsageSource("average")}>
+                <button type="button" aria-pressed={usageSource === "average"} className={`${usageSource === "average" ? w.bigOn : w.bigBtn} ${w.bigWide}`} onClick={() => setUsageSource("average")}>
                   <span className={w.bigIcon} aria-hidden="true"><Icon name="chart" size={22} /></span>
                   <span><b>Not sure? Use the average home</b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year, the Victorian benchmark.</span>
                   <span className={w.tick} aria-hidden="true">✓</span>
@@ -1586,10 +1698,11 @@ export default function Comparator() {
               </div>
             </section>}
 
-            {/* Q: how long is the bill */}
-            <section className={w.q}>
+            {/* Q: how long is the bill. On the one-page questions, the bill card
+                above already asked (with its 1, 2 or 3 months): don't ask twice. */}
+            {!(onePage && calKwh > 0) && <section className={w.q}>
               <div className={w.qHead}>
-                <span className={w.qNum}>{qn(2)}</span>
+                {!onePage && <span className={w.qNum}>{qn(2)}</span>}
                 <div>
                   <h3 className={w.qTitle}>{usageSource !== "bill" ? "How often do you get a bill?" : "How long does your bill cover?"}</h3>
                   <p className={w.qSub}>{usageSource !== "bill" ? "So we show costs for the same period." : "Look for the billing period, e.g. “1 Jul to 30 Sep”."}</p>
@@ -1597,7 +1710,7 @@ export default function Comparator() {
               </div>
               <div className={w.pills}>
                 {([[30, "Monthly"], [61, "Every 2 months"], [91, "Quarterly"]] as [number, string][]).map(([d, l]) => (
-                  <button key={d} type="button" className={days === d ? w.pillOn : w.pill} onClick={() => setDays(d)}>{l}</button>
+                  <button key={d} type="button" aria-pressed={days === d} className={days === d ? w.pillOn : w.pill} onClick={() => setDays(d)}>{l}</button>
                 ))}
                 <label className={w.inline} style={{ marginTop: 0 }}>
                   or
@@ -1613,14 +1726,14 @@ export default function Comparator() {
                   days
                 </label>
               </div>
-            </section>
+            </section>}
 
 
             {useEst ? (
               <>
                 <section className={w.q}>
                   <div className={w.qHead}>
-                    <span className={w.qNum}>{qn(3)}</span>
+                    {!onePage && <span className={w.qNum}>{qn(3)}</span>}
                     <div>
                       <h3 className={w.qTitle}>Here&apos;s what we think your home uses</h3>
                       <p className={w.qSub}>{onePage ? "From your answers above." : "From your answers in step 2."} Change those and this updates.</p>
@@ -1636,10 +1749,19 @@ export default function Comparator() {
 
                 <section className={w.q}>
                   <div className={w.qHead}>
-                    <span className={w.qNum}>{qn(4)}</span>
+                    {!onePage && <span className={w.qNum}>{qn(4)}</span>}
                     <div>
-                      <h3 className={w.qTitle}>Roughly what do you pay? <span className={w.opt}>(optional)</span></h3>
-                      <p className={w.qSub}>For one bill. Leave it blank and we&apos;ll compare against the Victorian Default Offer.</p>
+                      {onePage && typedBillOk ? (
+                        <>
+                          <h3 className={w.qTitle}>What you pay</h3>
+                          <p className={w.qSub}>From your bill above. Change it here or there: it&apos;s the same number.</p>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className={w.qTitle}>Roughly what do you pay? <span className={w.opt}>(optional)</span></h3>
+                          <p className={w.qSub}>For one bill. Leave it blank and we&apos;ll compare against the default offer, the government&apos;s reference price.</p>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className={w.money}>
@@ -1698,8 +1820,8 @@ export default function Comparator() {
                     </div>
                   </div>
                   <div className={w.pills}>
-                    <button type="button" className={mode === "simple" ? w.pillOn : w.pill} onClick={() => setMode("simple")}>One total</button>
-                    <button type="button" className={mode === "detailed" ? w.pillOn : w.pill} onClick={() => setMode("detailed")}>Split by time (peak / off-peak)</button>
+                    <button type="button" aria-pressed={mode === "simple"} className={mode === "simple" ? w.pillOn : w.pill} onClick={() => setMode("simple")}>One total</button>
+                    <button type="button" aria-pressed={mode === "detailed"} className={mode === "detailed" ? w.pillOn : w.pill} onClick={() => setMode("detailed")}>Split by time (peak / off-peak)</button>
                   </div>
                   {mode === "simple" ? (
                     <div className={w.usageGrid}>
@@ -1838,6 +1960,8 @@ export default function Comparator() {
           )}
         </div>
         <div className={styles.stickyBar}>
+          {/* A greyed button says nothing on its own: show what's missing right above it. */}
+          {blockReason && <p className={styles.stickyReason} role="status">{blockReason}</p>}
           {inputStep < 3 && !onePage ? (
             <button type="button" className={styles.stickyBtn} disabled={!!blockReason} onClick={() => { setInputStep((s) => nextInputStep(s)); scrollToTop(); }}>
               Next · step {inputStep} of 3 →
@@ -1868,7 +1992,7 @@ export default function Comparator() {
           </button>
           {matches.length > 0 && (
             <span className={styles.resultsSub}>
-              {matches.length} plan{matches.length === 1 ? "" : "s"} from the {RETAILER_COUNT} retailers we track on {distributor} (not every plan in the market) · {days}-day period ·{" "}
+              {matches.length} plan{matches.length === 1 ? "" : "s"} from the {retailersHere} retailers with plans for you on {distributor} (not every plan in the market) · {days}-day period ·{" "}
               <span className={PRICES_STALE ? styles.freshStale : styles.fresh} title={PRICES_STALE ? "These prices may be out of date" : "Retailers' published prices"}>
                 prices checked {fmtUpdated()}{PRICES_STALE ? " (may be out of date)" : ""}
               </span>
@@ -1921,6 +2045,47 @@ export default function Comparator() {
                   </div>
                 </div>
               )}
+              {billMismatch && (
+                <div className={styles.mismatchNote} role="alert">
+                  <Icon name="alert" size={18} />
+                  <div>
+                    <b>Your bill total and your usage don&apos;t match</b>
+                    <p>
+                      {fmtCurrency(billMismatch.billTotal)} for {billMismatch.days} days
+                      {billMismatch.impliedKwh !== null ? <> is about <b className={styles.inlineB}>{billMismatch.impliedKwh.toLocaleString("en-AU")} kWh</b>{billMismatch.basis === "rates" ? " at your rates" : " at typical prices"}</> : <> doesn&apos;t even cover the supply charge</>}
+                      , but we&apos;re comparing on {Math.round(billMismatch.usageKwh).toLocaleString("en-AU")} kWh
+                      {billMismatch.basis === "rates" ? <> (your rates make that {fmtCurrency(billMismatch.usageCost)})</> : <> (about {fmtCurrency(billMismatch.usageCost)} on the default offer)</>}.{" "}
+                      {billMismatch.basis === "rates"
+                        ? "So the comparison prices your plan's rates on the same usage as every other plan, not the bill total."
+                        : "So until they match, we compare against the default offer, not the bill total."}
+                    </p>
+                    <p className={styles.mismatchActions}>
+                      {billMismatch.impliedKwh !== null && (
+                        <button type="button" className={styles.blockAction} onClick={() => applyBillKwh(billMismatch.impliedKwh as number)}>
+                          Use {billMismatch.impliedKwh.toLocaleString("en-AU")} kWh, from my bill
+                        </button>
+                      )}
+                      <button type="button" className={styles.blockAction} onClick={() => { setStage("input"); setInputStep(3); scrollToTop(); }}>
+                        Check my usage and bill total
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              )}
+              {dollarsOnly && !useAvg && (
+                <p className={styles.movedNote}>
+                  We used your {fmtCurrency(typedBill as number)} bill to work out roughly how much power you use (about {Math.round(calKwh).toLocaleString("en-AU")} kWh),
+                  at the default offer&apos;s prices. Without your own rates we can&apos;t tell what you pay per kWh, so these savings are against the default offer,
+                  not your plan.{" "}
+                  <button type="button" className={styles.blockAction} onClick={() => { setStage("input"); setShowRates(true); scrollToTop(); }}>Add your rates from the bill</button>
+                </p>
+              )}
+              {billMoved && !billMismatch && (
+                <p className={styles.movedNote}>
+                  Your {fmtCurrency(billMoved.from)} bill was for about {Math.round(billMoved.kwh).toLocaleString("en-AU")} kWh. Plans are priced on a typical {days} days across the
+                  year ({Math.round(usageKwh).toLocaleString("en-AU")} kWh), so we&apos;ve put your bill on the same usage at its own price per kWh: {fmtCurrency(billMoved.to)}.
+                </p>
+              )}
               {(!haveBill || useEst || useAvg) && (
                 <div className={styles.exactTop}>
                   <BillPhotoUpload
@@ -1931,7 +2096,7 @@ export default function Comparator() {
                       useAvg
                         ? "These figures use the average Victorian home. A photo of your bill gives your real usage and rates."
                         : !haveBill
-                          ? `We don't know what you pay now${currentRetailer ? ` or which ${currentRetailer} plan you're on` : ""}, so we've compared against the default offer. A photo of your bill fixes that.`
+                          ? `We don't know what you pay now${currentRetailer ? ` or which ${currentRetailer} plan you're on` : ""}, so we've compared against the default offer, the government's reference price. A photo of your bill fixes that.`
                           : "Your usage is estimated from your answers. A photo of your bill makes it exact."
                     }
                   />
@@ -1946,7 +2111,7 @@ export default function Comparator() {
               )}
               {worthSwitching && (
                 <div className={r.hero}>
-                  <span className={r.kicker}>{useAvg ? "Based on an average Victorian home" : useEst ? (billForecast ? "Forecast from your bill's kWh" : "Estimated from your answers") : haveBill ? "Based on your bill" : "Based on your usage"}</span>
+                  <span className={r.kicker}>{useAvg ? "Based on an average Victorian home" : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? (reconciled.basis === "rates" ? "Based on your rates" : "Based on your bill") : "Based on your usage"}</span>
                   <div className={r.heroLabel}>{haveBill ? "You could save" : "The cheapest plan could save you up to"}</div>
                   <div className={r.heroNum}>
                     ${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")}
@@ -1954,7 +2119,7 @@ export default function Comparator() {
                   </div>
                   <div className={r.compare}>
                     <div className={r.tile}>
-                      <span className={r.tileLabel}>{haveBill ? "Your bill now" : "The default offer"}</span>
+                      <span className={r.tileLabel}>{haveBill ? `${youName} now` : "The default offer"}</span>
                       <b>{fmtCurrency(perMonth(bench))}</b>
                       <small>a month</small>
                     </div>
@@ -1972,7 +2137,7 @@ export default function Comparator() {
                     </div>
                   </div>
                   <p className={r.heroNote}>
-                    Cheapest of {matches.length} plans from the {RETAILER_COUNT} retailers we check{RETAILER_COUNT >= BROAD_COVERAGE ? "" : ", not every retailer in Victoria"}.
+                    Cheapest of {matches.length} plans from {retailersHere} retailers{RETAILER_COUNT >= BROAD_COVERAGE ? "" : ", not every retailer in Victoria"}.
                     {!haveBill && " Add your bill to compare against what you really pay."}
                   </p>
                   {locked ? (
@@ -1992,7 +2157,7 @@ export default function Comparator() {
                   </span>
                 </div>
               )}
-              {locked && worthSwitching && (
+              {locked && worthSwitching && !atPricing && (
                 <div className={styles.stickyBar}>
                   <button type="button" className={styles.stickyBtn} onClick={joinScroll}>
                     <Icon name="lock" size={15} /> See the cheapest plan · save ${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}/yr →
@@ -2015,7 +2180,7 @@ export default function Comparator() {
                   <div className={styles.resultHeroNum}>You&apos;re on a good deal</div>
                   <div className={r.compare}>
                     <div className={r.tile}>
-                      <span className={r.tileLabel}>Your bill now</span>
+                      <span className={r.tileLabel}>{youName} now</span>
                       <b>{fmtCurrency(perMonth(bench))}</b>
                       <small>a month</small>
                     </div>
@@ -2026,7 +2191,7 @@ export default function Comparator() {
                     </div>
                   </div>
                   <div className={styles.resultHeroSub}>
-                    Nothing we found beats what you pay now by enough to bother. Members get told the moment that changes.
+                    Nothing we found beats what you pay now by enough to bother. Members get an email when a plan would save them enough to be worth switching.
                   </div>
                 </div>
               )}
@@ -2040,7 +2205,7 @@ export default function Comparator() {
                       <span className={r.legend}>
                         <span className={r.chipMarket}>Market offer</span> a retailer&apos;s own deal ·{" "}
                         <span className={r.chipStanding}>Standing offer</span> the regulated default price, usually dearer ·{" "}
-                        <span className={r.chip}>−12% vs VDO</span> against the Victorian Default Offer for your usage
+                        <span className={r.chip}>12% below default offer</span> compared with the Victorian Default Offer, the government&apos;s reference price, for your usage
                       </span>
                       <span className={r.legend}>
                         Prices include each plan&apos;s discounts, assuming you pay on time. Green ✓ labels are in the price; blue ones (credits, other
@@ -2050,7 +2215,7 @@ export default function Comparator() {
 
                     <div className={`${r.youBox} ${haveBill ? r.youBoxBill : ""}`}>
                       <div className={r.youTop}>
-                        <span><Icon name="receipt" size={16} /> {haveBill ? "Your bill now" : "The default offer (VDO)"}</span>
+                        <span><Icon name="receipt" size={16} /> {haveBill ? `${youName} now` : "The default offer (VDO)"}</span>
                         <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
                       </div>
                       {listed.length > 0 && (
@@ -2063,15 +2228,20 @@ export default function Comparator() {
                         </p>
                       )}
                       <p>
-                        {useAvg ? "The average Victorian home" : useEst ? (billForecast ? "Forecast from your bill's kWh" : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
-                        <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day) on{" "}
-                        {usagePeak + usageShoulder + usageOffpeak > 0 ? "a time-of-use tariff" : "a single-rate tariff"}
-                        {clKwh > 0 ? " with controlled load" : ""}
+                        {useAvg ? "The average Victorian home" : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
+                        <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day)
+                        {/* Only say how they're charged when it came from their bill: an estimate doesn't know. */}
+                        {useEst || useAvg ? null : <>, charged {usagePeak + usageShoulder + usageOffpeak > 0 ? "by time of day" : "at one price all day"}{clKwh > 0 ? ", plus a separate hot-water meter" : ""}</>}
                         {haveBill && currentRetailer ? <> with {currentRetailer}</> : null}.
                         {haveBill && top && (
-                          vsVdo(bench) > 0 ? (
+                          Math.abs(vsVdo(bench)) < 0.02 ? (
                             <>
-                              {" "}That&apos;s <b className={r.bad}>{pctVdo(vsVdo(bench))}</b> against the default offer ({fmtCurrency(vdoForUsage * k)} {PERIOD_LABEL[period]}).
+                              {" "}That&apos;s about the same as the default offer ({fmtCurrency(vdoForUsage * k)} {PERIOD_LABEL[period]}), the government&apos;s reference price.
+                              {bench - top.total > 0.005 ? <> {locked ? "The cheapest plan" : top.plan[0]} would cost <b className={r.good}>{fmtCurrency((bench - top.total) * k)} {PERIOD_LABEL[period]} less</b>.</> : null}
+                            </>
+                          ) : vsVdo(bench) > 0 ? (
+                            <>
+                              {" "}That&apos;s <b className={r.bad}>{pctVdo(vsVdo(bench)).replace(/^\+/, "")} more</b> than the default offer ({fmtCurrency(vdoForUsage * k)} {PERIOD_LABEL[period]}), the government&apos;s reference price.
                             </>
                           ) : bench - top.total > 0.005 ? (
                             <>
@@ -2136,10 +2306,10 @@ export default function Comparator() {
                                   <span className={m.plan[3] === "MARKET" ? r.chipMarket : r.chipStanding}>{m.plan[3] === "MARKET" ? "Market offer" : "Standing offer"}</span>
                                   <span className={r.chip}>{m.plan[5] !== null ? "Single rate" : "Time of use"}</span>
                                   <span className={Math.round(vsVdo(m.total) * 100) < 0 ? r.chipGood : Math.round(vsVdo(m.total) * 100) > 0 ? r.chipBad : r.chip} title="Against the Victorian Default Offer for the same usage">
-                                    {pctVdo(vsVdo(m.total))} vs VDO
+                                    {vdoWords(vsVdo(m.total))}
                                   </span>
                                   {isEvFriendly(m.plan) && <span className={r.chip}>EV plan</span>}
-                                  {solarExportKwh > 0 && m.plan[10] !== null && m.plan[10] > 0 && <span className={r.chip}>Solar credit {(m.plan[10] * 100).toFixed(1)}c</span>}
+                                  {solarExportKwh > 0 && m.plan[10] !== null && m.plan[10] > 0 && <span className={r.chip}>Solar credit {(m.plan[10] * 100).toFixed(m.plan[10] * 100 < 0.1 ? 2 : 1)}c</span>}
                                   <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
                                   <OfferChips o={offer} />
                                 </span>
@@ -2195,7 +2365,7 @@ export default function Comparator() {
               </section>
               {haveBill && (
                 <div className={styles.billNudge}>
-                  <b>Based on one bill.</b> Prices are exact for today. Members get every plan re-priced each morning and a saved result every month, so the
+                  <b>Based on one bill.</b> These are today&apos;s prices, worked out for the usage on that bill. Members get every plan re-priced each morning and a saved result every month, so the
                   answer stays current.
                 </div>
               )}

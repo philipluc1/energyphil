@@ -1,9 +1,12 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { MailLink } from "../components/Fill";
 import { ABOUT } from "@/lib/about";
 import SiteHeader from "../components/SiteHeader";
 import styles from "../components/StaticPage.module.css";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+
+export const metadata = pageMeta({ title: "Cancellation Policy", description: "How to cancel a Utilo membership, and what happens when you do.", path: "/cancellation-policy" });
 
 const LAST_UPDATED = "6 October 2026";
 

@@ -159,8 +159,8 @@ export default function BillPhotoUpload({
 
   const inputs = (
     <>
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className={styles.photoInputHidden} onChange={onInputChange} />
-      <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className={styles.photoInputHidden} onChange={onInputChange} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" aria-label="Take a photo of your bill" tabIndex={-1} className={styles.photoInputHidden} onChange={onInputChange} />
+      <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple aria-label="Upload your bill (photo, screenshot or PDF)" tabIndex={-1} className={styles.photoInputHidden} onChange={onInputChange} />
     </>
   );
 
@@ -185,8 +185,8 @@ export default function BillPhotoUpload({
           </div>
         )}
         {status === "error" && <p className={snap.err}>{errorMsg}</p>}
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className={styles.photoInputHidden} onChange={onInputChange} />
-        <input ref={fileInputRef} type="file" accept="image/*" multiple className={styles.photoInputHidden} onChange={onInputChange} />
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" aria-label="Take a photo of your bill" tabIndex={-1} className={styles.photoInputHidden} onChange={onInputChange} />
+        <input ref={fileInputRef} type="file" accept="image/*" multiple aria-label="Upload photos of your bill" tabIndex={-1} className={styles.photoInputHidden} onChange={onInputChange} />
       </div>
     );
   }
@@ -265,7 +265,7 @@ export default function BillPhotoUpload({
           )}
           {status === "error" && <p className={snap.err}>{errorMsg}</p>}
           <p className={snap.fine}>
-            Free, no sign-up.{access === "member" ? "" : " Your first reads are free."} We only keep the numbers, not the picture.
+            Free, no sign-up.{access === "member" ? "" : " Up to 5 free bill reads a day."} We only keep the numbers, not the picture.
           </p>
         </div>
         {inputs}
@@ -281,7 +281,7 @@ export default function BillPhotoUpload({
       </div>
       <p className={styles.helper}>
         Snap a photo, upload the PDF, or screenshot your plan in your retailer&apos;s app. We read your usage <b>and the rates you actually pay</b>, so the answer is exact. You can check everything before we calculate.
-        {access === "member" ? "" : " Your first reads are free; members can read a bill any time and keep every month's result."}
+        {access === "member" ? "" : " Up to 5 free bill reads a day; members get more, and keep every month's result."}
       </p>
 
       <div className={styles.photoActions}>
@@ -308,6 +308,8 @@ export default function BillPhotoUpload({
         type="file"
         accept="image/*"
         capture="environment"
+        aria-label="Take a photo of your bill"
+        tabIndex={-1}
         className={styles.photoInputHidden}
         onChange={onInputChange}
       />
@@ -316,6 +318,8 @@ export default function BillPhotoUpload({
         type="file"
         accept="image/*,application/pdf"
         multiple
+        aria-label="Upload your bill (photo, screenshot or PDF)"
+        tabIndex={-1}
         className={styles.photoInputHidden}
         onChange={onInputChange}
       />

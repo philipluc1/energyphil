@@ -4,7 +4,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { monthlyCheck } from "@/lib/emailTemplates";
 import { GAS_ZONES, bestGasPlan, type GasZone } from "@/lib/gasPlans";
-import { computeBest } from "@/lib/priceWatch";
+import { computeBest, referenceForUsage } from "@/lib/priceWatch";
+import { ratesFromJson } from "@/lib/billReconcile";
+import { switchedPlanNow } from "@/lib/switched";
+import type { CurrentRates } from "@/lib/billExtraction";
 import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
 
@@ -33,6 +36,8 @@ interface Row {
   gas_billing_days?: number | null;
   gas_mj?: number | null;
   gas_reference_total?: number | null;
+  switched_at?: string | null;
+  switched_to?: string | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -47,7 +52,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, baseline_total, unsubscribed, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total",
+      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, baseline_total, unsubscribed, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, switched_at, switched_to",
     )
     .eq("status", "active")
     .not("distributor", "is", null);
@@ -56,13 +61,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Couldn't load members." }, { status: 500 });
   }
 
+  // Members' own rates, to check a bill total fits the usage on file.
+  // Loaded separately so an older database without the column still runs.
+  const ratesOf = new Map<string, CurrentRates>();
+  {
+    const { data: rs, error: rErr } = await supabaseAdmin.from("subscribers").select("id, current_rates").eq("status", "active").not("current_rates", "is", null);
+    if (!rErr) for (const x of (rs ?? []) as { id: string; current_rates: unknown }[]) { const r = ratesFromJson(x.current_rates); if (r) ratesOf.set(x.id, r); }
+  }
+
   let saved = 0;
   let emailed = 0;
   let errors = 0;
   for (const sub of (data ?? []) as Row[]) {
     try {
       const days = sub.billing_days ?? 91;
-      const best = computeBest({
+      const watch = {
         distributor: sub.distributor as Distributor,
         billingDays: days,
         peak: sub.peak_kwh ?? 0,
@@ -72,8 +85,13 @@ export async function GET(req: NextRequest) {
         cl: sub.controlled_load_kwh ?? 0,
         solarExportKwh: sub.solar_export_kwh ?? 0,
         ev: hasEv(sub.home_profile),
-      });
-      const reference = sub.reference_total ?? sub.baseline_total;
+      };
+      const best = computeBest(watch);
+      // The bill total only when it fits the usage on file (else their rates
+      // on that usage, or the default offer), as the dashboard shows it.
+      // Switched? Compare with the plan they're on now, not the old bill.
+      const moved = sub.switched_at ? switchedPlanNow(sub.switched_to, watch.distributor, { days, peak: watch.peak, shoulder: watch.shoulder, offpeak: watch.offpeak, anytime: watch.anytime, cl: watch.cl, solarExportKwh: watch.solarExportKwh }) : null;
+      const reference = moved ? moved.total : sub.reference_total !== null ? referenceForUsage(watch, sub.reference_total, ratesOf.get(sub.id) ?? null).total : sub.baseline_total;
       if (!best || reference === null) continue;
 
       const saving = reference - best.bestTotal;

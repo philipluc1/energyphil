@@ -56,3 +56,15 @@
   .prevBtn, .nextBtn { padding: 10px 12px; font-size: 13px; }
 }
 .tab, .tabOn { min-width: 0; overflow: hidden; }
+
+/* Phones: a slim bar (label only) so the sticky header and tabs don't take a
+   quarter of the screen. The icons and page dots come back on wider screens. */
+@media (max-width: 640px) {
+  .bar { margin: 4px -4px 12px; padding: 4px 4px 4px; }
+  .track { padding: 4px; gap: 2px; border-radius: 14px; }
+  .indicator { top: 4px; bottom: 4px; left: 4px; border-radius: 10px; }
+  .tabIcon { display: none; }
+  .tab, .tabOn { padding: 10px 2px; }
+  .tabLabel { font-size: 13px; }
+  .dots { display: none; }
+}

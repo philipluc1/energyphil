@@ -46,7 +46,7 @@ function Row({ label, value }: { label: string; value: string | null }) {
 
 /** "Your plan now": the customer's own plan, rates and supply details, kept in
  *  view beside the dashboard on wide screens. */
-export default function PlanAside({ d, uploadHref, best }: { d: PlanAsideData; uploadHref: string; best?: { plan: PlanRow; label: string; hideName?: boolean } | null }) {
+export default function PlanAside({ d, uploadHref, best, onEdit }: { d: PlanAsideData; uploadHref: string; best?: { plan: PlanRow; label: string; hideName?: boolean } | null; onEdit?: () => void }) {
   const r = d.rates;
   const rateRows: [string, string | null][] = r
     ? [
@@ -115,7 +115,11 @@ export default function PlanAside({ d, uploadHref, best }: { d: PlanAsideData; u
 
       <div className={s.actions}>
         <a href={uploadHref} className={s.primary}>Upload a new bill</a>
-        <Link href="/check" className={s.ghost}>Edit details</Link>
+        {onEdit ? (
+          <button type="button" onClick={onEdit} className={s.ghost}>Edit details</button>
+        ) : (
+          <Link href="/check" className={s.ghost}>Edit details</Link>
+        )}
       </div>
     </section>
   );

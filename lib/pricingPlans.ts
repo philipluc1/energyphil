@@ -123,13 +123,13 @@ export const PLAN_DISPLAY: Record<PlanId, PlanDisplay> = {
     anchorCents: MONTHLY * 12,
     note: "Less than a coffee a month.",
     featured: true,
-    features: ["Prices re-checked daily, summary monthly", "Alerts before your discount or fixed price ends", "1 July price-change re-check", "Bill photo and PDF reading"],
+    features: ["Prices re-checked daily, summary monthly", "Alerts before your discount or fixed price ends", "1 July price-change re-check", "More bill reads (10 a day), every result saved"],
   },
   monthly: {
     tag: { label: "Flexible", tone: "navy" },
     perMonthCents: MONTHLY,
     note: "Pay month to month. Stop any time.",
-    features: ["Prices re-checked daily, summary monthly", "Alerts before your discount or fixed price ends", "1 July price-change re-check", "Bill photo and PDF reading"],
+    features: ["Prices re-checked daily, summary monthly", "Alerts before your discount or fixed price ends", "1 July price-change re-check", "More bill reads (10 a day), every result saved"],
   },
   quarterly: {
     tag: { label: "Lower monthly cost", tone: "amber" },

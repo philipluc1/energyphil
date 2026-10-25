@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { evNetworkRates } from "@/lib/evCalc";
 import SiteHeader from "../components/SiteHeader";
@@ -6,10 +7,11 @@ import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 import EvCalculator from "./EvCalculator";
 
-export const metadata = {
-  title: "EV charging savings | Utilo",
-  description: "What does a full charge cost on your network, and how much could a cheaper overnight rate save you?",
-};
+// Kept out of search until the plan data has overnight rates to show.
+export function generateMetadata() {
+  const m = pageMeta({ title: "EV charging costs in Victoria", description: "What a full charge costs on your Victorian power network, and how much a cheaper overnight rate could save.", path: "/ev" });
+  return evNetworkRates().length > 0 ? m : { ...m, robots: { index: false, follow: true } };
+}
 
 export default function EvPage() {
   const rates = evNetworkRates();
@@ -22,7 +24,16 @@ export default function EvPage() {
           <h1>What does a charge cost you?</h1>
           <p className={styles.lede}>Pick your car, your network and how far you drive. See the cost per charge, per 100 km and per year, and what a cheap overnight rate could save.</p>
         </section>
-        <EvCalculator rates={rates} />
+        {rates.length > 0 ? (
+          <EvCalculator rates={rates} />
+        ) : (
+          <section className={styles.sectionGap}>
+            <p className={styles.lede}>
+              Today&apos;s plan data has no retailer plans with a separate overnight rate, so we can&apos;t price overnight charging yet. Your whole-bill
+              check below still compares every plan we track for your usage, car charging included.
+            </p>
+          </section>
+        )}
         <section className={styles.sectionGap}>
           <Link href="/check" className={styles.heroCta}>Check my whole bill</Link>
         </section>

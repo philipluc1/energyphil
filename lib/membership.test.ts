@@ -26,4 +26,9 @@ assert.equal((f.current_rates as Record<string, number | null>).supply, 1.2815);
 assert.equal("discount_ends_at" in f, false);
 assert.equal(memberFieldsFromCheck({ distributor: "Nowhere", billingDays: 9999, anytime: -5 }).distributor, undefined);
 assert.deepEqual(memberFieldsFromCheck(null), {});
+// Home answers from a bill check (never asked) don't replace real ones; the meter number comes through.
+assert.equal("home_profile" in memberFieldsFromCheck({ homeProfile: { people: 3, answered: false } }), false);
+assert.deepEqual(memberFieldsFromCheck({ homeProfile: { people: 2, answered: true } }).home_profile, { people: 2, answered: true });
+assert.equal(memberFieldsFromCheck({ nmi: "6203123456" }).nmi, "6203123456");
+assert.equal("nmi" in memberFieldsFromCheck({ nmi: "62 03" }), false);
 console.log("member details from a check ok");

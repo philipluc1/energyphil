@@ -16,6 +16,8 @@ export interface WelcomeEmailInput {
   bestPlanName: string | null;
   /** What they'd save a year on the best plan vs their own bill; null if we don't know their bill. */
   yearlySaving: number | null;
+  /** They already gave us a bill photo at the check. */
+  fromBill?: boolean;
 }
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
@@ -82,7 +84,9 @@ export function welcomeEmail(i: WelcomeEmailInput): { subject: string; title: st
     <p style="font:800 16px Arial,Helvetica,sans-serif;color:#131c57;margin:4px 0 12px;">Three quick things</p>
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 8px;">
       ${step(1, "Sign in", "We've sent you a separate sign-in link. Use that, or enter this email address on the sign-in page.")}
-      ${step(2, "Snap your latest bill", "So every check uses your real usage and the rates you actually pay.")}
+      ${i.fromBill
+        ? step(2, "Snap each new bill", "We've read this one. Snap the next one when it arrives, so your checks follow your real usage through the year.")
+        : step(2, "Snap your latest bill", "So every check uses your real usage and the rates you actually pay.")}
       ${step(3, "Switched? Add the date", "Your savings tally counts from that day. Add any discount or fixed-price end date too.")}
     </table>
     <p style="font:800 16px Arial,Helvetica,sans-serif;color:#131c57;margin:8px 0 12px;">What we watch for you</p>

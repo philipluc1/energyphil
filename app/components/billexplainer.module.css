@@ -7,6 +7,7 @@
 .tile { display: grid; gap: 4px; align-content: start; padding: 14px; border-radius: 14px; background: var(--bg); }
 .tile p { margin: 2px 0 0; font-size: 13.5px; line-height: 1.5; color: color-mix(in srgb, var(--ink) 80%, var(--bg)); }
 .tile p b { color: var(--ink); }
+.tile p.hint { margin-top: 6px; font-size: 12.5px; color: color-mix(in srgb, var(--ink) 72%, var(--bg)); }
 .icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; margin-bottom: 2px; }
 .iUse { background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
 .iRate { background: color-mix(in srgb, var(--navy-accent-text) 14%, transparent); color: var(--navy-accent-text); }

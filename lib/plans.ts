@@ -75,6 +75,9 @@ export function billDetail(plan: PlanRow, u: UsageInput, opts: PriceOptions = {}
   // Plans without one are the "no controlled load" version of a product and
   // would otherwise price that usage at $0.
   if (u.cl > 0 && pCl === null) return null;
+  // And the other way round: a plan named for a controlled-load tariff needs
+  // that separate hot-water meter, so it isn't one a home without it can get.
+  if (u.cl <= 0 && namedForControlledLoad(planName)) return null;
   const totalUsage = u.peak + u.shoulder + u.offpeak + u.anytime;
   const fixed = supply * u.days;
   let variable: number;
@@ -143,6 +146,11 @@ export interface RankOptions {
   hasSolar?: boolean;
   /** So "existing customers only" offers count for their own retailer. */
   currentRetailer?: string | null;
+}
+
+/** "... with Controlled Load", "Single Rate + CL", "(Residential Demand with Dedicated Circuit)"; not "... Without Controlled Load". */
+export function namedForControlledLoad(planName: string): boolean {
+  return /controlled load|\+ ?CL\b|dedicated circuit/i.test(planName) && !/without controlled load/i.test(planName);
 }
 
 export function rankPlans(distributor: Distributor, u: UsageInput, opts: RankOptions = {}): RankedMatch[] {
@@ -238,7 +246,10 @@ export interface PlanRateRow {
 }
 
 export function fmtRateCents(v: number): string {
-  return (v * 100).toLocaleString("en-AU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "c/kWh";
+  // Tiny rates (a 0.04c feed-in) would round to "0.0c": show them as printed.
+  const c = v * 100;
+  const d = c > 0 && c < 0.1 ? 2 : 1;
+  return c.toLocaleString("en-AU", { minimumFractionDigits: d, maximumFractionDigits: d }) + "c/kWh";
 }
 export function fmtRatePerDay(v: number): string {
   return "$" + v.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "/day";

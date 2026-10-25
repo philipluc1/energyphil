@@ -243,6 +243,17 @@ export function restrictionFor(x: PlanExtras | null, retailer: string, planName:
       const short = RESTRICT_SHORT[e.type] ?? label;
       return info && info.toLowerCase() !== short.toLowerCase() ? `${short}: ${info}` : short;
     }
+    // "Contingent" or bundle-only offers: only with the same retailer's other
+    // fuel on the same account, so not a plan anyone can simply choose.
+    if (/\bcontingent plan\b|\bwhen bundled with\b|\bbundled with (one of )?\S+ (eligible )?(electricity|gas)\b|\bdual fuel (customers )?only\b/i.test(`${e.information ?? ""} ${e.description ?? ""}`)) return "Only bundled with their other fuel";
+    // Free-text conditions ("only available to customers with solar panels,
+    // battery, EV and smart meter"): a battery we can't assume; solar only
+    // counts against homes without it.
+    const said = `${e.information ?? ""} ${e.description ?? ""}`;
+    if (/\bonly\b.{0,40}\bcustomers with\b|\bcustomers (must|need to) have\b|\bavailable to customers with\b/i.test(said)) {
+      if (/\bbatter(y|ies)\b/i.test(said)) return "Homes with a battery";
+      if (/\bsolar\b/i.test(said) && !h.hasSolar) return "Homes with solar";
+    }
     if (e.type === "EXISTING_CUST" && h.currentRetailer !== retailer) return label;
     if (e.type === "EXISTING_SOLAR" && !h.hasSolar) return "Homes with solar only";
     if (e.type === "NO_SOLAR_FIT" && h.hasSolar) return label;
