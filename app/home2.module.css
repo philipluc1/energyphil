@@ -171,6 +171,12 @@
   font-weight: 800; font-size: 16px; text-decoration: none;
 }
 .memberCta:hover { filter: brightness(1.05); }
+.memberGhost {
+  display: flex; align-items: center; justify-content: center; min-height: 44px;
+  padding: 10px 18px; border-radius: 12px; border: 1.5px solid rgba(255, 255, 255, 0.35);
+  color: #fff; font-weight: 800; font-size: 15px; text-decoration: none;
+}
+.memberGhost:hover { background: rgba(255, 255, 255, 0.08); }
 .memberFine { margin: 0; text-align: center; font-size: 13px; color: rgba(255, 255, 255, 0.75); }
 .memberFine a { color: #fff; font-weight: 700; }
 

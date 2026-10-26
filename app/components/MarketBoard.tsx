@@ -42,14 +42,55 @@ function Row({ e, vs }: { e: MarketEvent; vs?: VsYou | null }) {
 }
 
 /**
+ * The home page's short version: the four numbers, a sparkline of the 30
+ * days, the three latest changes and a link to the full board.
+ */
+function MarketTeaser({ events }: { events: MarketEvent[] }) {
+  if (events.length === 0) return null;
+  const newOffers = events.filter((e) => e.kind === "new").length;
+  const priceChanges = events.length - newOffers;
+  const retailers = new Set(events.map((e) => e.retailer)).size;
+  const perWeek = Math.round((events.length / DAYS) * 7);
+  const days = dailyChanges(events, DAYS);
+  const max = Math.max(...days.map((d) => d.newOffers + d.priceChanges), 1);
+  return (
+    <section className={`${s.board} ${s.teaser}`} aria-labelledby="market-board-title">
+      <div className={s.teaserHead}>
+        <div className={s.head}>
+          <span className={s.live}><i aria-hidden="true" /> Live from retailers&apos; published offers</span>
+          <h2 id="market-board-title" className={s.title}>The last 30 days in Victoria&apos;s power market</h2>
+        </div>
+        <span className={s.spark} role="img" aria-label={`${events.length} offer changes over the last ${DAYS} days`}>
+          {days.map((d) => { const t = d.newOffers + d.priceChanges; return <i key={d.date} style={{ height: `${t ? Math.max(12, Math.round((t / max) * 100)) : 4}%` }} className={t ? (d.priceChanges > d.newOffers ? s.sparkPrice : s.sparkNew) : ""} />; })}
+        </span>
+      </div>
+      <div className={s.stats}>
+        {newOffers > 0 && <div className={s.stat}><b className={s.nNew}><CountUp value={newOffers} /></b><span>new offers</span></div>}
+        {priceChanges > 0 && <div className={s.stat}><b className={s.nPrice}><CountUp value={priceChanges} /></b><span>price changes</span></div>}
+        <div className={s.stat}><b><CountUp value={retailers} /></b><span>retailers involved</span></div>
+        {perWeek >= 2 && <div className={`${s.stat} ${s.statWeek}`}><b>~{perWeek}</b><span>changes a week</span></div>}
+      </div>
+      <ul className={`${s.list} ${s.teaserList}`}>
+        {events.slice(0, 3).map((e) => <Row key={`${e.retailer}|${e.plan}`} e={e} />)}
+      </ul>
+      <div className={s.teaserFoot}>
+        <p><b>Would you have spotted these?</b> Members get every one checked against their own bill each morning.</p>
+        <Link href="/market" className={s.more}>See all {events.length} changes →</Link>
+      </div>
+    </section>
+  );
+}
+
+/**
  * The last 30 days of Victoria's energy market, from the daily pull: how many
  * offers changed, a bar per day, and a scrolling feed of the actual offers
  * (long, look-alike plan names and all). Shows nothing until the pull has
  * dated offers, so it never claims activity it can't show.
  */
-export default function MarketBoard({ personal }: { personal?: MarketPersonal } = {}) {
+export default function MarketBoard({ personal, compact = false }: { personal?: MarketPersonal; compact?: boolean } = {}) {
   // On a member's dashboard: their network only, each offer against their bill.
   const events = marketEvents({ days: DAYS, network: personal?.network ?? null });
+  if (compact) return <MarketTeaser events={events} />;
   if (events.length === 0) return null;
   const newOffers = events.filter((e) => e.kind === "new").length;
   const priceChanges = events.length - newOffers;

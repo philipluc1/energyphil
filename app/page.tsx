@@ -89,12 +89,13 @@ export default function Home() {
               <li><Icon name="check" size={18} /> Warned before a discount or fixed price ends</li>
             </ul>
             <Link href="/check" className={h.memberCta}>Start with the free check</Link>
-            <p className={h.memberFine}>The check is free. Cancel any time. <Link href="/pricing">What&apos;s included</Link></p>
+            <Link href="/pricing" className={h.memberGhost}>What&apos;s included</Link>
+            <p className={h.memberFine}>The check is free. Cancel any time.</p>
           </aside>
         </section>
 
         {/* 2. Live: how much the market changed in the last 30 days (hidden until the daily pull has dated offers) */}
-        <MarketBoard />
+        <MarketBoard compact />
 
         {/* 3. When members hear from us: four short lines */}
         <section className={h.section}>

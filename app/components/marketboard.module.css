@@ -89,3 +89,18 @@
   .feedScroll .list { animation: none; }
   .feed { overflow-y: auto; }
 }
+
+/* Home page teaser: stats, a sparkline, three rows */
+.teaser { gap: 16px; padding: 24px 28px 22px; }
+.teaserHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+.spark { display: flex; align-items: flex-end; gap: 2px; height: 44px; width: 170px; flex: none; }
+.spark i { flex: 1; border-radius: 2px; background: rgba(255, 255, 255, 0.18); }
+.spark .sparkNew { background: #5eead4; }
+.spark .sparkPrice { background: #ffd166; }
+.teaserList { gap: 6px; }
+.teaserFoot { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.teaserFoot p { margin: 0; font-size: 14.5px; line-height: 1.45; color: rgba(255, 255, 255, 0.85); flex: 1 1 320px; }
+.teaserFoot b { color: #fff; }
+.more { font-weight: 800; color: #5eead4; text-decoration: none; white-space: nowrap; }
+.more:hover { text-decoration: underline; }
+@media (max-width: 860px) { .teaser { padding: 20px 16px; } .spark { width: 100%; height: 36px; } }

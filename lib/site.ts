@@ -14,6 +14,7 @@ export const PUBLIC_PAGES: { path: string; changeFrequency: "daily" | "weekly" |
   { path: "/check", changeFrequency: "daily", priority: 0.9 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.7 },
   { path: "/learn", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/market", changeFrequency: "daily", priority: 0.6 },
   { path: "/default-offer", changeFrequency: "monthly", priority: 0.7 },
   { path: "/faq", changeFrequency: "monthly", priority: 0.6 },
   { path: "/gas", changeFrequency: "daily", priority: 0.7 },
