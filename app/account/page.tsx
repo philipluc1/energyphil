@@ -445,7 +445,7 @@ export default function AccountPage() {
     document.body.style.backgroundAttachment = "fixed";
     return () => { document.body.style.background = prev; };
   }, [stage, themeMode]);
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriod] = useState<Period>("year");
   const [showSwitchForm, setShowSwitchForm] = useState(false);
   // Deal end dates (discount / benefit period, fixed price), editable on the Savings tab.
   const [dealForm, setDealForm] = useState<{ discount: string; fixed: string } | null>(null);
@@ -733,6 +733,7 @@ export default function AccountPage() {
   const sideCards = (
     <>
       {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
+      {cmpInput && <MemberMarket input={cmpInput} member={isMember} compact />}
           <div className={styles.panelCard}>
             <div className={styles.panelTitle}>Gas</div>
             {isMember && sub!.gas_zone && sub!.gas_mj ? (
@@ -900,10 +901,7 @@ export default function AccountPage() {
                 <DashTabs tabs={tabs} active={tab} onChange={changeTab}>
                   {tab === "compare" && (
                     cmpInput ? (
-                      <>
-                        <MemberMarket input={cmpInput} member={isMember} />
-                        <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
-                      </>
+                      <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
                     ) : (
                       <div className={styles.panelCard}>
                         <div className={styles.panelTitle}>Retailer comparison</div>

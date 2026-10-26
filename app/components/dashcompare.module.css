@@ -167,3 +167,8 @@
 }
 :root[data-theme="dark"] .mismatch { background: rgba(249, 115, 22, 0.12); border-color: rgba(253, 186, 116, 0.35); color: #ffedd5; }
 :root[data-theme="dark"] .mismatch p, :root[data-theme="dark"] .mismatchActions a { color: #ffedd5; }
+
+/* Paying well above the default offer */
+.aboveVdo { display: flex; gap: 8px; align-items: flex-start; margin: 2px 0 4px; padding: 10px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.3); font-size: 14px; line-height: 1.45; }
+.aboveVdo svg { flex: none; margin-top: 2px; }
+.aboveVdo b { color: #ffd166; }

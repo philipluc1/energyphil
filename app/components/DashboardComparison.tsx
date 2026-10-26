@@ -25,7 +25,7 @@ import { samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { periodScale } from "@/lib/periods";
 import { marketEvents } from "@/lib/marketActivity";
-import MarketBoard, { type MarketPersonal } from "./MarketBoard";
+import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import styles from "./dashcompare.module.css";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -206,6 +206,12 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             : <>Against the default offer, the cheapest plan saves up to <span className={styles.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>}
       </h2>
       {c.mismatch && <MismatchNote m={c.mismatch} member={member} />}
+      {haveBill && c.vdo > 0 && (you - c.vdo) / c.vdo >= 0.05 && (
+        <p className={styles.aboveVdo}>
+          <Icon name="alert" size={16} /> You&apos;re paying <b>{Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b> ({money(c.vdo * k)} {PERIOD_LABEL[period]}),
+          the government&apos;s reference price. Most people can do better than the default, so this is a plan worth moving off.
+        </p>
+      )}
       <div className={styles.versus}>
         <div className={styles.side}>
           <span className={styles.sideLabel}>{haveBill ? "You now" : "Default offer"}</span>
@@ -301,7 +307,7 @@ function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
  * what they pay now: proof the checking happens, not just market news.
  * Same maths as the verdict above (compute), so the numbers agree.
  */
-export function MemberMarket({ input, member }: { input: ComparisonInput; member: boolean }) {
+export function MemberMarket({ input, member, compact = false }: { input: ComparisonInput; member: boolean; compact?: boolean }) {
   const c = useMemo(() => compute(input), [input]);
   const personal = useMemo<MarketPersonal | null>(() => {
     if (!c) return null;
@@ -346,6 +352,7 @@ export function MemberMarket({ input, member }: { input: ComparisonInput; member
     };
   }, [c, input.distributor, member]);
   if (!c || !personal || personal.checked === 0) return null;
+  if (compact) return <MarketSideCard personal={personal} events={marketEvents({ days: 30, network: input.distributor }).slice(0, 3)} />;
   return <MarketBoard personal={personal} />;
 }
 

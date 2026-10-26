@@ -21,6 +21,12 @@
 }
 .primary:hover { filter: brightness(1.04); }
 .textLink { color: var(--navy-accent-text); font-weight: 700; font-size: 15.5px; }
+.secondary {
+  display: inline-flex; align-items: center; min-height: 50px; padding: 13px 20px; border-radius: 12px;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--ink);
+  font-weight: 800; font-size: 15.5px; text-decoration: none;
+}
+.secondary:hover { border-color: var(--grey-soft); }
 .fine { margin: 18px 0 0; font-size: 14px; color: var(--grey); }
 .fine a { color: var(--navy-accent-text); font-weight: 700; }
 

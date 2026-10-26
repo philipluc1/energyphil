@@ -67,11 +67,11 @@ export default function Home() {
             </p>
             <div className={h.actions}>
               <Link href="/check" className={h.primary}>
-                <Icon name="camera" size={20} /> Price my bill, free
+                <Icon name="camera" size={20} /> Snap my bill
               </Link>
-              <Link href="/check?start=questions" className={h.textLink}>No bill? Estimate from a few questions</Link>
+              <Link href="/check?start=questions" className={h.secondary}>No bill? Estimate it</Link>
             </div>
-            <p className={h.fine}>Free, no sign-up, about a minute. Gas too: <Link href="/gas">check a gas bill</Link>.</p>
+            <p className={h.fine}>Free, no sign-up, about a minute. <Link href="/gas">Gas bill?</Link></p>
           </div>
 
           <aside className={h.memberCard} aria-labelledby="membership-title">

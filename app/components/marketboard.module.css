@@ -104,3 +104,14 @@
 .more { font-weight: 800; color: #5eead4; text-decoration: none; white-space: nowrap; }
 .more:hover { text-decoration: underline; }
 @media (max-width: 860px) { .teaser { padding: 20px 16px; } .spark { width: 100%; height: 36px; } }
+
+/* Dashboard side card */
+.sideCard { margin: 0; padding: 18px 16px; border-radius: 18px; gap: 10px; box-shadow: none; }
+.sideTitle { margin: 0; font-size: 16px; line-height: 1.3; font-weight: 700; color: rgba(255, 255, 255, 0.9); }
+.sideTitle b { font: 900 30px/1 "Archivo", sans-serif; color: #5eead4; margin-right: 4px; }
+.sideLine { margin: 0; font-size: 13.5px; line-height: 1.45; color: rgba(255, 255, 255, 0.82); }
+.sideLine b { color: #fff; }
+.sideCard .row { grid-template-columns: 44px 26px 1fr; padding: 7px 8px; }
+.sideCard .row > :last-child { display: none; }
+.sideCard .what b { font-size: 13px; }
+.sideCard .plan { font-size: 12px; }

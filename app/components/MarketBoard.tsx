@@ -41,6 +41,26 @@ function Row({ e, vs }: { e: MarketEvent; vs?: VsYou | null }) {
   );
 }
 
+/** A member's dashboard side card: the count checked, how many beat them, and the three latest. */
+export function MarketSideCard({ personal, events }: { personal: MarketPersonal; events: MarketEvent[] }) {
+  return (
+    <section className={`${s.board} ${s.sideCard}`} aria-labelledby="market-side-title">
+      <span className={s.live}><i aria-hidden="true" /> Last 30 days, {personal.network}</span>
+      <h3 id="market-side-title" className={s.sideTitle}>
+        <b>{personal.checked}</b> changed offers checked against {personal.against}
+      </h3>
+      <p className={s.sideLine}>
+        {personal.beat === 0 ? <>None beat it by ${personal.worthPerYear}+ a year.</> : <><b>{personal.beat}</b> beat it by ${personal.worthPerYear}+ a year.</>}
+        {personal.closest ? <> {personal.closest}.</> : null}
+      </p>
+      <ul className={`${s.list} ${s.teaserList}`}>
+        {events.map((e) => <Row key={`${e.retailer}|${e.plan}`} e={e} vs={personal.vs(e)} />)}
+      </ul>
+      <Link href="/market" className={s.more}>All changes in Victoria →</Link>
+    </section>
+  );
+}
+
 /**
  * The home page's short version: the four numbers, a sparkline of the 30
  * days, the three latest changes and a link to the full board.
