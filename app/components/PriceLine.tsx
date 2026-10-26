@@ -22,6 +22,9 @@ export interface PriceLineItem {
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
 const BUBBLE_PX = 58; // bubble width plus a little air
 const ROW = 70;
+const DOT_PX = 13; // a dot plus a little air, for phones
+const DOT_ROW = 16;
+const DOT_LANES = 8;
 
 /** Spread bubbles into rows above the line so none overlap (x in %). */
 function lanes(xs: number[], gap: number): number[] {
@@ -65,15 +68,23 @@ export default function PriceLine({
   const x = (v: number) => 4 + ((v - lo) / span) * 92;
   const sorted = [...items].sort((a, b) => a.value - b.value);
   const xs = sorted.map((i) => x(i.value));
-  const lane = lanes(xs, (BUBBLE_PX / Math.max(width, 200)) * 100);
+  // On a phone the bubbles would pile up a dozen deep, so plans become small
+  // dots and only the cheapest keeps its bubble; the list below has the rest.
+  const compact = width < 520;
+  const rawLane = compact ? lanes(xs, (DOT_PX / Math.max(width, 200)) * 100) : lanes(xs, (BUBBLE_PX / Math.max(width, 200)) * 100);
+  // Dots past the last lane start a new column a few pixels to the right, so
+  // plans at the same price still each get their own dot.
+  const lane = compact ? rawLane.map((l) => l % DOT_LANES) : rawLane;
+  const nudge = compact ? rawLane.map((l) => Math.floor(l / DOT_LANES) * 7) : rawLane.map(() => 0);
   const rows = Math.max(...lane) + 1;
-  const base = rows * ROW + 8; // where the line sits
+  const base = compact ? ROW + rows * DOT_ROW + 8 : rows * ROW + 8; // where the line sits
   const cheaper = items.filter((i) => i.value < you - 0.005).length;
   const xYou = x(you);
   const xVdo = vdo ? x(vdo) : null;
   // The two labels under the line need about 150px between them.
   const vdoClash = xVdo !== null && Math.abs(xVdo - xYou) < (150 / Math.max(width, 200)) * 100;
   const who = youLabel.toLowerCase();
+  const best = sorted.find((i) => i.cheapest) ?? sorted[0];
 
   return (
     <figure className={s.wrap}>
@@ -89,7 +100,31 @@ export default function PriceLine({
         aria-label={`${cheaper} of ${items.length} plans cost less than ${who} (${money(you)} ${per}).`}
       >
         <div className={s.track} style={{ top: base }} />
-        {sorted.map((it, i) => (
+        {compact && sorted.map((it, i) => (
+          it === best ? null : (
+            <span
+              key={it.retailer + it.plan + i}
+              className={s.dot}
+              style={{ left: `calc(${xs[i]}% + ${nudge[i]}px)`, top: base - 4 - (lane[i] + 1) * DOT_ROW }}
+              title={it.locked ? `Members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
+            />
+          )
+        ))}
+        {compact && (
+          <div
+            className={`${s.bubble} ${s.best}`}
+            style={{ left: `${x(best.value)}%`, top: 0 }}
+            title={best.locked ? `Members see this plan: ${money(best.value)} ${per}` : `${best.retailer}: ${best.plan}, ${money(best.value)} ${per}`}
+          >
+            <span className={s.face}>
+              {best.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={best.retailer} size={36} />}
+              <span className={s.star} aria-label="Cheapest">★</span>
+            </span>
+            <span className={s.price}>{money(best.value)}</span>
+            <span className={s.stem} style={{ height: rows * DOT_ROW + 8 }} />
+          </div>
+        )}
+        {!compact && sorted.map((it, i) => (
           <div
             key={it.retailer + it.plan + i}
             className={`${s.bubble} ${it.cheapest ? s.best : ""}`}
@@ -116,7 +151,15 @@ export default function PriceLine({
         </span>
       </div>
       <figcaption className={s.caption}>
-        {cheaper === items.length ? (
+        {compact ? (
+          cheaper === items.length ? (
+            <><b className={s.bad}>You pay more than every plan shown.</b> Each dot is a plan at its price {per}, ★ the cheapest, the red pin {who}. Every plan is listed below.</>
+          ) : cheaper === 0 ? (
+            <><b className={s.good}>Nothing shown beats {who}.</b> Each dot is a plan at its price {per}.</>
+          ) : (
+            <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each dot is a plan at its price {per}, ★ the cheapest, the red pin {who}. Every plan is listed below.</>
+          )
+        ) : cheaper === items.length ? (
           <><b className={s.bad}>You pay more than every plan shown.</b> Each bubble is a plan at its price {per}; the red pin is {who}; ★ marks the cheapest.</>
         ) : cheaper === 0 ? (
           <><b className={s.good}>Nothing shown beats {who}.</b> Each bubble is a plan at its price {per}.</>

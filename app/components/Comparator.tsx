@@ -1020,28 +1020,23 @@ export default function Comparator() {
 
         {entry === "snap" && (
           <>
-            <BillPhotoUpload variant="hero" onApply={handleBillExtracted} />
-            <div className={snap.alt}>
+            <BillPhotoUpload variant="hero" onApply={handleBillExtracted}>
               {restored && (hadResult && networkKnown && (usageSource !== "bill" || usagePeak + usageShoulder + usageOffpeak + usageAnytime > 0) ? (
-                <button type="button" className={`${snap.altBtn} ${snap.altContinue}`} onClick={() => { setEntry("wizard"); setStage("results"); scrollToTop(); }}>
-                  <b>See your last result</b>
-                  <span>Saved on this device. Prices are today&apos;s →</span>
+                <button type="button" className={`${snap.otherBtn} ${snap.otherOn}`} onClick={() => { setEntry("wizard"); setStage("results"); scrollToTop(); }}>
+                  See your last result <small>saved on this device</small>
                 </button>
               ) : (
-                <button type="button" className={`${snap.altBtn} ${snap.altContinue}`} onClick={() => { setEntry("wizard"); scrollToTop(); }}>
-                  <b>Continue your last check</b>
-                  <span>Your answers are saved on this device →</span>
+                <button type="button" className={`${snap.otherBtn} ${snap.otherOn}`} onClick={() => { setEntry("wizard"); scrollToTop(); }}>
+                  Continue your last check <small>saved on this device</small>
                 </button>
               ))}
-              <button type="button" className={snap.altBtn} onClick={() => { setUsageSource("estimate"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
-                <b>No bill handy?</b>
-                <span>Answer a few quick questions and we&apos;ll estimate →</span>
+              <button type="button" className={snap.otherBtn} onClick={() => { setUsageSource("estimate"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
+                <Icon name="home" size={18} /> No bill handy? <small>Estimate from a few questions</small>
               </button>
-              <button type="button" className={snap.altBtn} onClick={() => { setUsageSource("bill"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
-                <b>Rather type it in?</b>
-                <span>Copy the numbers from your bill yourself →</span>
+              <button type="button" className={snap.otherBtn} onClick={() => { setUsageSource("bill"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
+                <Icon name="file" size={18} /> Rather type it in? <small>Copy the numbers yourself</small>
               </button>
-            </div>
+            </BillPhotoUpload>
             <p className={snap.underNote}>
               Victorian homes · NSW, SA and QLD coming. Gas bill? <Link href="/gas">Check gas</Link>.
             </p>

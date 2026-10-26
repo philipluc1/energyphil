@@ -385,3 +385,18 @@
 :root[data-theme="dark"] .pagePrompt b { color: #fff1cc; }
 :root[data-theme="dark"] .pagePromptAlt { color: #f8d98a; }
 :root[data-theme="dark"] .addPageSecondary { background: transparent; color: #fde7b0; border-color: rgba(245, 166, 35, 0.45); }
+
+/* Other ways in, inside the photo card */
+.otherWays { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.16); display: grid; gap: 10px; }
+.otherLabel { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.otherBtns { display: grid; gap: 8px; }
+.otherBtn {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 48px;
+  padding: 11px 14px; border-radius: 12px; border: 1.5px solid rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.06);
+  color: #fff; font: inherit; font-weight: 800; font-size: 15px; text-align: left; cursor: pointer;
+}
+.otherBtn:hover { background: rgba(255, 255, 255, 0.12); }
+.otherBtn svg { flex: none; color: #5eead4; }
+.otherBtn small { font-weight: 600; font-size: 13px; color: rgba(255, 255, 255, 0.7); }
+.otherOn { border-color: #5eead4; background: rgba(94, 234, 212, 0.12); }
+@media (min-width: 640px) { .otherBtns { grid-template-columns: 1fr 1fr; } .otherBtn { flex-direction: column; align-items: flex-start; gap: 2px; } .otherBtn svg { margin-bottom: 4px; } }

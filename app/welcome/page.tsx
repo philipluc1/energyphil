@@ -131,8 +131,8 @@ export default function WelcomePage() {
           {stage === "check-email" && (
             <>
               <p className={styles.lede}>
-                Thanks for joining. We&apos;ve emailed you a one-click sign-in link at the address you paid with. Open it on this device and your
-                membership will finish setting up.
+                Thanks for joining. Your welcome email is on its way to the address you paid with, and the button in it signs you in. Open it on this
+                device and your membership will finish setting up.
               </p>
               <div className={styles.row}>
                 <a className={styles.cta} href="https://mail.google.com" target="_blank" rel="noopener noreferrer">Open Gmail</a>

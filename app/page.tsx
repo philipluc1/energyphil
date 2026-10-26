@@ -62,12 +62,11 @@ export default function Home() {
             <p className={h.eyebrow}>Built from your bill</p>
             <h1 className={h.title}>Bill keeps creeping up, and you don&apos;t know why or where to start?</h1>
             <p className={h.lede}>
-              Start with one bill. We show what you&apos;re really paying, price the {PLANS.length} plans we track from {RETAILER_COUNT} retailers
-              against it, and tell you plainly whether switching is worth it.
+              Start saving with one bill. We show what you&apos;re really paying against {PLANS.length} plans from {RETAILER_COUNT} retailers.
             </p>
             <div className={h.actions}>
               <Link href="/check" className={h.primary}>
-                <Icon name="camera" size={20} /> Snap my bill
+                <Icon name="camera" size={20} /> Let&apos;s start saving
               </Link>
               <Link href="/check?start=questions" className={h.secondary}>No bill? Estimate it</Link>
             </div>

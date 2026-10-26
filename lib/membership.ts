@@ -4,7 +4,7 @@ import type Stripe from "stripe";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { findPlan } from "./pricingPlans";
 import { sendEmail } from "./email";
-import { welcomeEmail } from "./welcomeEmail";
+import { welcomeEmail, type WelcomeEmailInput } from "./welcomeEmail";
 import { PLANS, VDO, type Distributor } from "./plans";
 import { vdoBillForUsage } from "./profileUsage";
 import { cleanReferralCode, sourceValue } from "./attribution";
@@ -148,22 +148,11 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     await creditReferrer({ code: referredBy, checkoutSessionId: session.id, friendEmail: email, origin }).catch((e) => console.error("referral credit", e));
   }
 
-  if (opts.sendWelcome !== false) {
-    // Wording and layout live in lib/welcomeEmail.ts.
-    const yearlySaving =
-      referenceTotal !== null && baselineTotal !== null && billingDays && billingDays > 0
-        ? Math.max(0, ((referenceTotal - baselineTotal) / billingDays) * 365)
-        : null;
-    const w = welcomeEmail({
-      origin,
-      customerName: md.customerName || null,
-      planName: plan.name,
-      priceLabel: `$${(plan.priceCents / 100).toLocaleString("en-AU")} ${plan.cadenceLabel}`,
-      bestRetailer: baselineRetailer,
-      bestPlanName: md.baselinePlanName || null,
-      yearlySaving,
-      fromBill: !!extras.bill_check,
-    });
+  if (opts.sendWelcome) {
+    // Normally the welcome goes from /api/welcome-link (with the sign-in link
+    // in it) the moment they land back from Stripe. This is only for callers
+    // that ask for it. Wording and layout live in lib/welcomeEmail.ts.
+    const w = welcomeEmail(welcomeInputFromSession(session, origin, null));
     await sendEmail({ to: email, subject: w.subject, title: w.title, html: w.html }).catch((e) => console.error("welcome email failed", e));
   }
 
@@ -205,6 +194,35 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     if (episodeErr) console.error("Failed to open savings episode", episodeErr);
   }
   return { ok: true, created: true };
+}
+
+/**
+ * What the welcome email says, from a paid Checkout session's metadata (the
+ * free check that came with them). `signInUrl` is the one-time sign-in link
+ * when the caller has one, so the welcome and the sign-in are one email.
+ */
+export function welcomeInputFromSession(session: Stripe.Checkout.Session, origin: string, signInUrl: string | null): WelcomeEmailInput {
+  const md = session.metadata ?? {};
+  const plan = findPlan(md.planId ?? "");
+  const billingDays = toNum(md.billingDays);
+  const plausible = (n: number | null) => (n !== null && n > 0 && n < 20000 ? n : null);
+  const baselineTotal = plausible(toNum(md.baselineTotal));
+  const referenceTotal = plausible(toNum(md.referenceTotal));
+  const yearlySaving =
+    referenceTotal !== null && baselineTotal !== null && billingDays && billingDays > 0
+      ? Math.max(0, ((referenceTotal - baselineTotal) / billingDays) * 365)
+      : null;
+  return {
+    origin,
+    customerName: md.customerName || null,
+    planName: plan?.name ?? "Membership",
+    priceLabel: plan ? `$${(plan.priceCents / 100).toLocaleString("en-AU")} ${plan.cadenceLabel}` : "",
+    bestRetailer: KNOWN_RETAILERS.has(md.baselineRetailer ?? "") ? (md.baselineRetailer as string) : null,
+    bestPlanName: md.baselinePlanName || null,
+    yearlySaving,
+    fromBill: !!cleanBillCheck(parseJson(md.billCheck)),
+    signInUrl,
+  };
 }
 
 /** The column a PostgREST "missing column" error names, e.g.

@@ -1,4 +1,5 @@
 "use client";
+import type React from "react";
 
 import Icon from "./Icon";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
@@ -49,7 +50,10 @@ export default function BillPhotoUpload({
   priorPages = [],
   stripTitle,
   stripSub,
+  children,
 }: {
+  /** Hero only: other ways in (no bill, type it in), shown inside the card under the photo buttons. */
+  children?: React.ReactNode;
   /** The read, and the photos it came from (none for a PDF), so a page can be added later. */
   onApply: (bill: ExtractedBill, pages: Blob[]) => void;
   /** "hero": the big, main way into the check. "card": the smaller reminder elsewhere.
@@ -267,6 +271,12 @@ export default function BillPhotoUpload({
           <p className={snap.fine}>
             Free, no sign-up.{access === "member" ? "" : " Up to 5 free bill reads a day."} We only keep the numbers, not the picture.
           </p>
+          {children && !reading && (
+            <div className={snap.otherWays}>
+              <span className={snap.otherLabel}>Or</span>
+              <div className={snap.otherBtns}>{children}</div>
+            </div>
+          )}
         </div>
         {inputs}
       </div>

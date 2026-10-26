@@ -12,7 +12,8 @@ export default function OfferDate({ retailer, plan, dark = false }: { retailer: 
           {d.badge === "New" ? "New offer" : "Prices changed"}{d.badgeDate ? ` ${d.badgeDate}` : ""}
         </span>
       )}
-      {d.label && <span className={s.label}>{d.label}</span>}
+      {/* "New offer 30 Sept" already says when it started: don't repeat it as "Offer from 30 Sept". */}
+      {d.label && !(d.badge === "New" && d.badgeDate && d.label.includes(d.badgeDate)) && <span className={s.label}>{d.label}</span>}
     </span>
   );
 }

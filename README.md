@@ -199,7 +199,7 @@ npm run dev
 - Re-run `supabase/schema.sql` to create `bill_checks` and `bill_reads`.
 
 ## After checkout
-Stripe redirects to `/api/welcome-link`, which confirms payment, signs the new member in with a one-time Supabase link, and lands them on `/welcome`. There they read their bill (skippable), then go to My Dashboard. In Supabase → Authentication → URL Configuration, add `https://YOUR-SITE/welcome` (or `https://YOUR-SITE/**`) to Redirect URLs.
+Stripe redirects to `/api/welcome-link`, which confirms payment, then sends one welcome email with a one-time sign-in button in it (made with the Supabase secret key), and lands them on `/welcome` ("check your inbox"). If that can't be done (no secret key, or Resend not set up) it falls back to Supabase's own sign-in email plus a plain welcome. There they read their bill (skippable), then go to My Dashboard. In Supabase → Authentication → URL Configuration, add `https://YOUR-SITE/welcome` (or `https://YOUR-SITE/**`) to Redirect URLs.
 
 ## Owner health email
 
