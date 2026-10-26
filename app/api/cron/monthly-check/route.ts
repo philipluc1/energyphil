@@ -38,6 +38,7 @@ interface Row {
   gas_reference_total?: number | null;
   switched_at?: string | null;
   switched_to?: string | null;
+  monthly_summary?: boolean | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -67,6 +68,13 @@ export async function GET(req: NextRequest) {
   {
     const { data: rs, error: rErr } = await supabaseAdmin.from("subscribers").select("id, current_rates").eq("status", "active").not("current_rates", "is", null);
     if (!rErr) for (const x of (rs ?? []) as { id: string; current_rates: unknown }[]) { const r = ratesFromJson(x.current_rates); if (r) ratesOf.set(x.id, r); }
+  }
+
+  // Who has turned the monthly summary off (separate query, so an older database without the column still sends).
+  const summaryOn = new Map<string, boolean>();
+  {
+    const { data: ms, error: mErr } = await supabaseAdmin.from("subscribers").select("id, monthly_summary").eq("status", "active").eq("monthly_summary", false);
+    if (!mErr) for (const x of (ms ?? []) as { id: string }[]) summaryOn.set(x.id, false);
   }
 
   let saved = 0;
@@ -112,7 +120,8 @@ export async function GET(req: NextRequest) {
       if (upErr) throw upErr;
       saved++;
 
-      if (emailConfigured && !sub.unsubscribed) {
+      // The check is always saved; the email only if they haven't turned the summary off.
+      if (emailConfigured && !sub.unsubscribed && summaryOn.get(sub.id) !== false) {
         const monthName = now.toLocaleDateString("en-AU", { month: "long", timeZone: "UTC" });
         const e = monthlyCheck({
           origin,

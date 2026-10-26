@@ -22,6 +22,7 @@ async function authHeaders(): Promise<Record<string, string> | null> {
 interface Settings {
   referral: { code: string; joined: number; credited: number } | null;
   alertMin: number;
+  monthlySummary: boolean;
 }
 
 export function MemberSettings() {
@@ -35,7 +36,7 @@ export function MemberSettings() {
       const res = await fetch("/api/member-settings", { headers }).catch(() => null);
       const body = await res?.json().catch(() => null);
       if (!live) return;
-      if (body?.ok) setSettings({ referral: body.referral ?? null, alertMin: body.alertMin });
+      if (body?.ok) setSettings({ referral: body.referral ?? null, alertMin: body.alertMin, monthlySummary: body.monthlySummary !== false });
       else setFailed(true);
     })();
     return () => {
@@ -46,7 +47,7 @@ export function MemberSettings() {
   return (
     <>
       <ReferralCard referral={settings?.referral ?? null} loading={!settings && !failed} />
-      <AlertCard value={settings?.alertMin ?? null} onSaved={(v) => setSettings((p) => (p ? { ...p, alertMin: v } : p))} />
+      <AlertCard value={settings?.alertMin ?? null} onSaved={(v) => setSettings((p) => (p ? { ...p, alertMin: v } : p))} monthly={settings ? settings.monthlySummary : null} onMonthly={(v) => setSettings((p) => (p ? { ...p, monthlySummary: v } : p))} />
     </>
   );
 }
@@ -111,9 +112,24 @@ function ReferralCard({ referral, loading }: { referral: Settings["referral"]; l
   );
 }
 
-function AlertCard({ value, onSaved }: { value: number | null; onSaved: (v: number) => void }) {
+function AlertCard({ value, onSaved, monthly, onMonthly }: { value: number | null; onSaved: (v: number) => void; monthly: boolean | null; onMonthly: (v: boolean) => void }) {
   const [saving, setSaving] = useState<number | null>(null);
   const [msg, setMsg] = useState("");
+  const [mBusy, setMBusy] = useState(false);
+  const [mMsg, setMMsg] = useState("");
+  async function toggleMonthly() {
+    if (monthly === null) return;
+    setMBusy(true);
+    setMMsg("");
+    const headers = await authHeaders();
+    const res = headers ? await fetch("/api/member-settings", { method: "POST", headers, body: JSON.stringify({ monthlySummary: !monthly }) }).catch(() => null) : null;
+    const body = await res?.json().catch(() => null);
+    setMBusy(false);
+    if (body?.ok) {
+      onMonthly(!monthly);
+      setMMsg(!monthly ? "On. You'll get the summary on the 1st of each month." : "Off. You'll only hear from us when a move is worth it.");
+    } else setMMsg(body?.message || "Couldn't save that. Please try again.");
+  }
   async function choose(v: number) {
     if (v === value) return;
     setSaving(v);
@@ -147,6 +163,18 @@ function AlertCard({ value, onSaved }: { value: number | null; onSaved: (v: numb
         ))}
       </div>
       {msg && <p className={s.muted} role="status">{msg}</p>}
+
+      <div className={s.rowSetting}>
+        <div>
+          <b>Monthly summary email</b>
+          <p className={a.panelText}>On the 1st: where you stand and the best plan today. Your dashboard shows it either way. Alerts about a cheaper plan are separate and always sent.</p>
+        </div>
+        <button type="button" role="switch" aria-checked={monthly === true} className={`${s.switch} ${monthly ? s.switchOn : ""}`} disabled={monthly === null || mBusy} onClick={toggleMonthly}>
+          <span className={s.knob} aria-hidden="true" />
+          <span className={s.switchLabel}>{monthly === null ? "…" : monthly ? "On" : "Off"}</span>
+        </button>
+      </div>
+      {mMsg && <p className={s.muted} role="status">{mMsg}</p>}
     </section>
   );
 }

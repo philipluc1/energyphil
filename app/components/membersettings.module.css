@@ -36,3 +36,13 @@
 @media (max-width: 480px) {
   .linkRow { flex-direction: column; }
 }
+
+/* Monthly summary on/off */
+.rowSetting { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.rowSetting b { display: block; font-size: 15px; color: var(--ink); margin-bottom: 2px; }
+.rowSetting p { margin: 0; }
+.switch { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); font: inherit; font-weight: 800; font-size: 13px; color: var(--grey); cursor: pointer; min-height: 36px; }
+.switch:disabled { opacity: 0.6; cursor: default; }
+.knob { width: 26px; height: 26px; border-radius: 50%; background: var(--grey-soft); transition: background 0.2s; }
+.switchOn { border-color: var(--teal); color: var(--teal); }
+.switchOn .knob { background: var(--teal); }

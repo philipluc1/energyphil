@@ -291,3 +291,5 @@ alter table public.subscribers add column if not exists referred_by text;
 alter table public.subscribers add column if not exists referral_credited boolean not null default false;
 -- The member's own alert minimum (A$ a year). Null = the default ($50).
 alter table public.subscribers add column if not exists alert_min_saving numeric;
+-- The monthly summary email (1st of the month). Off = the member only gets alerts worth money.
+alter table public.subscribers add column if not exists monthly_summary boolean not null default true;
