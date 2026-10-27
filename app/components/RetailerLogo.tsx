@@ -18,20 +18,30 @@ export function hasRetailerLogo(name: string | null | undefined): boolean {
   return !!name && !!RETAILER_LOGO_FILES[retailerSlug(name)];
 }
 
-export default function RetailerLogo({ name, size = 48, radius }: { name: string | null; size?: number; radius?: number }) {
-  const file = name ? RETAILER_LOGO_FILES[retailerSlug(name)] : undefined;
+/**
+ * The tile is `size` tall and, unless `square` is asked for (the price-line
+ * bubbles), 2.2x as wide: the same pill for every retailer, with the logo
+ * centred in it, so wide wordmarks and round marks line up in a list.
+ */
+export default function RetailerLogo({ name, size = 48, radius, square = false }: { name: string | null; size?: number; radius?: number; square?: boolean }) {
+  const logo = name ? RETAILER_LOGO_FILES[retailerSlug(name)] : undefined;
   const style = { width: size, height: size, borderRadius: radius ?? Math.round(size * 0.29), fontSize: Math.round(size * 0.34) };
-  if (file) {
+  if (logo) {
+    // Every tile is the same shape (a 2.2:1 pill, or a square in the chart
+    // bubbles), with the logo centred inside, so a row of retailers lines up.
+    const pad = square ? 2 : Math.max(4, Math.round(size * 0.12));
+    const width = square ? size : Math.round(size * 2.2);
     return (
-      <span className={s.logo} style={style}>
+      <span className={s.logo} style={{ ...style, width, padding: pad }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- small static logos, no optimisation needed */}
-        <img src={file} alt={`${name} logo`} />
+        <img src={logo.file} alt={`${name} logo`} />
       </span>
     );
   }
   const initials = (name ?? "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  // Same pill as the logo tiles, so a list stays aligned when a few retailers have no logo yet.
   return (
-    <span className={s.badge} style={{ ...style, background: name ? retailerColour(name) : "var(--navy, #22306e)" }} aria-hidden="true">
+    <span className={s.badge} style={{ ...style, width: square ? size : Math.round(size * 2.2), background: name ? retailerColour(name) : "var(--navy, #22306e)" }} aria-hidden="true">
       {initials}
     </span>
   );

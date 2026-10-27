@@ -117,7 +117,7 @@ export default function PriceLine({
             title={best.locked ? `Members see this plan: ${money(best.value)} ${per}` : `${best.retailer}: ${best.plan}, ${money(best.value)} ${per}`}
           >
             <span className={s.face}>
-              {best.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={best.retailer} size={36} />}
+              {best.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={best.retailer} size={36} square />}
               <span className={s.star} aria-label="Cheapest">★</span>
             </span>
             <span className={s.price}>{money(best.value)}</span>
@@ -132,7 +132,7 @@ export default function PriceLine({
             title={it.locked ? `Members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
           >
             <span className={s.face}>
-              {it.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={it.retailer} size={36} />}
+              {it.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={it.retailer} size={36} square />}
               {it.cheapest && <span className={s.star} aria-label="Cheapest">★</span>}
             </span>
             <span className={s.price}>{money(it.value)}</span>
