@@ -52,16 +52,26 @@
 .steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
 .step h3 { margin: 10px 0 6px; font-size: 18px; color: var(--ink); }
 .step p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--body); }
+/* The product shots are tall phone screens: show the top of each at the
+   phone's own shape, never cut through a headline. */
 .shot {
-  height: 340px; overflow: hidden; border-radius: 16px;
+  aspect-ratio: 4 / 5; overflow: hidden; border-radius: 16px;
   border: 1px solid var(--border); background: var(--bg);
+  box-shadow: 0 16px 36px -24px rgba(20, 24, 60, 0.5);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s;
 }
-.shot img { display: block; width: 100%; height: auto; }
+.shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.step:hover .shot { transform: translateY(-4px) scale(1.01); box-shadow: 0 24px 44px -24px rgba(20, 24, 60, 0.6); }
 .num {
   display: inline-grid; place-items: center; margin-top: 16px;
   width: 28px; height: 28px; border-radius: 50%;
   background: var(--navy); color: #fff; font-weight: 800; font-size: 14px;
 }
+/* Entrance when scrolled into view (Reveal sets data-in). */
+.steps .step { opacity: 0; transform: translateY(18px); transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1); transition-delay: calc(var(--n, 0) * 0.14s); }
+.steps[data-in="1"] .step { opacity: 1; transform: none; }
+.steps[data-in="1"] .num { animation: numPop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; animation-delay: calc(0.3s + var(--n, 0) * 0.14s); }
+@keyframes numPop { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .table { width: 100%; max-width: 560px; border-collapse: collapse; font-size: 16px; }
 .table th, .table td { padding: 12px 0; border-bottom: 1px solid var(--border); text-align: left; }
@@ -70,9 +80,19 @@
 .total th, .total td { border-bottom: none; padding-top: 14px; font-weight: 800; color: var(--ink); }
 .total td { color: var(--teal); font-size: 20px; }
 
-.watch { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.watch li { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; line-height: 1.5; color: var(--ink); }
-.watch li svg { margin-top: 2px; color: var(--teal); }
+/* The four membership promises: bold line, quiet line, teal icon tile. */
+.lede2 { margin: 0 0 22px; max-width: 640px; font-size: 17px; line-height: 1.55; color: var(--grey); }
+.promises { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.promises li { position: relative; display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; column-gap: 14px; row-gap: 4px; padding: 18px 18px 18px 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 10px 30px -22px rgba(20, 24, 60, 0.4); opacity: 0; transform: translateY(14px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s, border-color 0.3s; transition-delay: calc(var(--n, 0) * 0.1s); }
+.promises[data-in="1"] li { opacity: 1; transform: none; transition-delay: calc(var(--n, 0) * 0.1s), calc(var(--n, 0) * 0.1s), 0s, 0s; }
+.promises[data-in="1"] li:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -22px rgba(20, 24, 60, 0.5); border-color: color-mix(in srgb, var(--teal) 45%, var(--border)); }
+.promises li b { grid-column: 2; align-self: end; font-size: 17px; line-height: 1.25; color: var(--ink); letter-spacing: -0.01em; }
+.promises li > span:last-child { grid-column: 2; font-size: 14.5px; line-height: 1.5; color: var(--grey); }
+.promiseIcon { grid-row: 1 / span 2; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: var(--teal); background: color-mix(in srgb, var(--teal) 14%, transparent); border: 1px solid color-mix(in srgb, var(--teal) 30%, transparent); }
+@media (max-width: 640px) { .promises { grid-template-columns: 1fr; gap: 10px; } .promises li { padding: 14px; } .lede2 { font-size: 15.5px; } }
+@media (prefers-reduced-motion: reduce) { .promises li, .steps .step, .shot { opacity: 1; transform: none; transition: none; animation: none; } .steps[data-in="1"] .num { animation: none; } }
 
 /* Price: a navy card that leads with the small monthly number */
 .priceCard {
@@ -192,13 +212,17 @@
   .memberPrice { font-size: 44px; }
   .memberTicks li { font-size: 14.5px; }
   .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 32px; }
-  .steps { grid-template-columns: 1fr; gap: 32px; }
+  .steps { grid-template-columns: 1fr; gap: 18px; }
+  .step { display: grid; grid-template-columns: 120px 1fr; grid-template-rows: auto auto 1fr; column-gap: 16px; align-items: start; padding: 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); }
+  .step .shot { grid-row: 1 / span 3; aspect-ratio: 1 / 1.6; border-radius: 12px; }
+  .step .num { margin-top: 0; }
+  .step h3 { margin: 8px 0 4px; font-size: 16.5px; }
+  .step p { font-size: 14px; }
   .knows, .homes { grid-template-columns: 1fr; }
   .homes { row-gap: 22px; }
   .homes li { display: flex; flex-direction: column; grid-row: auto; }
   .priceCard { grid-template-columns: 1fr; padding: 26px 20px; }
   .bigPrice { font-size: 60px; }
-  .shot { height: 300px; }
   .founder { flex-direction: column; }
 }
 @media (max-width: 480px) {

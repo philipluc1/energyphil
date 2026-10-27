@@ -2,12 +2,14 @@ import { pageMeta } from "@/lib/seo";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { PLANS } from "@/lib/plans";
 import { ABOUT, hasFounderStory } from "@/lib/about";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { findPlan, fmtPrice, savePct, type PricingPlan } from "@/lib/pricingPlans";
 import SiteHeader from "./components/SiteHeader";
 import StateWaitlist from "./components/StateWaitlist";
+import Reveal from "./components/Reveal";
 import Icon from "./components/Icon";
 import SourceBanner from "./components/SourceBanner";
 import MarketBoard from "./components/MarketBoard";
@@ -96,15 +98,33 @@ export default function Home() {
         {/* 2. Live: how much the market changed in the last 30 days (hidden until the daily pull has dated offers) */}
         <MarketBoard compact />
 
-        {/* 3. When members hear from us: four short lines */}
+        {/* 3. When members hear from us: four promises */}
         <section className={h.section}>
-          <h2 className={h.h2}>When we check for you</h2>
-          <ul className={h.watch}>
-            <li><Icon name="refresh" size={20} /><span><b>Every morning</b>, against every published offer</span></li>
-            <li><Icon name="bell" size={20} /><span><b>A month before</b> your discount or fixed price ends</span></li>
-            <li><Icon name="calendar" size={20} /><span><b>After 1 July</b>, when retailers reprice</span></li>
-            <li><Icon name="mail" size={20} /><span><b>Whenever a plan beats yours</b> by {money(WORTH_SWITCHING_PER_YEAR)} a year or more (or the amount you choose)</span></li>
-          </ul>
+          <p className={h.eyebrow}>Membership</p>
+          <h2 className={h.h2}>You stop checking. We never do.</h2>
+          <p className={h.lede2}>Retailers change their offers every week. Your bill gets re-priced against all {PLANS.length} plans we track, every single morning, and you hear from us only when it pays to move.</p>
+          <Reveal as="ul" className={h.promises}>
+            <li style={{ "--n": 0 } as CSSProperties}>
+              <span className={h.promiseIcon}><Icon name="refresh" size={22} /></span>
+              <b>Every morning, while you sleep</b>
+              <span>Your bill, re-priced against every plan we track. Seven days a week, forever.</span>
+            </li>
+            <li style={{ "--n": 1 } as CSSProperties}>
+              <span className={h.promiseIcon}><Icon name="bell" size={22} /></span>
+              <b>30 days&apos; warning</b>
+              <span>Discounts and fixed prices end quietly. Yours won&apos;t. We tell you a month out.</span>
+            </li>
+            <li style={{ "--n": 2 } as CSSProperties}>
+              <span className={h.promiseIcon}><Icon name="calendar" size={22} /></span>
+              <b>1 July, handled</b>
+              <span>When retailers reprice for the new year, you&apos;re re-checked as soon as the new prices land.</span>
+            </li>
+            <li style={{ "--n": 3 } as CSSProperties}>
+              <span className={h.promiseIcon}><Icon name="mail" size={22} /></span>
+              <b>No news is good news</b>
+              <span>An email only when a switch saves you {money(WORTH_SWITCHING_PER_YEAR)}+ a year. Set your own bar if you like.</span>
+            </li>
+          </Reveal>
           <p className={h.note}>
             Used Victorian Energy Compare? Good, it finds the best deal on the day. We start from your bill and keep checking.{" "}
             <Link href="/learn#compare">How the two fit together</Link>
@@ -114,26 +134,26 @@ export default function Home() {
         {/* 4. How it works, in three pictures */}
         <section className={h.section}>
           <h2 className={h.h2}>How it works</h2>
-          <ol className={h.steps}>
-            <li className={h.step}>
+          <Reveal as="ol" className={h.steps}>
+            <li className={h.step} style={{ "--n": 0 } as CSSProperties}>
               <div className={h.shot}><Image src="/images/product/1-photo.png" alt="The check opens on a button to take a photo of your bill" width={390} height={780} /></div>
               <span className={h.num}>1</span>
               <h3>Take a photo of your bill</h3>
               <p>Paper, PDF or an app screenshot. No bill? Answer a few questions instead.</p>
             </li>
-            <li className={h.step}>
+            <li className={h.step} style={{ "--n": 1 } as CSSProperties}>
               <div className={h.shot}><Image src="/images/product/2-read.png" alt="What we read from the bill: network, days, usage, total and rates" width={390} height={780} /></div>
               <span className={h.num}>2</span>
               <h3>Check what we read</h3>
               <p>Your usage, bill total and rates, in plain English. Fix anything that looks wrong.</p>
             </li>
-            <li className={h.step}>
+            <li className={h.step} style={{ "--n": 2 } as CSSProperties}>
               <div className={h.shot}><Image src="/images/product/3-result.png" alt="The result: the cheapest plan and the yearly saving (example bill)" width={390} height={780} /></div>
               <span className={h.num}>3</span>
               <h3>See whether to switch</h3>
               <p>The cheapest plan for how you use power and what it saves in a year. Example bill shown.</p>
             </li>
-          </ol>
+          </Reveal>
         </section>
 
         {hasFounderStory && (

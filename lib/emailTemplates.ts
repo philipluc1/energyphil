@@ -1,8 +1,9 @@
 // Every customer email's wording, in one place. Each function returns the
 // subject, the heading shown at the top of the card, and the body HTML; the
 // branded shell (logo header, footer) is added by renderEmail in lib/email.ts.
-// The welcome email lives in lib/welcomeEmail.ts. The sign-in link email is a
-// Supabase template: supabase/email-templates/.
+// The welcome email lives in lib/welcomeEmail.ts. The sign-in link is sent by
+// /api/login-link using signInEmail below (the Supabase templates in
+// supabase/email-templates/ are only the fallback when that isn't set up).
 //
 // To change wording: edit the strings below, keep the ${...} parts.
 
@@ -207,6 +208,17 @@ export function duplicatePaymentEmail(i: { origin: string }): Email {
     ${statusBox({ kicker: "Refund", headline: "On its way back to your card", body: "Refunds usually show within 5 to 10 business days, depending on your bank.", tone: "green" })}
     ${button("Open my dashboard", `${i.origin}/account#membership`)}`;
   return { subject: "You were already a member: we've refunded the second payment", title: "Second payment refunded", html };
+}
+
+/* ---------- Member login: the sign-in link ----------
+   One button. Works once, for about an hour. */
+export function signInEmail(i: { origin: string; url: string }): Email {
+  const html = `
+    <p>Here's your link to open My Dashboard. It works once, for about an hour, and only on the device you open it on.</p>
+    ${button("Sign in to Utilo", i.url)}
+    ${note("Didn't ask for this? You can ignore it; nobody can sign in without this email. Need a fresh link later? Go to Member login and enter this address again.")}
+    <p style="margin:16px 0 0;font-size:13px;color:#5f6b82;">Sent from Utilo, ${esc(i.origin.replace(/^https?:\/\//, ""))}.</p>`;
+  return { subject: "Your Utilo sign-in link", title: "Sign in to Utilo", html };
 }
 
 export { signOff };

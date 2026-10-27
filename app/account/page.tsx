@@ -609,15 +609,25 @@ export default function AccountPage() {
     if (!supabase) return;
     setSending(true);
     setLoginError("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email: loginEmail,
-      options: { emailRedirectTo: `${window.location.origin}/account` },
-    });
-    setSending(false);
-    if (error) {
-      setLoginError("Couldn't send that link — please check the email and try again.");
+    // Our own branded sign-in email first; Supabase's generic one only if that's not set up.
+    const ours = await fetch("/api/login-link", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: loginEmail }) }).catch(() => null);
+    if (ours && ours.status === 400) {
+      setSending(false);
+      setLoginError("Please check the email address and try again.");
       return;
     }
+    if (!ours || !ours.ok) {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: loginEmail,
+        options: { emailRedirectTo: `${window.location.origin}/account` },
+      });
+      if (error) {
+        setSending(false);
+        setLoginError("Couldn't send that link — please check the email and try again.");
+        return;
+      }
+    }
+    setSending(false);
     setLinkSent(true);
     setCooldown(30);
   }
@@ -795,7 +805,7 @@ export default function AccountPage() {
                   <div className={styles.inboxIcon} aria-hidden="true"><Icon name="mail" size={28} /></div>
                   <h2>Check your inbox</h2>
                   <p>
-                    We sent a sign-in link to <strong>{loginEmail}</strong>. Open it on this device and you&apos;re in.
+                    If <strong>{loginEmail}</strong> is a member, an email from Utilo (&ldquo;Your Utilo sign-in link&rdquo;) is on its way. Open it on this device and you&apos;re in.
                   </p>
                   <div className={styles.inboxBtns}>
                     <a className={styles.btnPrimary} href="https://mail.google.com" target="_blank" rel="noopener noreferrer">Open Gmail</a>
