@@ -18,6 +18,8 @@ import { cleanBillCheck, type BillCheck } from "@/lib/billCheck";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
 import UsageShape from "../components/UsageShape";
+import GasDashboard, { GasAside } from "../components/GasDashboard";
+import gd from "../components/gasdash.module.css";
 import { shapeForProfile } from "@/lib/usageShape";
 import DashTabs, { type TabDef } from "../components/DashTabs";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
@@ -97,6 +99,7 @@ interface SubscriberSummary {
   gas_mj: number | null;
   gas_reference_total: number | null;
   gas_current_plan_name: string | null;
+  gas_current_retailer?: string | null;
   gas_best_retailer: string | null;
   gas_best_plan_name: string | null;
   gas_best_total: number | null;
@@ -297,12 +300,15 @@ export default function AccountPage() {
       setSubLoading(true);
       setSubError("");
       const BASE_COLS =
-          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, demand_kw, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
       const PRICING_COLS = ", current_rates, current_price_type, current_price_fixed_until, discount_ends_at";
+      // Oct 2026 columns (schema.sql): loaded when the database has them.
+      const NEW_COLS = ", demand_kw, gas_current_retailer";
       const pick = (cols: string) =>
         supabase!.from("subscribers").select(cols).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      let { data, error } = await pick(BASE_COLS + PRICING_COLS + ", bill_check");
+      let { data, error } = await pick(BASE_COLS + PRICING_COLS + NEW_COLS + ", bill_check");
       // Database without the newest columns yet? Load everything else.
+      if (error && /column|schema cache/i.test(error.message ?? "")) ({ data, error } = await pick(BASE_COLS + PRICING_COLS + ", bill_check"));
       if (error && /column|schema cache/i.test(error.message ?? "")) ({ data, error } = await pick(BASE_COLS + PRICING_COLS));
       if (error && /column|schema cache/i.test(error.message ?? "")) ({ data, error } = await pick(BASE_COLS));
       if (cancelled) return;
@@ -449,6 +455,8 @@ export default function AccountPage() {
     return () => { document.body.style.background = prev; };
   }, [stage, themeMode]);
   const [period, setPeriod] = useState<Period>("year");
+  // Which fuel the dashboard shows. #gas in the address opens gas.
+  const [fuel, setFuel] = useState<"elec" | "gas">(() => (typeof window !== "undefined" && window.location.hash === "#gas" ? "gas" : "elec"));
   const [showSwitchForm, setShowSwitchForm] = useState(false);
   // Deal end dates (discount / benefit period, fixed price), editable on the Savings tab.
   const [dealForm, setDealForm] = useState<{ discount: string; fixed: string } | null>(null);
@@ -597,6 +605,8 @@ export default function AccountPage() {
     router.push("/check?start=type");
   }
 
+  // On gas the Compare tab isn't offered (gas has its own comparison above).
+  const shownTab: Tab = fuel === "gas" && tab === "compare" ? "home" : tab;
   const tabs: TabDef<Tab>[] = [
     { id: "compare", label: "Compare", icon: "scale", hint: "All plans, ranked" },
     { id: "home", label: "My home", icon: "home", hint: "Address and usage" },
@@ -766,8 +776,9 @@ export default function AccountPage() {
 
   const sideCards = (
     <>
-      {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
-      {cmpInput && <MemberMarket input={cmpInput} member={isMember} compact />}
+      {fuel === "gas" && sub && <GasAside member={sub} />}
+      {fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
+      {fuel === "elec" && cmpInput && <MemberMarket input={cmpInput} member={isMember} compact />}
           <div className={styles.panelCard}>
             <div className={styles.panelTitle}>Gas</div>
             {isMember && sub!.gas_zone && sub!.gas_mj ? (
@@ -909,16 +920,32 @@ export default function AccountPage() {
 
               <div className={styles.dashGrid}>
               <div className={styles.dashMain}>
+              {/* Electricity or gas: one dashboard each, same shape. */}
+              {!subLoading && (
+                <div className={gd.fuelSwitch} role="tablist" aria-label="Fuel">
+                  <button type="button" role="tab" aria-selected={fuel === "elec"} className={fuel === "elec" ? gd.fuelOn : gd.fuelBtn} onClick={() => { setFuel("elec"); try { window.history.replaceState(null, "", "#"); } catch { /* ignore */ } }}>
+                    <span className={`${gd.fuelIcon} ${gd.fuelElec}`}><Icon name="bolt" size={18} /></span>
+                    <span className={gd.fuelText}>Electricity<span className={gd.fuelSub}>{cmpInput ? (cmpInput.currentRetailer ?? "your plan") : "no bill yet"}</span></span>
+                  </button>
+                  <button type="button" role="tab" aria-selected={fuel === "gas"} className={fuel === "gas" ? gd.fuelOn : gd.fuelBtn} onClick={() => { setFuel("gas"); if (tab === "compare") setTab("home"); try { window.history.replaceState(null, "", "#gas"); } catch { /* ignore */ } }}>
+                    <span className={`${gd.fuelIcon} ${gd.fuelGas}`}><Icon name="flame" size={18} /></span>
+                    <span className={gd.fuelText}>Gas<span className={gd.fuelSub}>{sub?.gas_zone && sub?.gas_mj ? (sub.gas_current_retailer ?? sub.gas_zone) : "no gas bill yet"}</span></span>
+                  </button>
+                </div>
+              )}
+              {!subLoading && fuel === "gas" && (
+                <GasDashboard member={sub ?? { gas_zone: null, gas_billing_days: null, gas_mj: null, gas_reference_total: null, gas_current_plan_name: null, gas_updated_at: null }} isMember={isMember} period={period} onPeriod={setPeriod} />
+              )}
               {/* Always on top: are you on the cheapest plan? */}
-              {!subLoading && cmpInput && (
+              {!subLoading && fuel === "elec" && cmpInput && (
                 <VerdictCard input={cmpInput} member={isMember} period={period} onPeriod={setPeriod} />
               )}
-              {!subLoading && dashCheck && dashCheckFacts && (
+              {!subLoading && fuel === "elec" && dashCheck && dashCheckFacts && (
                 <div className={styles.billCheckWrap}>
                   <BillCheckCard check={dashCheck} retailer={cmpInput?.currentRetailer ?? ""} facts={dashCheckFacts} title="We checked your latest bill" />
                 </div>
               )}
-              {!subLoading && !cmpInput && (
+              {!subLoading && fuel === "elec" && !cmpInput && (
                 <section className={styles.emptyVerdict}>
                   <span className={styles.stateLabel}>Are you on the cheapest plan?</span>
                   <h2>{isMember ? "Upload a bill and we'll tell you." : "Run the free check and your answer lands here."}</h2>
@@ -932,8 +959,8 @@ export default function AccountPage() {
               )}
 
               {!subLoading && (
-                <DashTabs tabs={tabs} active={tab} onChange={changeTab}>
-                  {tab === "compare" && (
+                <DashTabs tabs={fuel === "gas" ? tabs.filter((t) => t.id !== "compare") : tabs} active={shownTab} onChange={changeTab}>
+                  {shownTab === "compare" && (
                     cmpInput ? (
                       <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
                     ) : (
@@ -944,7 +971,7 @@ export default function AccountPage() {
                     )
                   )}
 
-                  {tab === "home" && (
+                  {shownTab === "home" && (
                     <>
                       {isMember ? (
                         <>
@@ -973,7 +1000,7 @@ export default function AccountPage() {
                     </>
                   )}
 
-                  {tab === "savings" && (
+                  {shownTab === "savings" && (
                     isMember ? (
                       <>
                         {/* One card that changes with where you are: not switched, switched, or on a good deal. */}
@@ -1134,7 +1161,7 @@ export default function AccountPage() {
                     )
                   )}
 
-                  {tab === "membership" && (
+                  {shownTab === "membership" && (
                     <>
                       {isMember ? (
                         <>
@@ -1190,7 +1217,7 @@ export default function AccountPage() {
                   )}
                 </DashTabs>
               )}
-              {!subLoading && myShape && (
+              {!subLoading && fuel === "elec" && myShape && (
                 <div className={styles.shapeWrap}>
                   <UsageShape
                     shape={myShape.shape}

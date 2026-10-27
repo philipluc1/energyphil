@@ -13,12 +13,16 @@ import Reveal from "./components/Reveal";
 import Icon from "./components/Icon";
 import SourceBanner from "./components/SourceBanner";
 import MarketBoard from "./components/MarketBoard";
+import NbnNotify from "./components/NbnNotify";
+import { GAS_PLANS, GAS_RETAILER_COUNT, gasDataReady } from "@/lib/gasPlans";
 import styles from "./components/Comparator.module.css";
 import h from "./home2.module.css";
 
 export const metadata = pageMeta({ title: "Utilo: compare Victorian electricity plans against your own bill", description: "Bill keeps creeping up? Snap your Victorian electricity bill and see which plans would cost less for your home, priced on your own usage and rates. Free check, no sign-up.", path: "/", absoluteTitle: true });
 
 const RETAILER_COUNT = new Set(PLANS.map((p) => p[0])).size;
+// Gas plans are listed once per network: count each plan once.
+const GAS_PLAN_COUNT = new Set(GAS_PLANS.map((p) => `${p[0]}|${p[2]}`)).size;
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
 // Prices from the price list so the home page never drifts from checkout.
 const MONTHLY = findPlan("monthly") as PricingPlan;
@@ -62,7 +66,7 @@ export default function Home() {
         <section className={h.heroTop}>
           <div className={h.heroText}>
             <p className={h.eyebrow}>Built from your bill</p>
-            <h1 className={h.title}>Bill keeps creeping up, and you don&apos;t know why or where to start?</h1>
+            <h1 className={h.title}>Bills creeping up?</h1>
             <p className={h.lede}>
               Start saving with one bill. We show what you&apos;re really paying against {PLANS.length} plans from {RETAILER_COUNT} retailers.
             </p>
@@ -95,10 +99,45 @@ export default function Home() {
           </aside>
         </section>
 
-        {/* 2. Live: how much the market changed in the last 30 days (hidden until the daily pull has dated offers) */}
+        {/* 2. One membership, every household bill: what's live and what's next */}
+        <section className={h.utilStrip} aria-labelledby="util-strip-title">
+          <p className={h.eyebrow}>One membership, every household bill</p>
+          <h2 id="util-strip-title" className={h.h2}>Electricity and gas today. Internet next.</h2>
+          <Reveal className={h.utilCards}>
+            <article className={h.utilCard} style={{ "--n": 0 } as CSSProperties}>
+              <div className={h.utilHead}>
+                <span className={`${h.utilIcon} ${h.utilElec}`}><Icon name="bolt" size={22} /></span>
+                <b>Electricity</b>
+                <span className={h.utilLive}><i aria-hidden="true" /> Live</span>
+              </div>
+              <p>Snap a bill. {PLANS.length} plans from {RETAILER_COUNT} retailers priced on your real usage, re-checked every morning, and 30 days&apos; warning before a discount ends.</p>
+              <Link href="/check" className={h.utilLink}>Check my electricity bill <span aria-hidden="true">→</span></Link>
+            </article>
+            <article className={h.utilCard} style={{ "--n": 1 } as CSSProperties}>
+              <div className={h.utilHead}>
+                <span className={`${h.utilIcon} ${h.utilGas}`}><Icon name="flame" size={22} /></span>
+                <b>Gas</b>
+                <span className={h.utilLive}><i aria-hidden="true" /> Live</span>
+              </div>
+              <p>A gas or dual-fuel bill works.{gasDataReady ? ` ${GAS_PLAN_COUNT} plans from ${GAS_RETAILER_COUNT} retailers.` : ""} Victoria has no default offer for gas, so your own bill is the yardstick, and we flag when a dual-fuel discount beats the gap.</p>
+              <Link href="/gas" className={h.utilLink}>Check my gas bill <span aria-hidden="true">→</span></Link>
+            </article>
+            <article className={`${h.utilCard} ${h.utilSoonCard}`} style={{ "--n": 2 } as CSSProperties}>
+              <div className={h.utilHead}>
+                <span className={`${h.utilIcon} ${h.utilNbn}`}><Icon name="wifi" size={22} /></span>
+                <b>Internet (NBN)</b>
+                <span className={h.utilSoon}>Coming</span>
+              </div>
+              <p>Same idea: snap your internet bill, we check the speed tier you&apos;re on against every provider&apos;s price, and tell you before a promo rolls off. Members get it first, at no extra cost.</p>
+              <NbnNotify />
+            </article>
+          </Reveal>
+        </section>
+
+        {/* 3. Live: how much the market changed in the last 30 days (hidden until the daily pull has dated offers) */}
         <MarketBoard compact />
 
-        {/* 3. When members hear from us: four promises */}
+        {/* 4. When members hear from us: four promises */}
         <section className={h.section}>
           <p className={h.eyebrow}>Membership</p>
           <h2 className={h.h2}>You stop checking. We never do.</h2>

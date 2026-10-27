@@ -3,6 +3,8 @@ import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivi
 import CountUp from "./CountUp";
 import Icon from "./Icon";
 import RetailerLogo from "./RetailerLogo";
+import { OfferChips } from "./OfferTerms";
+import { describeOffer } from "@/lib/planExtras";
 import s from "./marketboard.module.css";
 
 const DAYS = 30;
@@ -26,19 +28,38 @@ export interface MarketPersonal {
   vs: (e: MarketEvent) => VsYou | null;
 }
 
-function Row({ e, vs }: { e: MarketEvent; vs?: VsYou | null }) {
+/** The offer's discounts and conditions, as chips, for one row. */
+function Deal({ e }: { e: MarketEvent }) {
+  const o = describeOffer("E", e.retailer, e.plan, null, { hasSolar: false, currentRetailer: null });
+  if (!o.chips.length) return null;
+  return <span className={s.deal}><OfferChips o={o} /></span>;
+}
+
+function Row({ e, vs, more = 0 }: { e: MarketEvent; vs?: VsYou | null; /** Other changed offers from the same retailer, folded into this row. */ more?: number }) {
   return (
     <li className={s.row}>
       <span className={s.when}>{fmtDay(e.date)}</span>
       <RetailerLogo name={e.retailer} size={30} />
       <span className={s.what}>
         <b>{e.retailer}</b>
-        <span className={s.plan} title={e.plan}>{e.plan}</span>
+        <span className={s.plan} title={e.plan}>{e.plan}{more > 0 ? ` · +${more} more` : ""}</span>
+        <Deal e={e} />
         {vs && <span className={vs.tone === "better" ? s.vsBetter : vs.tone === "worse" ? s.vsWorse : s.vsMuted}>{vs.text}</span>}
       </span>
       <span className={e.kind === "new" ? s.tagNew : s.tagPrice}>{e.kind === "new" ? "New offer" : "Price change"}</span>
     </li>
   );
+}
+
+/** One row per retailer: its latest changed offer, with the rest counted. */
+function perRetailer(events: MarketEvent[], n: number): { e: MarketEvent; more: number }[] {
+  const out: { e: MarketEvent; more: number }[] = [];
+  const idx = new Map<string, number>();
+  for (const e of events) {
+    const i = idx.get(e.retailer);
+    if (i === undefined) { idx.set(e.retailer, out.length); out.push({ e, more: 0 }); } else out[i].more++;
+  }
+  return out.slice(0, n);
 }
 
 /** A member's dashboard side card: the count checked, how many beat them, and the three latest. */
@@ -54,7 +75,7 @@ export function MarketSideCard({ personal, events }: { personal: MarketPersonal;
         {personal.closest ? <> {personal.closest}.</> : null}
       </p>
       <ul className={`${s.list} ${s.teaserList}`}>
-        {events.map((e) => <Row key={`${e.retailer}|${e.plan}`} e={e} vs={personal.vs(e)} />)}
+        {perRetailer(events, 3).map(({ e, more }) => <Row key={e.retailer} e={e} more={more} vs={personal.vs(e)} />)}
       </ul>
       <Link href="/market" className={s.more}>All changes in Victoria →</Link>
     </section>
@@ -91,7 +112,7 @@ function MarketTeaser({ events }: { events: MarketEvent[] }) {
         {perWeek >= 2 && <div className={`${s.stat} ${s.statWeek}`}><b>~{perWeek}</b><span>changes a week</span></div>}
       </div>
       <ul className={`${s.list} ${s.teaserList}`}>
-        {events.slice(0, 3).map((e) => <Row key={`${e.retailer}|${e.plan}`} e={e} />)}
+        {perRetailer(events, 3).map(({ e, more }) => <Row key={e.retailer} e={e} more={more} />)}
       </ul>
       <div className={s.teaserFoot}>
         <p><b>Would you have spotted these?</b> Members get every one checked against their own bill each morning.</p>

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 // States waiting for launch, plus the kinds of site we don't cover yet.
-const STATES = ["NSW", "SA", "QLD", "Other", "Business", "Embedded network"];
+// "NBN": interest in internet checks, from the home page.
+const STATES = ["NSW", "SA", "QLD", "Other", "Business", "Embedded network", "NBN"];
 
 export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => null);

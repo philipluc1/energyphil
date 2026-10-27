@@ -477,3 +477,5 @@
 .leadList { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; max-width: 40em; }
 .leadList li { display: flex; gap: 10px; align-items: flex-start; font-size: 16.5px; line-height: 1.45; color: var(--ink); }
 .leadList li::before { content: "✓"; flex: none; font-weight: 900; color: var(--teal); }
+.leadList li b { color: var(--ink); }
+.soon { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--teal) 14%, transparent); color: var(--teal); vertical-align: 1px; white-space: nowrap; }

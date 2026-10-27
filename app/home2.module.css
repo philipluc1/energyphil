@@ -229,3 +229,38 @@
   .page { padding: 0 16px 32px; }
   .phone { width: 250px; }
 }
+
+/* One membership, every household bill: what's live and what's next. */
+.utilStrip { padding: 36px 0 8px; }
+.utilCards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.utilCard { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 10px 30px -22px rgba(20, 24, 60, 0.4);
+  opacity: 0; transform: translateY(14px); transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s, border-color 0.3s; transition-delay: calc(var(--n, 0) * 0.12s); }
+.utilCards[data-in="1"] .utilCard { opacity: 1; transform: none; transition-delay: calc(var(--n, 0) * 0.12s), calc(var(--n, 0) * 0.12s), 0s, 0s; }
+.utilCards[data-in="1"] .utilCard:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -22px rgba(20, 24, 60, 0.5); border-color: color-mix(in srgb, var(--teal) 45%, var(--border)); }
+.utilCard p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--grey); flex: 1; }
+.utilHead { display: flex; align-items: center; gap: 10px; }
+.utilHead b { font-size: 17px; letter-spacing: -0.01em; color: var(--ink); }
+.utilIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; flex: none; }
+.utilCards[data-in="1"] .utilIcon { animation: utilFloat 4s ease-in-out infinite; animation-delay: calc(var(--n, 0) * 0.6s); }
+@keyframes utilFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.utilElec { background: rgba(245, 166, 35, 0.18); color: #b45309; }
+.utilGas { background: rgba(194, 65, 12, 0.14); color: #c2410c; }
+.utilNbn { background: rgba(45, 63, 158, 0.12); color: var(--navy-accent-text, #2d3f9e); }
+.utilLive, .utilSoon { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.utilLive { background: rgba(22, 163, 74, 0.14); color: #15803d; }
+.utilLive i { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); animation: livePulse 2s ease-out infinite; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); } 70% { box-shadow: 0 0 0 7px rgba(22, 163, 74, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); } }
+.utilSoon { background: color-mix(in srgb, var(--teal) 14%, transparent); color: var(--teal); position: relative; overflow: hidden; }
+.utilSoon::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%); transform: translateX(-120%); animation: soonSweep 3.2s ease-in-out infinite; }
+@keyframes soonSweep { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+.utilSoonCard { border-style: dashed; border-color: color-mix(in srgb, var(--navy-accent-text, #2d3f9e) 35%, var(--border)); box-shadow: none; }
+.utilLink { font-size: 14px; font-weight: 800; color: var(--navy-accent-text, #2d3f9e); text-decoration: none; }
+.utilLink:hover { text-decoration: underline; }
+@media (max-width: 820px) { .utilCards { grid-template-columns: 1fr; gap: 10px; } .utilCard { padding: 15px; } .utilStrip { padding-top: 28px; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .utilLive { background: rgba(22, 163, 74, 0.2); color: #86efac; } :root:not([data-theme="light"]) .utilLive i { background: #4ade80; } :root:not([data-theme="light"]) .utilElec { color: #fbbf24; } :root:not([data-theme="light"]) .utilGas { color: #fb923c; } :root:not([data-theme="light"]) .utilNbn { color: #a5b4fc; background: rgba(129, 140, 248, 0.16); } }
+:root[data-theme="dark"] .utilLive { background: rgba(22, 163, 74, 0.2); color: #86efac; }
+:root[data-theme="dark"] .utilLive i { background: #4ade80; }
+:root[data-theme="dark"] .utilElec { color: #fbbf24; }
+:root[data-theme="dark"] .utilGas { color: #fb923c; }
+:root[data-theme="dark"] .utilNbn { color: #a5b4fc; background: rgba(129, 140, 248, 0.16); }
+@media (prefers-reduced-motion: reduce) { .utilCard { opacity: 1; transform: none; transition: none; } .utilCards[data-in="1"] .utilIcon, .utilLive i, .utilSoon::after { animation: none; } }

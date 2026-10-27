@@ -82,10 +82,8 @@ const ROWS: { label: string; icon: string; esc: Mark; vec: Mark; us: Mark }[] = 
   { label: "Covers retailers across Victoria", icon: "map", esc: "no", vec: "yes", us: "TRACKED" },
   { label: "Uses your own usage, not a typical home", icon: "home", esc: "no", vec: "With meter data", us: "From your bill" },
   { label: "Starts from a photo of your bill", icon: "camera", esc: "no", vec: "no", us: "yes" },
-  { label: "Prices a year of smart meter data", icon: "chart", esc: "no", vec: "yes", us: "no" },
   { label: "Re-checks prices for you every day", icon: "refresh", esc: "no", vec: "no", us: "member" },
   { label: "Warns before your discount ends", icon: "bell", esc: "no", vec: "no", us: "member" },
-  { label: "Cost", icon: "dollar", esc: "Free", vec: "Free", us: "Free check" },
 ];
 
 function Cell({ m }: { m: Mark }) {

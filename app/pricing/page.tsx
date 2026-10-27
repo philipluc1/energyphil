@@ -17,13 +17,13 @@ export default function PricingPage() {
       <div className={styles.wrap}>
         <section className={home.pageHead}>
           <Tag tone="amber">Cancel any time</Tag>
-          <h1>Never chase an energy deal again. $7 a month.</h1>
-          <p className={styles.lede}>Or $39 a year, less than $1 a week. The check itself is always free.</p>
+          <h1>We check every plan for you, automatically. $7 a month.</h1>
+          <p className={styles.lede}>You never chase a deal again: every retailer, every offer, checked against your own bill each morning. Or $39 a year, less than $1 a week. The check itself is always free.</p>
           <ul className={home.leadList}>
-            <li>Every plan re-priced against your bill, every morning</li>
-            <li>An email only when switching is worth it</li>
+            <li><b>Automatic.</b> Every plan re-priced against your bill, every morning, without you lifting a finger</li>
+            <li>An email only when switching is worth it; otherwise, silence</li>
             <li>A monthly summary and a running tally of what you&apos;ve saved</li>
-            <li>Electricity and gas</li>
+            <li>Electricity and gas today <span className={home.soon}>More household bills on the way</span></li>
           </ul>
           <MarketPulse />
         </section>

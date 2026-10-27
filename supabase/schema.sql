@@ -164,6 +164,8 @@ alter table public.subscribers add column if not exists has_solar boolean not nu
 alter table public.subscribers add column if not exists solar_export_kwh numeric;
 -- Max demand in kW off the bill, for the few homes on a demand tariff (Oct 2026).
 alter table public.subscribers add column if not exists demand_kw numeric;
+-- The gas retailer off the bill, for the gas dashboard (Oct 2026).
+alter table public.subscribers add column if not exists gas_current_retailer text;
 
 -- Household profile (people, dwelling, heating, EV, solar size, ...) captured
 -- on /check, so usage can be estimated for their shape rather than a general average.

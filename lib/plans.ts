@@ -8,6 +8,9 @@ import { conditionalDiscount, extrasFor, pricedDiscount, restrictionFor, topOpen
 
 export type PlanRow = [string, string, string, string, number, number | null, number | null, number | null, number | null, number | null, number | null, (number | null)?];
 
+/** "… (Residential Demand)", "Demand Saver": a plan sold as a demand tariff. */
+export const namedForDemand = (planName: string): boolean => /\bdemand\b/i.test(planName);
+
 /** A demand tariff's charge, $ per kW per day, or null for an ordinary plan. */
 export const demandRateOf = (plan: PlanRow): number | null => plan[11] ?? null;
 
@@ -83,6 +86,10 @@ export function billDetail(plan: PlanRow, u: UsageInput, opts: PriceOptions = {}
   // only price it from the bill's max demand in kW.
   const demandKw = u.demandKw ?? 0;
   if (pDemand !== null && !(demandKw > 0)) return null;
+  // A plan named as a demand tariff whose demand charge isn't in our data
+  // (older data, or the retailer didn't publish it) can't be priced fairly:
+  // never shown, to anyone.
+  if (pDemand === null && namedForDemand(planName)) return null;
   const demandCharge = pDemand !== null ? pDemand * demandKw * u.days : 0;
   // Time-of-use plans can't price a lump "total" on top of time bands.
   if (pAnytime === null && u.anytime > 0) return null;

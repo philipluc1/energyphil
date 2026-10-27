@@ -1583,7 +1583,7 @@
 .stayNote { font-size: 13px; color: var(--grey); }
 /* Wizard steps: a coloured top edge per step so progress is visible at a glance. */
 .card { border-top: 5px solid var(--teal); }
-.stayCard { border-left: 5px solid #7c6cf0; background: linear-gradient(135deg, #f1efff, var(--surface) 60%); }
+.stayCard { border-left: 5px solid #7c6cf0; background: linear-gradient(135deg, color-mix(in srgb, #7c6cf0 12%, var(--surface)), var(--surface) 60%); }
 .switchHelp summary { color: #5eead4; }
 
 /* ---- Results reorder: retailer first, charts next, details folded, then pricing ---- */

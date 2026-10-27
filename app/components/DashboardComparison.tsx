@@ -363,7 +363,7 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
     };
   }, [c, input.distributor, member]);
   if (!c || !personal || personal.checked === 0) return null;
-  if (compact) return <MarketSideCard personal={personal} events={marketEvents({ days: 30, network: input.distributor }).slice(0, 3)} />;
+  if (compact) return <MarketSideCard personal={personal} events={marketEvents({ days: 30, network: input.distributor })} />;
   return <MarketBoard personal={personal} />;
 }
 

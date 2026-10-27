@@ -61,6 +61,7 @@
 .when { font-size: 12.5px; font-weight: 800; color: rgba(255, 255, 255, 0.75); white-space: nowrap; }
 .what { display: grid; min-width: 0; line-height: 1.3; }
 .what b { font-size: 14px; color: #fff; }
+.deal { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .plan { font-size: 12.5px; color: rgba(255, 255, 255, 0.72); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tagNew, .tagPrice { padding: 3px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 800; white-space: nowrap; }
 .tagNew { background: rgba(94, 234, 212, 0.18); color: #5eead4; }

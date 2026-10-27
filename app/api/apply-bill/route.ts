@@ -36,17 +36,25 @@ export async function POST(req: NextRequest) {
       .from("subscribers").select("id").eq("email", memberEmail).eq("status", "active")
       .order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (subG) {
-      await supabaseAdmin!.from("subscribers").update({
+      // If the database hasn't got the newer gas_current_retailer column yet
+      // (schema.sql not re-run), save everything else rather than nothing.
+      const gasRow: Record<string, unknown> = {
         gas_zone: zone,
         gas_billing_days: Math.round(gDays),
         gas_mj: mj,
         gas_reference_total: gTotal,
         gas_current_plan_name: str(b?.gasPlanName, 120),
+        gas_current_retailer: str(b?.retailer, 80),
         gas_best_retailer: best ? best.plan[0] : null,
         gas_best_plan_name: best ? best.plan[2] : null,
         gas_best_total: best ? best.total : null,
         gas_updated_at: new Date().toISOString(),
-      }).eq("id", subG.id);
+      };
+      const { error: gErr } = await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id);
+      if (gErr && /gas_current_retailer/.test(gErr.message)) {
+        delete gasRow.gas_current_retailer;
+        await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id);
+      }
     }
     if (!best || !bench) return null;
     return { retailer: best.plan[0], plan: best.plan[2], saving: bench.value - best.total };

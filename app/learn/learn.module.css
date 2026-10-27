@@ -88,9 +88,10 @@
 @media (max-width: 760px) { .steps, .videoGrid { grid-template-columns: 1fr; } }
 .flowWrap { background: var(--navy-deep); color: #fff; border-radius: 22px; padding: 26px 22px 20px; margin: 18px 0 16px; }
 /* Colour by group: tips cycle through four tints. */
-.tips > :nth-child(4n+1) { background: linear-gradient(135deg, #e6fbf8, var(--surface) 70%); border-top: 4px solid #0ea5a0; }
-.tips > :nth-child(4n+2) { background: linear-gradient(135deg, #fff7e0, var(--surface) 70%); border-top: 4px solid #f5a623; }
-.tips > :nth-child(4n+3) { background: linear-gradient(135deg, #f1efff, var(--surface) 70%); border-top: 4px solid #7c6cf0; }
-.tips > :nth-child(4n+4) { background: linear-gradient(135deg, #eaf8ee, var(--surface) 70%); border-top: 4px solid #16a34a; }
+/* A faint tint of the accent over the card surface, so it reads in light and dark mode alike. */
+.tips > :nth-child(4n+1) { background: linear-gradient(135deg, color-mix(in srgb, #0ea5a0 12%, var(--surface)), var(--surface) 70%); border-top: 4px solid #0ea5a0; }
+.tips > :nth-child(4n+2) { background: linear-gradient(135deg, color-mix(in srgb, #f5a623 14%, var(--surface)), var(--surface) 70%); border-top: 4px solid #f5a623; }
+.tips > :nth-child(4n+3) { background: linear-gradient(135deg, color-mix(in srgb, #7c6cf0 14%, var(--surface)), var(--surface) 70%); border-top: 4px solid #7c6cf0; }
+.tips > :nth-child(4n+4) { background: linear-gradient(135deg, color-mix(in srgb, #16a34a 12%, var(--surface)), var(--surface) 70%); border-top: 4px solid #16a34a; }
 .steps li:nth-child(1) { border-top: 4px solid #0ea5a0; } .steps li:nth-child(2) { border-top: 4px solid #f5a623; } .steps li:nth-child(3) { border-top: 4px solid #7c6cf0; }
 .steps li:nth-child(2)::before { background: #f5a623; } .steps li:nth-child(3)::before { background: #7c6cf0; }
