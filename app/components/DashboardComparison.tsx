@@ -2,7 +2,7 @@
 
 import OfferDate from "./OfferDate";
 import Icon from "./Icon";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { RETAILER_COUNT, billDetail, rankPlans, topOpen, isEvFriendly, fmtRateCents, fmtRatePerDay, type Distributor, type UsageInput, type PlanRow } from "@/lib/plans";
 import { describeOffer } from "@/lib/planExtras";
@@ -190,7 +190,8 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
                 ? "You could pay less"
                 : "Estimate from your answers"}
         </span>
-        <div className={styles.toggle} role="tablist" aria-label="Show figures per">
+        <div className={styles.toggle} role="tablist" aria-label="Show figures per" style={{ "--i": (Object.keys(PERIOD_DAYS) as Period[]).indexOf(period) } as CSSProperties}>
+          <span className={styles.thumb} aria-hidden="true" />
           {(Object.keys(PERIOD_DAYS) as Period[]).map((p) => (
             <button key={p} type="button" role="tab" aria-selected={period === p} className={period === p ? styles.on : styles.tbtn} onClick={() => onPeriod(p)}>
               {p === "month" ? "Monthly" : p === "quarter" ? "Quarterly" : "Yearly"}
@@ -205,25 +206,33 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             ? <>You could save <span className={styles.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>
             : <>Against the default offer, the cheapest plan saves up to <span className={styles.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>}
       </h2>
-      {c.mismatch && <MismatchNote m={c.mismatch} member={member} />}
-      {haveBill && c.vdo > 0 && (you - c.vdo) / c.vdo >= 0.05 && (
-        <p className={styles.aboveVdo}>
-          <Icon name="alert" size={16} /> You&apos;re paying <b>{Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b> ({money(c.vdo * k)} {PERIOD_LABEL[period]}),
-          the government&apos;s reference price. Most people can do better than the default, so this is a plan worth moving off.
-        </p>
+      {/* The small print that changes the number: one quiet strip, open on tap. */}
+      {(c.mismatch || (haveBill && c.vdo > 0 && (you - c.vdo) / c.vdo >= 0.05)) && (
+        <div className={styles.facts}>
+          {haveBill && c.vdo > 0 && (you - c.vdo) / c.vdo >= 0.05 && (
+            <details className={styles.fact}>
+              <summary><Icon name="alert" size={14} /> <b>{Math.round(((you - c.vdo) / c.vdo) * 100)}% above the default offer</b><span className={styles.factMore}>why it matters</span></summary>
+              <p>
+                The default offer is the government&apos;s reference price: {money(c.vdo * k)} {PERIOD_LABEL[period]} for your usage. Most people can do better than
+                the default, so a plan that costs more than it is one worth moving off.
+              </p>
+            </details>
+          )}
+          {c.mismatch && <MismatchNote m={c.mismatch} member={member} />}
+        </div>
       )}
       <div className={styles.versus}>
-        <div className={styles.side}>
+        <div className={styles.side} style={{ "--n": 0 } as CSSProperties}>
           <span className={styles.sideLabel}>{haveBill ? "You now" : "Default offer"}</span>
           <b>{haveBill ? currentRetailer ?? "Your current plan" : "VDO"}</b>
           <span className={styles.sidePlan}>{haveBill ? currentPlanName ?? (c.basis === "rates" ? "your rates" : "from your bill") : `${distributor} network`}</span>
-          <span className={styles.sideCost}>{money(you * k)}</span>
+          <span key={period} className={styles.sideCost}>{money(you * k)}</span>
           {haveBill && input.currentPriceType === "fixed" && (
             <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price{input.currentFixedUntil ? ` until ${fmtDay(input.currentFixedUntil)}` : ""}</span>
           )}
         </div>
         <div className={styles.arrow} aria-hidden="true">→</div>
-        <div className={`${styles.side} ${styles.sideBest}`}>
+        <div className={`${styles.side} ${styles.sideBest}`} style={{ "--n": 1 } as CSSProperties}>
           <span className={styles.sideLabel}>Cheapest we found</span>
           {member ? (
             <>
@@ -236,18 +245,18 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
               <span className={styles.sidePlan}>Retailer and plan hidden</span>
             </>
           )}
-          <span className={styles.sideCost}>{money(top.total * k)}</span>
+          <span key={period} className={styles.sideCost}>{money(top.total * k)}</span>
           {member && bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
           {member && <span className={styles.sideChips}><OfferChips o={c.offerFor(top.plan)} /></span>}
         </div>
         {verdict !== "good" && savingYear > 0 && (
           <>
             <div className={styles.arrow} aria-hidden="true">=</div>
-            <div className={`${styles.side} ${styles.sideSave}`}>
+            <div className={`${styles.side} ${styles.sideSave}`} style={{ "--n": 2 } as CSSProperties}>
               <span className={styles.sideLabel}>You save</span>
               <b>By switching</b>
               <span className={styles.sidePlan}>{PERIOD_LABEL[period]}, to {member ? top.plan[0] : "the cheapest plan"}</span>
-              <span className={styles.sideCost}>{money((you - top.total) * k)}</span>
+              <span key={period} className={styles.sideCost}>{money((you - top.total) * k)}</span>
             </div>
           </>
         )}
@@ -281,10 +290,9 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
 function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
   const n = (x: number) => Math.round(x).toLocaleString("en-AU");
   return (
-    <div className={styles.mismatch} role="alert">
-      <Icon name="alert" size={18} />
+    <details className={`${styles.fact} ${styles.factWarn}`}>
+      <summary><Icon name="alert" size={14} /> <b>Bill and usage don&apos;t match</b><span className={styles.factMore}>what we did</span></summary>
       <div>
-        <b>Your bill total and your usage don&apos;t match</b>
         <p>
           Your bill is {money(m.billTotal)} for {m.days} days
           {m.impliedKwh !== null ? <>, which is about <b>{n(m.impliedKwh)} kWh</b>{m.basis === "rates" ? " at your rates" : " at typical prices"}</> : null}. The usage on file is{" "}
@@ -298,7 +306,7 @@ function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
           {member && <a href="#savings">Or upload the bill</a>}
         </p>
       </div>
-    </div>
+    </details>
   );
 }
 

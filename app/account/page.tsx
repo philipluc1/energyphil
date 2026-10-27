@@ -949,7 +949,7 @@ export default function AccountPage() {
                               <span className={styles.stateLabel}>Saved since you switched to {sub!.switched_to ?? sub!.baseline_retailer}</span>
                               <div className={styles.stateBig}>{episodesLoading ? "…" : fmtDollars(savedShown)}</div>
                               <p className={styles.stateSub}>Since {fmtDate(switchedAt)} · estimate, based on your usage and today&apos;s prices</p>
-                              {!episodesLoading && accumulated.total > 0 && <FunEquivalents dollars={accumulated.total} />}
+                              {!episodesLoading && accumulated.total > 0 && <FunEquivalents dollars={accumulated.total} suffix="so far" />}
                               <p className={styles.stateFine}>{PRICE_CHANGE_CLAUSE} We won&apos;t suggest another move in the first two months unless it&apos;s a big one.</p>
                               <button type="button" className={styles.linkBtn} disabled={switchBusy} onClick={() => confirmSwitch(false)}>
                                 That&apos;s wrong, I haven&apos;t switched
