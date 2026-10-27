@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     hasSolar: profile.hasSolar ? "true" : "false",
     currentRetailer: String(profile.currentRetailer ?? "").slice(0, 80),
     solarExportKwh: String(profile.solarExportKwh ?? ""),
+    demandKw: String(profile.demandKw ?? ""),
     // Compact JSON of the household profile (people, heating, EV, ...). Stripe
     // allows 500 chars per metadata value; the profile is well under that.
     homeProfile: profile.homeProfile ? JSON.stringify(profile.homeProfile).slice(0, 480) : "",

@@ -1,11 +1,15 @@
 // Auto-generated from live CDR pull, 2026-10-20. One row per plan:
-// [retailer, distributor, planName, offerType, supply, anytime, peak, shoulder, offpeak, controlledLoad, solarFit]
+// [retailer, distributor, planName, offerType, supply, anytime, peak, shoulder, offpeak, controlledLoad, solarFit, demand?]
 // solarFit is the plan's solar feed-in credit in $/kWh exported — null where the
 // retailer's CDR feed didn't publish one for this plan (not necessarily $0; treat
-// as "unknown" rather than "no credit").
+// as "unknown" rather than "no credit"). demand is a demand tariff's charge in
+// $ per kW of max demand per day (GST inc.); null or absent for everything else.
 import { conditionalDiscount, extrasFor, pricedDiscount, restrictionFor, topOpen } from "./planExtras";
 
-export type PlanRow = [string, string, string, string, number, number | null, number | null, number | null, number | null, number | null, number | null];
+export type PlanRow = [string, string, string, string, number, number | null, number | null, number | null, number | null, number | null, number | null, (number | null)?];
+
+/** A demand tariff's charge, $ per kW per day, or null for an ordinary plan. */
+export const demandRateOf = (plan: PlanRow): number | null => plan[11] ?? null;
 
 export const PLAN_DATA_DATE = "2026-10-20";
 
@@ -36,6 +40,9 @@ export interface UsageInput {
   // with solar. 0 (the default) means "no solar / not supplied" — plans with
   // no published solarFit simply contribute no credit either way.
   solarExportKwh?: number;
+  /** Max demand in kW off the bill, for a home on a demand tariff. Demand
+   *  plans are priced only when this is known; everyone else never sees them. */
+  demandKw?: number | null;
 }
 
 export interface PriceOptions {
@@ -49,6 +56,8 @@ export interface BillDetail {
   supply: number;
   /** Usage charges, including controlled load. */
   usage: number;
+  /** A demand tariff's charge for the period (max kW x rate x days); 0 for ordinary plans. */
+  demand: number;
   solarCredit: number;
   /** Every discount taken off `total`: guaranteed, plus pay on time and direct debit. */
   discount: number;
@@ -66,9 +75,15 @@ export interface BillDetail {
  * estimate — subtracted after the usage/supply charges are totalled. */
 export function billDetail(plan: PlanRow, u: UsageInput, opts: PriceOptions = {}): BillDetail | null {
   const [retailer, network, planName, , supply, pAnytime, pPeak, pShoulder, pOffpeak, pCl, pSolarFit] = plan;
+  const pDemand = demandRateOf(plan);
   const hasBand = (u.peak + u.shoulder + u.offpeak) > 0;
   const comparable = pAnytime !== null || (pPeak !== null && hasBand);
   if (!comparable) return null;
+  // A demand tariff is only for a home whose meter is set to one, and we can
+  // only price it from the bill's max demand in kW.
+  const demandKw = u.demandKw ?? 0;
+  if (pDemand !== null && !(demandKw > 0)) return null;
+  const demandCharge = pDemand !== null ? pDemand * demandKw * u.days : 0;
   // Time-of-use plans can't price a lump "total" on top of time bands.
   if (pAnytime === null && u.anytime > 0) return null;
   // Controlled-load (off-peak hot water) usage needs a controlled-load rate.
@@ -101,13 +116,13 @@ export function billDetail(plan: PlanRow, u: UsageInput, opts: PriceOptions = {}
   // credits and fees are only shown. Concessions are never applied: they
   // depend on the customer, not the offer.
   const extras = opts.discounts === false ? null : extrasFor("E", retailer, planName, network);
-  const parts = { supply: fixed, usage: variable + varCl, solarCredit };
+  const parts = { supply: fixed, usage: variable + varCl + demandCharge, solarCredit };
   const discount = pricedDiscount(extras, parts);
   // Not clamped at 0: a generous feed-in credit can genuinely outweigh usage
   // charges for a billing period, and clamping would make two plans with
   // different (large) credits look identical when ranking — the negative
   // total is real and worth showing as "you're in credit".
-  return { ...parts, discount, conditionalDiscount: conditionalDiscount(extras, parts), total: fixed + variable + varCl - discount - solarCredit };
+  return { ...parts, usage: variable + varCl, demand: demandCharge, discount, conditionalDiscount: conditionalDiscount(extras, parts), total: fixed + variable + varCl + demandCharge - discount - solarCredit };
 }
 
 export function computeBill(plan: PlanRow, u: UsageInput, opts: PriceOptions = {}): number | null {

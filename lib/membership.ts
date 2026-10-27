@@ -97,6 +97,7 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     postcode: md.postcode || null,
     has_solar: md.hasSolar === "true",
     solar_export_kwh: toNum(md.solarExportKwh),
+    demand_kw: toNum(md.demandKw),
     home_profile: parseJson(md.homeProfile),
     current_retailer: md.currentRetailer || null,
     current_plan_name: md.currentPlanName || null,
@@ -272,6 +273,8 @@ export function memberFieldsFromCheck(raw: unknown): Record<string, unknown> {
   if (typeof p.hasSolar === "boolean") out.has_solar = p.hasSolar;
   const exp = n(p.solarExportKwh, 20000);
   if (exp !== null) out.solar_export_kwh = exp;
+  const dk = n(p.demandKw, 500);
+  out.demand_kw = dk !== null && dk > 0 ? dk : null;
   // Home answers only when the questions were asked: a bill check carries
   // default answers, which mustn't replace real ones (or show as theirs).
   if (p.homeProfile && typeof p.homeProfile === "object" && (p.homeProfile as Record<string, unknown>).answered !== false && JSON.stringify(p.homeProfile).length < 2000) out.home_profile = p.homeProfile;

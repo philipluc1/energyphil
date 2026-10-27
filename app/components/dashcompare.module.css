@@ -197,3 +197,12 @@
 .factWarn { border-color: rgba(255, 209, 102, 0.5); }
 .mismatchActions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px !important; }
 .mismatchActions a { font-weight: 800; color: #ffd166; text-decoration: underline; }
+
+/* "See rates": each plan's published c/day and c/kWh beside the member's own. */
+.ratesToggle { margin-top: 4px; padding: 0; border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--navy-accent-text, #2d3f9e); cursor: pointer; white-space: nowrap; }
+.ratesToggle:hover { text-decoration: underline; }
+.ratesDetailRow td { padding: 0 10px 12px !important; background: var(--soft); }
+.ratesDetail { max-width: 560px; padding: 12px 14px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); animation: rowIn 0.3s ease both; }
+.ratesFine { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--grey); }
+.pcRates { grid-column: 2; justify-self: start; margin-top: 8px; }
+.pcRatesDetail { grid-column: 1 / -1; margin-top: 8px; max-width: none; }

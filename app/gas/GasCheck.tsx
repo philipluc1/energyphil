@@ -13,6 +13,8 @@ import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { describeOffer, topOpen } from "@/lib/planExtras";
 import OfferTerms, { OfferChips } from "../components/OfferTerms";
 import BillPhotoUpload from "../components/BillPhotoUpload";
+import Icon from "../components/Icon";
+import { guessGasZoneFromPostcode } from "@/lib/postcodeGas";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import styles from "../components/Comparator.module.css";
 import snap from "../components/snap.module.css";
@@ -38,6 +40,8 @@ export default function GasCheck() {
   const [entry, setEntry] = useState<Entry>("snap");
   const [zone, setZone] = useState<GasZone>("Australian Gas Networks");
   const [days, setDays] = useState(91);
+  const [postcode, setPostcode] = useState("");
+  const [zoneGuess, setZoneGuess] = useState<GasZone | null>(null);
   const [mjRaw, setMjRaw] = useState("");
   const [billRaw, setBillRaw] = useState("");
   const [planName, setPlanName] = useState("");
@@ -85,6 +89,8 @@ export default function GasCheck() {
     }
     setElecOnly(false);
     const w: string[] = [];
+    if (b.postcode) { setPostcode(b.postcode); const guess = guessGasZoneFromPostcode(b.postcode); setZoneGuess(guess); if (guess) setZone(guess); }
+    // The bill's own distributor beats the postcode guess.
     if (b.gasDistributor && GAS_ZONES.includes(b.gasDistributor as GasZone)) setZone(b.gasDistributor as GasZone);
     else w.push("We couldn't see your gas network. Please check it.");
     const d = b.gasBillingDays ?? b.billingDays;
@@ -123,22 +129,19 @@ export default function GasCheck() {
   if (entry === "snap") {
     return (
       <>
-        <BillPhotoUpload variant="hero" fuel="gas" onApply={fromBill} />
+        <BillPhotoUpload variant="hero" fuel="gas" onApply={fromBill}>
+          <button type="button" className={snap.otherBtn} onClick={() => { setMjRaw(String(TYPICAL_MJ_PER_DAY * days)); setBillRaw(""); setFromPhoto(false); go("type"); }}>
+            <Icon name="home" size={18} /> No gas bill handy? <small>Start from a typical Victorian home</small>
+          </button>
+          <button type="button" className={snap.otherBtn} onClick={() => go("type")}>
+            <Icon name="file" size={18} /> Rather type it in? <small>Three numbers from your gas bill</small>
+          </button>
+        </BillPhotoUpload>
         {elecOnly && (
           <div className={g.notice}>
             That looks like an electricity bill. <Link href="/check">Check it on the electricity page</Link>, or snap your gas bill here.
           </div>
         )}
-        <div className={snap.alt}>
-          <button type="button" className={snap.altBtn} onClick={() => go("type")}>
-            <b>Rather type it in?</b>
-            <span>Three numbers from your gas bill →</span>
-          </button>
-          <button type="button" className={snap.altBtn} onClick={() => { setMjRaw(String(TYPICAL_MJ_PER_DAY * days)); setBillRaw(""); setFromPhoto(false); go("type"); }}>
-            <b>No gas bill handy?</b>
-            <span>Start from a typical Victorian home →</span>
-          </button>
-        </div>
         <p className={snap.underNote}>
           Victorian homes. Electricity bill? <Link href="/check">Check electricity</Link>.
         </p>
@@ -182,7 +185,30 @@ export default function GasCheck() {
 
           <div className={g.q}>
             <span className={g.qLabel}>1. Your gas network</span>
-            <span className={g.qHint}>On your bill as &ldquo;Distributor&rdquo;. Not sure? Pick your area.</span>
+            <span className={g.qHint}>On your bill as &ldquo;Distributor&rdquo;. Not sure? Your postcode usually tells us.</span>
+            <div className={g.postcodeRow}>
+              <label htmlFor="gasPostcode" className={g.postcodeLabel}>Postcode</label>
+              <input
+                id="gasPostcode"
+                className={g.postcode}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="e.g. 3121"
+                value={postcode}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setPostcode(v);
+                  const guess = guessGasZoneFromPostcode(v);
+                  setZoneGuess(guess);
+                  if (guess) setZone(guess);
+                }}
+              />
+              {postcode.length === 4 && (
+                <span className={g.postcodeNote}>
+                  {zoneGuess ? <>Looks like <b>{zoneGuess}</b>. Change it below if your bill says otherwise.</> : <>We can&apos;t tell from that postcode alone: pick your network below.</>}
+                </span>
+              )}
+            </div>
             <div className={g.zones}>
               {GAS_ZONES.map((z) => (
                 <button key={z} type="button" className={z === zone ? g.zoneOn : g.zone} onClick={() => setZone(z)}>

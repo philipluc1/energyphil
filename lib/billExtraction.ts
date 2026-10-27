@@ -31,8 +31,10 @@ export interface ExtractedBill {
   accountType: "residential" | "business" | null;
   /** Supplied through a building's private (embedded) network. */
   embeddedNetwork: boolean;
-  /** The bill has a demand charge ($/kW or $/kVA), typical of business tariffs. */
+  /** The bill has a demand charge ($/kW or $/kVA): a demand tariff (some homes, most businesses). */
   demandCharge: boolean;
+  /** The max demand that charge was based on, in kW, when the bill shows it. */
+  demandKw: number | null;
   // True if the bill shows any solar feed-in credit line, even a small one.
   hasSolar: boolean;
   solarExportKwh: number | null;
@@ -150,6 +152,7 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     accountType: r.account_type === "residential" || r.account_type === "business" ? r.account_type : null,
     embeddedNetwork: r.embedded_network === true,
     demandCharge: r.has_demand_charge === true,
+    demandKw: (() => { const n = toFiniteNumber(r.max_demand_kw); return n !== null && n > 0 && n < 500 ? n : null; })(),
     hasSolar: r.has_solar === true,
     solarExportKwh: toFiniteNumber(r.solar_export_kwh),
     currentRates: readRates(r),

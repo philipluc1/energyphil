@@ -17,6 +17,8 @@ export interface WatchProfile {
   anytime: number;
   cl: number;
   solarExportKwh?: number;
+  /** Max demand in kW, for a home on a demand tariff. */
+  demandKw?: number | null;
   /** Charges an EV at home (only then are EV-only plans considered). */
   ev?: boolean;
 }
@@ -41,6 +43,7 @@ function watchUsage(profile: WatchProfile): { usage: UsageInput; average: boolea
     anytime: profile.anytime,
     cl: profile.cl,
     solarExportKwh: profile.solarExportKwh ?? 0,
+    demandKw: profile.demandKw ?? null,
   });
 }
 

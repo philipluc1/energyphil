@@ -35,6 +35,7 @@ import {
   DEFAULT_PROFILE,
   AVERAGE_ANNUAL_KWH,
   averageUsage,
+  bandsForTariff,
   usageIsIncomplete,
   estimateUsage,
   forecastFromBill,
@@ -271,6 +272,8 @@ export default function Comparator() {
   const [usageSource, setUsageSource] = useState<UsageSource>("bill");
   const [hasSolar, setHasSolar] = useState(false);
   const [solarExportRaw, setSolarExportRaw] = useState("");
+  // Max demand in kW off a demand-tariff bill; null for everyone else.
+  const [demandKw, setDemandKw] = useState<number | null>(null);
   const [currentBillRaw, setCurrentBillRaw] = useState("");
   // No-bill path: a bill's kWh (and the month it ended) to forecast the year from.
   const [calKwhRaw, setCalKwhRaw] = useState("");
@@ -591,13 +594,15 @@ export default function Comparator() {
     setBillFlag(
       bill.embeddedNetwork || (nmiCheck?.status === "notVictorian" && vicPostcode)
         ? "embedded"
-        : bill.accountType === "business" || bill.demandCharge
+        : bill.accountType === "business" || (bill.demandCharge && bill.accountType !== "residential" && bill.demandKw === null)
           ? "business"
           : yearlyKwh > SMALL_CUSTOMER_KWH_PER_YEAR
             ? "large"
             : null,
     );
     if (bill.billingDays !== null) setDays(bill.billingDays);
+    // A home on a demand tariff: its max kW lets demand plans be priced for it.
+    setDemandKw(bill.demandCharge && bill.demandKw !== null ? bill.demandKw : null);
     setUsageSource("bill");
     if (bill.usageMode) setMode(bill.usageMode);
     if (bill.usageMode === "simple" && bill.anytimeKwh !== null) setAnytime(bill.anytimeKwh);
@@ -651,10 +656,12 @@ export default function Comparator() {
   }
 
   const typedBill = currentBillRaw === "" ? null : parseFloat(currentBillRaw);
-  const usagePeak = useEst ? est.peak : useAvg ? avg.peak : mode === "detailed" ? peak : 0;
-  const usageShoulder = useEst ? est.shoulder : useAvg ? avg.shoulder : mode === "detailed" ? shoulder : 0;
-  const usageOffpeak = useEst ? est.offpeak : useAvg ? avg.offpeak : mode === "detailed" ? offpeak : 0;
-  const usageAnytime = useEst || useAvg ? 0 : mode === "simple" ? anytime : 0;
+  // An estimate is priced as single rate unless they said their bill is time of use.
+  const estBands = bandsForTariff(est, profile);
+  const usagePeak = useEst ? estBands.peak : useAvg ? avg.peak : mode === "detailed" ? peak : 0;
+  const usageShoulder = useEst ? estBands.shoulder : useAvg ? avg.shoulder : mode === "detailed" ? shoulder : 0;
+  const usageOffpeak = useEst ? estBands.offpeak : useAvg ? avg.offpeak : mode === "detailed" ? offpeak : 0;
+  const usageAnytime = useEst ? estBands.anytime : useAvg ? avg.anytime : mode === "simple" ? anytime : 0;
   const usage = {
     days,
     peak: usagePeak,
@@ -663,6 +670,7 @@ export default function Comparator() {
     anytime: usageAnytime,
     cl: clKwh,
     solarExportKwh,
+    demandKw: usageSource === "bill" ? demandKw : null,
   };
   // Why the customer can't move on yet (shown under the step), if anything.
   const blockReason =
@@ -749,8 +757,9 @@ export default function Comparator() {
         anytime: usageAnytime,
         cl: clKwh,
         solarExportKwh,
+        demandKw: usageSource === "bill" ? demandKw : null,
       }, { ev: profile.ev, hasSolar: hasSolarEff, currentRetailer: currentRetailer || null }),
-    [distributor, days, usagePeak, usageShoulder, usageOffpeak, usageAnytime, clKwh, solarExportKwh, profile.ev, hasSolarEff, currentRetailer],
+    [distributor, days, usagePeak, usageShoulder, usageOffpeak, usageAnytime, clKwh, solarExportKwh, demandKw, usageSource, profile.ev, hasSolarEff, currentRetailer],
   );
   // Retailers with at least one plan priced for this home (the list's "cheapest per retailer" count).
   const retailersHere = useMemo(() => new Set(matches.map((m) => m.plan[0])).size, [matches]);
@@ -932,6 +941,7 @@ export default function Comparator() {
     postcode,
     hasSolar: hasSolarEff,
     solarExportKwh,
+    demandKw: usage.demandKw ?? null,
     // Always sent: the EV answer decides which plans they're shown. Flagged
     // when the questions weren't asked (a bill check), so the dashboard
     // doesn't show default answers as theirs.
@@ -1445,6 +1455,19 @@ export default function Comparator() {
                   onChange={(v) => patchProfile({ people: v })}
                   options={[1, 2, 3, 4, 5, 6].map((n) => ({ value: n, label: n === 6 ? "6+" : String(n) }))}
                 />
+              </div>
+              <div>
+                <span className={s2.label}>Tariff on your bill</span>
+                <Choice
+                  value={profile.tariff ?? "unsure"}
+                  onChange={(v) => patchProfile({ tariff: v })}
+                  options={[
+                    { value: "unsure", label: "Not sure" },
+                    { value: "single", label: "Single rate" },
+                    { value: "tou", label: "Time of use" },
+                  ]}
+                />
+                <span className={s2.hint}>Not sure? We compare single-rate plans, which any meter can be on.</span>
               </div>
               <div>
                 <span className={s2.label}>Home during the day?</span>

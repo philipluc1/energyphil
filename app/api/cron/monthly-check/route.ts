@@ -29,6 +29,7 @@ interface Row {
   anytime_kwh: number | null;
   controlled_load_kwh: number | null;
   solar_export_kwh: number | null;
+  demand_kw?: number | null;
   reference_total: number | null;
   baseline_total: number | null;
   unsubscribed: boolean | null;
@@ -92,6 +93,7 @@ export async function GET(req: NextRequest) {
         anytime: sub.anytime_kwh ?? 0,
         cl: sub.controlled_load_kwh ?? 0,
         solarExportKwh: sub.solar_export_kwh ?? 0,
+        demandKw: sub.demand_kw ?? null,
         ev: hasEv(sub.home_profile),
       };
       const best = computeBest(watch);

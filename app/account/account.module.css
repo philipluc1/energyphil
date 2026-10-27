@@ -526,3 +526,6 @@ details[open] > .panelSummary::after { content: " ▴"; }
 .welcomeNote > svg { flex: none; margin-top: 2px; color: var(--teal); }
 .welcomeNote > span { flex: 1; }
 .welcomeNote > button { font-size: 18px; line-height: 1; padding: 0 4px; }
+
+/* The member's own day-shape chart, under the tabs. */
+.shapeWrap { margin-top: 18px; }

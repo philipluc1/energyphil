@@ -162,6 +162,8 @@ alter table public.subscribers add column if not exists suburb text;
 alter table public.subscribers add column if not exists postcode text;
 alter table public.subscribers add column if not exists has_solar boolean not null default false;
 alter table public.subscribers add column if not exists solar_export_kwh numeric;
+-- Max demand in kW off the bill, for the few homes on a demand tariff (Oct 2026).
+alter table public.subscribers add column if not exists demand_kw numeric;
 
 -- Household profile (people, dwelling, heating, EV, solar size, ...) captured
 -- on /check, so usage can be estimated for their shape rather than a general average.

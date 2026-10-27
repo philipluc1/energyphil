@@ -17,6 +17,8 @@ import BillCheckCard from "../components/BillCheckCard";
 import { cleanBillCheck, type BillCheck } from "@/lib/billCheck";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
+import UsageShape from "../components/UsageShape";
+import { shapeForProfile } from "@/lib/usageShape";
 import DashTabs, { type TabDef } from "../components/DashTabs";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { useCountUp } from "@/lib/useCountUp";
@@ -30,7 +32,7 @@ import PlanBand from "../components/PlanBand";
 import PlanCards from "../components/PlanCards";
 import UpgradePlans from "../components/UpgradePlans";
 import type { Distributor } from "@/lib/plans";
-import { DEFAULT_PROFILE, estimateWithBill } from "@/lib/profileUsage";
+import { DEFAULT_PROFILE, estimateWithBill, type HomeProfile } from "@/lib/profileUsage";
 import { kwhFromBill } from "@/lib/billReconcile";
 import { EMPTY_RATES_FORM, ratesFromForm, ratesToForm } from "@/lib/currentRates";
 import SolarCard from "../components/SolarCard";
@@ -72,6 +74,7 @@ interface SubscriberSummary {
   billing_days: number | null;
   has_solar: boolean | null;
   solar_export_kwh: number | null;
+  demand_kw?: number | null;
   switched_at: string | null;
   switched_to: string | null;
   customer_name: string | null;
@@ -294,7 +297,7 @@ export default function AccountPage() {
       setSubLoading(true);
       setSubError("");
       const BASE_COLS =
-          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, demand_kw, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
       const PRICING_COLS = ", current_rates, current_price_type, current_price_fixed_until, discount_ends_at";
       const pick = (cols: string) =>
         supabase!.from("subscribers").select(cols).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -507,6 +510,7 @@ export default function AccountPage() {
         ? switchedPlanNow(sub!.switched_to, sub!.distributor, {
             days, peak: sub!.peak_kwh ?? 0, shoulder: sub!.shoulder_kwh ?? 0, offpeak: sub!.offpeak_kwh ?? 0, anytime: sub!.anytime_kwh ?? 0, cl: sub!.controlled_load_kwh ?? 0,
             solarExportKwh: sub!.has_solar ? sub!.solar_export_kwh ?? 0 : 0,
+            demandKw: sub!.demand_kw ?? null,
           })
         : null;
       if (moved) {
@@ -515,6 +519,7 @@ export default function AccountPage() {
           days,
           peak: sub!.peak_kwh ?? 0, shoulder: sub!.shoulder_kwh ?? 0, offpeak: sub!.offpeak_kwh ?? 0, anytime: sub!.anytime_kwh ?? 0, cl: sub!.controlled_load_kwh ?? 0,
           solarExportKwh: sub!.has_solar ? sub!.solar_export_kwh ?? 0 : 0,
+          demandKw: sub!.demand_kw ?? null,
           billTotal: moved.total,
           billIsPriced: true,
           currentRetailer: moved.retailer, currentPlanName: moved.plan,
@@ -531,6 +536,7 @@ export default function AccountPage() {
         days: sub!.billing_days,
         peak: sub!.peak_kwh ?? 0, shoulder: sub!.shoulder_kwh ?? 0, offpeak: sub!.offpeak_kwh ?? 0, anytime: sub!.anytime_kwh ?? 0, cl: sub!.controlled_load_kwh ?? 0,
         solarExportKwh: sub!.has_solar ? sub!.solar_export_kwh ?? 0 : 0,
+        demandKw: sub!.demand_kw ?? null,
         billTotal: fromBill ? sub!.reference_total : null,
         currentRetailer: sub!.current_retailer, currentPlanName: sub!.current_plan_name,
         source: fromBill ? "bill" : "answers",
@@ -740,6 +746,24 @@ export default function AccountPage() {
   const bestRow = (summary && rateDist ? findPlanRow(summary.bestRetailer, summary.bestPlan, rateDist) : null) ?? tariffPlan;
   // Free users don't see the cheapest plan's name (members do).
   const bestForRates = bestRow ? { plan: bestRow, label: isMember ? bestRow[0] : "Cheapest plan", hideName: !isMember } : null;
+  // The member's own day shape: their kWh a day, solar export, EV, and the
+  // pattern their answers point to.
+  const myShape = useMemo(() => {
+    if (!sub || !sub.billing_days) return null;
+    const days = sub.billing_days;
+    const kwh = (sub.peak_kwh ?? 0) + (sub.shoulder_kwh ?? 0) + (sub.offpeak_kwh ?? 0) + (sub.anytime_kwh ?? 0) + (sub.controlled_load_kwh ?? 0);
+    if (!(kwh > 0) || !(days > 0)) return null;
+    const hp = (sub.home_profile ?? null) as (Partial<HomeProfile> & { answered?: boolean }) | null;
+    const answered = !!hp && hp.answered !== false && typeof hp.daytimeHome === "string";
+    return {
+      shape: shapeForProfile(answered ? (hp as HomeProfile) : null),
+      dailyKwh: kwh / days,
+      exportPerDay: sub.has_solar && sub.solar_export_kwh ? sub.solar_export_kwh / days : 0,
+      evOvernight: !!hp && hp.ev === true && hp.evCharging !== "anytime",
+      fromAnswers: answered,
+    };
+  }, [sub]);
+
   const sideCards = (
     <>
       {planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
@@ -1165,6 +1189,18 @@ export default function AccountPage() {
                     </>
                   )}
                 </DashTabs>
+              )}
+              {!subLoading && myShape && (
+                <div className={styles.shapeWrap}>
+                  <UsageShape
+                    shape={myShape.shape}
+                    dailyKwh={myShape.dailyKwh}
+                    exportKwhPerDay={myShape.exportPerDay}
+                    evOvernight={myShape.evOvernight}
+                    title="When your home uses power"
+                    note={`Modelled from ${myShape.fromAnswers ? "your answers" : "your bill's usage and the typical pattern for a home like yours"}, not your meter. It's the shape that decides whether a time-of-use plan beats a single rate for you: the dearer window is shaded.`}
+                  />
+                </div>
               )}
               {!subLoading && <Disclosures />}
               </div>

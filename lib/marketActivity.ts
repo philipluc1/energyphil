@@ -57,7 +57,10 @@ export function marketEvents(opts: Opts = {}): MarketEvent[] {
     const t = Date.parse(`${iso}T00:00:00Z`);
     return t >= cutoff && t <= now;
   };
-  const keys = new Set(PLANS.filter((p) => !opts.network || p[1] === opts.network).map((p) => `${p[0]}|${p[2]}`));
+  // Standing offers (the default offer) are repriced once a year on 1 July,
+  // so a dated change on one outside that is feed noise, not market news:
+  // only market offers are counted.
+  const keys = new Set(PLANS.filter((p) => p[3] !== "STANDING" && (!opts.network || p[1] === opts.network)).map((p) => `${p[0]}|${p[2]}`));
   const out: MarketEvent[] = [];
   for (const key of keys) {
     const d = dates[key];

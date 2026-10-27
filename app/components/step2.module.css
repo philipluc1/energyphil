@@ -3,6 +3,7 @@
   display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; margin-top: 20px;
 }
 .label { display: block; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 9px; }
+.hint { display: block; margin-top: 6px; font-size: 12.5px; line-height: 1.4; color: var(--grey); }
 .labelSoft { font-weight: 500; color: var(--grey); font-size: 13px; margin-left: 6px; }
 
 .follow {

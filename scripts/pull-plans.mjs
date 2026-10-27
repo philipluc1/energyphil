@@ -246,12 +246,13 @@ export function parsePlan(detail) {
   const period = (c.tariffPeriod ?? [])[0];
   if (!period) return null;
   // Demand tariffs add a charge for the household's peak kW, on top of the
-  // kWh rates. We can't price that from kWh, and leaving it out makes the plan
-  // look far cheaper than it is (and most homes aren't on a demand tariff).
-  // The feed puts it beside the single or time-of-use rates, so check for it
-  // in every period, and in the name as a backstop.
-  if ((c.tariffPeriod ?? []).some((t) => (t.demandCharges ?? []).length > 0)) return null;
-  if (/\bdemand\b/i.test(String(detail.displayName ?? ""))) return null;
+  // kWh rates. We keep the plan with that charge as $ per kW per day, and the
+  // site prices it only for a home whose bill shows its max demand in kW
+  // (everyone else never sees it). A plan that says "demand" in its name but
+  // publishes no demand charge can't be priced fairly, so it's left out.
+  const demandRate = parseDemand(c);
+  if (demandRate === undefined) return null; // a demand charge we can't express per kW per day
+  if (demandRate === null && /\bdemand\b/i.test(String(detail.displayName ?? ""))) return null;
   // Daily supply: dollars per day. Some feeds give it per period; CDR says per day.
   const supply = num(period.dailySupplyCharges ?? period.dailySupplyCharge);
   if (supply === null) return null;
@@ -287,7 +288,25 @@ export function parsePlan(detail) {
   }
   // CDR prices exclude GST; the site shows what people actually pay, so add
   // 10% to everything except the solar feed-in credit (no GST on that).
-  return { supply: gst(supply), anytime: gst(anytime), peak: gst(peak), shoulder: gst(shoulder), offpeak: gst(offpeak), cl: gst(cl), solarFit };
+  return { supply: gst(supply), anytime: gst(anytime), peak: gst(peak), shoulder: gst(shoulder), offpeak: gst(offpeak), cl: gst(cl), solarFit, demand: demandRate === null ? null : gst(demandRate) };
+}
+
+/**
+ * The plan's demand charge as $ per kW per day (before GST): null when the
+ * plan has none, undefined when it has one we can't convert (a kVA or
+ * per-period charge, or a charge with no amount).
+ */
+export function parseDemand(c) {
+  const charges = (c.tariffPeriod ?? []).flatMap((t) => t.demandCharges ?? []);
+  if (charges.length === 0) return null;
+  const d = charges[0];
+  const amount = num(d.amount);
+  const unit = String(d.measureUnit ?? "KW").toUpperCase();
+  const per = String(d.chargePeriod ?? "DAY").toUpperCase();
+  if (amount === null || unit !== "KW") return undefined;
+  if (per === "DAY") return amount;
+  if (per === "MONTH") return amount / 30.4;
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -433,7 +452,7 @@ async function pullRetailer(cdrCode, orgName, log) {
     noteDates(brand, name, detail, p);
     const extras = parseExtras(detail);
     for (const d of vicDistributors(detail.geography ? detail : p)) {
-      rows.push([brand, d, name, offerType, rates.supply, rates.anytime, rates.peak, rates.shoulder, rates.offpeak, rates.cl, rates.solarFit]);
+      rows.push([brand, d, name, offerType, rates.supply, rates.anytime, rates.peak, rates.shoulder, rates.offpeak, rates.cl, rates.solarFit, rates.demand]);
       if (extras) EXTRAS.push({ fuel: "E", retailer: brand, plan: name, network: d, extras });
     }
   }

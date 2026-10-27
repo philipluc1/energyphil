@@ -5,6 +5,7 @@ import {
   AVERAGE_ANNUAL_KWH,
   DEFAULT_PROFILE,
   averageUsage,
+  bandsForTariff,
   estimateUsage,
   forecastFromBill,
   kwhFromBillDollars,
@@ -19,10 +20,18 @@ import {
 const u = (o: Partial<{ days: number; peak: number; shoulder: number; offpeak: number; anytime: number; cl: number; solarExportKwh: number }>) =>
   ({ days: 91, peak: 0, shoulder: 0, offpeak: 0, anytime: 0, cl: 0, solarExportKwh: 0, ...o });
 
-// The average splits a year's 4,000 kWh across the bands and adds up exactly.
+// The average home is single-rate usage (we don't know its meter): a year's 4,000 kWh as anytime.
 const a = averageUsage(365);
-assert.equal(a.peak + a.shoulder + a.offpeak, AVERAGE_ANNUAL_KWH);
-assert.deepEqual([a.anytime, a.cl, a.solarExportKwh], [0, 0, 0]);
+assert.equal(a.anytime, AVERAGE_ANNUAL_KWH);
+assert.deepEqual([a.peak, a.shoulder, a.offpeak, a.cl, a.solarExportKwh], [0, 0, 0, 0, 0]);
+// An estimate is priced as single rate unless the home says it's on time of use.
+{
+  const e = { peak: 100, shoulder: 150, offpeak: 50 };
+  assert.deepEqual(bandsForTariff(e, { tariff: "unsure" }), { peak: 0, shoulder: 0, offpeak: 0, anytime: 300 });
+  assert.deepEqual(bandsForTariff(e, { tariff: "single" }), { peak: 0, shoulder: 0, offpeak: 0, anytime: 300 });
+  assert.deepEqual(bandsForTariff(e, { tariff: "tou" }), { peak: 100, shoulder: 150, offpeak: 50, anytime: 0 });
+  assert.deepEqual(bandsForTariff(e, {}), { peak: 0, shoulder: 0, offpeak: 0, anytime: 300 });
+}
 assert.equal(averageUsage(0).days, 91); // no period: a quarter
 
 // When it kicks in.
@@ -36,7 +45,7 @@ assert.equal(usageIsIncomplete(u({ peak: 300, shoulder: 300, offpeak: 200 })), f
 const r = usageOrAverage(u({ days: 30 }));
 assert.equal(r.average, true);
 assert.equal(r.usage.days, 30);
-assert.equal(r.usage.peak + r.usage.shoulder + r.usage.offpeak, Math.round((AVERAGE_ANNUAL_KWH * 30) / 365));
+assert.equal(r.usage.anytime, Math.round((AVERAGE_ANNUAL_KWH * 30) / 365)); // single rate: all anytime
 const keep = u({ anytime: 900 });
 assert.equal(usageOrAverage(keep).usage, keep);
 console.log("average home ok");

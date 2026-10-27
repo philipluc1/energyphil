@@ -6,6 +6,8 @@
 
 export const PLAN_TERMS_DATE: string | null = "2026-10-20";
 
+import { PLANS } from "./plans";
+
 export const FIXED_PLAN_KEYS: string[] = ["Amber Electric|Standing Offer: Fixed Rate","Amber Electric|Standing Offer: Fixed Rate + Controlled Load","EnergyAustralia|Rate Fix - Peak Only","EnergyAustralia|Rate Fix - Peak with Controlled Load","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate With Controlled Load)-AusNet Services (electricity)","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate With Controlled Load)-Citipower","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate With Controlled Load)-Jemena","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate With Controlled Load)-Powercor","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate With Controlled Load)-United Energy","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate Without Controlled Load)-AusNet Services (electricity)","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate Without Controlled Load)-Citipower","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate Without Controlled Load)-Jemena","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate Without Controlled Load)-Powercor","GloBird Energy|GloBird STANDING OFFER Residential (Flat Rate Without Controlled Load)-United Energy"];
 
 export type PriceType = "fixed" | "variable";
@@ -60,6 +62,12 @@ export interface OfferDateInfo {
   badgeDate: string | null;
 }
 
+const STANDING_KEYS = new Set(PLANS.filter((p) => p[3] === "STANDING").map((p) => `${p[0]}|${p[2]}`));
+/** A retailer's standing offer (the default offer), as the plan data flags it. */
+export function isStandingOffer(retailer: string, planName: string): boolean {
+  return STANDING_KEYS.has(`${retailer}|${planName}`) || /\bstanding offer\b/i.test(planName);
+}
+
 export function offerDates(retailer: string, planName: string, now = Date.now()): OfferDateInfo {
   const d = PLAN_DATES[`${retailer}|${planName}`];
   if (!d) return { label: null, badge: null, badgeDate: null };
@@ -67,6 +75,8 @@ export function offerDates(retailer: string, planName: string, now = Date.now())
   const label = start ? `Offer from ${fmtOfferDate(start)}` : null;
   const newDate = d.seen ?? d.from;
   if (daysAgo(newDate, now) <= RECENT_DAYS) return { label, badge: "New", badgeDate: newDate ? fmtOfferDate(newDate) : null };
-  if (daysAgo(d.priceChanged, now) <= RECENT_DAYS) return { label, badge: "Price change", badgeDate: fmtOfferDate(d.priceChanged as string) };
+  // Standing offers are repriced once a year (1 July), so a dated change on
+  // one at any other time is feed noise: no badge.
+  if (!isStandingOffer(retailer, planName) && daysAgo(d.priceChanged, now) <= RECENT_DAYS) return { label, badge: "Price change", badgeDate: fmtOfferDate(d.priceChanged as string) };
   return { label, badge: null, badgeDate: null };
 }

@@ -129,7 +129,11 @@ const TOOL_SCHEMA = {
       },
       has_demand_charge: {
         type: "boolean",
-        description: "True if the bill includes a demand charge (priced in $ per kW or kVA, per day or per month), which is typical of business tariffs.",
+        description: "True if the bill includes a demand charge (priced in $ per kW or kVA, per day or per month). Some homes are on a demand tariff; it is also common on business tariffs.",
+      },
+      max_demand_kw: {
+        type: ["number", "null"],
+        description: "If there is a demand charge, the maximum demand it was charged on, in kW (e.g. 'Demand 3.2 kW', 'Max demand 2.85kW'). Convert kVA only if the bill shows kVA and no kW. Null if there is no demand charge or no figure is shown.",
       },
       reading_type: {
         type: ["string", "null"],

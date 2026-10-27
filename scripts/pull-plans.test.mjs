@@ -3,13 +3,19 @@ import { parsePlan } from "./pull-plans.mjs";
 const tou = { electricityContract: { tariffPeriod: [{ rateBlockUType: "timeOfUseRates", dailySupplyCharges: "1.0842",
   timeOfUseRates: [{ type: "PEAK", rates: [{ unitPrice: "0.4028" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0.1487" }] }, { type: "SHOULDER", rates: [{ unitPrice: "0.1911" }] }] }],
   controlledLoad: [{ singleRate: { rates: [{ unitPrice: "0.1869" }] } }], solarFeedInTariff: [{ singleTariff: { rates: [{ unitPrice: "0.01" }] } }] } };
-assert.deepEqual(parsePlan(tou), { supply: 1.19262, anytime: null, peak: 0.44308, shoulder: 0.21021, offpeak: 0.16357, cl: 0.20559, solarFit: 0.01 });
+assert.deepEqual(parsePlan(tou), { supply: 1.19262, anytime: null, peak: 0.44308, shoulder: 0.21021, offpeak: 0.16357, cl: 0.20559, solarFit: 0.01, demand: null });
 const single = { electricityContract: { tariffPeriod: [{ rateBlockUType: "singleRate", dailySupplyCharges: "1.1658", singleRate: { rates: [{ unitPrice: "0.2907" }] } }] } };
-assert.deepEqual(parsePlan(single), { supply: 1.28238, anytime: 0.31977, peak: null, shoulder: null, offpeak: null, cl: null, solarFit: null });
+assert.deepEqual(parsePlan(single), { supply: 1.28238, anytime: 0.31977, peak: null, shoulder: null, offpeak: null, cl: null, solarFit: null, demand: null });
 assert.equal(parsePlan({ electricityContract: { tariffPeriod: [{ rateBlockUType: "demandCharges", dailySupplyCharges: "1" }] } }), null);
-// A single rate with a demand charge beside it can't be priced from kWh: left out, not priced without the demand charge.
+// A single rate with a demand charge beside it keeps the charge as $/kW/day (GST added), so the
+// site can price it for a home whose bill shows its max demand; a monthly charge is scaled to a day.
 const withDemand = { electricityContract: { tariffPeriod: [{ ...single.electricityContract.tariffPeriod[0], demandCharges: [{ amount: "0.3", measureUnit: "KW" }] }] } };
-assert.equal(parsePlan(withDemand), null);
+assert.equal(parsePlan(withDemand).demand, 0.33);
+const monthly = { electricityContract: { tariffPeriod: [{ ...single.electricityContract.tariffPeriod[0], demandCharges: [{ amount: "9.12", measureUnit: "KW", chargePeriod: "MONTH" }] }] } };
+assert.equal(parsePlan(monthly).demand, 0.33);
+// kVA or per-period demand charges can't be expressed per kW per day: left out.
+assert.equal(parsePlan({ electricityContract: { tariffPeriod: [{ ...single.electricityContract.tariffPeriod[0], demandCharges: [{ amount: "0.3", measureUnit: "KVA" }] }] } }), null);
+// "Demand" in the name with no demand charge published: can't be priced fairly, left out.
 assert.equal(parsePlan({ ...single, displayName: "Origin Basic (Residential Demand)" }), null);
 assert.notEqual(parsePlan({ ...single, displayName: "Origin Basic" }), null);
 console.log("parser ok");

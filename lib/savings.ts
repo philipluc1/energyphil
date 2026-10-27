@@ -1,5 +1,5 @@
 import { DISTRIBUTORS, benchmarkBill, bestPlan, computeBill, type Distributor, type UsageInput } from "./plans";
-import { DEFAULT_PROFILE, averageUsage, estimateUsage, vdoBillForUsage, type HomeProfile } from "./profileUsage";
+import { DEFAULT_PROFILE, averageUsage, bandsForTariff, estimateUsage, vdoBillForUsage, type HomeProfile } from "./profileUsage";
 
 export interface PeriodBreakdown {
   quarterly: number;
@@ -108,8 +108,9 @@ const HOMES: { key: HomeExample["key"]; title: string; detail: string; profile: 
 
 function homeUsage(profile: Partial<HomeProfile> | null, days: number): UsageInput {
   if (!profile) return averageUsage(days);
-  const e = estimateUsage({ ...DEFAULT_PROFILE, ...profile }, days);
-  return { days, peak: e.peak, shoulder: e.shoulder, offpeak: e.offpeak, anytime: 0, cl: e.cl, solarExportKwh: e.solarExportKwh };
+  const full = { ...DEFAULT_PROFILE, ...profile };
+  const e = estimateUsage(full, days);
+  return { days, ...bandsForTariff(e, full), cl: e.cl, solarExportKwh: e.solarExportKwh };
 }
 
 export function threeHomesExample(network: Distributor = THREE_HOMES_NETWORK): HomeExample[] {

@@ -37,6 +37,8 @@ export interface SubscribeProfile {
   postcode: string;
   hasSolar: boolean;
   solarExportKwh: number;
+  /** Max demand in kW for a home on a demand tariff; null otherwise. */
+  demandKw?: number | null;
   homeProfile?: Record<string, unknown> | null;
   currentRetailer?: string;
   /** Their current plan's pricing, if typed or read from a bill. */

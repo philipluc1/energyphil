@@ -8,6 +8,7 @@ import Icon from "../components/Icon";
 import MarketPulse from "../components/MarketPulse";
 import SiteHeader from "../components/SiteHeader";
 import FeelingCard from "../components/FeelingCard";
+import UsageShape from "../components/UsageShape";
 import VideoSlot from "../components/VideoSlot";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
@@ -91,6 +92,16 @@ export default function LearnPage() {
           <div className={learn.videoGrid}>
             {VIDEOS.map((v) => <VideoSlot key={v.id} video={v} />)}
           </div>
+        </section>
+
+        <section id="when" className={learn.block}>
+          <UsageShape
+            pick
+            shape="evening"
+            dailyKwh={11}
+            title="When you typically use power"
+            note="A model of a typical 4,000 kWh-a-year home, not meter data. On a time-of-use plan the shaded window is the dear part of the day; on a single-rate plan every hour costs the same. Members see their own home's shape on the dashboard."
+          />
         </section>
 
         <section id="charts" className={learn.block}>

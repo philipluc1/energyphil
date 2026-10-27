@@ -1,8 +1,9 @@
 "use client";
 
 import OfferDate from "./OfferDate";
+import RatesCompare from "./RatesCompare";
 import Icon from "./Icon";
-import { useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { RETAILER_COUNT, billDetail, rankPlans, topOpen, isEvFriendly, fmtRateCents, fmtRatePerDay, type Distributor, type UsageInput, type PlanRow } from "@/lib/plans";
 import { describeOffer } from "@/lib/planExtras";
@@ -43,6 +44,8 @@ export interface ComparisonInput {
   anytime: number;
   cl: number;
   solarExportKwh: number;
+  /** Max demand in kW, for a home on a demand tariff. */
+  demandKw?: number | null;
   /** What they paid for `days` on their last bill, if we know it. */
   billTotal: number | null;
   currentRetailer: string | null;
@@ -95,7 +98,7 @@ export interface ComparisonSummary {
 function compute(input: ComparisonInput) {
   // Not enough usage on file (none, under a week, or under 1 kWh a day
   // without solar)? Use the average Victorian home, 4,000 kWh a year.
-  const { usage, average } = usageOrAverage({ days: input.days, peak: input.peak, shoulder: input.shoulder, offpeak: input.offpeak, anytime: input.anytime, cl: input.cl, solarExportKwh: input.solarExportKwh });
+  const { usage, average } = usageOrAverage({ days: input.days, peak: input.peak, shoulder: input.shoulder, offpeak: input.offpeak, anytime: input.anytime, cl: input.cl, solarExportKwh: input.solarExportKwh, demandKw: input.demandKw ?? null });
   const household = { hasSolar: input.solarExportKwh > 0, currentRetailer: input.currentRetailer ?? null };
   const matches = rankPlans(input.distributor, usage, { ev: input.ev === true, ...household });
   // Cheapest plan this household can get; offers needing a membership and so on stay listed.
@@ -368,6 +371,8 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
  *  screens, one card per retailer on phones. */
 export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette }) {
   const [showAll, setShowAll] = useState(false);
+  // Which plan's rates are open (retailer + plan), on the table or the phone cards.
+  const [openRates, setOpenRates] = useState<string | null>(null);
   const [allPlans, setAllPlans] = useState(false);
   const c = useMemo(() => compute(input), [input]);
   if (!c) return null;
@@ -498,8 +503,10 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
                     </tr>
                   );
                 }
+                const key = `${m.plan[0]}|${m.plan[2]}`;
                 return (
-                  <tr key={m.plan[0] + m.plan[2] + i} className={m === top ? styles.rowBest : mine ? styles.rowMine : ""} style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+                  <Fragment key={key + i}>
+                  <tr className={m === top ? styles.rowBest : mine ? styles.rowMine : ""} style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
                     <td>{i + 1}</td>
                     <td>
                       <span className={styles.retailerCell}>
@@ -514,11 +521,26 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
                     <td title={chargeHelp(m.plan)}>
                       {chargeLabel(m.plan)}
                       {planPriceType(m.plan[0], m.plan[2]) === "fixed" && <span className={styles.ptFixed}> · <Icon name="lock" size={12} /> Fixed</span>}
+                      <br />
+                      <button type="button" className={styles.ratesToggle} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
+                        {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
+                      </button>
                     </td>
                     <td className={styles.num}>{money(m.total * k)}</td>
                     <td className={`${styles.num} ${diff >= 0 ? styles.pos : styles.neg}`}>{diff >= 0 ? `save ${money(diff)}` : `+${money(-diff)}`}</td>
                     <td className={`${styles.num} ${Math.round(vsVdo(m.total) * 100) < 0 ? styles.pos : Math.round(vsVdo(m.total) * 100) > 0 ? styles.neg : styles.flat}`}>{pct(vsVdo(m.total))}</td>
                   </tr>
+                  {openRates === key && (
+                    <tr key={`${key}-rates`} className={styles.ratesDetailRow}>
+                      <td colSpan={7}>
+                        <div className={styles.ratesDetail}>
+                          <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
+                          <p className={styles.ratesFine}>Published rates including GST, before any discounts. {chargeHelp(m.plan)}</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -548,8 +570,9 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
                 </li>
               );
             }
+            const key = `${m.plan[0]}|${m.plan[2]}`;
             return (
-              <li key={m.plan[0] + m.plan[2] + i} className={`${styles.pc} ${m === top ? styles.rowBest : mine ? styles.rowMine : ""}`}>
+              <li key={key + i} className={`${styles.pc} ${m === top ? styles.rowBest : mine ? styles.rowMine : ""}`}>
                 <span className={styles.pcRank}>{i + 1}</span>
                 <div className={styles.pcMain}>
                   <div className={styles.pcTop}>
@@ -567,6 +590,15 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
                   <span className={diff >= 0 ? styles.pos : styles.neg}>{diff >= 0 ? `save ${whole(diff)}` : `+${whole(-diff)}`}</span>
                   <span className={styles.pcVdo}>{vdoWords(vsVdo(m.total))}</span>
                 </div>
+                <button type="button" className={`${styles.ratesToggle} ${styles.pcRates}`} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
+                  {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
+                </button>
+                {openRates === key && (
+                  <div className={`${styles.ratesDetail} ${styles.pcRatesDetail}`}>
+                    <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
+                    <p className={styles.ratesFine}>Published rates including GST, before any discounts.</p>
+                  </div>
+                )}
               </li>
             );
           })}

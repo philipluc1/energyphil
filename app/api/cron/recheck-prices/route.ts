@@ -35,6 +35,7 @@ interface SubscriberWatchRow {
   anytime_kwh: number | null;
   controlled_load_kwh: number | null;
   solar_export_kwh: number | null;
+  demand_kw?: number | null;
   baseline_total: number | null;
   reference_total: number | null;
   last_notified_total: number | null;
@@ -153,6 +154,7 @@ export async function GET(req: NextRequest) {
         anytime: sub.anytime_kwh ?? 0,
         cl: sub.controlled_load_kwh ?? 0,
         solarExportKwh: sub.solar_export_kwh ?? 0,
+        demandKw: sub.demand_kw ?? null,
         ev: hasEv(sub.home_profile),
       };
       const best = computeBest(profile);
@@ -325,6 +327,7 @@ export async function GET(req: NextRequest) {
             anytime: sub.anytime_kwh ?? 0,
             cl: sub.controlled_load_kwh ?? 0,
             solarExportKwh: sub.solar_export_kwh ?? 0,
+        demandKw: sub.demand_kw ?? null,
             ev: hasEv(sub.home_profile),
           }
         : null;
@@ -492,6 +495,7 @@ interface DealRow {
   anytime_kwh: number | null;
   controlled_load_kwh: number | null;
   solar_export_kwh: number | null;
+  demand_kw?: number | null;
   reference_total: number | null;
   home_profile: unknown;
   discount_ends_at: string | null;

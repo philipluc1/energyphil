@@ -12,6 +12,8 @@ import { VDO, type Distributor, type UsageInput } from "./plans";
 export type Heating = "gas_none" | "reverse_cycle" | "resistive";
 export type HotWater = "gas_solar" | "electric_controlled" | "electric_general" | "heat_pump";
 export type DaytimeHome = "away" | "some" | "home";
+/** What the meter is set to, as the bill shows it. "unsure" is priced as single rate: the safe default. */
+export type Tariff = "single" | "tou" | "unsure";
 export type EvCharging = "overnight" | "anytime";
 /** Roughly when the solar panels went in: older panels are smaller. */
 export type SolarAge = "pre2016" | "2016to2020" | "2021on" | "unsure";
@@ -25,6 +27,8 @@ export interface HomeProfile {
   ev: boolean;
   evCharging: EvCharging;
   daytimeHome: DaytimeHome;
+  /** Single rate, time of use, or not sure (treated as single rate). */
+  tariff?: Tariff;
   hasSolar: boolean;
   solarKw: number; // system size used by the estimate, only when hasSolar
   // Most people don't know their system size but can count panels. solarKw is
@@ -43,6 +47,7 @@ export const DEFAULT_PROFILE: HomeProfile = {
   ev: false,
   evCharging: "overnight",
   daytimeHome: "some",
+  tariff: "unsure",
   hasSolar: false,
   solarKw: 6.7,
   solarInput: "panels",
@@ -315,6 +320,20 @@ export function forecastFromBill(p: HomeProfile, bill: { kwh: number; days: numb
 }
 
 /** An estimate for a billing period, scaled (e.g. to match a bill). Solar exports stay as they are. */
+/** True when this home is priced on time-of-use bands. Only when they said so:
+ *  a home that isn't sure what tariff it's on is compared as single rate, so
+ *  it never sees a time-of-use plan it may not be able to get. */
+export function usesTimeOfUse(p: Pick<HomeProfile, "tariff">): boolean {
+  return p.tariff === "tou";
+}
+
+/** The estimate's bands as the usage to price: kept as bands for a
+ *  time-of-use home, folded into one anytime figure for everyone else. */
+export function bandsForTariff(e: Pick<EstimatedUsage, "peak" | "shoulder" | "offpeak">, p: Pick<HomeProfile, "tariff">): { peak: number; shoulder: number; offpeak: number; anytime: number } {
+  if (usesTimeOfUse(p)) return { peak: e.peak, shoulder: e.shoulder, offpeak: e.offpeak, anytime: 0 };
+  return { peak: 0, shoulder: 0, offpeak: 0, anytime: e.peak + e.shoulder + e.offpeak };
+}
+
 export function scaleEstimate(e: EstimatedUsage, factor: number): EstimatedUsage {
   const r = (n: number) => Math.round(n * factor);
   return { ...e, peak: r(e.peak), shoulder: r(e.shoulder), offpeak: r(e.offpeak), cl: r(e.cl), totalKwh: r(e.totalKwh), annualKwh: r(e.annualKwh) };
@@ -363,16 +382,13 @@ export const TYPICAL_ANNUAL_KWH = AVERAGE_ANNUAL_KWH;
 export const MIN_USAGE_DAYS = 7;
 export const MIN_KWH_PER_DAY = 1;
 
-/** The average home's usage for a billing period, split into time bands the
- *  same way as an estimate for a household that's home some of the day, so
- *  time-of-use plans can be compared too. No controlled load, no solar. */
+/** The average home's usage for a billing period, as single-rate usage: we
+ *  don't know that home's meter, so it's compared on single-rate plans only.
+ *  No controlled load, no solar. */
 export function averageUsage(days: number): UsageInput {
   const d = days > 0 ? days : 91;
   const general = (AVERAGE_ANNUAL_KWH * d) / 365;
-  const s = BAND_SPLIT.some;
-  const peak = Math.round(general * s.peak);
-  const shoulder = Math.round(general * s.shoulder);
-  return { days: d, peak, shoulder, offpeak: Math.round(general) - peak - shoulder, anytime: 0, cl: 0, solarExportKwh: 0 };
+  return { days: d, peak: 0, shoulder: 0, offpeak: 0, anytime: Math.round(general), cl: 0, solarExportKwh: 0 };
 }
 
 /** True when there isn't enough usage to compare on. */
