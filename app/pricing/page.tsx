@@ -1,6 +1,6 @@
 import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
-import PlanCards from "../components/PlanCards";
+import JoinDirect from "../components/JoinDirect";
 import PlanBand from "../components/PlanBand";
 import Tag from "../components/Tag";
 import MarketPulse from "../components/MarketPulse";
@@ -30,10 +30,10 @@ export default function PricingPage() {
         <PlanBand
           title="Electricity and gas, re-checked every morning"
           intro={<>Same checking either way. Yearly works out at $3.25 a month; monthly lets you try it first.</>}
-          cards={<PlanCards href="/check" cta="Start free check" dark />}
+          cards={<JoinDirect />}
         />
         <p className={home.dataNote}>
-          Joining happens right after your free check, so we can match you to the right plan.{" "}
+          Pay now and snap your bill on the next screen, or <Link href="/check">run the free check first</Link>: joining is offered at the end of it too.{" "}
           <Link href="/cancellation-policy">Cancellation policy</Link>
         </p>
         <footer className={styles.footer}>

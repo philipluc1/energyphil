@@ -1,0 +1,17 @@
+/* Pay-first on the pricing page: the email panel that opens under the chosen plan. */
+.wrap { display: flex; flex-direction: column; gap: 14px; }
+.panel { margin: 4px auto 0; width: 100%; max-width: 614px; padding: 16px 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; display: flex; flex-direction: column; gap: 10px; animation: panelIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes panelIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.panelHead { display: flex; flex-direction: column; gap: 3px; }
+.panelHead b { font-size: 16px; }
+.panelHead span { font-size: 13.5px; opacity: 0.85; line-height: 1.45; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.row input { flex: 1 1 220px; min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1.5px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.95); color: #12141c; font: inherit; font-size: 16px; }
+.row input:focus { outline: none; border-color: #ffd166; box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.3); }
+.go { padding: 12px 20px; border-radius: 12px; border: 0; background: var(--amber, #f5a623); color: var(--amber-ink, #1c1403); font: inherit; font-size: 15.5px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.go:disabled { opacity: 0.7; cursor: default; }
+.fine { margin: 0; font-size: 12.5px; opacity: 0.8; line-height: 1.45; }
+.err { margin: 0; font-size: 13.5px; font-weight: 700; color: #fecaca; }
+.err a { color: #ffd166; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 640px) { .go { width: 100%; } }

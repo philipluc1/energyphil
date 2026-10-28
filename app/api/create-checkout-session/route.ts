@@ -13,7 +13,10 @@ interface CheckoutBody {
   planId?: string;
   email?: string;
   profile?: Record<string, unknown>;
+  /** Where "back" from Stripe goes: the results page by default, or the pricing page when they paid from there. */
+  cancelPath?: string;
 }
+const CANCEL_PATHS = new Set(["/check#pricing", "/pricing"]);
 
 export async function POST(req: NextRequest) {
   if (!stripe) {
@@ -141,7 +144,7 @@ export async function POST(req: NextRequest) {
       ...(discounts ? { discounts } : {}),
       // Goes via /api/welcome-link, which signs the new member in and lands them on /welcome.
       success_url: `${origin}/api/welcome-link?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/check#pricing`,
+      cancel_url: `${origin}${CANCEL_PATHS.has(body.cancelPath ?? "") ? body.cancelPath : "/check#pricing"}`,
     });
 
     if (!session.url) {
