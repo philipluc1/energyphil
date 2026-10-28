@@ -14,6 +14,8 @@ export interface ExtractedBill {
   planName: string | null;
   tariffType: string | null;
   billingDays: number | null;
+  /** Last day of the billing period, YYYY-MM-DD, when the bill shows it. */
+  periodEnd: string | null;
   currentBill: number | null;
   usageMode: "simple" | "detailed" | null;
   anytimeKwh: number | null;
@@ -130,6 +132,7 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     gasDistributor: ["Australian Gas Networks", "Multinet", "AusNet Services"].includes(r.gas_distributor as string) ? (r.gas_distributor as string) : null,
     gasBillingDays: (() => { const d = toPositiveInt(r.gas_billing_days); return d !== null && d >= 1 && d <= 366 ? d : null; })(),
     gasMj: toFiniteNumber(r.gas_mj),
+    periodEnd: typeof r.period_end === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.period_end) ? r.period_end : null,
     gasBillTotal: toFiniteNumber(r.gas_bill_total),
     gasPlanName: typeof r.gas_plan_name === "string" ? r.gas_plan_name.slice(0, 120) : null,
     distributor,

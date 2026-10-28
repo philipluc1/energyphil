@@ -13,7 +13,7 @@ import Reveal from "./components/Reveal";
 import Icon from "./components/Icon";
 import SourceBanner from "./components/SourceBanner";
 import MarketBoard from "./components/MarketBoard";
-import NbnNotify from "./components/NbnNotify";
+import HeroSnap from "./components/HeroSnap";
 import { GAS_PLANS, GAS_RETAILER_COUNT, gasDataReady } from "@/lib/gasPlans";
 import styles from "./components/Comparator.module.css";
 import h from "./home2.module.css";
@@ -65,18 +65,7 @@ export default function Home() {
         {/* 1. The hook, with the membership right beside it (straight under it on a phone) */}
         <section className={h.heroTop}>
           <div className={h.heroText}>
-            <p className={h.eyebrow}>Built from your bill</p>
-            <h1 className={h.title}>Bills creeping up?</h1>
-            <p className={h.lede}>
-              Start saving with one bill. We show what you&apos;re really paying against {PLANS.length} plans from {RETAILER_COUNT} retailers.
-            </p>
-            <div className={h.actions}>
-              <Link href="/check" className={h.primary}>
-                <Icon name="camera" size={20} /> Let&apos;s start saving
-              </Link>
-              <Link href="/check?start=questions" className={h.secondary}>No bill? Estimate it</Link>
-            </div>
-            <p className={h.fine}>Free, no sign-up, about a minute. <Link href="/gas">Gas bill?</Link></p>
+            <HeroSnap plans={PLANS.length} retailers={RETAILER_COUNT} gasPlans={gasDataReady ? GAS_PLAN_COUNT : 0} gasRetailers={GAS_RETAILER_COUNT} />
           </div>
 
           <aside className={h.memberCard} aria-labelledby="membership-title">
@@ -89,49 +78,14 @@ export default function Home() {
               {ANNUAL_SAVE ? <span className={h.saveTag}>Save {ANNUAL_SAVE}%</span> : null}
             </p>
             <ul className={h.memberTicks}>
-              <li><Icon name="check" size={18} /> Every plan re-checked against your bill, every morning</li>
-              <li><Icon name="check" size={18} /> An email only when switching is worth it</li>
-              <li><Icon name="check" size={18} /> Warned before a discount or fixed price ends</li>
+              <li><Icon name="check" size={18} /> We check every plan for you, automatically</li>
+              <li><Icon name="check" size={18} /> We check again every morning</li>
+              <li><Icon name="check" size={18} /> We tell you only when switching is worth it</li>
             </ul>
             <Link href="/check" className={h.memberCta}>Start with the free check</Link>
             <Link href="/pricing" className={h.memberGhost}>What&apos;s included</Link>
             <p className={h.memberFine}>The check is free. Cancel any time.</p>
           </aside>
-        </section>
-
-        {/* 2. One membership, every household bill: what's live and what's next */}
-        <section className={h.utilStrip} aria-labelledby="util-strip-title">
-          <p className={h.eyebrow}>One membership, every household bill</p>
-          <h2 id="util-strip-title" className={h.h2}>Electricity and gas today. Internet next.</h2>
-          <Reveal className={h.utilCards}>
-            <article className={h.utilCard} style={{ "--n": 0 } as CSSProperties}>
-              <div className={h.utilHead}>
-                <span className={`${h.utilIcon} ${h.utilElec}`}><Icon name="bolt" size={22} /></span>
-                <b>Electricity</b>
-                <span className={h.utilLive}><i aria-hidden="true" /> Live</span>
-              </div>
-              <p>Snap a bill. {PLANS.length} plans from {RETAILER_COUNT} retailers priced on your real usage, re-checked every morning, and 30 days&apos; warning before a discount ends.</p>
-              <Link href="/check" className={h.utilLink}>Check my electricity bill <span aria-hidden="true">→</span></Link>
-            </article>
-            <article className={h.utilCard} style={{ "--n": 1 } as CSSProperties}>
-              <div className={h.utilHead}>
-                <span className={`${h.utilIcon} ${h.utilGas}`}><Icon name="flame" size={22} /></span>
-                <b>Gas</b>
-                <span className={h.utilLive}><i aria-hidden="true" /> Live</span>
-              </div>
-              <p>A gas or dual-fuel bill works.{gasDataReady ? ` ${GAS_PLAN_COUNT} plans from ${GAS_RETAILER_COUNT} retailers.` : ""} Victoria has no default offer for gas, so your own bill is the yardstick, and we flag when a dual-fuel discount beats the gap.</p>
-              <Link href="/gas" className={h.utilLink}>Check my gas bill <span aria-hidden="true">→</span></Link>
-            </article>
-            <article className={`${h.utilCard} ${h.utilSoonCard}`} style={{ "--n": 2 } as CSSProperties}>
-              <div className={h.utilHead}>
-                <span className={`${h.utilIcon} ${h.utilNbn}`}><Icon name="wifi" size={22} /></span>
-                <b>Internet (NBN)</b>
-                <span className={h.utilSoon}>Coming</span>
-              </div>
-              <p>Same idea: snap your internet bill, we check the speed tier you&apos;re on against every provider&apos;s price, and tell you before a promo rolls off. Members get it first, at no extra cost.</p>
-              <NbnNotify />
-            </article>
-          </Reveal>
         </section>
 
         {/* 3. Live: how much the market changed in the last 30 days (hidden until the daily pull has dated offers) */}

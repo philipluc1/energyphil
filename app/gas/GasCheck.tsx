@@ -7,11 +7,15 @@
 import OfferDate from "../components/OfferDate";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { GAS_PLANS, GAS_PLAN_DATA_DATE, GAS_RETAILER_COUNT, GAS_ZONES, TYPICAL_MJ_PER_DAY, gasBenchmark, gasDataReady, rankGasPlans, type GasZone } from "@/lib/gasPlans";
+import { GAS_PLAN_DATA_DATE, GAS_RETAILER_COUNT, GAS_ZONES, TYPICAL_MJ_PER_DAY, gasBenchmark, gasDataReady, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { describeOffer, topOpen } from "@/lib/planExtras";
-import OfferTerms, { OfferChips } from "../components/OfferTerms";
+import OfferTerms from "../components/OfferTerms";
+import RetailerLogo from "../components/RetailerLogo";
+import GasPlanTable from "../components/GasPlanTable";
+import GasSeasonChart from "../components/GasSeasonChart";
+import { DEFAULT_GAS_PROFILE, VIC_GAS_HEATED_GJ, VIC_GAS_UNHEATED_GJ, annualFromGasBill, estimateGasAnnual, gasByMonth, heatingShareFor, monthsFromAnnual, periodMonths, type GasHeating, type GasProfile } from "@/lib/gasUsage";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import Icon from "../components/Icon";
 import { guessGasZoneFromPostcode } from "@/lib/postcodeGas";
@@ -24,7 +28,8 @@ const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigi
 const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
 const KEY = "utilo.gas.v1";
 
-type Entry = "snap" | "type" | "read" | "result";
+type Entry = "snap" | "type" | "estimate" | "read" | "result";
+const clampDays = (n: number) => Math.min(366, Math.max(1, Math.round(n)));
 
 const ZONE_HELP: Record<GasZone, string> = {
   "Australian Gas Networks": "Most of the rest of Melbourne, and regional Victoria",
@@ -47,6 +52,10 @@ export default function GasCheck() {
   const [planName, setPlanName] = useState("");
   const [retailer, setRetailer] = useState("");
   const [fromPhoto, setFromPhoto] = useState(false);
+  // No bill: a few questions about the home, priced on typical Victorian gas use.
+  const [profile, setProfile] = useState<GasProfile>(DEFAULT_GAS_PROFILE);
+  const [fromEstimate, setFromEstimate] = useState(false);
+  const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [elecOnly, setElecOnly] = useState(false);
@@ -58,7 +67,8 @@ export default function GasCheck() {
         const d = JSON.parse(window.localStorage.getItem(KEY) ?? "null");
         if (d) {
           if (GAS_ZONES.includes(d.zone)) setZone(d.zone);
-          if (typeof d.days === "number" && d.days > 0) setDays(d.days);
+          if (typeof d.days === "number" && d.days > 0) setDays(clampDays(d.days));
+          if (typeof d.periodEnd === "string") setPeriodEnd(d.periodEnd);
           if (typeof d.mj === "number" && d.mj > 0) setMjRaw(String(d.mj));
           if (typeof d.billRaw === "string") setBillRaw(d.billRaw);
           if (typeof d.planName === "string") setPlanName(d.planName);
@@ -77,9 +87,9 @@ export default function GasCheck() {
     if (!hydrated) return;
     const mj = parseFloat(mjRaw);
     try {
-      window.localStorage.setItem(KEY, JSON.stringify({ zone, days, mj: Number.isFinite(mj) ? mj : 0, billRaw, planName, retailer }));
+      window.localStorage.setItem(KEY, JSON.stringify({ zone, days, mj: Number.isFinite(mj) ? mj : 0, billRaw, planName, retailer, periodEnd }));
     } catch { /* ignore */ }
-  }, [zone, days, mjRaw, billRaw, planName, retailer, hydrated]);
+  }, [zone, days, mjRaw, billRaw, planName, retailer, periodEnd, hydrated]);
 
   function fromBill(b: ExtractedBill) {
     if (!b.gasMj) {
@@ -94,8 +104,10 @@ export default function GasCheck() {
     if (b.gasDistributor && GAS_ZONES.includes(b.gasDistributor as GasZone)) setZone(b.gasDistributor as GasZone);
     else w.push("We couldn't see your gas network. Please check it.");
     const d = b.gasBillingDays ?? b.billingDays;
-    if (d) setDays(d);
+    if (d) setDays(clampDays(d));
     else w.push("We couldn't find the billing period. Please check the days.");
+    setPeriodEnd(b.periodEnd ?? null);
+    setFromEstimate(false);
     setMjRaw(String(Math.round(b.gasMj)));
     setBillRaw(b.gasBillTotal ? String(b.gasBillTotal) : "");
     setPlanName(b.gasPlanName ?? "");
@@ -110,7 +122,9 @@ export default function GasCheck() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const mj = parseFloat(mjRaw);
+  const estimate = useMemo(() => estimateGasAnnual(profile), [profile]);
+  // The estimate is a year's gas for a home like this, scaled to the period: plans are compared on the average so the answer holds all year.
+  const mj = fromEstimate ? (estimate.total * days) / 365 : parseFloat(mjRaw);
   const mjOk = Number.isFinite(mj) && mj > 0;
   const bill = billRaw === "" ? null : parseFloat(billRaw);
   const haveBill = bill !== null && Number.isFinite(bill) && bill > 0;
@@ -125,15 +139,59 @@ export default function GasCheck() {
   const worth = yearly >= WORTH_SWITCHING_PER_YEAR;
   const go = (e: Entry) => { setEntry(e); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
+  const networkBlock = (n: number) => (
+    <div className={g.q}>
+      <span className={g.qLabel}>{n}. Your gas network</span>
+      <span className={g.qHint}>On your bill as &ldquo;Distributor&rdquo;. Not sure? Your postcode usually tells us.</span>
+      <div className={g.postcodeRow}>
+        <label htmlFor="gasPostcode" className={g.postcodeLabel}>Postcode</label>
+        <input
+          id="gasPostcode"
+          className={g.postcode}
+          inputMode="numeric"
+          maxLength={4}
+          placeholder="e.g. 3121"
+          value={postcode}
+          onChange={(e) => {
+            const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+            setPostcode(v);
+            const guess = guessGasZoneFromPostcode(v);
+            setZoneGuess(guess);
+            if (guess) setZone(guess);
+          }}
+        />
+        {postcode.length === 4 && (
+          <span className={g.postcodeNote}>
+            {zoneGuess ? <>Looks like <b>{zoneGuess}</b>. Change it below if your bill says otherwise.</> : <>We can&apos;t tell from that postcode alone: pick your network below.</>}
+          </span>
+        )}
+      </div>
+      <div className={g.zones}>
+        {GAS_ZONES.map((z) => (
+          <button key={z} type="button" className={z === zone ? g.zoneOn : g.zone} onClick={() => setZone(z)}>
+            <b>{z}</b><span>{ZONE_HELP[z]}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  const choice = <T extends string | number | boolean>(value: T, onChange: (v: T) => void, options: { value: T; label: string }[]) => (
+    <div className={g.pills}>
+      {options.map((o) => (
+        <button key={String(o.value)} type="button" className={o.value === value ? g.pillOn : g.pill} aria-pressed={o.value === value} onClick={() => onChange(o.value)}>{o.label}</button>
+      ))}
+    </div>
+  );
+
   /* ---------- 1. Photo first ---------- */
   if (entry === "snap") {
     return (
       <>
         <BillPhotoUpload variant="hero" fuel="gas" onApply={fromBill}>
-          <button type="button" className={snap.otherBtn} onClick={() => { setMjRaw(String(TYPICAL_MJ_PER_DAY * days)); setBillRaw(""); setFromPhoto(false); go("type"); }}>
-            <Icon name="home" size={18} /> No gas bill handy? <small>Start from a typical Victorian home</small>
+          <button type="button" className={snap.otherBtn} onClick={() => { setBillRaw(""); setFromPhoto(false); setFromEstimate(true); go("estimate"); }}>
+            <Icon name="home" size={18} /> No gas bill handy? <small>A few questions about your home</small>
           </button>
-          <button type="button" className={snap.otherBtn} onClick={() => go("type")}>
+          <button type="button" className={snap.otherBtn} onClick={() => { setFromEstimate(false); go("type"); }}>
             <Icon name="file" size={18} /> Rather type it in? <small>Three numbers from your gas bill</small>
           </button>
         </BillPhotoUpload>
@@ -174,6 +232,51 @@ export default function GasCheck() {
     );
   }
 
+  /* ---------- 2b. No bill: a few questions ---------- */
+  if (entry === "estimate") {
+    const months = gasByMonth(estimate);
+    return (
+      <>
+        <BillPhotoUpload variant="strip" fuel="gas" onApply={fromBill} />
+        <div className={styles.card}>
+          <h2 className={g.h2}>Your home&apos;s gas</h2>
+          <p className={g.qHint}>Four quick questions. We price plans on what a Victorian home like yours typically uses across a whole year, not just one season.</p>
+
+          <div className={g.q}>
+            <span className={g.qLabel}>1. Gas heating?</span>
+            {choice<GasHeating>(profile.heating, (v) => setProfile({ ...profile, heating: v }), [
+              { value: "ducted", label: "Ducted (whole house)" },
+              { value: "space", label: "A space heater or wall furnace" },
+              { value: "none", label: "No gas heating" },
+            ])}
+            <span className={g.qHint}>Heating is most of a Victorian gas bill. A home with gas heating uses about {VIC_GAS_HEATED_GJ} GJ a year; without it, about {VIC_GAS_UNHEATED_GJ} GJ.</span>
+          </div>
+          <div className={g.row2}>
+            <div className={g.q}>
+              <span className={g.qLabel}>2. Gas hot water?</span>
+              {choice(profile.hotWater, (v) => setProfile({ ...profile, hotWater: v }), [{ value: true, label: "Yes" }, { value: false, label: "No" }])}
+            </div>
+            <div className={g.q}>
+              <span className={g.qLabel}>3. Gas cooktop?</span>
+              {choice(profile.cooking, (v) => setProfile({ ...profile, cooking: v }), [{ value: true, label: "Yes" }, { value: false, label: "No" }])}
+            </div>
+          </div>
+          <div className={g.q}>
+            <span className={g.qLabel}>4. People at home</span>
+            {choice(profile.people, (v) => setProfile({ ...profile, people: v }), [1, 2, 3, 4, 5].map((n) => ({ value: n, label: n === 5 ? "5+" : String(n) })))}
+          </div>
+
+          {networkBlock(5)}
+
+          <GasSeasonChart heating={months.heating} other={months.other} title="A year of gas for a home like yours" note={`About ${(estimate.total / 1000).toLocaleString("en-AU", { maximumFractionDigits: 1 })} GJ a year. The winter hump is heating; the flat part is hot water and cooking. Typical Melbourne-climate figures, not a measurement: snap a bill when you have one for your own numbers.`} />
+
+          <button type="button" className={snap.readGo} disabled={!mjOk || estimate.total === 0} onClick={() => go("result")}>See my gas result →</button>
+          {estimate.total === 0 && <p className={g.block}>No gas heating, hot water or cooking? Then there&apos;s no gas to compare.</p>}
+        </div>
+      </>
+    );
+  }
+
   /* ---------- 3. Type it in ---------- */
   if (entry === "type") {
     return (
@@ -183,40 +286,7 @@ export default function GasCheck() {
           <h2 className={g.h2}>Your gas bill</h2>
           {warnings.length > 0 && <div className={snap.readWarn}><ul>{warnings.map((m, i) => <li key={i}>{m}</li>)}</ul></div>}
 
-          <div className={g.q}>
-            <span className={g.qLabel}>1. Your gas network</span>
-            <span className={g.qHint}>On your bill as &ldquo;Distributor&rdquo;. Not sure? Your postcode usually tells us.</span>
-            <div className={g.postcodeRow}>
-              <label htmlFor="gasPostcode" className={g.postcodeLabel}>Postcode</label>
-              <input
-                id="gasPostcode"
-                className={g.postcode}
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="e.g. 3121"
-                value={postcode}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, "").slice(0, 4);
-                  setPostcode(v);
-                  const guess = guessGasZoneFromPostcode(v);
-                  setZoneGuess(guess);
-                  if (guess) setZone(guess);
-                }}
-              />
-              {postcode.length === 4 && (
-                <span className={g.postcodeNote}>
-                  {zoneGuess ? <>Looks like <b>{zoneGuess}</b>. Change it below if your bill says otherwise.</> : <>We can&apos;t tell from that postcode alone: pick your network below.</>}
-                </span>
-              )}
-            </div>
-            <div className={g.zones}>
-              {GAS_ZONES.map((z) => (
-                <button key={z} type="button" className={z === zone ? g.zoneOn : g.zone} onClick={() => setZone(z)}>
-                  <b>{z}</b><span>{ZONE_HELP[z]}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          {networkBlock(1)}
 
           <div className={g.q}>
             <span className={g.qLabel}>2. How long the bill covers</span>
@@ -224,7 +294,7 @@ export default function GasCheck() {
               {([[30, "Monthly"], [61, "2 months"], [91, "Quarterly"]] as [number, string][]).map(([d, l]) => (
                 <button key={d} type="button" className={days === d ? g.pillOn : g.pill} onClick={() => setDays(d)}>{l}</button>
               ))}
-              <label className={g.inline}>or <input type="number" min={1} max={366} value={days} onChange={(e) => setDays(Math.max(1, parseInt(e.target.value) || 91))} aria-label="Days on the bill" /> days</label>
+              <label className={g.inline}>or <input type="number" min={1} max={366} value={days} onChange={(e) => setDays(clampDays(parseInt(e.target.value) || 91))} aria-label="Days on the bill" /> days</label>
             </div>
           </div>
 
@@ -252,7 +322,7 @@ export default function GasCheck() {
   return (
     <>
       <div className={g.topBar}>
-        <button type="button" className={styles.backLink} onClick={() => go(fromPhoto ? "read" : "type")}>← Edit my details</button>
+        <button type="button" className={styles.backLink} onClick={() => go(fromPhoto ? "read" : fromEstimate ? "estimate" : "type")}>← Edit my details</button>
         {gasDataReady && <span className={g.meta}>{ranked.length} gas plans on {zone}, from the {GAS_RETAILER_COUNT} gas retailers we track · prices checked {fmtDate(GAS_PLAN_DATA_DATE)}</span>}
       </div>
 
@@ -272,12 +342,12 @@ export default function GasCheck() {
             </div>
           ) : (
             <div className={`${styles.resultHero} ${haveBill ? styles.resultHeroBad : ""}`}>
-              <span className={styles.resultHeroKicker}>{haveBill ? "Based on your gas bill" : "Compared with a typical gas plan"}</span>
+              <span className={styles.resultHeroKicker}>{haveBill ? "Based on your gas bill" : fromEstimate ? "For a home like yours, vs a typical gas plan" : "Compared with a typical gas plan"}</span>
               <div className={styles.resultHeroLabel}>{haveBill ? "You could save about" : "The cheapest gas plan saves up to"}</div>
               <div className={styles.resultHeroNum}>{money0(Math.max(0, yearly))}</div>
               <div className={styles.resultHeroSub}>a year with {top.plan[0]}{haveBill ? ", vs your gas bill" : ". Add your gas charges for your own saving."}</div>
               {RETAILER_LINKS[top.plan[0]] && <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={zone} data-fuel="G" target="_blank" rel="noopener noreferrer" className={styles.resultHeroBtn}>See the plan →</a>}
-              <span className={styles.resultHeroFine}>From this bill, scaled to a year. Gas use swings with the seasons, so treat it as a guide. {PRICE_CHANGE_CLAUSE}</span>
+              <span className={styles.resultHeroFine}>{fromEstimate ? "Priced on a whole year of typical use for a home like yours. " : "From this bill, scaled to a year. Gas use swings with the seasons (a winter bill overstates it), so treat it as a guide. "}{PRICE_CHANGE_CLAUSE}</span>
             </div>
           )}
 
@@ -300,7 +370,7 @@ export default function GasCheck() {
             <OfferTerms o={offerFor(top.plan)} retailer={top.plan[0]} dark />
             {RETAILER_LINKS[top.plan[0]] && (
               <div className={styles.getPlan}>
-                <div className={styles.getPlanLogo} aria-hidden="true">{top.plan[0].split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
+                <RetailerLogo name={top.plan[0]} size={56} />
                 <div className={styles.getPlanText}>
                   <b>Get this plan from {top.plan[0]}</b>
                   <span>Look for &ldquo;{top.plan[2]}&rdquo;. If you take electricity from them too, ask about a dual-fuel discount.</span>
@@ -312,7 +382,7 @@ export default function GasCheck() {
 
           {!haveBill && (
             <div className={g.tip}>
-              <b>Want your own saving?</b> We compared with the middle of the market because we don&apos;t know what you pay. <button type="button" onClick={() => go("snap")}>Snap your gas bill</button> for the exact figure.
+              <b>Want your own saving?</b> We compared with the middle of the market because we don&apos;t know what you pay{fromEstimate ? ", on typical use for a home like yours" : ""}. <button type="button" onClick={() => go("snap")}>Snap your gas bill</button> for the exact figure.
             </div>
           )}
 
@@ -324,34 +394,39 @@ export default function GasCheck() {
             <Link href="/pricing" className={g.memberBtn}>Join for $7 a month →</Link>
           </div>
 
-          <details className={styles.detailsBox}>
-            <summary>See the workings: every gas plan and the maths</summary>
-            <div className={styles.detailsInner}>
-              <p className={styles.helper}>
-                Each plan&apos;s cost = daily supply charge × {days} days + {Math.round(mj).toLocaleString("en-AU")} MJ priced through the plan&apos;s usage
-                steps (the first block of MJ at one rate, the next at another). Prices include GST. Victoria has no default offer for gas, so without your
-                bill we compare with the middle-priced plan on your network.
-              </p>
-              <div className={styles.planList}>
-                {ranked.map((m, i) => (
-                  <div key={m.plan[0] + m.plan[2] + i} className={styles.planRowWrap}>
-                    <div className={styles.planRow}>
-                      <div className={styles.left}>
-                        <span className={styles.rk}>#{i + 1}</span>
-                        <span className={styles.rname}>{m.plan[0]}</span>
-                        <div className={styles.pname}><span className={styles.pnameText}>{m.plan[2]}</span> <OfferDate retailer={m.plan[0]} plan={m.plan[2]} /> <OfferChips o={offerFor(m.plan)} /></div>
-                      </div>
-                      <div className={styles.right}>
-                        <div className={styles.tot}>{money(m.total)}</div>
-                        <div className={styles.sav}>{money0(perYear(m.total))}/yr</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className={styles.helper}>{GAS_PLANS.filter((p) => p[1] === zone).length} gas plans on {zone}, from the retailers we track. Not every plan in the market. Includes each plan&apos;s discounts, assuming you pay on time; leaves out sign-up credits, fees and concessions.</p>
-            </div>
-          </details>
+          {(() => {
+            const k = 365 / Math.max(1, days);
+            const mjPerDay = mj / Math.max(1, days);
+            const heatingShare = heatingShareFor(fromEstimate ? profile : null, mjPerDay);
+            const annual = fromEstimate ? estimate.total : annualFromGasBill(mj, days, periodEnd, heatingShare);
+            const months = fromEstimate ? gasByMonth(estimate) : monthsFromAnnual(annual, heatingShare);
+            return (
+              <>
+                <GasPlanTable
+                  ranked={ranked}
+                  days={days}
+                  mj={mj}
+                  k={k}
+                  you={bench.value}
+                  youLabel={haveBill ? "Your bill" : "A typical plan"}
+                  perLabel="a year"
+                  zone={zone}
+                  currentRetailer={retailer || null}
+                />
+                <GasSeasonChart
+                  heating={months.heating}
+                  other={months.other}
+                  highlight={fromEstimate ? [] : periodMonths(days, periodEnd)}
+                  title={fromEstimate ? "A year of gas for a home like yours" : "Your gas through the year"}
+                  note={fromEstimate
+                    ? "Typical Melbourne-climate figures for a home like yours: the winter hump is heating, the flat part hot water and cooking."
+                    : periodEnd
+                      ? `Your bill's ${Math.round(mj).toLocaleString("en-AU")} MJ spread across a typical Victorian year (the outlined months are the ones it covered). Winter bills run well above the yearly average; summer ones well below.`
+                      : `Your bill's ${Math.round(mj).toLocaleString("en-AU")} MJ over ${days} days, spread across a typical Victorian year. Winter bills run well above the yearly average; summer ones well below.`}
+                />
+              </>
+            );
+          })()}
         </>
       )}
     </>

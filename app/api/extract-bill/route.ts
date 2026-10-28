@@ -62,6 +62,7 @@ const TOOL_SCHEMA = {
         type: ["string", "null"],
         description: "The retailer/company name the bill is from (e.g. 'AGL', 'Origin Energy'). For display only.",
       },
+      period_end: { type: ["string", "null"], description: "The last day of the billing period, as YYYY-MM-DD (e.g. 'Billing period 1 Jun 2026 to 31 Aug 2026' gives 2026-08-31). Null if not shown." },
       billing_days: {
         type: ["integer", "null"],
         description: "Number of days in the billing period shown on the bill.",

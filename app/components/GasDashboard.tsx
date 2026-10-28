@@ -1,12 +1,15 @@
 "use client";
 
-import { Fragment, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import Link from "next/link";
 import Icon from "./Icon";
 import RetailerLogo from "./RetailerLogo";
 import FunEquivalents from "./FunEquivalents";
+import GasPlanTable from "./GasPlanTable";
+import GasSeasonChart from "./GasSeasonChart";
+import { annualFromGasBill, heatingShareFor, monthsFromAnnual } from "@/lib/gasUsage";
 import { OfferChips } from "./OfferTerms";
-import { GAS_PLANS, GAS_PLAN_DATA_DATE, GAS_RETAILER_COUNT, GAS_ZONES, TYPICAL_MJ_PER_DAY, rankGasPlans, gasDataReady, type GasZone, type GasPlanRow, type RankedGas } from "@/lib/gasPlans";
+import { GAS_PLANS, GAS_PLAN_DATA_DATE, GAS_ZONES, TYPICAL_MJ_PER_DAY, rankGasPlans, gasDataReady, type GasZone, type GasPlanRow, type RankedGas } from "@/lib/gasPlans";
 import { describeOffer, topOpen } from "@/lib/planExtras";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { PERIOD_DAYS, periodScale, type PeriodName as Period } from "@/lib/periods";
@@ -34,25 +37,6 @@ export interface GasMember {
 const PERIOD_LABEL: Record<Period, string> = { month: "a month", quarter: "a quarter", year: "a year" };
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const whole = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
-const c = (dollars: number, dp = 2) => `${(dollars * 100).toFixed(dp)}c`;
-
-/** Supply and the stepped usage rates of a gas plan, in plain words. */
-function GasRates({ plan, days }: { plan: GasPlanRow; days: number }) {
-  const [, , , , supply, blocks, perDay] = plan;
-  return (
-    <table className={s.rates}>
-      <tbody>
-        <tr><th scope="row">Supply charge<small>c a day</small></th><td>{c(supply)}</td></tr>
-        {blocks.map((b, i) => {
-          const prev = i === 0 ? 0 : blocks[i - 1].upTo ?? 0;
-          const label = b.upTo === null ? (i === 0 ? "All usage" : `Over ${prev.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}`) : i === 0 ? `First ${b.upTo.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}` : `${prev.toLocaleString("en-AU")} to ${b.upTo.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}`;
-          return <tr key={i}><th scope="row">{label}<small>c per MJ</small></th><td>{c(b.rate, 3)}</td></tr>;
-        })}
-        {perDay && <tr><td colSpan={2} className={s.ratesNote}>Usage steps are per day, scaled to your {days}-day bill.</td></tr>}
-      </tbody>
-    </table>
-  );
-}
 
 export default function GasDashboard({ member, isMember, period, onPeriod }: { member: GasMember; isMember: boolean; period: Period; onPeriod: (p: Period) => void }) {
   const zone = member.gas_zone && GAS_ZONES.includes(member.gas_zone as GasZone) ? (member.gas_zone as GasZone) : null;
@@ -60,9 +44,6 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
   const mj = member.gas_mj ?? 0;
   const bill = member.gas_reference_total ?? null;
   const have = !!zone && days > 0 && mj > 0;
-  const [allPlans, setAllPlans] = useState(false);
-  const [showAll, setShowAll] = useState(false);
-  const [openRates, setOpenRates] = useState<string | null>(null);
 
   const gasOffer = (p: GasPlanRow) => describeOffer("G", p[0], p[2], p[1], { hasSolar: false, currentRetailer: member.gas_current_retailer ?? null });
   const ranked = useMemo<RankedGas[]>(() => (have && zone ? rankGasPlans(zone, { days, mj }, member.gas_current_retailer ?? null) : []), [have, zone, days, mj, member.gas_current_retailer]);
@@ -74,11 +55,6 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
   const verdict: "good" | "bad" | "nobill" = you === null ? "nobill" : savingYear >= WORTH_SWITCHING_PER_YEAR ? "bad" : "good";
   const severe = verdict === "bad" && you !== null && savingYear >= Math.max(250, (you * 365) / days * 0.15);
 
-  // Cheapest per retailer, or every plan.
-  const rows = useMemo(() => {
-    const list = allPlans ? ranked : (() => { const seen = new Set<string>(); return ranked.filter((m) => (seen.has(m.plan[0]) ? false : (seen.add(m.plan[0]), true))); })();
-    return showAll ? list : list.slice(0, 10);
-  }, [ranked, allPlans, showAll]);
   const retailers = new Set(ranked.map((m) => m.plan[0])).size;
 
   if (!gasDataReady || GAS_PLANS.length === 0) {
@@ -190,111 +166,18 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         </p>
       </div>
 
-      {/* Retailer comparison */}
-      <section className={v.table}>
-        <div className={v.tableHead}>
-          <h3 className={s.h3}>Gas retailer comparison</h3>
-          <p className={s.sub}>Each retailer&apos;s cheapest gas plan for your usage on the {zone} network, cheapest first, {PERIOD_LABEL[period]}. Tap a retailer to visit their website.</p>
-          <div className={s.viewToggle} role="tablist">
-            <button type="button" role="tab" aria-selected={!allPlans} className={!allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(false); setShowAll(false); }}>Cheapest per retailer <em>{retailers}</em></button>
-            <button type="button" role="tab" aria-selected={allPlans} className={allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(true); setShowAll(false); }}>All plans <em>{ranked.length}</em></button>
-          </div>
-        </div>
-        <div className={v.tableWide}>
-          <table>
-            <thead>
-              <tr><th>#</th><th>Retailer</th><th>Plan</th><th className={v.num}>Cost {PERIOD_LABEL[period]}</th><th className={v.num}>vs your bill</th></tr>
-            </thead>
-            <tbody>
-              {rows.map((m, i) => {
-                const key = `${m.plan[0]}|${m.plan[2]}`;
-                const diff = you !== null ? (you - m.total) * k : null;
-                const mine = member.gas_current_retailer && m.plan[0] === member.gas_current_retailer;
-                return (
-                  <Fragment key={key + i}>
-                    <tr className={m === top ? v.rowBest : mine ? v.rowMine : ""}>
-                      <td>{i + 1}</td>
-                      <td>
-                        <span className={v.retailerCell}>
-                          <RetailerLogo name={m.plan[0]} size={28} />
-                          {RETAILER_LINKS[m.plan[0]] ? <a href={RETAILER_LINKS[m.plan[0]]} target="_blank" rel="noopener noreferrer" className={s.rlink}>{m.plan[0]} ↗</a> : <b>{m.plan[0]}</b>}
-                        </span>
-                        {m === top && <span className={v.tagBest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
-                        {mine && <span className={v.tagMine}>Your retailer</span>}
-                      </td>
-                      <td className={v.planName}>
-                        {m.plan[2]}
-                        {m.restricted && <span className={s.restricted}>! {m.restricted}</span>}
-                        <span className={v.offerChips}><OfferChips o={gasOffer(m.plan)} /></span>
-                        <br />
-                        <button type="button" className={v.ratesToggle} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
-                          {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
-                        </button>
-                      </td>
-                      <td className={v.num}>{money(m.total * k)}</td>
-                      <td className={`${v.num} ${diff === null ? v.flat : diff >= 0 ? v.pos : v.neg}`}>{diff === null ? "—" : diff >= 0 ? `save ${money(diff)}` : `+${money(-diff)}`}</td>
-                    </tr>
-                    {openRates === key && (
-                      <tr className={v.ratesDetailRow}>
-                        <td colSpan={5}>
-                          <div className={v.ratesDetail}>
-                            <GasRates plan={m.plan} days={days} />
-                            <p className={v.ratesFine}>Published rates including GST, before any discounts.</p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <ol className={v.cards}>
-          {rows.map((m, i) => {
-            const key = `${m.plan[0]}|${m.plan[2]}`;
-            const diff = you !== null ? (you - m.total) * k : null;
-            const mine = member.gas_current_retailer && m.plan[0] === member.gas_current_retailer;
-            return (
-              <li key={key + i} className={`${v.pc} ${m === top ? v.rowBest : mine ? v.rowMine : ""}`}>
-                <span className={v.pcRank}>{i + 1}</span>
-                <div className={v.pcMain}>
-                  <div className={v.pcTop}>
-                    <RetailerLogo name={m.plan[0]} size={26} />
-                    <b>{m.plan[0]}</b>
-                    {m === top && <span className={v.tagBest}>{i === 0 ? "Cheapest" : "Best you can get"}</span>}
-                    {mine && <span className={v.tagMine}>Yours</span>}
-                  </div>
-                  <span className={v.pcPlan}>{m.plan[2]}</span>
-                  {m.restricted && <span className={s.restricted}>! {m.restricted}</span>}
-                  <span className={v.offerChips}><OfferChips o={gasOffer(m.plan)} /></span>
-                </div>
-                <div className={v.pcNums}>
-                  <b>{whole(m.total * k)}</b>
-                  {diff !== null && <span className={diff >= 0 ? v.pos : v.neg}>{diff >= 0 ? `save ${whole(diff)}` : `+${whole(-diff)}`}</span>}
-                </div>
-                <button type="button" className={`${v.ratesToggle} ${v.pcRates}`} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
-                  {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
-                </button>
-                {openRates === key && (
-                  <div className={`${v.ratesDetail} ${v.pcRatesDetail}`}>
-                    <GasRates plan={m.plan} days={days} />
-                    <p className={v.ratesFine}>Published rates including GST, before any discounts.</p>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        {(allPlans ? ranked.length : retailers) > 10 && (
-          <button type="button" className={v.more} onClick={() => setShowAll((x) => !x)}>
-            {showAll ? "Show the top 10" : allPlans ? `Show all ${ranked.length} plans` : `Show all ${retailers} retailers`}
-          </button>
-        )}
-        <p className={v.fineDark}>
-          Gas prices from the retailers&apos; published offers for the {zone} network (we track {GAS_RETAILER_COUNT} gas retailers), priced on your {Math.round(mj).toLocaleString("en-AU")} MJ over {days} days, including GST and each plan&apos;s guaranteed and pay-on-time discounts. Estimates only; confirm with the retailer before switching.
-        </p>
-      </section>
+      <GasPlanTable ranked={ranked} days={days} mj={mj} k={k} you={you} youLabel="Your bill" perLabel={PERIOD_LABEL[period]} zone={zone ?? ""} currentRetailer={member.gas_current_retailer ?? null} />
+      {(() => {
+        const share = heatingShareFor(null, mj / days);
+        const months = monthsFromAnnual(annualFromGasBill(mj, days, null, share), share);
+        return (
+          <GasSeasonChart
+            heating={months.heating}
+            other={months.other}
+            note={`Your last bill's ${Math.round(mj).toLocaleString("en-AU")} MJ over ${days} days, spread across a typical Victorian year. Gas is seasonal: expect winter bills well above this and summer ones well below. Each new bill you snap sharpens the picture.`}
+          />
+        );
+      })()}
     </div>
   );
 }
