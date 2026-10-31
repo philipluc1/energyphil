@@ -38,6 +38,8 @@ interface Opts {
   network?: string | null;
   now?: number;
   dates?: Record<string, PlanDates>;
+  /** The offers to count ("retailer|plan"), e.g. the gas ones from lib/gasInsights.ts gasOfferKeys(). Default: electricity market offers. */
+  keys?: Iterable<string>;
 }
 
 function isReady(opts: Opts) {
@@ -60,7 +62,7 @@ export function marketEvents(opts: Opts = {}): MarketEvent[] {
   // Standing offers (the default offer) are repriced once a year on 1 July,
   // so a dated change on one outside that is feed noise, not market news:
   // only market offers are counted.
-  const keys = new Set(PLANS.filter((p) => p[3] !== "STANDING" && (!opts.network || p[1] === opts.network)).map((p) => `${p[0]}|${p[2]}`));
+  const keys = opts.keys ? new Set(opts.keys) : new Set(PLANS.filter((p) => p[3] !== "STANDING" && (!opts.network || p[1] === opts.network)).map((p) => `${p[0]}|${p[2]}`));
   const out: MarketEvent[] = [];
   for (const key of keys) {
     const d = dates[key];

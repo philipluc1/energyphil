@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import RetailerLogo from "./RetailerLogo";
 import PriceLine from "./PriceLine";
 import { OfferChips } from "./OfferTerms";
@@ -38,7 +38,7 @@ export function GasRates({ plan, days }: { plan: GasPlanRow; days: number }) {
 }
 
 export default function GasPlanTable({
-  ranked, days, mj, k, you, youLabel, perLabel, zone, currentRetailer, chart = true,
+  ranked, days, mj, k, you, youLabel, perLabel, zone, currentRetailer, chart = true, controls, note,
 }: {
   ranked: RankedGas[];
   days: number;
@@ -54,6 +54,10 @@ export default function GasPlanTable({
   zone: string;
   currentRetailer: string | null;
   chart?: boolean;
+  /** Extra controls under the heading (the dashboard's what-if bar). */
+  controls?: ReactNode;
+  /** The usage line under the price chart. */
+  note?: ReactNode;
 }) {
   const [allPlans, setAllPlans] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -66,30 +70,31 @@ export default function GasPlanTable({
 
   return (
     <>
-      {chart && you !== null && perRetailer.length > 0 && (
-        <div className={v.chart}>
-          <PriceLine
-            items={perRetailer.slice(0, 8).map((m) => ({ retailer: m.plan[0], plan: m.plan[2], value: m.total * k, cheapest: m === top }))}
-            you={you * k}
-            youLabel={youLabel}
-            vdo={null}
-            per={perLabel}
-          />
-        </div>
-      )}
       <section className={v.table}>
         <div className={v.tableHead}>
           <h3 className={s.h3}>Gas retailer comparison</h3>
-          <p className={s.sub}>Each retailer&apos;s cheapest gas plan for your usage on the {zone} network, cheapest first, {perLabel}. Tap a retailer to visit their website.</p>
           <div className={s.viewToggle} role="tablist">
             <button type="button" role="tab" aria-selected={!allPlans} className={!allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(false); setShowAll(false); }}>Cheapest per retailer <em>{retailers}</em></button>
             <button type="button" role="tab" aria-selected={allPlans} className={allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(true); setShowAll(false); }}>All plans <em>{ranked.length}</em></button>
           </div>
+          {controls}
         </div>
+        {chart && you !== null && perRetailer.length > 0 && (
+          <div className={v.chart}>
+            <PriceLine
+              items={perRetailer.slice(0, 8).map((m) => ({ retailer: m.plan[0], plan: m.plan[2], value: m.total * k, cheapest: m === top }))}
+              you={you * k}
+              youLabel={youLabel}
+              vdo={null}
+              per={perLabel}
+              note={note}
+            />
+          </div>
+        )}
         <div className={v.tableWide}>
           <table>
             <thead>
-              <tr><th>#</th><th>Retailer</th><th>Plan</th><th className={v.num}>Cost {perLabel}</th><th className={v.num}>vs your bill</th></tr>
+              <tr><th>#</th><th>Retailer</th><th>Plan</th><th className={v.num}>Cost {perLabel}</th><th className={v.num}>vs {youLabel.toLowerCase()}</th></tr>
             </thead>
             <tbody>
               {rows.map((m, i) => {
@@ -175,9 +180,12 @@ export default function GasPlanTable({
             {showAll ? "Show the top 10" : allPlans ? `Show all ${ranked.length} plans` : `Show all ${retailers} retailers`}
           </button>
         )}
-        <p className={v.fineDark}>
-          Gas prices from the retailers&apos; published offers for the {zone} network (we track {GAS_RETAILER_COUNT} gas retailers), priced on your {Math.round(mj).toLocaleString("en-AU")} MJ over {days} days, including GST and each plan&apos;s guaranteed and pay-on-time discounts. Estimates only; confirm with the retailer before switching.
-        </p>
+        <details className={v.legendBox}>
+          <summary>How we priced these</summary>
+          <p className={v.fineDark}>
+          Each retailer&apos;s cheapest gas plan on the {zone} network, cheapest first. Gas prices from the retailers&apos; published offers for the {zone} network (we track {GAS_RETAILER_COUNT} gas retailers), priced on your {Math.round(mj).toLocaleString("en-AU")} MJ over {days} days, including GST and each plan&apos;s guaranteed and pay-on-time discounts. Estimates only; confirm with the retailer before switching.
+          </p>
+        </details>
       </section>
     </>
   );

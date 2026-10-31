@@ -7,6 +7,7 @@ import RetailerLogo from "./RetailerLogo";
 import { extrasFor } from "@/lib/planExtras";
 import { rewardsIn, REWARD_KIND_LABEL, type Reward, type RewardKind } from "@/lib/rewards";
 import type { PlanRow } from "@/lib/plans";
+import type { GasPlanRow } from "@/lib/gasPlans";
 import styles from "./marketrewards.module.css";
 
 // "Discounts and rewards" on the dashboard's market page: every sign-up
@@ -14,7 +15,7 @@ import styles from "./marketrewards.module.css";
 // each with what that plan costs them a year against their bill. Credits,
 // points and gifts are never in our prices; the page says so.
 
-type Match = { plan: PlanRow; total: number; restricted: string | null };
+type Match = { plan: PlanRow | GasPlanRow; total: number; restricted: string | null };
 type Item = { m: Match; r: Reward; diff: number };
 type Tab = "all" | RewardKind;
 
@@ -33,11 +34,11 @@ function KindIcon({ kind }: { kind: RewardKind }) {
 }
 
 /** One entry per retailer and reward, on that retailer's cheapest plan carrying it. */
-export function rewardItems(matches: Match[], you: number, perYear: number): Item[] {
+export function rewardItems(matches: Match[], you: number, perYear: number, fuel: "E" | "G" = "E"): Item[] {
   const best = new Map<string, Item>();
   for (const m of matches) {
     if (m.restricted) continue;
-    for (const r of rewardsIn(extrasFor("E", m.plan[0], m.plan[2], m.plan[1]))) {
+    for (const r of rewardsIn(extrasFor(fuel, m.plan[0], m.plan[2], m.plan[1]))) {
       const key = `${m.plan[0]}|${r.kind}|${r.headline.toLowerCase()}`;
       const had = best.get(key);
       if (!had || m.total < had.m.total) best.set(key, { m, r, diff: (you - m.total) * perYear });
@@ -88,7 +89,9 @@ export default function MarketRewards({
   against,
   locked,
   whole,
+  fuel = "E",
 }: {
+  fuel?: "E" | "G";
   matches: Match[];
   you: number;
   perYear: number;
@@ -99,7 +102,7 @@ export default function MarketRewards({
   const [tab, setTab] = useState<Tab>("all");
   const [more, setMore] = useState(false);
 
-  const items = useMemo(() => rewardItems(matches, you, perYear), [matches, you, perYear]);
+  const items = useMemo(() => rewardItems(matches, you, perYear, fuel), [matches, you, perYear, fuel]);
 
   const counts = Object.fromEntries(KINDS.map((k) => [k, items.filter((i) => i.r.kind === k).length])) as Record<RewardKind, number>;
   const shown = tab === "all" ? items : items.filter((i) => i.r.kind === tab);

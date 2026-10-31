@@ -1,0 +1,378 @@
+"use client";
+
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import Icon from "./Icon";
+import RetailerLogo from "./RetailerLogo";
+import DashOverlay from "./DashOverlay";
+import { MarketSideCard, type MarketPersonal } from "./MarketBoard";
+import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
+import { GAS_ZONES, gasDataReady, rankGasPlans, type GasZone, type RankedGas } from "@/lib/gasPlans";
+import { topOpen } from "@/lib/planExtras";
+import { heatingShareFor } from "@/lib/gasUsage";
+import { forecastGasYear, gasOfferKeys, gasPricer, medianGasSupply, planGasPricer, typicalGasPricer, type GasForecast } from "@/lib/gasInsights";
+import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivity";
+import { MONTH_NAMES } from "@/lib/profileUsage";
+import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
+import { useOpenParam } from "@/lib/useOpenParam";
+import type { GasMember } from "./GasDashboard";
+import s from "./insights.module.css";
+import styles from "./dashcompare.module.css";
+
+// The gas tab's side cards (1 Nov 2026), the same set as electricity's:
+// your gas year ahead, the gas market this month (top 5 retailers, latest
+// changes) and gas discounts and rewards. Gas has no default offer, so
+// everything is against the member's own bill, or a typical plan without one.
+
+const whole = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
+const short = (m: number) => MONTH_NAMES[m].slice(0, 3);
+const dayMonth = (d: Date) => d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+const shortDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "UTC" });
+
+interface GasCtx {
+  zone: GasZone;
+  days: number;
+  mj: number;
+  ranked: RankedGas[];
+  top: RankedGas;
+  /** What they pay now for the bill period: their bill, or a typical plan. */
+  you: number;
+  haveBill: boolean;
+  against: string;
+  perYear: number;
+}
+
+function useGasCtx(member: GasMember): GasCtx | null {
+  return useMemo(() => {
+    const zone = member.gas_zone && GAS_ZONES.includes(member.gas_zone as GasZone) ? (member.gas_zone as GasZone) : null;
+    const days = member.gas_billing_days ?? 0;
+    const mj = member.gas_mj ?? 0;
+    if (!gasDataReady || !zone || !(days > 0) || !(mj > 0)) return null;
+    const ranked = rankGasPlans(zone, { days, mj }, member.gas_current_retailer ?? null);
+    const top = topOpen(ranked);
+    if (!top) return null;
+    const bill = member.gas_reference_total;
+    const haveBill = bill !== null && bill > 0;
+    const you = haveBill ? bill : ranked[Math.floor(ranked.length / 2)].total;
+    return { zone, days, mj, ranked, top, you, haveBill, against: haveBill ? "your gas bill" : "a typical gas plan", perYear: 365 / days };
+  }, [member.gas_zone, member.gas_billing_days, member.gas_mj, member.gas_reference_total, member.gas_current_retailer]);
+}
+
+export default function GasCards({ member }: { member: GasMember }) {
+  const c = useGasCtx(member);
+  if (!c) return null;
+  return (
+    <>
+      <GasForecastCard c={c} />
+      <GasMarket c={c} />
+    </>
+  );
+}
+
+/* ---------- Your gas year ahead ---------- */
+
+function GasForecastCard({ c }: { c: GasCtx }) {
+  const f = useMemo<GasForecast | null>(() => {
+    const share = heatingShareFor(null, c.mj / c.days);
+    const now = c.haveBill ? gasPricer({ bill: c.you, mj: c.mj, days: c.days, supplyPerDay: medianGasSupply(c.zone) }) : typicalGasPricer(c.zone);
+    return forecastGasYear({ mj: c.mj, days: c.days, endIso: null, heatingShare: share, now, best: planGasPricer(c.top.plan) });
+  }, [c]);
+  const [open, setOpen] = useState(false);
+  useOpenParam("gasyear", () => setOpen(true), !!f);
+  if (!f) return null;
+  const max = Math.max(...f.months.map((m) => m.now), 1);
+  const save = f.next.now - f.next.best;
+  return (
+    <>
+      <section
+        className={`${s.side} ${s.sideOpen}`}
+        style={{ "--accent": "#e8590c", "--tagBg": "#fff0e6", "--tagFg": "#b4400a" } as CSSProperties}
+        aria-labelledby="gfc-side-title"
+        onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a")) setOpen(true); }}
+      >
+        <span className={s.tag}><Icon name="flame" size={13} /> Your gas year ahead</span>
+        <h3 id="gfc-side-title" className={s.sideTitle}>
+          Next gas bill about <b>{whole(f.next.now)}</b>
+        </h3>
+        <p className={s.sideLine}>
+          {f.next.days} days to {dayMonth(f.next.end)}.{save >= 1 ? <> On the cheapest plan: <b className={s.good}>{whole(f.next.best)}</b>.</> : null}
+        </p>
+        <div className={s.spark} aria-hidden="true">
+          {f.months.map((m, i) => <i key={i} className={i === 0 ? s.sparkNow : ""} style={{ height: `${Math.max(8, (m.now / max) * 100)}%`, animationDelay: `${i * 30}ms` }} />)}
+        </div>
+        <button type="button" className={s.more} onClick={() => setOpen(true)}>See my gas year, month by month →</button>
+      </section>
+      {open && <GasForecastPage f={f} c={c} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function GasForecastPage({ f, c, onClose }: { f: GasForecast; c: GasCtx; onClose: () => void }) {
+  const max = Math.max(...f.months.map((m) => Math.max(m.now, m.best)), 1);
+  const peak = f.months.reduce((a, m) => (m.now / m.days > a.now / a.days ? m : a), f.months[0]);
+  const low = f.months.reduce((a, m) => (m.now / m.days < a.now / a.days ? m : a), f.months[0]);
+  const saveYear = f.yearNow - f.yearBest;
+  const nowLabel = c.haveBill ? "Your gas plan" : "A typical gas plan";
+  // The months the next bill covers (for the dashed box).
+  const nextMonths = new Set<number>();
+  {
+    let left = f.next.days;
+    let i = 0;
+    while (left > 0 && i < f.months.length) { nextMonths.add(i); left -= f.months[i].days; i++; }
+  }
+  return (
+    <DashOverlay title="Your gas year ahead" lede="What your gas should cost over the next twelve months, on your plan and on the cheapest gas plan for you. Gas follows the seasons, so winter months cost far more." bar="Estimate" onClose={onClose}>
+      <div className={s.tiles}>
+        <div className={s.tile}><b>{whole(f.next.now)}</b><span>your next gas bill ({f.next.days} days to {dayMonth(f.next.end)}, about {f.next.mj.toLocaleString("en-AU")} MJ)</span></div>
+        <div className={`${s.tile} ${saveYear >= 1 ? s.tileGood : ""}`}><b>{whole(f.next.best)}</b><span>the same bill on the cheapest gas plan{saveYear >= 1 ? `: ${whole(f.next.now - f.next.best)} less` : ""}</span></div>
+        <div className={s.tile}><b>{whole(f.yearNow)}</b><span>the next 12 months on {nowLabel.toLowerCase()}{saveYear >= 1 ? `, or ${whole(f.yearBest)} on the cheapest` : ""}</span></div>
+      </div>
+
+      <section className={s.card} aria-labelledby="gfc-chart">
+        <h3 id="gfc-chart">Month by month</h3>
+        <p className={s.sub}>
+          Dearest month: <b>{MONTH_NAMES[peak.month]}</b> ({whole(peak.now)}). Cheapest: <b>{MONTH_NAMES[low.month]}</b> ({whole(low.now)}). The dashed box is your next bill.
+        </p>
+        <div className={s.fcChart} role="img" aria-label={`Forecast gas cost by month, ${nowLabel.toLowerCase()} and the cheapest plan`}>
+          {f.months.map((m, i) => (
+            <div key={i} className={s.fcCol} title={`${MONTH_NAMES[m.month]} ${m.year}: ${whole(m.now)} on ${nowLabel.toLowerCase()}, ${whole(m.best)} on the cheapest plan, ${m.mj.toLocaleString("en-AU")} MJ`}>
+              {nextMonths.has(i) && <span className={s.fcNext} aria-hidden="true" />}
+              <div className={s.fcBars}>
+                <i className={s.fcNow} style={{ height: `${(m.now / max) * 100}%`, animationDelay: `${i * 35}ms` }} />
+                <i className={s.fcBest} style={{ height: `${(m.best / max) * 100}%`, animationDelay: `${i * 35 + 60}ms` }} />
+              </div>
+              <small>{short(m.month)}</small>
+            </div>
+          ))}
+        </div>
+        <div className={s.fcLegend}>
+          <span><i style={{ background: "#e8590c" }} /> {nowLabel}</span>
+          <span><i style={{ background: "#16a34a" }} /> Cheapest: {c.top.plan[0]}</span>
+        </div>
+      </section>
+
+      <section className={s.card} aria-labelledby="gfc-how">
+        <h3 id="gfc-how">How we worked it out</h3>
+        <ul className={s.fineList}>
+          <li>Your last gas bill ({Math.round(c.mj).toLocaleString("en-AU")} MJ over {c.days} days) makes about {(f.annualMj / 1000).toLocaleString("en-AU", { maximumFractionDigits: 1 })} GJ a year, spread across the months the way a Victorian home&apos;s gas usually falls: heating in winter, hot water and cooking all year.</li>
+          {c.haveBill
+            ? <li>&ldquo;Your gas plan&rdquo; is your bill split into a typical supply charge and an average price per MJ, so colder months cost more at your rate.</li>
+            : <li>We don&apos;t have your gas charges, so &ldquo;now&rdquo; is a typical gas plan on {c.zone}. Add your bill total for your own figures.</li>}
+          <li>We don&apos;t know which months your last bill covered, so we&apos;ve treated it as an average one. A winter bill makes this year look dearer than it will be; a summer bill, cheaper.</li>
+          <li>Prices are today&apos;s; retailers can change gas prices with notice. It&apos;s an estimate, not a meter reading.</li>
+        </ul>
+      </section>
+    </DashOverlay>
+  );
+}
+
+/* ---------- The gas market this month, and gas rewards ---------- */
+
+function GasMarket({ c }: { c: GasCtx }) {
+  const [open, setOpen] = useState<false | "top" | "rewards">(false);
+  const events = useMemo(() => marketEvents({ days: 30, keys: gasOfferKeys(c.zone) }), [c.zone]);
+  const rewards = useMemo(() => rewardItems(c.ranked, c.you, c.perYear, "G"), [c]);
+  useOpenParam("gasmarket", () => setOpen("top"), true);
+  useOpenParam("gasrewards", () => setOpen("rewards"), true);
+  const personal = useMemo<MarketPersonal>(() => {
+    const byKey = new Map(c.ranked.map((m) => [`${m.plan[0]}|${m.plan[2]}`, m]));
+    let checked = 0;
+    let beat = 0;
+    let closest: { retailer: string; diff: number } | null = null;
+    for (const e of events) {
+      const m = byKey.get(`${e.retailer}|${e.plan}`);
+      if (!m) continue;
+      checked++;
+      if (m.restricted) continue;
+      const diff = (m.total - c.you) * c.perYear;
+      if (diff <= -WORTH_SWITCHING_PER_YEAR) beat++;
+      if (!closest || diff < closest.diff) closest = { retailer: e.retailer, diff };
+    }
+    return {
+      against: c.against,
+      network: c.zone,
+      fuel: "G",
+      checked,
+      beat,
+      worthPerYear: WORTH_SWITCHING_PER_YEAR,
+      closest: !closest ? null : closest.diff < 0 ? `Best: ${closest.retailer}, about ${whole(-closest.diff)} a year less than ${c.against}` : `Closest: ${closest.retailer}, about ${whole(closest.diff)} a year more than ${c.against}`,
+      vs: (e) => {
+        const m = byKey.get(`${e.retailer}|${e.plan}`);
+        if (!m) return { text: "Not on your gas network", tone: "muted" };
+        if (m.restricted) return { text: `Limited offer: ${m.restricted}`, tone: "muted" };
+        const diff = (m.total - c.you) * c.perYear;
+        const vsWhat = c.haveBill ? "you pay" : "a typical plan";
+        if (Math.abs(diff) < 5) return { text: `About the same as ${vsWhat}`, tone: "muted" };
+        return diff < 0 ? { text: `${whole(-diff)} a year less than ${vsWhat}`, tone: "better" } : { text: `${whole(diff)} a year more than ${vsWhat}`, tone: "worse" };
+      },
+    };
+  }, [c, events]);
+  const none = useMemo(() => new Set<unknown>(), []);
+  return (
+    <>
+      {personal.checked > 0 && <MarketSideCard personal={personal} events={events.filter((e) => personal.vs(e)?.text !== "Not on your gas network")} onOpen={() => setOpen("top")} />}
+      <RewardsSideCard items={rewards} locked={none} onOpen={() => setOpen("rewards")} />
+      {open && <GasMarketDetail c={c} personal={personal} events={events} startAt={open} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function GasMarketDetail({ c, personal, events, onClose, startAt }: { c: GasCtx; personal: MarketPersonal; events: MarketEvent[]; onClose: () => void; startAt: "top" | "rewards" }) {
+  useEffect(() => {
+    if (startAt !== "rewards") return;
+    const t = window.setTimeout(() => {
+      const el = document.getElementById("md-rewards");
+      const box = el?.closest("[role=dialog]") as HTMLElement | null;
+      if (!el || !box) return;
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      box.scrollTo({ top: el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 76, behavior: reduce ? "auto" : "smooth" });
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [startAt]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", key);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", key); document.body.style.overflow = prev; };
+  }, [onClose]);
+  const [allRet, setAllRet] = useState(false);
+  const [allFeed, setAllFeed] = useState(false);
+  const none = useMemo(() => new Set<unknown>(), []);
+
+  // Each retailer's cheapest gas plan anyone can get.
+  const perRet = useMemo(() => {
+    const seen = new Set<string>();
+    return c.ranked.filter((m) => !m.restricted && (seen.has(m.plan[0]) ? false : (seen.add(m.plan[0]), true)));
+  }, [c.ranked]);
+  const yearly = (t: number) => t * c.perYear;
+  const youYear = yearly(c.you);
+  const max = Math.max(youYear, ...perRet.map((m) => yearly(m.total)), 1);
+  const changesBy = new Map<string, { n: number; last: string }>();
+  for (const e of events) {
+    const x = changesBy.get(e.retailer);
+    if (!x) changesBy.set(e.retailer, { n: 1, last: e.date });
+    else { x.n++; if (e.date > x.last) x.last = e.date; }
+  }
+  const days = dailyChanges(events, 30);
+  const dayMax = Math.max(...days.map((d) => d.newOffers + d.priceChanges), 1);
+  const newOffers = events.filter((e) => e.kind === "new").length;
+  const cheaper = perRet.filter((m) => (c.you - m.total) * c.perYear >= 1).length;
+  const best = perRet[0];
+  const bestSave = best ? Math.max(0, (c.you - best.total) * c.perYear) : 0;
+  const RET_SHOWN = 5;
+  const FEED_SHOWN = 10;
+  const retShown = allRet ? perRet : perRet.slice(0, RET_SHOWN);
+  const feedShown = allFeed ? events : events.slice(0, FEED_SHOWN);
+
+  return createPortal(
+    <div className={styles.mdOverlay} role="dialog" aria-modal="true" aria-labelledby="gmd-title">
+      <div className={styles.mdBar}>
+        <button type="button" className={styles.mdBack} onClick={onClose}>← Back to my dashboard</button>
+        <span className={styles.mdNet}>{c.zone} gas · last 30 days</span>
+      </div>
+      <div className={styles.mdBody}>
+        <h2 id="gmd-title" className={styles.mdTitle}>Your gas market this month</h2>
+        <p className={styles.mdLede}>Every gas offer that changed on your network, priced for your home against {c.against}.</p>
+
+        <div className={styles.mdTiles}>
+          <div className={styles.mdTile}><b>{personal.checked}</b><span>changed gas offers checked for you</span></div>
+          <div className={`${styles.mdTile} ${styles.mdTileGood}`}><b>{personal.beat}</b><span>beat {c.against} by ${WORTH_SWITCHING_PER_YEAR}+ a year</span></div>
+          <div className={styles.mdTile}><b>{cheaper}</b><span>of {perRet.length} gas retailers are cheaper than {c.against}</span></div>
+          <div className={`${styles.mdTile} ${styles.mdTileSave}`}><b>{whole(bestSave)}</b><span>a year: the most you could save{best ? `, with ${best.plan[0]}` : ""}</span></div>
+        </div>
+
+        {events.length > 0 && (
+          <section className={styles.mdCard} aria-labelledby="gmd-chart">
+            <h3 id="gmd-chart">Changes by day</h3>
+            <p className={styles.mdSub}>{newOffers} new gas offers and {events.length - newOffers} updated offers in 30 days.</p>
+            <div className={styles.mdChart} role="img" aria-label={`${events.length} gas offer changes over 30 days`}>
+              {days.map((d) => {
+                const t = d.newOffers + d.priceChanges;
+                return (
+                  <span key={d.date} className={styles.mdCol} title={`${shortDay(d.date)}: ${d.newOffers} new, ${d.priceChanges} updated`}>
+                    <i className={styles.mdPrice} style={{ height: `${(d.priceChanges / dayMax) * 100}%` }} />
+                    <i className={styles.mdNew} style={{ height: `${(d.newOffers / dayMax) * 100}%` }} />
+                    {t === 0 && <i className={styles.mdZero} />}
+                  </span>
+                );
+              })}
+            </div>
+            <div className={styles.mdAxis}><span>{shortDay(days[0].date)}</span><span>Today</span></div>
+            <div className={styles.mdLegend}><span><i className={styles.mdNew} /> New offer</span><span><i className={styles.mdPrice} /> Updated offer</span></div>
+          </section>
+        )}
+
+        <section className={styles.mdCard} aria-labelledby="gmd-ret">
+          <h3 id="gmd-ret">Cheapest gas retailers for your home</h3>
+          <p className={styles.mdSub}>Each retailer&apos;s cheapest gas plan you can get, a year. The line is {c.against}: {whole(youYear)}.</p>
+          <ol className={styles.mdRank}>
+            {retShown.map((m, i) => {
+              const diff = (c.you - m.total) * c.perYear;
+              const ch = changesBy.get(m.plan[0]);
+              return (
+                <li key={`${m.plan[0]}|${m.plan[2]}`} className={styles.mdRow}>
+                  <span className={styles.mdRankNo}>{i + 1}</span>
+                  <RetailerLogo name={m.plan[0]} size={34} square />
+                  <span className={styles.mdWho}>
+                    <b>{m.plan[0]}</b>
+                    <small>{m.plan[2]}</small>
+                    {ch && <em className={styles.mdChg}>{ch.n} change{ch.n === 1 ? "" : "s"} · latest {shortDay(ch.last)}</em>}
+                  </span>
+                  <span className={styles.mdBarWrap}>
+                    <span className={styles.mdTrack}>
+                      <span className={diff >= 0 ? styles.mdBarGood : styles.mdBarBad} style={{ width: `${(yearly(m.total) / max) * 100}%` }} />
+                      <span className={styles.mdYou} style={{ left: `${(youYear / max) * 100}%` }} aria-hidden="true" />
+                    </span>
+                  </span>
+                  <span className={styles.mdNums}>
+                    <b>{whole(yearly(m.total))}</b>
+                    <small className={diff >= 0 ? styles.pos : styles.neg}>{Math.abs(diff) < 1 ? "Same" : diff > 0 ? `save ${whole(diff)}` : `+${whole(-diff)}`}</small>
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          {perRet.length > RET_SHOWN && (
+            <button type="button" className={styles.mdMore} aria-expanded={allRet} onClick={() => setAllRet((v) => !v)}>
+              {allRet ? "Show the top 5" : `Show all ${perRet.length} gas retailers`}
+            </button>
+          )}
+        </section>
+
+        <MarketRewards fuel="G" matches={c.ranked} you={c.you} perYear={c.perYear} against={c.against} locked={none} whole={whole} />
+
+        {events.length > 0 && (
+          <section className={styles.mdCard} aria-labelledby="gmd-feed">
+            <h3 id="gmd-feed">Latest gas changes on your network</h3>
+            <p className={styles.mdSub}>New gas offers, and offers a retailer has republished with new rates, discounts or terms for new customers. Each one priced for your home.</p>
+            <ul className={styles.mdFeed}>
+              {feedShown.map((e, i) => {
+                const v = personal.vs(e);
+                return (
+                  <li key={`${e.retailer}|${e.plan}|${i}`}>
+                    <span className={styles.mdDate}>{shortDay(e.date)}</span>
+                    <RetailerLogo name={e.retailer} size={28} square />
+                    <span className={styles.mdWho}>
+                      <b>{e.retailer}</b>
+                      <small title={e.plan}>{e.plan}</small>
+                    </span>
+                    <span className={e.kind === "new" ? styles.mdTagNew : styles.mdTagPrice}>{e.kind === "new" ? "New offer" : "Updated offer"}</span>
+                    {v && <span className={v.tone === "better" ? styles.mdVsGood : v.tone === "worse" ? styles.mdVsBad : styles.mdVsMuted}>{v.text}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+            {events.length > FEED_SHOWN && (
+              <button type="button" className={styles.mdMore} aria-expanded={allFeed} onClick={() => setAllFeed((v) => !v)}>
+                {allFeed ? "Show the latest 10" : `Show all ${events.length} changes`}
+              </button>
+            )}
+          </section>
+        )}
+        <button type="button" className={styles.mdBackBottom} onClick={onClose}>← Back to my dashboard</button>
+      </div>
+    </div>,
+    document.body,
+  );
+}

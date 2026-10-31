@@ -26,16 +26,18 @@ export interface MarketPersonal {
   worthPerYear: number;
   closest: string | null;
   vs: (e: MarketEvent) => VsYou | null;
+  /** Gas or electricity offers (default electricity). */
+  fuel?: "E" | "G";
 }
 
 /** The offer's discounts and conditions, as chips, for one row. */
-function Deal({ e }: { e: MarketEvent }) {
-  const o = describeOffer("E", e.retailer, e.plan, null, { hasSolar: false, currentRetailer: null });
+function Deal({ e, fuel = "E" }: { e: MarketEvent; fuel?: "E" | "G" }) {
+  const o = describeOffer(fuel, e.retailer, e.plan, null, { hasSolar: false, currentRetailer: null });
   if (!o.chips.length) return null;
   return <span className={s.deal}><OfferChips o={o} /></span>;
 }
 
-function Row({ e, vs, more = 0 }: { e: MarketEvent; vs?: VsYou | null; /** Other changed offers from the same retailer, folded into this row. */ more?: number }) {
+function Row({ e, vs, more = 0, fuel = "E" }: { e: MarketEvent; vs?: VsYou | null; /** Other changed offers from the same retailer, folded into this row. */ more?: number; fuel?: "E" | "G" }) {
   return (
     <li className={s.row}>
       <span className={s.when}>{fmtDay(e.date)}</span>
@@ -43,7 +45,7 @@ function Row({ e, vs, more = 0 }: { e: MarketEvent; vs?: VsYou | null; /** Other
       <span className={s.what}>
         <b>{e.retailer}</b>
         <span className={s.plan} title={e.plan}>{e.plan}{more > 0 ? ` · +${more} more` : ""}</span>
-        <Deal e={e} />
+        <Deal e={e} fuel={fuel} />
         {vs && <span className={vs.tone === "better" ? s.vsBetter : vs.tone === "worse" ? s.vsWorse : s.vsMuted}>{vs.text}</span>}
       </span>
       <span className={e.kind === "new" ? s.tagNew : s.tagPrice}>{e.kind === "new" ? "New offer" : "Updated offer"}</span>
@@ -66,7 +68,7 @@ function perRetailer(events: MarketEvent[], n: number): { e: MarketEvent; more: 
 export function MarketSideCard({ personal, events, onOpen }: { personal: MarketPersonal; events: MarketEvent[]; /** Open the full view in place (dashboard). */ onOpen?: () => void }) {
   return (
     <section className={`${s.board} ${s.sideCard} ${onOpen ? s.sideOpenable : ""}`} aria-labelledby="market-side-title" onClick={onOpen ? (e) => { if (!(e.target as HTMLElement).closest("button, a")) onOpen(); } : undefined}>
-      <span className={s.live}><i aria-hidden="true" /> Last 30 days, {personal.network}</span>
+      <span className={s.live}><i aria-hidden="true" /> Last 30 days, {personal.network}{personal.fuel === "G" ? " gas" : ""}</span>
       <h3 id="market-side-title" className={s.sideTitle}>
         <b>{personal.checked}</b> changed offers checked against {personal.against}
       </h3>
@@ -75,7 +77,7 @@ export function MarketSideCard({ personal, events, onOpen }: { personal: MarketP
         {personal.closest ? <> {personal.closest}.</> : null}
       </p>
       <ul className={`${s.list} ${s.teaserList}`}>
-        {perRetailer(events, 3).map(({ e, more }) => <Row key={e.retailer} e={e} more={more} vs={personal.vs(e)} />)}
+        {perRetailer(events, 3).map(({ e, more }) => <Row key={e.retailer} e={e} more={more} vs={personal.vs(e)} fuel={personal.fuel} />)}
       </ul>
       {onOpen ? (
         <button type="button" className={s.openBtn} onClick={onOpen}>

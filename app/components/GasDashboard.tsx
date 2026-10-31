@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import Icon from "./Icon";
 import RetailerLogo from "./RetailerLogo";
@@ -14,7 +14,9 @@ import { describeOffer, topOpen } from "@/lib/planExtras";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { PERIOD_DAYS, periodScale, type PeriodName as Period } from "@/lib/periods";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
+import { gasPricer, gasSeasonFactors, medianGasSupply } from "@/lib/gasInsights";
 import v from "./dashcompare.module.css";
+import ins from "./insights.module.css";
 import s from "./gasdash.module.css";
 import pa from "./planaside.module.css";
 
@@ -56,6 +58,21 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
   const severe = verdict === "bad" && you !== null && savingYear >= Math.max(250, (you * 365) / days * 0.15);
 
   const retailers = new Set(ranked.map((m) => m.plan[0])).size;
+
+  // "What if my gas use changes?": the comparison re-ranks for that usage;
+  // the verdict stays on the real bill.
+  const [pctUse, setPctUse] = useState(100);
+  const [season, setSeason] = useState<"none" | "winter" | "summer">("none");
+  const heatShare = have ? heatingShareFor(null, mj / days) : 0;
+  const seasons = useMemo(() => gasSeasonFactors(heatShare), [heatShare]);
+  const whatIf = pctUse !== 100 || season !== "none";
+  const mjW = mj * (pctUse / 100) * (season === "winter" ? seasons.winter : season === "summer" ? seasons.summer : 1);
+  const rankedW = useMemo<RankedGas[]>(() => (whatIf && have && zone ? rankGasPlans(zone, { days, mj: mjW }, member.gas_current_retailer ?? null) : ranked), [whatIf, have, zone, days, mjW, member.gas_current_retailer, ranked]);
+  const youW = useMemo(() => {
+    if (bill === null || !whatIf || !zone) return bill;
+    return gasPricer({ bill, mj, days, supplyPerDay: medianGasSupply(zone) })({ days, mj: mjW });
+  }, [bill, whatIf, zone, mj, days, mjW]);
+  const resetWhatIf = () => { setPctUse(100); setSeason("none"); };
 
   if (!gasDataReady || GAS_PLANS.length === 0) {
     return (
@@ -153,20 +170,48 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         </p>
       </section>
 
-      {/* Your gas bill */}
-      <div className={`${v.youBox} ${s.youBox}`}>
-        <div className={v.youMain}>
-          <span className={v.youLabel}>Your gas bill</span>
-          <span className={v.youCost}>{you !== null ? money(you * k) : "—"} <small>{PERIOD_LABEL[period]}</small></span>
-        </div>
-        <p className={v.youText}>
-          About <b>{Math.round((mj / days) * 365).toLocaleString("en-AU")} MJ a year</b> ({Math.round(mj / days)} MJ a day; a typical Victorian home uses about {TYPICAL_MJ_PER_DAY}, more in winter)
-          {member.gas_current_retailer ? <> with {member.gas_current_retailer}{member.gas_current_plan_name ? <>, &ldquo;{member.gas_current_plan_name}&rdquo;</> : null}</> : null}.
-          {" "}Victoria has no government default offer for gas, so your own bill is what every plan is measured against.
-        </p>
-      </div>
-
-      <GasPlanTable ranked={ranked} days={days} mj={mj} k={k} you={you} youLabel="Your bill" perLabel={PERIOD_LABEL[period]} zone={zone ?? ""} currentRetailer={member.gas_current_retailer ?? null} />
+      <GasPlanTable
+        ranked={rankedW}
+        days={days}
+        mj={mjW}
+        k={k}
+        you={youW}
+        youLabel={whatIf ? "Your plan" : "Your bill"}
+        perLabel={PERIOD_LABEL[period]}
+        zone={zone ?? ""}
+        currentRetailer={member.gas_current_retailer ?? null}
+        controls={
+          <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-label="What if my gas use changes?">
+            <div className={ins.wiSlider}>
+              <label htmlFor="gas-use-range">
+                <span>{whatIf ? "What if: gas use" : "Your gas use"}</span>
+                <b>{Math.round(mjW / days).toLocaleString("en-AU")} MJ a day{pctUse !== 100 ? ` · ${pctUse}% of your bill` : ""}</b>
+              </label>
+              <input id="gas-use-range" type="range" min={50} max={200} step={5} value={pctUse} onChange={(e) => setPctUse(Number(e.target.value))} aria-describedby="gas-use-hint" />
+              <div className={ins.wiTicks} id="gas-use-hint"><span>Half</span><span>Your bill</span><span>Double</span></div>
+            </div>
+            <div className={ins.wiChips}>
+              <button type="button" aria-pressed={season === "winter"} className={`${ins.shift} ${season === "winter" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "winter" ? "none" : "winter")}>
+                <Icon name="snow" size={15} /> A winter bill <small>{seasons.winter >= 1 ? "+" : ""}{Math.round((seasons.winter - 1) * 100)}%</small>
+              </button>
+              <button type="button" aria-pressed={season === "summer"} className={`${ins.shift} ${season === "summer" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "summer" ? "none" : "summer")}>
+                <Icon name="sun" size={15} /> A summer bill <small>{seasons.summer >= 1 ? "+" : ""}{Math.round((seasons.summer - 1) * 100)}%</small>
+              </button>
+              {whatIf && <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button>}
+            </div>
+          </div>
+        }
+        note={
+          whatIf ? (
+            <>What if: priced for about <b>{Math.round(mjW * k).toLocaleString("en-AU")} MJ {PERIOD_LABEL[period]}</b> ({Math.round(mjW / days)} MJ a day){bill !== null ? <>, your plan at your bill&apos;s average rate</> : null}. <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button></>
+          ) : (
+            <>
+              Your last bill: about <b>{Math.round(mj * k).toLocaleString("en-AU")} MJ {PERIOD_LABEL[period]}</b> ({Math.round(mj / days)} MJ a day; a typical Victorian home uses about {TYPICAL_MJ_PER_DAY}, more in winter)
+              {member.gas_current_retailer ? <> with {member.gas_current_retailer}</> : null}. Victoria has no default offer for gas, so your bill is the yardstick.
+            </>
+          )
+        }
+      />
       {(() => {
         const share = heatingShareFor(null, mj / days);
         const months = monthsFromAnnual(annualFromGasBill(mj, days, null, share), share);

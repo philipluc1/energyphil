@@ -51,7 +51,10 @@ export default function BillPhotoUpload({
   stripTitle,
   stripSub,
   children,
+  highlight,
 }: {
+  /** Hero only: a line under the points (the savings on today's prices). */
+  highlight?: React.ReactNode;
   /** Hero only: other ways in (no bill, type it in), shown inside the card under the photo buttons. */
   children?: React.ReactNode;
   /** The read, and the photos it came from (none for a PDF), so a page can be added later. */
@@ -251,6 +254,7 @@ export default function BillPhotoUpload({
               <li>You check what we read, and can change it, before we work anything out</li>
             </ul>
           )}
+          {highlight}
           {reading ? (
             <div className={snap.reading} role="status" aria-live="polite">
               <span className={snap.spinner} aria-hidden="true" />

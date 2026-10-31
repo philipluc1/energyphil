@@ -7,7 +7,7 @@ import { ABOUT, hasFounderStory } from "@/lib/about";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { PLUS_NAME, plusValue } from "@/lib/pricingPlans";
 import { marketActivity } from "@/lib/marketActivity";
-import { typicalHouseholdExample } from "@/lib/savings";
+import { savingsByNetwork, typicalHouseholdExample } from "@/lib/savings";
 import SiteHeader from "./components/SiteHeader";
 import StateWaitlist from "./components/StateWaitlist";
 import Icon from "./components/Icon";
@@ -21,7 +21,7 @@ import { StepsVisual } from "./learn/LearnVisuals";
 import styles from "./components/Comparator.module.css";
 import h from "./home3.module.css";
 
-export const metadata = pageMeta({ title: "Utilo: compare Victorian electricity plans against your own bill", description: "Bill keeps creeping up? Snap your Victorian electricity bill and see which plans would cost less for your home, priced on your own usage and rates. Free check, no sign-up.", path: "/", absoluteTitle: true });
+export const metadata = pageMeta({ title: "Utilo: compare Victorian electricity plans against your own bill", description: "Bill keeps creeping up? Snap your Victorian electricity bill and see your savings: which plans would cost less for your home, priced on your own usage and rates. Free check, no sign-up.", path: "/", absoluteTitle: true });
 
 const RETAILER_COUNT = new Set(PLANS.map((p) => p[0])).size;
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
@@ -57,6 +57,9 @@ export default function Home() {
   const market = marketActivity({ days: 30 });
   const changed = market.newOffers + market.priceChanges;
   const v = plusValue();
+  // "Up to" today's saving for the average home: the biggest of the five networks.
+  const nets = savingsByNetwork();
+  const topSave = nets[0] ?? null;
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, "\\u003c") }} />
@@ -74,7 +77,19 @@ export default function Home() {
               <br />
               for power.
             </h1>
-            <p className={h.lede}>Snap your bill. We find your cheapest plan.</p>
+            <p className={h.lede}>Snap your bill. See your savings.</p>
+            {topSave && topSave.save >= 1 && (
+              <div className={h.savePill}>
+                <span className={h.saveDot} aria-hidden="true" />
+                <span>
+                  Savings on today&apos;s prices: <b>up to $<CountUp value={Math.round(topSave.save)} /> a year</b>
+                </span>
+                <InfoTip label="About these savings">
+                  For the average Victorian home (4,000 kWh a year), the cheapest plan against the default offer, on each network today:{" "}
+                  {nets.map((n, i) => <span key={n.network}>{i > 0 ? ", " : ""}{n.network} {money(n.save)}</span>)}. Re-worked every time prices change. Snap your bill for your own figure.
+                </InfoTip>
+              </div>
+            )}
             <div className={h.ctas}>
               <Link href="/check" className={h.primary}>
                 <Icon name="camera" size={20} /> Snap my bill, free

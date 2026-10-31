@@ -45,51 +45,36 @@
    "plan": "Sumo Sunrise Plus",
    "vdo": 1531,
    "plans": 132
+  }
+ ],
+ "gasAbout": "Cheapest gas plan for a gas-heated home (45 GJ a year) on each gas network, and the middle plan of the market for the same use, $ a year incl. GST. Victoria has no default offer for gas.",
+ "gasRows": [
+  {
+   "date": "2026-10-20",
+   "zone": "AusNet Services",
+   "cheapest": 1377,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential(West)-AusNet Services (gas)",
+   "typical": 1969,
+   "plans": 161
   },
   {
-   "date": "2026-10-31",
-   "network": "AusNet Services",
-   "cheapest": 1359,
+   "date": "2026-10-20",
+   "zone": "Australian Gas Networks",
+   "cheapest": 1296,
    "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-AusNet Services (electricity)",
-   "vdo": 1748,
-   "plans": 134
+   "plan": "GloBird FULLHOUSE Residential(Murray)-Australian Gas Networks",
+   "typical": 2130,
+   "plans": 245
   },
   {
-   "date": "2026-10-31",
-   "network": "Citipower",
-   "cheapest": 1111,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Citipower",
-   "vdo": 1482,
-   "plans": 134
-  },
-  {
-   "date": "2026-10-31",
-   "network": "Jemena",
-   "cheapest": 1181,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Jemena",
-   "vdo": 1564,
-   "plans": 132
-  },
-  {
-   "date": "2026-10-31",
-   "network": "Powercor",
-   "cheapest": 1233,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Powercor",
-   "vdo": 1632,
-   "plans": 132
-  },
-  {
-   "date": "2026-10-31",
-   "network": "United Energy",
-   "cheapest": 1122,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-United Energy",
-   "vdo": 1531,
-   "plans": 132
+   "date": "2026-10-20",
+   "zone": "Multinet",
+   "cheapest": 1413,
+   "retailer": "Alinta Energy",
+   "plan": "HomeDeal Smart Gas - Multinet 1",
+   "typical": 2052,
+   "plans": 138
   }
  ]
 }

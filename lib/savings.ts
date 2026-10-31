@@ -241,3 +241,29 @@ export function mergeChecks(estimated: MonthlySaving[], checks: SavedCheck[], no
   }
   return [...byKey.values()].sort((a, b) => (a.key < b.key ? 1 : -1));
 }
+
+
+export interface NetworkSaving {
+  network: Distributor;
+  /** $ a year: the default offer minus the cheapest plan, for 4,000 kWh a year. */
+  save: number;
+}
+
+/**
+ * The saving on each network today for the average Victorian home (4,000 kWh
+ * a year, single rate): the default offer against the cheapest plan anyone
+ * can get. Same maths as the example card, network by network, biggest first.
+ * The home page quotes the top one as "up to", with every network in the (i).
+ */
+export function savingsByNetwork(): NetworkSaving[] {
+  const DAYS = 91;
+  const usage: UsageInput = { days: DAYS, peak: 0, shoulder: 0, offpeak: 0, anytime: (4000 / 365) * DAYS, cl: 0 };
+  const out: NetworkSaving[] = [];
+  for (const network of DISTRIBUTORS) {
+    const best = bestPlan(network, usage);
+    if (!best) continue;
+    const bench = benchmarkBill(network, DAYS, null);
+    out.push({ network, save: Math.max(0, ((bench - best.total) * 365) / DAYS) });
+  }
+  return out.sort((a, b) => b.save - a.save);
+}

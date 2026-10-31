@@ -21,6 +21,8 @@ import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
 import UsageShape from "../components/UsageShape";
 import GasDashboard, { GasAside } from "../components/GasDashboard";
+import GasCards from "../components/GasCards";
+import { GAS_ZONES, bestGasPlan, type GasZone } from "@/lib/gasPlans";
 import gd from "../components/gasdash.module.css";
 import { shapeForProfile } from "@/lib/usageShape";
 import DashTabs, { type TabDef } from "../components/DashTabs";
@@ -795,6 +797,7 @@ export default function AccountPage() {
   const sideCards = (
     <>
       {fuel === "gas" && sub && <GasAside member={sub} />}
+      {fuel === "gas" && sub && <GasCards member={sub} />}
       {fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
       {fuel === "elec" && cmpInput && myShape && <MiddayCard input={cmpInput} shape={myShape.shape} evOvernight={myShape.evOvernight} profile={homeProfile} member={isMember} />}
       {fuel === "elec" && cmpInput && <ForecastCard input={cmpInput} profile={homeProfile} member={isMember} />}
@@ -809,23 +812,31 @@ export default function AccountPage() {
                   {sub!.gas_zone} · {Math.round(sub!.gas_mj).toLocaleString("en-AU")} MJ over {sub!.gas_billing_days ?? "?"} days
                   {sub!.gas_current_plan_name ? ` · now on "${sub!.gas_current_plan_name}"` : ""}
                 </p>
-                {sub!.gas_best_retailer && sub!.gas_best_total !== null ? (
+                {(() => {
+                  // The morning re-check stores the cheapest gas plan; until it has run, price it here.
+                  const z = sub!.gas_zone as GasZone;
+                  const live = !sub!.gas_best_retailer && GAS_ZONES.includes(z) && (sub!.gas_billing_days ?? 0) > 0 ? bestGasPlan(z, { days: sub!.gas_billing_days!, mj: sub!.gas_mj! }, sub!.gas_current_retailer ?? null) : undefined;
+                  const best = sub!.gas_best_retailer && sub!.gas_best_total !== null
+                    ? { retailer: sub!.gas_best_retailer, plan: sub!.gas_best_plan_name, total: sub!.gas_best_total }
+                    : live ? { retailer: live.plan[0], plan: live.plan[2], total: live.total } : null;
+                  return best ? (
                   <>
                     <p className={styles.panelText}>
-                      Cheapest gas match: <strong>{sub!.gas_best_retailer} — {sub!.gas_best_plan_name}</strong> at {fmtDollars(sub!.gas_best_total)} for the period
-                      {sub!.gas_reference_total !== null && sub!.gas_reference_total - sub!.gas_best_total > 1
-                        ? `, about ${fmtDollars(sub!.gas_reference_total - sub!.gas_best_total)} less than your bill.`
+                      Cheapest gas match: <strong>{best.retailer} — {best.plan}</strong> at {fmtDollars(best.total)} for the period
+                      {sub!.gas_reference_total !== null && sub!.gas_reference_total - best.total > 1
+                        ? `, about ${fmtDollars(sub!.gas_reference_total - best.total)} less than your bill.`
                         : "."}
                     </p>
                     <p className={styles.panelText}>
-                      {sub!.gas_best_retailer === sub!.baseline_retailer
-                        ? `Same retailer as your best electricity plan, so ask ${sub!.gas_best_retailer} about a dual-fuel discount.`
+                      {best.retailer === sub!.baseline_retailer
+                        ? `Same retailer as your best electricity plan, so ask ${best.retailer} about a dual-fuel discount.`
                         : "A different retailer from your best electricity plan. That's fine: gas and electricity can be with different companies. If you'd rather keep one, check whether a dual-fuel discount beats the gap."}
                     </p>
                   </>
                 ) : (
                   <p className={styles.panelText}>Your gas details are saved. The comparison switches on with our next gas price pull.</p>
-                )}
+                );
+                })()}
               </>
             ) : (
               <p className={styles.panelText}>

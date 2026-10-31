@@ -21,6 +21,10 @@ import Icon from "../components/Icon";
 import { guessGasZoneFromPostcode } from "@/lib/postcodeGas";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import styles from "../components/Comparator.module.css";
+import uc from "../components/usagechooser.module.css";
+import InfoTip from "../components/InfoTip";
+import CountUp from "../components/CountUp";
+import { gasSavingsByZone } from "@/lib/gasInsights";
 import snap from "../components/snap.module.css";
 import g from "./gas.module.css";
 
@@ -59,6 +63,10 @@ export default function GasCheck() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [elecOnly, setElecOnly] = useState(false);
+  // The no-bill questions, one step at a time (as on the electricity check).
+  const [gq, setGq] = useState<1 | 2 | 3 | 4>(1);
+  const [gqDir, setGqDir] = useState<"fwd" | "back">("fwd");
+  const [gasPick, setGasPick] = useState<"average" | "home" | "bill">("average");
 
   // Pick up saved details, including a gas bill read on the electricity page.
   useEffect(() => {
@@ -123,6 +131,7 @@ export default function GasCheck() {
   }
 
   const estimate = useMemo(() => estimateGasAnnual(profile), [profile]);
+  const zoneSaves = useMemo(() => (gasDataReady ? gasSavingsByZone(VIC_GAS_HEATED_GJ * 1000) : []), []);
   // The estimate is a year's gas for a home like this, scaled to the period: plans are compared on the average so the answer holds all year.
   const mj = fromEstimate ? (estimate.total * days) / 365 : parseFloat(mjRaw);
   const mjOk = Number.isFinite(mj) && mj > 0;
@@ -138,10 +147,26 @@ export default function GasCheck() {
   const yearly = top && bench ? perYear(bench.value - top.total) : 0;
   const worth = yearly >= WORTH_SWITCHING_PER_YEAR;
   const go = (e: Entry) => { setEntry(e); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  // Steps: the average home skips the questions about the home.
+  const gqPages: (1 | 2 | 3 | 4)[] = gasPick === "home" ? [1, 2, 3, 4] : [1, 2, 4];
+  const gqIdx = Math.max(0, gqPages.indexOf(gq));
+  const GQ_TITLES: Record<number, string> = { 1: "Where you live", 2: "Your gas use", 3: "About your home", 4: "Your estimate" };
+  function goGq(to: 1 | 2 | 3 | 4, dir: "fwd" | "back") {
+    setGqDir(dir);
+    setGq(to);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  const gqNext = () => goGq(gqPages[Math.min(gqPages.length - 1, gqIdx + 1)], "fwd");
+  const gqBack = () => goGq(gqPages[Math.max(0, gqIdx - 1)], "back");
+  function pickGas(p: "average" | "home" | "bill") {
+    setGasPick(p);
+    // The average home is the standard profile; "my home" starts there too.
+    if (p === "average") setProfile(DEFAULT_GAS_PROFILE);
+  }
 
   const networkBlock = (n: number) => (
     <div className={g.q}>
-      <span className={g.qLabel}>{n}. Your gas network</span>
+      <span className={g.qLabel}>{n ? `${n}. ` : ""}Your gas network</span>
       <span className={g.qHint}>On your bill as &ldquo;Distributor&rdquo;. Not sure? Your postcode usually tells us.</span>
       <div className={g.postcodeRow}>
         <label htmlFor="gasPostcode" className={g.postcodeLabel}>Postcode</label>
@@ -187,9 +212,18 @@ export default function GasCheck() {
   if (entry === "snap") {
     return (
       <>
-        <BillPhotoUpload variant="hero" fuel="gas" onApply={fromBill}>
-          <button type="button" className={snap.otherBtn} onClick={() => { setBillRaw(""); setFromPhoto(false); setFromEstimate(true); go("estimate"); }}>
-            <Icon name="home" size={18} /> No gas bill handy? <small>A few questions about your home</small>
+        <BillPhotoUpload variant="hero" fuel="gas" onApply={fromBill} highlight={zoneSaves.length > 0 && zoneSaves[0].save >= 1 ? (
+          <div className={g.savePill}>
+            <span className={g.saveDot} aria-hidden="true" />
+            <span>Gas savings on today&apos;s prices: <b>up to $<CountUp value={Math.round(zoneSaves[0].save)} /> a year</b></span>
+            <InfoTip label="About these gas savings">
+              For a gas-heated Victorian home ({VIC_GAS_HEATED_GJ} GJ a year), the cheapest gas plan anyone can get against a typical plan (the middle of the market) on each network today:{" "}
+              {zoneSaves.map((z, i) => <span key={z.zone}>{i > 0 ? ", " : ""}{z.zone} {money0(z.save)}</span>)}. Victoria has no default offer for gas, so the middle of the market is the yardstick. Snap your bill for your own figure.
+            </InfoTip>
+          </div>
+        ) : null}>
+          <button type="button" className={snap.otherBtn} onClick={() => { setBillRaw(""); setFromPhoto(false); setFromEstimate(true); setGqDir("fwd"); setGq(1); go("estimate"); }}>
+            <Icon name="home" size={18} /> No gas bill handy? <small>Use the average gas home, or a few taps</small>
           </button>
           <button type="button" className={snap.otherBtn} onClick={() => { setFromEstimate(false); go("type"); }}>
             <Icon name="file" size={18} /> Rather type it in? <small>Three numbers from your gas bill</small>
@@ -232,46 +266,153 @@ export default function GasCheck() {
     );
   }
 
-  /* ---------- 2b. No bill: a few questions ---------- */
+  /* ---------- 2b. No bill: one step at a time ---------- */
   if (entry === "estimate") {
     const months = gasByMonth(estimate);
+    const gj = (mjYear: number) => (mjYear / 1000).toLocaleString("en-AU", { maximumFractionDigits: 1 });
+    const avgGj = gj(estimateGasAnnual(DEFAULT_GAS_PROFILE).total);
     return (
       <>
-        <BillPhotoUpload variant="strip" fuel="gas" onApply={fromBill} />
-        <div className={styles.card}>
-          <h2 className={g.h2}>Your home&apos;s gas</h2>
-          <p className={g.qHint}>Four quick questions. We price plans on what a Victorian home like yours typically uses across a whole year, not just one season.</p>
-
-          <div className={g.q}>
-            <span className={g.qLabel}>1. Gas heating?</span>
-            {choice<GasHeating>(profile.heating, (v) => setProfile({ ...profile, heating: v }), [
-              { value: "ducted", label: "Ducted (whole house)" },
-              { value: "space", label: "A space heater or wall furnace" },
-              { value: "none", label: "No gas heating" },
-            ])}
-            <span className={g.qHint}>Heating is most of a Victorian gas bill. A home with gas heating uses about {VIC_GAS_HEATED_GJ} GJ a year; without it, about {VIC_GAS_UNHEATED_GJ} GJ.</span>
+        {gq === 1 && <BillPhotoUpload variant="strip" fuel="gas" onApply={fromBill} />}
+        <div className={uc.progress} aria-label={`Step ${gqIdx + 1} of ${gqPages.length}: ${GQ_TITLES[gq]}`}>
+          <div className={uc.progressText}>
+            <span>Step {gqIdx + 1} of {gqPages.length}</span>
+            <b>{GQ_TITLES[gq]}</b>
           </div>
-          <div className={g.row2}>
-            <div className={g.q}>
-              <span className={g.qLabel}>2. Gas hot water?</span>
-              {choice(profile.hotWater, (v) => setProfile({ ...profile, hotWater: v }), [{ value: true, label: "Yes" }, { value: false, label: "No" }])}
-            </div>
-            <div className={g.q}>
-              <span className={g.qLabel}>3. Gas cooktop?</span>
-              {choice(profile.cooking, (v) => setProfile({ ...profile, cooking: v }), [{ value: true, label: "Yes" }, { value: false, label: "No" }])}
-            </div>
+          <div className={uc.progressBar} aria-hidden="true">
+            {gqPages.map((n, i) => <i key={n} className={i < gqIdx ? uc.segDone : i === gqIdx ? uc.segOn : ""} />)}
           </div>
-          <div className={g.q}>
-            <span className={g.qLabel}>4. People at home</span>
-            {choice(profile.people, (v) => setProfile({ ...profile, people: v }), [1, 2, 3, 4, 5].map((n) => ({ value: n, label: n === 5 ? "5+" : String(n) })))}
+        </div>
+        <div key={`gq${gq}`} className={`${styles.card} ${gqDir === "fwd" ? uc.pageFwd : uc.pageBack}`}>
+          {gq === 1 && (
+            <>
+              <h2 className={g.h2}>Where you live</h2>
+              <p className={g.qHint}>Gas prices depend on your network, so we start there.</p>
+              {networkBlock(0)}
+            </>
+          )}
+
+          {gq === 2 && (
+            <>
+              <h2 className={g.h2}>Your gas use</h2>
+              <p className={g.qHint}>No bill handy? Start with a typical home. You can sharpen it with a few taps.</p>
+              <div className={uc.choose} role="radiogroup" aria-label="How to work out your gas use" style={{ marginTop: 14 }}>
+                <button type="button" role="radio" aria-checked={gasPick === "average"} className={`${uc.row} ${gasPick === "average" ? uc.rowOn : ""}`} onClick={() => pickGas("average")}>
+                  <span className={uc.radio} aria-hidden="true" />
+                  <span className={uc.rowText}>
+                    <b>Use the average gas home</b>
+                    <small>About {avgGj} GJ a year: gas heating, hot water and cooking. No bill needed.</small>
+                  </span>
+                  <span className={uc.badge}>Quickest</span>
+                </button>
+                {gasPick === "average" && (
+                  <div className={uc.body}>
+                    <p className={uc.avgLine}>
+                      We&apos;ll price every plan for a typical Victorian home with <b>ducted gas heating, gas hot water and a gas cooktop, three people</b>: about <b>{avgGj} GJ a year</b>, most of it in winter.{" "}
+                      <InfoTip label="About the average gas home">
+                        A Victorian home with gas heating typically uses 40 to 55 GJ a year; one without it, 10 to 20 GJ. Your own home could be quite different: a bill, or a few answers, gives a sharper answer.
+                      </InfoTip>
+                    </p>
+                  </div>
+                )}
+
+                <button type="button" role="radio" aria-checked={gasPick === "home"} className={`${uc.row} ${gasPick === "home" ? uc.rowOn : ""}`} onClick={() => pickGas("home")}>
+                  <span className={uc.radio} aria-hidden="true" />
+                  <span className={uc.rowText}>
+                    <b>Estimate from my home</b>
+                    <small>Heating, hot water, cooktop and who lives there.</small>
+                  </span>
+                  <span className={uc.chev} aria-hidden="true">▾</span>
+                </button>
+                {gasPick === "home" && (
+                  <div className={uc.body}>
+                    <p className={uc.avgLine}>Four taps: press <b>Next</b> for the questions.</p>
+                  </div>
+                )}
+
+                <button type="button" role="radio" aria-checked={gasPick === "bill"} className={`${uc.row} ${gasPick === "bill" ? uc.rowOn : ""}`} onClick={() => pickGas("bill")}>
+                  <span className={uc.radio} aria-hidden="true" />
+                  <span className={uc.rowText}>
+                    <b>Enter the MJ from my bill</b>
+                    <small>The gas used and the charges, from your last bill. The most accurate without a photo.</small>
+                  </span>
+                  <span className={uc.chev} aria-hidden="true">▾</span>
+                </button>
+                {gasPick === "bill" && (
+                  <div className={uc.body}>
+                    <p className={uc.avgLine}>Press <b>Next</b> and type in the numbers from your gas bill.</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {gq === 3 && (
+            <>
+              <h2 className={g.h2}>About your home</h2>
+              <p className={g.qHint}>Four quick questions. Heating is most of a Victorian gas bill.</p>
+              <div className={g.q}>
+                <span className={g.qLabel}>1. Gas heating?</span>
+                {choice<GasHeating>(profile.heating, (v) => setProfile({ ...profile, heating: v }), [
+                  { value: "ducted", label: "Ducted (whole house)" },
+                  { value: "space", label: "A space heater or wall furnace" },
+                  { value: "none", label: "No gas heating" },
+                ])}
+                <span className={g.qHint}>A home with gas heating uses about {VIC_GAS_HEATED_GJ} GJ a year; without it, about {VIC_GAS_UNHEATED_GJ} GJ.</span>
+              </div>
+              <div className={g.row2}>
+                <div className={g.q}>
+                  <span className={g.qLabel}>2. Gas hot water?</span>
+                  {choice(profile.hotWater, (v) => setProfile({ ...profile, hotWater: v }), [{ value: true, label: "Yes" }, { value: false, label: "No" }])}
+                </div>
+                <div className={g.q}>
+                  <span className={g.qLabel}>3. Gas cooktop?</span>
+                  {choice(profile.cooking, (v) => setProfile({ ...profile, cooking: v }), [{ value: true, label: "Yes" }, { value: false, label: "No" }])}
+                </div>
+              </div>
+              <div className={g.q}>
+                <span className={g.qLabel}>4. People at home</span>
+                {choice(profile.people, (v) => setProfile({ ...profile, people: v }), [1, 2, 3, 4, 5].map((n) => ({ value: n, label: n === 5 ? "5+" : String(n) })))}
+              </div>
+              <p className={g.liveGj} aria-live="polite">
+                {estimate.total > 0 ? <>About <b>{gj(estimate.total)} GJ</b> a year for a home like yours</> : <>No gas heating, hot water or cooking? Then there&apos;s no gas to compare.</>}
+              </p>
+            </>
+          )}
+
+          {gq === 4 && (
+            <>
+              <h2 className={g.h2}>Your estimate</h2>
+              <p className={g.qHint}>{gasPick === "average" ? "The average gas home" : "A home like yours"} on {zone}. We price plans on a whole year, so the answer holds in summer and winter.</p>
+              <GasSeasonChart heating={months.heating} other={months.other} title={gasPick === "average" ? "A year of gas for the average home" : "A year of gas for a home like yours"} note={`About ${gj(estimate.total)} GJ a year. The winter hump is heating; the flat part is hot water and cooking. Typical Melbourne-climate figures, not a measurement: snap a bill when you have one for your own numbers.`} />
+              <div className={g.q}>
+                <span className={g.qLabel}>How often are you billed?</span>
+                <div className={g.pills}>
+                  {([[30, "Monthly"], [61, "Every 2 months"], [91, "Quarterly"]] as [number, string][]).map(([d, l]) => (
+                    <button key={d} type="button" className={days === d ? g.pillOn : g.pill} aria-pressed={days === d} onClick={() => setDays(d)}>{l}</button>
+                  ))}
+                </div>
+                <span className={g.qHint}>So each bill&apos;s cost reads the way yours will.</span>
+              </div>
+            </>
+          )}
+
+          <div className={styles.wizardNav}>
+            {gqIdx > 0 ? (
+              <button type="button" className={styles.wizardBackBtn} onClick={gqBack}>← Back</button>
+            ) : (
+              <button type="button" className={styles.wizardBackBtn} onClick={() => go("snap")}>← Snap a bill</button>
+            )}
+            <span className={uc.navRight}>
+              {gq === 2 && gasPick === "bill" ? (
+                <button type="button" className={styles.heroCta} onClick={() => { setFromEstimate(false); go("type"); }}>Next →</button>
+              ) : gq !== 4 ? (
+                <button type="button" className={styles.heroCta} disabled={gq === 3 && estimate.total === 0} onClick={gqNext}>Next →</button>
+              ) : (
+                <button type="button" className={styles.heroCta} disabled={!mjOk || estimate.total === 0} onClick={() => go("result")}>See my gas result →</button>
+              )}
+            </span>
           </div>
-
-          {networkBlock(5)}
-
-          <GasSeasonChart heating={months.heating} other={months.other} title="A year of gas for a home like yours" note={`About ${(estimate.total / 1000).toLocaleString("en-AU", { maximumFractionDigits: 1 })} GJ a year. The winter hump is heating; the flat part is hot water and cooking. Typical Melbourne-climate figures, not a measurement: snap a bill when you have one for your own numbers.`} />
-
-          <button type="button" className={snap.readGo} disabled={!mjOk || estimate.total === 0} onClick={() => go("result")}>See my gas result →</button>
-          {estimate.total === 0 && <p className={g.block}>No gas heating, hot water or cooking? Then there&apos;s no gas to compare.</p>}
         </div>
       </>
     );
@@ -342,7 +483,7 @@ export default function GasCheck() {
             </div>
           ) : (
             <div className={`${styles.resultHero} ${haveBill ? styles.resultHeroBad : ""}`}>
-              <span className={styles.resultHeroKicker}>{haveBill ? "Based on your gas bill" : fromEstimate ? "For a home like yours, vs a typical gas plan" : "Compared with a typical gas plan"}</span>
+              <span className={styles.resultHeroKicker}>{haveBill ? "Based on your gas bill" : fromEstimate ? (gasPick === "average" ? "For the average gas home, vs a typical gas plan" : "For a home like yours, vs a typical gas plan") : "Compared with a typical gas plan"}</span>
               <div className={styles.resultHeroLabel}>{haveBill ? "You could save about" : "The cheapest gas plan saves up to"}</div>
               <div className={styles.resultHeroNum}>{money0(Math.max(0, yearly))}</div>
               <div className={styles.resultHeroSub}>a year with {top.plan[0]}{haveBill ? ", vs your gas bill" : ". Add your gas charges for your own saving."}</div>
