@@ -30,6 +30,9 @@ import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivi
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
 import { useOpenParam } from "@/lib/useOpenParam";
+import { WHATIF_EV_KWH_PER_DAY, adjustUsage, currentPricer, seasonFactors } from "@/lib/homeInsights";
+import type { HomeProfile } from "@/lib/profileUsage";
+import ins from "./insights.module.css";
 import styles from "./dashcompare.module.css";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -388,13 +391,29 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
 
 /** The Compare tab: chart plus every comparable plan, ranked. Table on wide
  *  screens, one card per retailer on phones. */
-export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette }) {
+export function CompareSection({ input: billInput, member, period, profile = null }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette; profile?: HomeProfile | null }) {
   const [showAll, setShowAll] = useState(false);
   // Which plan's rates are open (retailer + plan), on the table or the phone cards.
   const [openRates, setOpenRates] = useState<string | null>(null);
   const [allPlans, setAllPlans] = useState(false);
+  // "What if my usage changes?": the whole comparison re-ranks for that usage.
+  const [pctUse, setPctUse] = useState(100);
+  const [evWhatIf, setEvWhatIf] = useState(false);
+  const [season, setSeason] = useState<"none" | "winter" | "summer">("none");
+  const seasons = useMemo(() => seasonFactors(profile), [profile]);
+  const base = useMemo(() => compute(billInput), [billInput]);
+  const whatIf = pctUse !== 100 || evWhatIf || season !== "none";
+  const input = useMemo<ComparisonInput>(() => {
+    if (!whatIf || !base || base.average) return billInput;
+    const factor = (pctUse / 100) * (season === "winter" && seasons ? seasons.winter : season === "summer" && seasons ? seasons.summer : 1);
+    const u2 = adjustUsage(base.usage, factor, evWhatIf ? WHATIF_EV_KWH_PER_DAY : 0);
+    // What they'd pay at that usage on their own plan (their rates, or the bill split into supply and an average rate).
+    const now = base.haveBill ? currentPricer({ rates: billInput.currentRates ?? null, network: billInput.distributor, you: base.you, base: base.usage })(u2) : null;
+    return { ...billInput, peak: u2.peak, shoulder: u2.shoulder, offpeak: u2.offpeak, anytime: u2.anytime, cl: u2.cl, billTotal: now, billIsPriced: now !== null, ev: billInput.ev === true || evWhatIf };
+  }, [whatIf, base, billInput, pctUse, season, seasons, evWhatIf]);
   const c = useMemo(() => compute(input), [input]);
   if (!c) return null;
+  const resetWhatIf = () => { setPctUse(100); setEvWhatIf(false); setSeason("none"); };
   const { matches: allMatches, top, haveBill, you, vdo, offerFor } = c;
   // One row per retailer (its cheapest plan) unless they ask for every plan.
   const perRetailer = cheapestPerRetailer(allMatches, top);
@@ -418,8 +437,11 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
         : input.peak + input.shoulder + input.offpeak > 0 ? "charged by time of day" : "charged at one price all day") +
       (input.cl > 0 ? ", plus a separate hot-water meter" : "");
   const retailerBest = currentRetailer ? allMatches.find((m) => m.plan[0] === currentRetailer && !m.restricted) ?? null : null;
-  const topOffer = offerFor(top.plan);
-  const topDetail = billDetail(top.plan, c.usage);
+  // "Before you switch" and "Your rates vs the cheapest" stay on the real bill's
+  // pick: a what-if re-ranks the table, not the recommendation.
+  const real = base ?? c;
+  const topOffer = real.offerFor(real.top.plan);
+  const topDetail = billDetail(real.top.plan, real.usage);
   const lockedTop = lockedTopFor(c, member);
   const isLocked = (m: (typeof matches)[number] | null) => !!m && lockedTop.includes(m);
   const rows = showAll ? matches : matches.slice(0, 10);
@@ -443,13 +465,37 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
       <section className={styles.table}>
         <div className={styles.tableHead}>
           <h3>Retailer comparison</h3>
-          <p>
-            {allPlans
-              ? `All ${allMatches.length} plans from the retailers we track on the ${distributor} network`
-              : `Each retailer's cheapest plan for you on the ${distributor} network`}{" "}
-            (not every plan in the market), cheapest first, {PERIOD_LABEL[period]}. Tap a retailer to visit their website.
-          </p>
           <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setShowAll(false); }} retailers={perRetailer.length} plans={allMatches.length} />
+          {base && !base.average && (
+            <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-label="What if my usage changes?">
+              <div className={ins.wiSlider}>
+                <label htmlFor="use-range">
+                  <span>{whatIf ? "What if: usage" : "Your usage"}</span>
+                  <b>{kwhDay.toFixed(1)} kWh a day{pctUse !== 100 ? ` · ${pctUse}% of your bill` : ""}</b>
+                </label>
+                <input id="use-range" type="range" min={50} max={200} step={5} value={pctUse} onChange={(e) => setPctUse(Number(e.target.value))} aria-describedby="use-hint" />
+                <div className={ins.wiTicks} id="use-hint"><span>Half</span><span>Your bill</span><span>Double</span></div>
+              </div>
+              <div className={ins.wiChips}>
+                {seasons && (
+                  <>
+                    <button type="button" aria-pressed={season === "winter"} className={`${ins.shift} ${season === "winter" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "winter" ? "none" : "winter")}>
+                      <Icon name="snow" size={15} /> Winter <small>{seasons.winter >= 1 ? "+" : ""}{Math.round((seasons.winter - 1) * 100)}%</small>
+                    </button>
+                    <button type="button" aria-pressed={season === "summer"} className={`${ins.shift} ${season === "summer" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "summer" ? "none" : "summer")}>
+                      <Icon name="sun" size={15} /> Summer <small>{seasons.summer >= 1 ? "+" : ""}{Math.round((seasons.summer - 1) * 100)}%</small>
+                    </button>
+                  </>
+                )}
+                {billInput.ev !== true && (
+                  <button type="button" aria-pressed={evWhatIf} className={`${ins.shift} ${evWhatIf ? ins.shiftOn : ""}`} onClick={() => setEvWhatIf(!evWhatIf)}>
+                    <Icon name="car" size={15} /> Add an EV <small>+{WHATIF_EV_KWH_PER_DAY} kWh a day</small>
+                  </button>
+                )}
+                {whatIf && <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button>}
+              </div>
+            </div>
+          )}
         </div>
         <div className={styles.chart}>
           <PriceLine
@@ -458,41 +504,26 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
             youLabel={haveBill ? (c.basis === "rates" ? "Your plan" : "Your bill") : "The default offer"}
             vdo={haveBill ? vdo * k : null}
             per={PERIOD_LABEL[period]}
+            note={
+              whatIf ? (
+                <>What if: priced for about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day){haveBill ? <>, on your plan&apos;s rates</> : null}. <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button></>
+              ) : haveBill ? (
+                <>
+                  {source === "bill" ? "Your last bill" : "Your answers"}: about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day){tariffWords ? `, ${tariffWords}` : ""}
+                  {currentRetailer ? <> with {currentRetailer}</> : null}.{" "}
+                  {Math.abs(vsVdo(you)) < 0.02
+                    ? "About the same as the default offer."
+                    : vsVdo(you) > 0
+                      ? <><b className={styles.neg}>{pct(vsVdo(you)).replace(/^\+/, "")} more</b> than the default offer.</>
+                      : "Under the default offer."}
+                </>
+              ) : c.average ? (
+                <>The average Victorian home: <b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year</b>, on the default offer. Upload a full bill for your own numbers.</>
+              ) : (
+                <>The default offer at about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day). Add your bill to compare against what you really pay.</>
+              )
+            }
           />
-        </div>
-
-        {/* What we're comparing against, right before the results */}
-        <div className={styles.youBox}>
-          <div className={styles.youMain}>
-            <span className={styles.youLabel}>{haveBill ? (c.basis === "rates" ? "Your current plan" : "Your current bill") : "The default offer (VDO)"}</span>
-            <b className={styles.youCost}>{money(you * k)} <small>{PERIOD_LABEL[period]}</small></b>
-          </div>
-          <p className={styles.youText}>
-            {haveBill ? (
-              <>
-                Based on {source === "bill" ? "your last bill" : "your answers"}: about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day){tariffWords ? `, ${tariffWords}` : ""}
-                {currentRetailer ? <> with {currentRetailer}{currentPlanName ? <>, &ldquo;{currentPlanName}&rdquo;</> : null}</> : null}.{" "}
-                {Math.abs(vsVdo(you)) < 0.02 ? (
-                  <>That&apos;s about the same as the default offer ({money(vdo * k)} {PERIOD_LABEL[period]}), the government&apos;s reference price for the same usage.</>
-                ) : vsVdo(you) > 0 ? (
-                  <>That&apos;s <b className={styles.neg}>{pct(vsVdo(you)).replace(/^\+/, "")} more</b> than the default offer ({money(vdo * k)} {PERIOD_LABEL[period]}), the government&apos;s reference price for the same usage.</>
-                ) : you - top.total > 0.005 ? (
-                  <>You&apos;re under the default offer, but {member ? top.plan[0] : "the cheapest plan"} would still cost <b className={styles.pos}>{money((you - top.total) * k)} {PERIOD_LABEL[period]} less</b>.</>
-                ) : (
-                  <>You&apos;re under the default offer and nothing we found is cheaper.</>
-                )}
-              </>
-            ) : c.average ? (
-              <>
-                We don&apos;t have enough of your usage yet, so this is the average Victorian home: <b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year</b>{" "}
-                (about {Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}), priced on the default offer. Upload a full bill for your own numbers.
-              </>
-            ) : (
-              <>
-                The Victorian Default Offer priced at about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day){tariffWords ? `, ${tariffWords}` : ""}. Add your bill to compare against what you really pay.
-              </>
-            )}
-          </p>
         </div>
 
         {/* Wide screens: the full table */}
@@ -628,14 +659,17 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
             {showAll ? "Show the top 10" : allPlans ? `Show all ${matches.length} plans` : `Show all ${matches.length} retailers`}
           </button>
         )}
-        <div className={styles.legend}>
+        <details className={styles.legendBox}>
+          <summary>What the columns and labels mean</summary>
+          <div className={styles.legend}>
           <span><b>Default offer</b>: the Victorian Default Offer, the government-set reference price. Each plan is compared with it for the same usage; minus (or &ldquo;below&rdquo;) is cheaper.</span>
           <span><b>Labels</b>: ✓ green discounts are in the price (we assume you pay on time); blue ones (credits, other conditions) aren&apos;t; amber ! means who can get it is limited, or a fee to know about. Concessions aren&apos;t counted.</span>
           <span><b>Same price all day</b>: one rate for every kWh.</span>
           <span><b>Cheaper at night</b>: dearer late afternoon to evening, cheaper overnight.</span>
           <span><b><Icon name="lock" size={12} /> Fixed</b>: price locked for a set time. Everything else can change with notice, usually around 1 July.</span>
           {!input.ev && <span>Plans built around EV charging are hidden. Tell us you charge an EV to include them.</span>}
-        </div>
+          </div>
+        </details>
         {!member && (
           <p className={styles.upsell}>
             Plus members get this table re-run every morning, a bill read every month, and an email the day something cheaper appears.{" "}
@@ -653,21 +687,24 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
           <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> Unlock the cheapest plans →</a>
         </section>
       ) : (
-      <section className={styles.table}>
-        <div className={styles.tableHead}>
-          <h3>Before you switch to {top.plan[0]}</h3>
-          <p>Discounts, what you need to sign up, credits and fees for &ldquo;{top.plan[2]}&rdquo;, from {top.plan[0]}&apos;s own price feed.</p>
-        </div>
+      <details className={`${styles.table} ${styles.foldCard}`}>
+        <summary className={styles.foldHead}>
+          <span>
+            <h3>Before you switch to {real.top.plan[0]}</h3>
+            <p>Discounts, sign-up conditions, credits and fees for &ldquo;{real.top.plan[2]}&rdquo;.</p>
+          </span>
+          <span className={styles.foldChev} aria-hidden="true">▾</span>
+        </summary>
         <OfferTerms
           o={topOffer}
-          retailer={top.plan[0]}
+          retailer={real.top.plan[0]}
           title={null}
           payLateCost={topDetail && topDetail.conditionalDiscount * k >= 0.5 ? `${money(topDetail.conditionalDiscount * k)} ${PERIOD_LABEL[period]}` : null}
         />
-      </section>
+      </details>
       )}
 
-      <CurrentPricing input={input} usage={c.usage} best={top.plan} bestTotal={top.total} you={you} haveBill={haveBill} hideName={!member} />
+      <CurrentPricing input={billInput} usage={real.usage} best={real.top.plan} bestTotal={real.top.total} you={real.you} haveBill={real.haveBill} hideName={!member} />
     </>
   );
 }

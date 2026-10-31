@@ -47,3 +47,12 @@ test("homes like yours compares with the model for their answers", () => {
   assert.ok(Math.abs(l!.you - 10) < 1e-9);
   assert.ok(l!.typical > 0);
 });
+
+test("what if: usage scales and an EV goes overnight", async () => {
+  const { adjustUsage } = await import("./homeInsights");
+  const tou = adjustUsage({ ...base, anytime: 0, peak: 300, offpeak: 600 }, 2, 7);
+  assert.equal(tou.peak, 600);
+  assert.equal(tou.offpeak, 1200 + 7 * 90);
+  const flat = adjustUsage(base, 1, 7);
+  assert.equal(flat.anytime, 900 + 7 * 90);
+});

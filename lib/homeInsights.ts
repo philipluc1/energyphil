@@ -148,3 +148,30 @@ export function likeYours(profile: HomeProfile, base: UsageInput): LikeYours | n
   const you = kwh / base.days;
   return { you, typical, ratio: you / typical, breakdown };
 }
+
+/** kWh a day an EV adds in the "what if" (typical Victorian commuting). */
+export const WHATIF_EV_KWH_PER_DAY = 7;
+
+/**
+ * Usage scaled by `factor`, plus overnight EV charging: into the off-peak band
+ * on a time-of-use home, else all-day. Used by "what if my usage changes".
+ */
+export function adjustUsage(u: UsageInput, factor: number, evPerDay: number): UsageInput {
+  const out = { ...u, peak: u.peak * factor, shoulder: u.shoulder * factor, offpeak: u.offpeak * factor, anytime: u.anytime * factor, cl: u.cl * factor };
+  const ev = evPerDay * u.days;
+  if (ev > 0) {
+    if (u.peak + u.shoulder + u.offpeak > 0) out.offpeak += ev;
+    else out.anytime += ev;
+  }
+  return out;
+}
+
+/** Winter (Jun–Aug) and summer (Dec–Feb) use against the year's daily average, from their answers. */
+export function seasonFactors(profile: HomeProfile | null): { winter: number; summer: number } | null {
+  if (!profile) return null;
+  const { months } = monthlyEstimate(profile);
+  const perDay = (ms: number[]) => ms.reduce((a, m) => a + months[m].kwh, 0) / ms.reduce((a, m) => a + MONTH_DAYS[m], 0);
+  const year = months.reduce((a, m) => a + m.kwh, 0) / 365;
+  if (!(year > 0)) return null;
+  return { winter: perDay([5, 6, 7]) / year, summer: perDay([11, 0, 1]) / year };
+}

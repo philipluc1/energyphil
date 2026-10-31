@@ -287,6 +287,10 @@ export default function Comparator() {
   const [questionsPage, setQuestionsPage] = useState(false);
   const [billRowOpen, setBillRowOpen] = useState(false);
   const [savedKwhRaw, setSavedKwhRaw] = useState("");
+  // The one-page questions shown one step at a time (1 Nov 2026): where you
+  // live, how to work out usage, about your home, extras, your estimate.
+  const [qp, setQp] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [qDir, setQDir] = useState<"fwd" | "back">("fwd");
   // Can't find the kWh? They can give the bill's dollar total instead (stored in currentBillRaw).
   const [calFigure, setCalFigure] = useState<BillFigure>("kwh");
   const [calEndMonth, setCalEndMonth] = useState(() => (thisMonth() + 11) % 12);
@@ -330,7 +334,7 @@ export default function Comparator() {
     // /check?start=questions or ?start=type skips the photo panel.
     const start = new URLSearchParams(window.location.search).get("start");
     if (start === "questions" || start === "type") {
-      setTimeout(() => { setEntry("wizard"); if (start === "questions") { setQuestionsPage(true); setUsageSource("average"); } else setUsageSource("bill"); }, 0);
+      setTimeout(() => { setEntry("wizard"); if (start === "questions") { setQuestionsPage(true); setUsageSource("average"); setQp(1); } else setUsageSource("bill"); }, 0);
     }
     if (!raw) {
       const t0 = setTimeout(() => setHydrated(true), 0);
@@ -508,6 +512,17 @@ export default function Comparator() {
   const onePage = useEst || (questionsPage && usageSource === "average");
   // Which of the three usage options is open on the one-page questions.
   const usagePick: "average" | "home" | "bill" = usageSource === "average" ? "average" : billRowOpen ? "bill" : "home";
+  // The average home needs no questions about the home: straight to the estimate.
+  const qPages: (1 | 2 | 3 | 4 | 5)[] = usagePick === "average" ? [1, 2, 5] : [1, 2, 3, 4, 5];
+  const qIdx = Math.max(0, qPages.indexOf(qp));
+  const Q_TITLES: Record<number, string> = { 1: "Where you live", 2: "Your usage", 3: "About your home", 4: "Anything else", 5: "Your estimate" };
+  function goQ(to: 1 | 2 | 3 | 4 | 5, dir: "fwd" | "back") {
+    setQDir(dir);
+    setQp(to);
+    scrollToTop();
+  }
+  const qNext = () => goQ(qPages[Math.min(qPages.length - 1, qIdx + 1)], "fwd");
+  const qBack = () => goQ(qPages[Math.max(0, qIdx - 1)], "back");
   function pickUsage(p: "average" | "home" | "bill") {
     setQuestionsPage(true);
     if (p === "average") { setUsageSource("average"); return; }
@@ -1009,7 +1024,7 @@ export default function Comparator() {
 
   // The questions about the home: on the one-page questions they sit inside
   // "Estimate from my home" (or, optional, under "Enter the kWh from my bill").
-  const homeQuestions = (
+  const homeBasics = (
     <>
             <div className={s2.grid}>
               <div>
@@ -1085,6 +1100,10 @@ export default function Comparator() {
               </div>
             </div>
 
+    </>
+  );
+  const homeExtras = (
+    <>
             <div className={s2.extrasWrap}>
               <span className={s2.label}>Do you have any of these? <span className={s2.labelSoft}>Tap all that apply</span></span>
               <div className={s2.extras}>
@@ -1224,6 +1243,12 @@ export default function Comparator() {
             </div>
     </>
   );
+  const homeQuestions = (
+    <>
+      {homeBasics}
+      {homeExtras}
+    </>
+  );
 
   return (
     <>
@@ -1280,7 +1305,7 @@ export default function Comparator() {
                 <button type="button" onClick={startFresh}>Start fresh</button>
               </div>
             )}
-        {entry !== "snap" && (
+        {entry !== "snap" && (!onePage || qp === 1) && (
         <section className={styles.hero}>
           <span className={styles.residentialTag}>Victorian homes · NSW, SA, QLD coming</span>
           <h1>{entry === "read" ? "Here's what we read" : "Check your plan"}</h1>
@@ -1391,7 +1416,7 @@ export default function Comparator() {
 
         {entry === "wizard" && (
           <>
-        {!scanBanner && <BillPhotoUpload variant="strip" onApply={handleBillExtracted} />}
+        {!scanBanner && (!onePage || qp === 1) && <BillPhotoUpload variant="strip" onApply={handleBillExtracted} />}
         {scanBanner && (
           <div className={styles.scanBanner}>
             <div className={styles.scanBannerHead}>
@@ -1415,6 +1440,17 @@ export default function Comparator() {
           </div>
         )}
 
+        {onePage && (
+          <div className={uc.progress} aria-label={`Step ${qIdx + 1} of ${qPages.length}: ${Q_TITLES[qp]}`}>
+            <div className={uc.progressText}>
+              <span>Step {qIdx + 1} of {qPages.length}</span>
+              <b>{Q_TITLES[qp]}</b>
+            </div>
+            <div className={uc.progressBar} aria-hidden="true">
+              {qPages.map((n, i) => <i key={n} className={i < qIdx ? uc.segDone : i === qIdx ? uc.segOn : ""} />)}
+            </div>
+          </div>
+        )}
         {!onePage && <div className={styles.wizardSteps}>
           {INPUT_STEPS.map((n, idx) => (
             <div className={styles.wizardStepItem} key={n}>
@@ -1435,7 +1471,8 @@ export default function Comparator() {
           ))}
         </div>}
 
-        {onStep1 && (
+        <div key={onePage ? `q${qp}` : "wizard"} className={onePage ? (qDir === "fwd" ? uc.pageFwd : uc.pageBack) : undefined}>
+        {(onePage ? qp === 1 : inputStep === 1) && (
           <div className={styles.card}>
             <div className={styles.stepHead}>
               <div className={styles.stepIcon}>
@@ -1686,7 +1723,7 @@ export default function Comparator() {
           </div>
         )}
 
-        {(onePage ? propertyType === "home" && !nonVic : inputStep === 2) && (
+        {(onePage ? propertyType === "home" && !nonVic && qp >= 2 && qp <= 4 : inputStep === 2) && (
           <div className={styles.card}>
             <div className={styles.stepHead}>
               <div className={`${styles.stepIcon} ${styles.stepIconTeal}`}>
@@ -1694,12 +1731,13 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>2</span> {onePage ? "How much power you use" : "About your home"}
+                  <span className={styles.stepNum}>{onePage ? qIdx + 1 : 2}</span> {!onePage ? "About your home" : qp === 2 ? "How much power you use" : qp === 3 ? "About your home" : "Anything else at home?"}
                 </div>
-                <span className={styles.stepSub}>{onePage ? "Pick one. You can switch any time and the results follow." : "Rough answers are fine. They tell us how much power you use, and when."}</span>
+                <span className={styles.stepSub}>{!onePage ? "Rough answers are fine. They tell us how much power you use, and when." : qp === 2 ? "Pick one. You can switch any time and the results follow." : qp === 3 ? "Rough answers are fine. They tell us how much power you use, and when." : "Tap all that apply. They change when, and how much, power you use."}</span>
               </div>
             </div>
             {onePage ? (
+              qp === 2 ? (
               <div className={uc.choose} role="radiogroup" aria-label="How to work out your usage">
                 <button type="button" role="radio" aria-checked={usagePick === "average"} className={`${uc.row} ${usagePick === "average" ? uc.rowOn : ""}`} onClick={() => pickUsage("average")}>
                   <span className={uc.radio} aria-hidden="true" />
@@ -1730,8 +1768,7 @@ export default function Comparator() {
                 </button>
                 {usagePick === "home" && (
                   <div className={uc.body}>
-                    <EstimateStrip profile={profile} forecast={billForecast} />
-                    {homeQuestions}
+                    <p className={uc.avgLine}>About a minute: tap <b>Next</b> for the questions.</p>
                   </div>
                 )}
 
@@ -1758,20 +1795,24 @@ export default function Comparator() {
                 compact
               />
                     <EstimateStrip profile={profile} forecast={billForecast} />
-                    <details className={uc.more}>
-                      <summary>Tell us about your home <span>(optional, sharpens the seasons)</span></summary>
-                      {homeQuestions}
-                    </details>
                   </div>
                 )}
               </div>
+              ) : qp === 3 ? (
+                <>
+                  <EstimateStrip profile={profile} forecast={billForecast} />
+                  {homeBasics}
+                </>
+              ) : (
+                homeExtras
+              )
             ) : (
               homeQuestions
             )}
           </div>
         )}
 
-        {(onePage ? propertyType === "home" && !nonVic : inputStep === 3) && (
+        {(onePage ? propertyType === "home" && !nonVic && qp === 5 : inputStep === 3) && (
           <div className={styles.card}>
             <div className={styles.stepHead}>
               <div className={`${styles.stepIcon} ${styles.stepIconAmber}`}>
@@ -1779,11 +1820,11 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>3</span> {onePage ? "Your usage" : "Your bill"}
+                  <span className={styles.stepNum}>{onePage ? qIdx + 1 : 3}</span> {onePage ? "Your estimate" : "Your bill"}
                 </div>
                 <span className={styles.stepSub}>
                   {onePage
-                    ? usageSource === "average" ? "The average Victorian home. Pick another option above to make it yours." : "Worked out from your answers above. Change them and it updates."
+                    ? usageSource === "average" ? "The average Victorian home. Go back a step to make it yours." : "Worked out from your answers. Go back to change them."
                     : "A few numbers from your bill make this exact. No bill? We'll estimate."}
                 </span>
               </div>
@@ -2035,7 +2076,9 @@ export default function Comparator() {
           </div>
         )}
 
-        {blockReason && !quietBlock && !(onStep1 && propertyType !== "home") && (
+        </div>
+
+        {blockReason && !quietBlock && !(onStep1 && propertyType !== "home") && (!onePage || qp === 1 || qp === 5) && (
           <p className={styles.blockNote} role="status">
             {blockReason}
             {inputStep === 3 && usageSource === "bill" && !billFlag && (
@@ -2048,6 +2091,25 @@ export default function Comparator() {
             )}
           </p>
         )}
+        {onePage ? (
+        <div className={styles.wizardNav}>
+          {qIdx > 0 ? (
+            <button type="button" className={styles.wizardBackBtn} onClick={qBack}>← Back</button>
+          ) : (
+            <span />
+          )}
+          <span className={uc.navRight}>
+            {usagePick === "bill" && (qp === 3 || qp === 4) && (
+              <button type="button" className={uc.skip} onClick={() => goQ(5, "fwd")}>Skip: use my bill&apos;s kWh</button>
+            )}
+            {qp !== 5 ? (
+              <button type="button" className={styles.heroCta} disabled={qp === 1 && !!blockReason} onClick={qNext}>Next →</button>
+            ) : (
+              <button type="button" className={styles.heroCta} disabled={!!blockReason} onClick={() => { setStage("results"); scrollToTop(); }}>See my cheapest options →</button>
+            )}
+          </span>
+        </div>
+        ) : (
         <div className={styles.wizardNav}>
           {inputStep > 1 && !onePage ? (
             <button
@@ -2089,10 +2151,25 @@ export default function Comparator() {
             </button>
           )}
         </div>
+        )}
         <div className={styles.stickyBar}>
           {/* A greyed button says nothing on its own: show what's missing right above it. */}
-          {blockReason && !quietBlock && <p className={styles.stickyReason} role="status">{blockReason}</p>}
-          {inputStep < 3 && !onePage ? (
+          {blockReason && !quietBlock && (!onePage || qp === 1 || qp === 5) && <p className={styles.stickyReason} role="status">{blockReason}</p>}
+          {onePage ? (
+            qp !== 5 ? (
+              <span className={uc.stickyRow}>
+                {qIdx > 0 && <button type="button" className={uc.stickyBack} onClick={qBack} aria-label="Back">←</button>}
+                <button type="button" className={styles.stickyBtn} disabled={qp === 1 && !!blockReason} onClick={qNext}>
+                  Next · step {qIdx + 1} of {qPages.length} →
+                </button>
+              </span>
+            ) : (
+              <span className={uc.stickyRow}>
+                <button type="button" className={uc.stickyBack} onClick={qBack} aria-label="Back">←</button>
+                <button type="button" className={styles.stickyBtn} disabled={!!blockReason} onClick={() => { setStage("results"); scrollToTop(); }}>See my savings →</button>
+              </span>
+            )
+          ) : inputStep < 3 && !onePage ? (
             <button type="button" className={styles.stickyBtn} disabled={!!blockReason} onClick={() => { setInputStep((s) => nextInputStep(s)); scrollToTop(); }}>
               Next · step {inputStep} of 3 →
             </button>

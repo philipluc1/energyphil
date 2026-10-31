@@ -35,7 +35,6 @@ import PlanBand from "../components/PlanBand";
 import { MiddayCard } from "../components/MiddaySaver";
 import { ForecastCard } from "../components/BillForecast";
 import { CountdownCard, LikeYoursCard } from "../components/HomeCards";
-import WhatIfPanel from "../components/WhatIfPanel";
 import InstallBanner from "../components/InstallBanner";
 import UpgradePlans from "../components/UpgradePlans";
 import type { Distributor } from "@/lib/plans";
@@ -987,8 +986,7 @@ export default function AccountPage() {
                   {shownTab === "compare" && (
                     cmpInput ? (
                       <>
-                        <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
-                        <WhatIfPanel input={cmpInput} member={isMember} profile={homeProfile} />
+                        <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} profile={homeProfile} />
                       </>
                     ) : (
                       <div className={styles.panelCard}>

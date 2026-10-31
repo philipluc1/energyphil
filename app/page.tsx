@@ -79,7 +79,7 @@ export default function Home() {
               <Link href="/check" className={h.primary}>
                 <Icon name="camera" size={20} /> Snap my bill, free
               </Link>
-              <Link href="/check?start=questions" className={h.ghost}>No bill? Estimate it</Link>
+              <Link href="/check?start=questions" className={h.ghost}>No bill? Use the average home</Link>
             </div>
             <ul className={h.fuels} aria-label="Bills we check">
               <li><Link href="/check" className={h.fuel}><span className={h.fElec}><Icon name="bolt" size={15} /></span> Electricity</Link></li>

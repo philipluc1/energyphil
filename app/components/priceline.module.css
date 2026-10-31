@@ -43,3 +43,10 @@
 
 
 
+
+/* 1 Nov 2026: the usage line sits under the chart (no separate "your bill" box). */
+.status { display: block; }
+.key { white-space: nowrap; font-size: 12px; color: var(--grey, #5f6b82); }
+.key i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #dc2626; vertical-align: 0; margin-right: 2px; }
+.note { display: block; margin-top: 6px; padding: 9px 12px; border-radius: 10px; background: var(--soft, #f4f6fb); color: var(--ink, #12141c); font-size: 13.5px; line-height: 1.5; }
+.note button { padding: 0; border: 0; background: none; font: inherit; font-weight: 800; color: var(--navy-accent-text, #22306e); cursor: pointer; text-decoration: underline; }

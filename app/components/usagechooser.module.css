@@ -30,3 +30,23 @@
   .badge { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .row, .radio::after, .chev { transition: none; } .body { animation: none; } }
+
+/* The questions one step at a time (1 Nov 2026): a progress bar and pages
+   that slide in from the right going forward, from the left going back. */
+.progress { display: flex; flex-direction: column; gap: 8px; margin: 18px 0 14px; }
+.progressText { display: flex; align-items: baseline; gap: 10px; font-size: 13.5px; color: var(--grey, #5b6476); }
+.progressText b { font-size: 15px; font-weight: 800; color: var(--ink, #12141c); }
+.progressBar { display: flex; gap: 6px; }
+.progressBar i { flex: 1; height: 6px; border-radius: 3px; background: var(--border, #e4e7ee); transition: background 0.3s; }
+.progressBar i.segDone { background: var(--navy-accent-text, #22306e); }
+.progressBar i.segOn { background: var(--amber, #f5a623); }
+.pageFwd { animation: slideFwd 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.pageBack { animation: slideBack 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes slideFwd { from { opacity: 0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
+@keyframes slideBack { from { opacity: 0; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
+.navRight { display: inline-flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.skip { padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--grey, #5b6476); text-decoration: underline; cursor: pointer; }
+.stickyRow { display: flex; gap: 8px; width: 100%; }
+.stickyRow > button:last-child { flex: 1; }
+.stickyBack { flex: none; width: 52px; border-radius: 14px; border: 1px solid var(--border, #e4e7ee); background: var(--surface, #fff); font-size: 20px; font-weight: 800; color: var(--ink, #12141c); cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .pageFwd, .pageBack { animation: none; } .progressBar i { transition: none; } }

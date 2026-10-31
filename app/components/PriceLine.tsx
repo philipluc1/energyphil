@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import RetailerLogo from "./RetailerLogo";
 import Icon from "./Icon";
 import s from "./priceline.module.css";
@@ -40,7 +40,7 @@ function lanes(xs: number[], gap: number): number[] {
 const labelPos = (x: number) => (x > 80 ? { right: 0 } : x < 20 ? { left: 0 } : { left: `${x}%`, transform: "translateX(-50%)" });
 
 export default function PriceLine({
-  items, you, youLabel, vdo, per,
+  items, you, youLabel, vdo, per, note,
 }: {
   items: PriceLineItem[];
   you: number;
@@ -48,6 +48,8 @@ export default function PriceLine({
   vdo?: number | null;
   /** e.g. "a month" */
   per: string;
+  /** A short line about the usage behind the pin (replaces the "how to read it" text). */
+  note?: ReactNode;
 }) {
   // Bubbles need more room (in %) on a narrow screen.
   const ref = useRef<HTMLDivElement | null>(null);
@@ -150,6 +152,19 @@ export default function PriceLine({
           <b>{youLabel}</b> {money(you)}
         </span>
       </div>
+      {note ? (
+        <figcaption className={s.caption}>
+          <span className={s.status}>
+            {cheaper === items.length
+              ? <b className={s.bad}>You pay more than every plan shown.</b>
+              : cheaper === 0
+                ? <b className={s.good}>Nothing shown beats {who}.</b>
+                : <b>{cheaper} of {items.length} plans shown cost less than {who}.</b>}{" "}
+            <span className={s.key}>★ cheapest · <i aria-hidden="true" /> {who}</span>
+          </span>
+          <span className={s.note}>{note}</span>
+        </figcaption>
+      ) : (
       <figcaption className={s.caption}>
         {compact ? (
           cheaper === items.length ? (
@@ -167,6 +182,7 @@ export default function PriceLine({
           <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each bubble is a plan at its price {per}; the red pin is {who}; ★ marks the cheapest.</>
         )}
       </figcaption>
+      )}
     </figure>
   );
 }
