@@ -4,9 +4,7 @@
 .hero {
   text-align: center; padding: 30px 22px 22px; margin-bottom: 16px; border-radius: 22px; color: #fff;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  background:
-    radial-gradient(520px 260px at 100% 0%, rgba(253, 224, 71, 0.22), transparent 60%),
-    linear-gradient(135deg, #065f46 0%, #0f766e 55%, #155e75 100%);
+  background: #0f766e;
   box-shadow: 0 18px 40px rgba(6, 95, 70, 0.25);
 }
 .kicker { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
@@ -39,7 +37,7 @@
 .fine { font-size: 12px; opacity: 0.8; margin-top: 8px; max-width: 520px; line-height: 1.45; }
 
 /* ---------- Same-retailer advice ---------- */
-.stayGood { border-left-color: #16a34a !important; background: linear-gradient(135deg, #ecfdf3, var(--surface) 60%) !important; }
+.stayGood { border-left-color: #16a34a !important; background: var(--surface) !important; }
 .stayHead { font-size: 16px; color: #15803d; }
 
 /* ---------- Year view ---------- */
@@ -65,7 +63,7 @@
 .list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .row { border-radius: 16px; background: var(--surface); border: 1.5px solid var(--border); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
 .row:hover { border-color: #f5a623; box-shadow: 0 6px 18px rgba(20, 24, 60, 0.08); }
-.rowTop { border: 2px solid #16a34a; background: linear-gradient(135deg, #f0fdf4, var(--surface) 55%); }
+.rowTop { border: 2px solid #16a34a; background: var(--surface); }
 .rowMain {
   display: grid; grid-template-columns: 48px 1fr auto; gap: 14px; align-items: center; width: 100%;
   padding: 14px 16px; border: none; background: none; text-align: left; cursor: pointer; font-family: inherit; color: inherit;
@@ -111,12 +109,9 @@
   .price { font-size: 18px; }
   .ratesLink { flex-basis: 100%; text-align: left; }
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .rowTop { background: linear-gradient(135deg, rgba(22, 163, 74, 0.14), var(--surface) 55%); }
-  :root:not([data-theme="light"]) .stayGood { background: linear-gradient(135deg, rgba(22, 163, 74, 0.14), var(--surface) 60%) !important; }
-}
-:root[data-theme="dark"] .rowTop { background: linear-gradient(135deg, rgba(22, 163, 74, 0.14), var(--surface) 55%); }
-:root[data-theme="dark"] .stayGood { background: linear-gradient(135deg, rgba(22, 163, 74, 0.14), var(--surface) 60%) !important; }
+
+
+
 
 .ratesBox { margin: 12px auto 0; max-width: 560px; text-align: left; padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); }
 
@@ -137,10 +132,10 @@
 /* ---------- Free users: the cheapest plans are for members ---------- */
 button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .rank { font-size: 11.5px; font-weight: 900; padding: 2px 7px; border-radius: 6px; background: var(--track); color: var(--grey); font-variant-numeric: tabular-nums; }
-.lockedTop { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding: 12px; border-radius: 18px; border: 2px dashed rgba(245, 166, 35, 0.6); background: linear-gradient(135deg, rgba(253, 224, 71, 0.12), rgba(245, 166, 35, 0.05)); }
+.lockedTop { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding: 12px; border-radius: 18px; border: 2px dashed rgba(245, 166, 35, 0.6); background: none; }
 .lockedRow { display: grid; grid-template-columns: 48px 1fr auto; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--border); }
-.lockAvatar { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, #1b2a6b, #2d3f9e); color: #fde047; }
-.blurBar { display: inline-block; height: 14px; min-width: 90px; max-width: 220px; border-radius: 7px; background: linear-gradient(90deg, var(--track), rgba(140, 150, 170, 0.35), var(--track)); background-size: 200% 100%; filter: blur(1.5px); animation: shimmer 2.4s linear infinite; }
+.lockAvatar { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: #2d3f9e; color: #fde047; }
+.blurBar { display: inline-block; height: 14px; min-width: 90px; max-width: 220px; border-radius: 7px; background: var(--track); background-size: 200% 100%; filter: blur(1.5px); animation: shimmer 2.4s linear infinite; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .unlockBtn {
   align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border: 0; border-radius: 999px; cursor: pointer;
@@ -148,7 +143,7 @@ button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; di
 }
 .unlockBtn:hover { filter: brightness(1.05); }
 .lockedName { display: inline-flex; align-items: center; gap: 10px; color: #fde047; }
-.blurName { display: inline-block; width: 190px; height: 26px; border-radius: 8px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.18)); background-size: 200% 100%; filter: blur(2px); animation: shimmer 2.4s linear infinite; }
+.blurName { display: inline-block; width: 190px; height: 26px; border-radius: 8px; background: none; background-size: 200% 100%; filter: blur(2px); animation: shimmer 2.4s linear infinite; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .unlockBox { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; margin-top: 14px; padding: 14px 16px; border-radius: 14px; text-align: left; background: rgba(253, 224, 71, 0.1); border: 1px solid rgba(253, 224, 71, 0.45); }
 .unlockBox b { display: block; font-size: 15.5px; color: #fff; }
@@ -174,4 +169,14 @@ button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; di
 .billMark > b { font-size: 18px; font-weight: 900; color: var(--ink); }
 .billMark > b small { font-size: 12.5px; font-weight: 600; color: var(--grey); }
 .billMarkNote { font-size: 13.5px; font-weight: 600; color: #c2410c; }
-@media (prefers-color-scheme: dark) { .billMarkNote, .youBoxBill .youTop span { color: #fb9366; } }
+
+.memberView { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(22, 163, 74, 0.12); color: #15803d; }
+
+
+.legendLine { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+/* Oct 31: the "your bill" box is one line; the detail sits behind (i). */
+.youLine { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); font-size: 15px; }
+.youLine > svg { flex: none; color: var(--grey); }
+.youLine > span:first-of-type { flex: 1; min-width: 0; }
+.youLineBill { border-color: rgba(220, 38, 38, 0.25); background: rgba(220, 38, 38, 0.04); }
+.youLineBill > svg { color: #c2410c; }

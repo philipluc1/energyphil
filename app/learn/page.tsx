@@ -53,8 +53,8 @@ export default function LearnPage() {
       <SiteHeader active="learn" />
       <div className={styles.wrap}>
         <section className={home.pageHead}>
-          <h1>How Utilo works</h1>
-          <p className={styles.lede}>Plain-English answers: what we do, how we&apos;re different, where prices are heading and how to pay less.</p>
+          <h1>How it works</h1>
+          <p className={styles.lede}>What we do, how prices change, and how to pay less.</p>
           <div className={learn.chips}>
             <a href="#compare">Who does what</a>
             <a href="#videos">Videos</a>
@@ -68,12 +68,12 @@ export default function LearnPage() {
         </section>
         <FeelingCard />
 
-        <section id="how" className={learn.block}>
+        <section id="how" className={learn.block} data-motion="">
           <h2 className={home.h2}>Three steps</h2>
           <StepsVisual />
         </section>
 
-        <section id="compare" className={learn.block}>
+        <section id="compare" className={learn.block} data-motion="">
           <h2 className={home.h2}>Who does what</h2>
           <p className={home.sub}>Three different jobs. They work well together.</p>
           <RolesVisual planCount={PLANS.length} retailers={retailers} />
@@ -86,7 +86,7 @@ export default function LearnPage() {
           </p>
         </section>
 
-        <section id="videos" className={learn.block}>
+        <section id="videos" className={learn.block} data-motion="">
           <h2 className={home.h2}>Watch</h2>
           <p className={home.sub}>Short videos, no jargon.</p>
           <div className={learn.videoGrid}>
@@ -94,17 +94,17 @@ export default function LearnPage() {
           </div>
         </section>
 
-        <section id="when" className={learn.block}>
+        <section id="when" className={learn.block} data-motion="">
           <UsageShape
             pick
             shape="evening"
             dailyKwh={11}
             title="When you typically use power"
-            note="A model of a typical 4,000 kWh-a-year home, not meter data. On a time-of-use plan the shaded window is the dear part of the day; on a single-rate plan every hour costs the same. Members see their own home's shape on the dashboard."
+            note="A model of a typical 4,000 kWh-a-year home, not meter data. On a time-of-use plan the shaded window is the dear part of the day; on a single-rate plan every hour costs the same. Plus members see their own home's shape on the dashboard."
           />
         </section>
 
-        <section id="charts" className={learn.block}>
+        <section id="charts" className={learn.block} data-motion="">
           <h2 className={home.h2}>Example charts</h2>
           <p className={home.sub}>For a typical home using 4,000 kWh a year on a single-rate plan. Yours will differ.</p>
 
@@ -129,7 +129,7 @@ export default function LearnPage() {
           </ul>
         </section>
 
-        <section id="timeline" className={learn.block}>
+        <section id="timeline" className={learn.block} data-motion="">
           <h2 className={home.h2}>When prices change</h2>
           <p className={home.sub}>There are two kinds of price, and they change on different clocks.</p>
 
@@ -189,7 +189,7 @@ export default function LearnPage() {
           </p>
         </section>
 
-        <section id="save" className={learn.block}>
+        <section id="save" className={learn.block} data-motion="">
           <h2 className={home.h2}>Other ways to save</h2>
           <p className={home.sub}>A better plan is one lever. These are the others.</p>
           {(["Plan", "Usage", "Upgrades"] as const).map((g) => (
@@ -204,7 +204,7 @@ export default function LearnPage() {
           ))}
         </section>
 
-        <section id="data" className={learn.block}>
+        <section id="data" className={learn.block} data-motion="">
           <h2 className={home.h2}>Where the prices come from</h2>
           <p className={home.sub}>And how often everything runs.</p>
           <div className={learn.flowWrap}><PriceFlow /></div>

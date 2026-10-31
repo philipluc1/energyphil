@@ -2,16 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Icon from "./Icon";
-import { findPlan, PLAN_DISPLAY } from "@/lib/pricingPlans";
+import { plusValue } from "@/lib/pricingPlans";
 import m from "./memberlock.module.css";
 
-const annual = findPlan("annual");
-const money = (cents: number) =>
-  "$" + (cents / 100).toLocaleString("en-AU", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
-/** "$39 a year, about $3.25 a month" from the price list, so it never drifts. */
-export const MEMBER_PRICE_LINE = annual
-  ? `${money(annual.priceCents)} a year${PLAN_DISPLAY.annual.perMonthCents ? `, about ${money(PLAN_DISPLAY.annual.perMonthCents)} a month` : ""}. Cancel any time.`
-  : "Cancel any time.";
+/** "$7 a month ($84 a year), or $39 yearly: save $45. Cancel any time." From the price list, so it never drifts. */
+const v = plusValue();
+export const MEMBER_PRICE_LINE = `${v.monthly} a month (${v.monthlyYear} a year), or ${v.annual} yearly: save ${v.save}. Cancel any time.`;
 
 // Shapes for the blurred placeholder rows (no real plan names are in the page).
 const BAR = [62, 48, 70, 55, 66, 44, 58, 50];

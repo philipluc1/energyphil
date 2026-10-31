@@ -11,7 +11,7 @@
 .lede { margin: 18px 0 0; max-width: 34em; font-size: 18px; line-height: 1.55; color: var(--body, var(--grey)); }
 
 /* The "which bill" card: pick a tile, the colour slides to it, the button follows. */
-.card { position: relative; margin-top: 24px; padding: 18px; border-radius: 22px; background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 88%, var(--soft))); border: 1px solid var(--border); box-shadow: 0 24px 50px -30px rgba(20, 24, 60, 0.55), 0 2px 0 rgba(255, 255, 255, 0.6) inset; display: flex; flex-direction: column; gap: 14px; animation: cardIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both 0.15s; }
+.card { position: relative; margin-top: 24px; padding: 18px; border-radius: 22px; background: color-mix(in srgb, var(--surface) 88%, var(--soft)); border: 1px solid var(--border); box-shadow: 0 24px 50px -30px rgba(20, 24, 60, 0.55), 0 2px 0 rgba(255, 255, 255, 0.6) inset; display: flex; flex-direction: column; gap: 14px; animation: cardIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both 0.15s; }
 @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .cardHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .cardHead b { font-size: 16px; letter-spacing: -0.01em; }
@@ -19,9 +19,9 @@
 
 .tiles { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .thumb { position: absolute; top: 0; bottom: 0; left: 0; width: calc((100% - 20px) / 3); border-radius: 16px; transform: translateX(calc(var(--i, 0) * (100% + 10px))); transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), background 0.4s, box-shadow 0.4s; pointer-events: none; }
-.thumbElec { background: linear-gradient(145deg, #ffd166, #f5a623); box-shadow: 0 12px 28px -12px rgba(245, 166, 35, 0.75); }
-.thumbGas { background: linear-gradient(145deg, #fb923c, #ea580c); box-shadow: 0 12px 28px -12px rgba(234, 88, 12, 0.7); }
-.thumbNbn { background: linear-gradient(145deg, #6366f1, #2d3f9e); box-shadow: 0 12px 28px -12px rgba(45, 63, 158, 0.7); }
+.thumbElec { background: #f5a623; box-shadow: 0 12px 28px -12px rgba(245, 166, 35, 0.75); }
+.thumbGas { background: #ea580c; box-shadow: 0 12px 28px -12px rgba(234, 88, 12, 0.7); }
+.thumbNbn { background: #2d3f9e; box-shadow: 0 12px 28px -12px rgba(45, 63, 158, 0.7); }
 .tile { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px 14px 12px; border-radius: 16px; border: 1.5px solid var(--border); background: var(--surface); font: inherit; color: var(--ink); cursor: pointer; text-align: left; transition: color 0.3s, border-color 0.3s, transform 0.25s; }
 .tile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--navy-accent-text) 35%, var(--border)); }
 .tile b { font-size: 15.5px; letter-spacing: -0.01em; }
@@ -53,9 +53,9 @@
 .detail b { color: var(--ink); }
 
 .actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-.primary { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 22px; border-radius: 14px; background: linear-gradient(135deg, #ffd166, #f5a623 60%, #f59e0b); color: var(--amber-ink, #1c1403); font-weight: 900; font-size: 17px; text-decoration: none; box-shadow: 0 14px 30px -14px rgba(245, 166, 35, 0.8); transition: transform 0.2s, box-shadow 0.2s; }
+.primary { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 22px; border-radius: 14px; background: #f5a623; color: var(--amber-ink, #1c1403); font-weight: 900; font-size: 17px; text-decoration: none; box-shadow: 0 14px 30px -14px rgba(245, 166, 35, 0.8); transition: transform 0.2s, box-shadow 0.2s; }
 .primary:hover { transform: translateY(-2px); box-shadow: 0 18px 34px -14px rgba(245, 166, 35, 0.9); }
-.card[data-fuel="gas"] .primary { background: linear-gradient(135deg, #fdba74, #fb923c 60%, #ea580c); color: #fff; box-shadow: 0 14px 30px -14px rgba(234, 88, 12, 0.8); }
+.card[data-fuel="gas"] .primary { background: #fb923c; color: #fff; box-shadow: 0 14px 30px -14px rgba(234, 88, 12, 0.8); }
 .ctaArrow { margin-left: auto; opacity: 0.8; }
 .shutter { position: relative; display: grid; place-items: center; }
 .shutter::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 2px solid currentColor; opacity: 0; animation: shutter 4s ease-out infinite; }
@@ -79,12 +79,12 @@
   .primary { font-size: 16px; padding: 15px 18px; }
   .word { min-width: 0; }
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .live { background: rgba(22, 163, 74, 0.2); color: #86efac; } :root:not([data-theme="light"]) .iElec { color: #fbbf24; } :root:not([data-theme="light"]) .iGas { color: #fb923c; } :root:not([data-theme="light"]) .iNbn { color: #a5b4fc; background: rgba(129, 140, 248, 0.16); } :root:not([data-theme="light"]) .titleLine2 { color: #a5b4fc; } }
-:root[data-theme="dark"] .live { background: rgba(22, 163, 74, 0.2); color: #86efac; }
-:root[data-theme="dark"] .iElec { color: #fbbf24; }
-:root[data-theme="dark"] .iGas { color: #fb923c; }
-:root[data-theme="dark"] .iNbn { color: #a5b4fc; background: rgba(129, 140, 248, 0.16); }
-:root[data-theme="dark"] .titleLine2 { color: #a5b4fc; }
+
+
+
+
+
+
 .tileOn .live { background: rgba(255, 255, 255, 0.55) !important; color: #14532d !important; }
 .tileOn .iElec { color: #b45309 !important; }
 .tileOn .iGas { color: #c2410c !important; }

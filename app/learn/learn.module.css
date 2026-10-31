@@ -48,7 +48,7 @@
 .changeBars b { text-align: right; font-variant-numeric: tabular-nums; color: #15803d; }
 .cbName { font-weight: 700; }
 .cbTrack { height: 12px; border-radius: 999px; background: var(--track); overflow: hidden; }
-.cbTrack > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #16a34a, #4ade80); }
+.cbTrack > span { display: block; height: 100%; border-radius: inherit; background: #4ade80; }
 
 /* The yearly cycle: four steps on a line */
 .cycle { position: relative; list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
@@ -89,9 +89,9 @@
 .flowWrap { background: var(--navy-deep); color: #fff; border-radius: 22px; padding: 26px 22px 20px; margin: 18px 0 16px; }
 /* Colour by group: tips cycle through four tints. */
 /* A faint tint of the accent over the card surface, so it reads in light and dark mode alike. */
-.tips > :nth-child(4n+1) { background: linear-gradient(135deg, color-mix(in srgb, #0ea5a0 12%, var(--surface)), var(--surface) 70%); border-top: 4px solid #0ea5a0; }
-.tips > :nth-child(4n+2) { background: linear-gradient(135deg, color-mix(in srgb, #f5a623 14%, var(--surface)), var(--surface) 70%); border-top: 4px solid #f5a623; }
-.tips > :nth-child(4n+3) { background: linear-gradient(135deg, color-mix(in srgb, #7c6cf0 14%, var(--surface)), var(--surface) 70%); border-top: 4px solid #7c6cf0; }
-.tips > :nth-child(4n+4) { background: linear-gradient(135deg, color-mix(in srgb, #16a34a 12%, var(--surface)), var(--surface) 70%); border-top: 4px solid #16a34a; }
+.tips > :nth-child(4n+1) { background: var(--surface); border-top: 4px solid #0ea5a0; }
+.tips > :nth-child(4n+2) { background: var(--surface); border-top: 4px solid #f5a623; }
+.tips > :nth-child(4n+3) { background: var(--surface); border-top: 4px solid #7c6cf0; }
+.tips > :nth-child(4n+4) { background: var(--surface); border-top: 4px solid #16a34a; }
 .steps li:nth-child(1) { border-top: 4px solid #0ea5a0; } .steps li:nth-child(2) { border-top: 4px solid #f5a623; } .steps li:nth-child(3) { border-top: 4px solid #7c6cf0; }
 .steps li:nth-child(2)::before { background: #f5a623; } .steps li:nth-child(3)::before { background: #7c6cf0; }

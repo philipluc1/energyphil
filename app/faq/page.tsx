@@ -23,7 +23,7 @@ export default function FaqPage() {
           <div className={home.faq}>
             <details className={home.faqItem} open>
               <summary>Is it really free?</summary>
-              <p>Yes. The check is free, including up to 5 bill photo reads a day, and you don&apos;t need an account. Members pay for the ongoing part: every plan re-priced against their home each morning, an email when switching is worth it, and a saved result each month.</p>
+              <p>Yes. The check is free, including up to 5 bill photo reads a day, and you don&apos;t need an account. Utilo Plus pays for the ongoing part: every plan re-priced against their home each morning, an email when switching is worth it, and a saved result each month.</p>
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;m not in Victoria. Can I use it?</summary>
@@ -47,7 +47,7 @@ export default function FaqPage() {
               <p>
                 Utilo is built around your bill rather than a typical household. A photo gives us how much you use and when, the rates you pay now and the
                 plan you&apos;re on, so the saving is against what you actually pay, and we can tell you if you&apos;re on an older, dearer version of a plan
-                with the same name. It takes about a minute. Then, for members, it keeps going: prices re-checked every morning, a heads-up before your
+                with the same name. It takes about a minute. Then, with Utilo Plus, it keeps going: prices re-checked every morning, a heads-up before your
                 discount or fixed price ends, and a re-check after the 1 July changes. We track {PLANS.length} plans from {RETAILER_COUNT} retailers, not
                 every plan in the market, so using both is a good idea.{" "}
                 <Link href="/learn#compare">See who does what</Link>.
@@ -55,7 +55,7 @@ export default function FaqPage() {
             </details>
             <details className={home.faqItem}>
               <summary>I switched, and now something cheaper has appeared. Did I waste my time?</summary>
-              <p>No. {PRICE_CHANGE_CLAUSE} Members are only alerted when a new plan beats their current one by $50 a year or more (or the amount they choose on their dashboard), and not at all in the first two months after a switch unless the saving is large.</p>
+              <p>No. {PRICE_CHANGE_CLAUSE} Plus members are only alerted when a new plan beats their current one by $50 a year or more (or the amount they choose on their dashboard), and not at all in the first two months after a switch unless the saving is large.</p>
             </details>
             <details className={home.faqItem}>
               <summary>What happens to my details?</summary>
@@ -63,7 +63,7 @@ export default function FaqPage() {
             </details>
             <details className={home.faqItem}>
               <summary>Can I share Utilo with a friend?</summary>
-              <p>Yes, please. Members have a referral link on the Membership tab of their dashboard. A friend who joins through it (and hasn&apos;t been a member before) gets {referralDollars(REFERRAL_FRIEND_CENTS)} off their first payment, and you get {referralDollars(REFERRAL_CREDIT_CENTS)} off your next one. <Link href="/terms#referrals">Referral terms</Link>.</p>
+              <p>Yes, please. Plus members have a referral link on the Plus tab of their dashboard. A friend who joins through it (and hasn&apos;t been a member before) gets {referralDollars(REFERRAL_FRIEND_CENTS)} off their first payment, and you get {referralDollars(REFERRAL_CREDIT_CENTS)} off your next one. <Link href="/terms#referrals">Referral terms</Link>.</p>
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;ve got an EV. Does that matter?</summary>

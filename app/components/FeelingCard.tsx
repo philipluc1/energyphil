@@ -17,9 +17,9 @@ export default function FeelingCard() {
         <p className={s.eyebrow}>Sound familiar?</p>
         <h2 id="feeling-title" className={s.title}>Bill keeps creeping up, and you don&apos;t know why or where to start?</h2>
         <p className={s.body}>
-          It&apos;s not just you.{" "}
-          {changes > 0 ? <>Retailers made {changes.toLocaleString("en-AU")} changes to their offers in the last 30 days, and </> : <>Retailers change their offers all year, and </>}
-          introductory discounts quietly end. Start with one bill and we&apos;ll show you what you&apos;re really paying, and whether switching is worth it.
+          It&apos;s not just you: {changes > 0 ? <>retailers changed {changes.toLocaleString("en-AU")} offers in the last 30 days.</> : <>retailers change their offers all year.</>}
+          <br />
+          One photo of your bill shows what you really pay.
         </p>
         <Link href="/check" className={s.cta}><Icon name="camera" size={18} /> Price my bill, free</Link>
       </div>

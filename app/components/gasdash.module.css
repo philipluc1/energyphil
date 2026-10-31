@@ -1,6 +1,6 @@
 /* Gas on My Dashboard: the electricity layout in warmer colours. */
 .wrap { display: flex; flex-direction: column; gap: 0; }
-.hero { --v-good: linear-gradient(135deg, #0b4f3a, #13795b); --v-mild: linear-gradient(135deg, #7c3a0a, #c2410c); --v-severe: linear-gradient(135deg, #7a1616, #c0392b); --v-est: linear-gradient(135deg, #5b2a0b, #b45309); --amount: #ffd166; --side-best: #ffb86b; }
+.hero { --v-good: #13795b; --v-mild: #c2410c; --v-severe: #c0392b; --v-est: #b45309; --amount: #ffd166; --side-best: #ffb86b; }
 .gasPill { display: inline-flex; align-items: center; gap: 6px; }
 .gasPill svg { color: #ffb86b; }
 .youBox { border-left-color: #c2410c; }
@@ -19,7 +19,7 @@
 .rates td { text-align: right; padding: 6px 0; font-weight: 800; color: var(--ink); vertical-align: middle; }
 .rates tr + tr th, .rates tr + tr td { border-top: 1px solid var(--border); }
 .ratesNote { text-align: left !important; font-weight: 500 !important; font-size: 12px; color: var(--grey) !important; }
-.empty { padding: 28px 24px; border-radius: 20px; background: linear-gradient(135deg, #5b2a0b, #b45309); color: #fff; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; animation: rise 0.5s ease both; }
+.empty { padding: 28px 24px; border-radius: 20px; background: #b45309; color: #fff; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; animation: rise 0.5s ease both; }
 .empty h2 { margin: 0; font-size: clamp(20px, 3vw, 26px); font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; }
 .empty p { margin: 0; font-size: 14.5px; line-height: 1.55; opacity: 0.9; max-width: 56ch; }
 .kicker { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 5px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }

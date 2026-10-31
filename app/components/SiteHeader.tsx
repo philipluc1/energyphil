@@ -16,7 +16,7 @@ export default function SiteHeader({ active }: { active: "home" | "check" | "pri
   return (
     <header className={styles.top}>
       <div className={styles.bar}>
-        <Link href="/" className={styles.brandLink}>
+        <Link href="/" className={styles.brandLink} aria-label="Utilo home">
           <span className={styles.brandMark}>
             <BrandMark />
           </span>
@@ -26,15 +26,13 @@ export default function SiteHeader({ active }: { active: "home" | "check" | "pri
             </span>
           </span>
         </Link>
-        <nav className={styles.navLinks}>
-          <Link href="/" className={active === "home" ? styles.navLinkActive : styles.navLink}>
-            Home
+        {/* No "Home" link: the logo goes home. */}
+        <nav className={styles.navLinks} aria-label="Site">
+          <Link href="/learn" className={active === "learn" ? styles.navLinkActive : styles.navLink}>
+            How it works
           </Link>
           <Link href="/pricing" className={active === "pricing" ? styles.navLinkActive : styles.navLink}>
-            Pricing
-          </Link>
-          <Link href="/learn" className={active === "learn" ? styles.navLinkActive : styles.navLink}>
-            Learn
+            <span className={styles.navPlus}>Utilo <span className={styles.navPlusTag}>Plus</span></span>
           </Link>
           <AccountNavLink className={active === "account" ? styles.navLinkActive : styles.navLink} />
         </nav>

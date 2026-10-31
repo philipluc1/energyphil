@@ -16,7 +16,7 @@ interface CheckoutBody {
   /** Where "back" from Stripe goes: the results page by default, or the pricing page when they paid from there. */
   cancelPath?: string;
 }
-const CANCEL_PATHS = new Set(["/check#pricing", "/pricing"]);
+const CANCEL_PATHS = new Set(["/check#pricing", "/pricing", "/", "/account"]);
 
 export async function POST(req: NextRequest) {
   if (!stripe) {
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   const guard = await checkoutGuard(email);
   if (guard.active) {
     return NextResponse.json(
-      { ok: false, alreadyMember: true, message: "That email already has a Utilo membership. Log in to your dashboard to see it, change plan or cancel." },
+      { ok: false, alreadyMember: true, message: "That email already has Utilo Plus. Log in to your dashboard to see it, change plan or cancel." },
       { status: 409 },
     );
   }
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
             currency: plan.currency,
             unit_amount: plan.priceCents,
             product_data: {
-              name: `Utilo — ${plan.name} monitoring`,
+              name: `Utilo Plus — ${plan.name}`,
               description:
                 "Ongoing monitoring of Victorian electricity plans, with an alert whenever a cheaper deal appears.",
             },

@@ -20,10 +20,10 @@ export default function PlanViewToggle({
   return (
     <div className={`${s.toggle} ${dark ? s.dark : ""}`} role="group" aria-label="Which plans to show">
       <button type="button" aria-pressed={!all} onClick={() => onChange(false)}>
-        Cheapest per retailer <span>{retailers}</span>
+        By retailer
       </button>
       <button type="button" aria-pressed={all} onClick={() => onChange(true)}>
-        All plans <span>{plans}</span>
+        All plans
       </button>
     </div>
   );

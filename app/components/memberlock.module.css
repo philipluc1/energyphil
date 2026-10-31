@@ -38,7 +38,7 @@
 /* A soft light sweeping across the glass */
 .sheen {
   position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.28) 50%, transparent 65%);
+  background: none;
   background-size: 260% 100%; background-position: 120% 0;
   animation: sheen 4.5s ease-in-out 1s infinite;
 }

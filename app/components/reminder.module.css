@@ -19,8 +19,5 @@
 .cal { padding: 10px 14px; border-radius: 12px; font: inherit; font-size: 13.5px; font-weight: 800; text-decoration: none; cursor: pointer; border: 1px solid #dde3ee; background: #f4f6fb; color: #12141c; }
 .cal:hover { background: #e9edf6; }
 .done { margin: 0; font-size: 13px; font-weight: 700; color: #15803d; }
-@media (prefers-color-scheme: dark) {
-  .box:not(.boxDark) { color: var(--ink); }
-  .box:not(.boxDark) .sum { color: var(--grey); }
-}
+
 @media (prefers-reduced-motion: reduce) { .box { animation: none; } }

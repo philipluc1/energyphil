@@ -9,10 +9,7 @@
   padding: 28px;
   border-radius: 20px;
   color: #fff;
-  background:
-    radial-gradient(120% 90% at 0% 0%, rgba(245, 166, 35, 0.22) 0%, transparent 55%),
-    radial-gradient(90% 80% at 100% 100%, rgba(14, 165, 160, 0.25) 0%, transparent 60%),
-    linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  background: var(--navy-deep);
   box-shadow: 0 18px 50px rgba(10, 15, 40, 0.28);
   overflow: hidden;
 }
@@ -125,7 +122,7 @@
 .primary {
   border: none;
   color: var(--amber-ink);
-  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
+  background: var(--amber);
   box-shadow: 0 8px 24px rgba(245, 166, 35, 0.4);
   animation: glow 2.8s ease-in-out infinite;
 }
@@ -252,7 +249,7 @@
   line-height: 1;
   cursor: pointer;
   color: var(--amber-ink);
-  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
+  background: var(--amber);
   box-shadow: 0 8px 24px rgba(245, 166, 35, 0.35);
 }
 .readEdit {
@@ -299,9 +296,7 @@
   padding: 16px 18px;
   border-radius: 16px;
   color: #fff;
-  background:
-    radial-gradient(80% 120% at 0% 0%, rgba(245, 166, 35, 0.25) 0%, transparent 60%),
-    linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  background: var(--navy-deep);
   box-shadow: 0 10px 30px rgba(10, 15, 40, 0.22);
 }
 .stripText { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1 1 320px; }
@@ -332,7 +327,7 @@
 .stripPrimary {
   border: none;
   color: var(--amber-ink);
-  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
+  background: var(--amber);
   box-shadow: 0 6px 18px rgba(245, 166, 35, 0.4);
   animation: glow 2.8s ease-in-out infinite;
 }
@@ -373,18 +368,13 @@
   display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
   border-radius: 12px; font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer;
 }
-.addPagePrimary { border: none; color: var(--amber-ink); background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%); }
+.addPagePrimary { border: none; color: var(--amber-ink); background: var(--amber); }
 .addPageSecondary { border: 1.5px solid #e2c27a; color: #4a3500; background: #fffaf0; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .pagePrompt { background: rgba(245, 166, 35, 0.12); border-color: rgba(245, 166, 35, 0.35); color: #fde7b0; }
-  :root:not([data-theme="light"]) .pagePrompt b { color: #fff1cc; }
-  :root:not([data-theme="light"]) .pagePromptAlt { color: #f8d98a; }
-  :root:not([data-theme="light"]) .addPageSecondary { background: transparent; color: #fde7b0; border-color: rgba(245, 166, 35, 0.45); }
-}
-:root[data-theme="dark"] .pagePrompt { background: rgba(245, 166, 35, 0.12); border-color: rgba(245, 166, 35, 0.35); color: #fde7b0; }
-:root[data-theme="dark"] .pagePrompt b { color: #fff1cc; }
-:root[data-theme="dark"] .pagePromptAlt { color: #f8d98a; }
-:root[data-theme="dark"] .addPageSecondary { background: transparent; color: #fde7b0; border-color: rgba(245, 166, 35, 0.45); }
+
+
+
+
+
 
 /* Other ways in, inside the photo card */
 .otherWays { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.16); display: grid; gap: 10px; }

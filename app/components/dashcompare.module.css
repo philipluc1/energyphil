@@ -1,6 +1,6 @@
 /* Verdict */
 .verdict { position: relative; overflow: hidden; isolation: isolate; border-radius: 22px; padding: 24px; color: #fff; display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px;
-  background: var(--v-est, linear-gradient(135deg, #1b2a6b, #2c4a9a)); background-size: 200% 200%; animation: rise 0.5s ease both, drift 14s ease-in-out infinite alternate;
+  background: var(--v-est, #2c4a9a); animation: rise 0.5s ease both, drift 14s ease-in-out infinite alternate;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 24px 48px -28px rgba(0, 0, 0, 0.55); }
 /* Two soft light spots that slowly wander, so the card feels alive, not flat. */
 .verdict::before, .verdict::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; filter: blur(40px); opacity: 0.35; pointer-events: none; }
@@ -9,10 +9,10 @@
 @keyframes drift { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
 @keyframes glowA { from { transform: translate(0, 0); } to { transform: translate(-60px, 50px); } }
 @keyframes glowB { from { transform: translate(0, 0); } to { transform: translate(70px, -40px); } }
-.good { background: var(--v-good, linear-gradient(135deg, #0b4f3a, #13795b)); }
+.good { background: var(--v-good, #13795b); }
 /* Paying a bit more than needed: amber. Clearly overpriced: red. */
-.bad { background: var(--v-mild, linear-gradient(135deg, #8a4b08, #c77d12)); }
-.severe { background: var(--v-severe, linear-gradient(135deg, #7a1616, #c0392b)); }
+.bad { background: var(--v-mild, #155e75); }
+.severe { background: var(--v-severe, #0f766e); }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .verdictTop { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pill { padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.18); font-size: 13px; font-weight: 800; }
@@ -35,7 +35,7 @@
 .sideBest { background: rgba(255,255,255,0.18); border-color: var(--side-best, #ffd166); box-shadow: 0 0 0 0 rgba(255, 209, 102, 0.5); animation: cardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both, halo 2.6s ease-out 1.2s 2; }
 @keyframes halo { 0% { box-shadow: 0 0 0 0 rgba(255, 209, 102, 0.55); } 70% { box-shadow: 0 0 0 14px rgba(255, 209, 102, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 209, 102, 0); } }
 /* A light sweep across the cheapest card, once, after it lands. */
-.sideBest::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%); transform: translateX(-120%); animation: sweep 1.4s ease-out 1s 1 both; pointer-events: none; }
+.sideBest::after { content: ""; position: absolute; inset: 0; background: none; transform: translateX(-120%); animation: sweep 1.4s ease-out 1s 1 both; pointer-events: none; }
 @keyframes sweep { to { transform: translateX(120%); } }
 .good .sideBest { border-color: rgba(255,255,255,0.18); }
 .sideLabel { font-size: 12px; font-weight: 800; opacity: 0.8; }
@@ -56,11 +56,11 @@
 .tableHead p { margin: 4px 0 0; font-size: 13px; color: var(--grey); }
 .chart { margin: 12px 0; }
 .tableWide { overflow-x: auto; }
-.tableWide tbody tr { animation: rowIn 0.35s ease both; }
+.tableWide > table > tbody > tr { animation: rowIn 0.35s ease both; }
 @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.table table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 620px; }
-.table th { text-align: left; font-size: 12px; color: var(--grey); font-weight: 700; padding: 8px 10px; border-bottom: 2px solid var(--border); }
-.table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.table table:not(.ratesDetail table) { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 620px; }
+.table th:not(.ratesDetail th) { text-align: left; font-size: 12px; color: var(--grey); font-weight: 700; padding: 8px 10px; border-bottom: 2px solid var(--border); }
+.table td:not(.ratesDetail td) { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .num { text-align: right !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .planName { color: var(--grey); max-width: 260px; }
 .pos { color: var(--good); font-weight: 800; }
@@ -174,10 +174,10 @@
 .lockedCell { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lockedCell a, .rowLocked .pcPlan { font-weight: 800; color: #9a5b00; text-decoration: none; }
 .lockedCell a:hover { text-decoration: underline; }
-.lockBadge { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #1b2a6b, #2d3f9e); color: #fde047; }
+.lockBadge { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #2d3f9e; color: #fde047; }
 .lockedBar { display: inline-block; width: 120px; height: 12px; border-radius: 6px; background: rgba(140, 150, 170, 0.3); filter: blur(1.5px); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lockedCell a, :root:not([data-theme="light"]) .rowLocked .pcPlan { color: #fcd34d; } }
-:root[data-theme="dark"] .lockedCell a, :root[data-theme="dark"] .rowLocked .pcPlan { color: #fcd34d; }
+
+
 
 /* The bill total on file doesn't fit the usage on file. */
 /* The facts strip: the one or two things that change the headline number,
@@ -201,8 +201,11 @@
 /* "See rates": each plan's published c/day and c/kWh beside the member's own. */
 .ratesToggle { margin-top: 4px; padding: 0; border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--navy-accent-text, #2d3f9e); cursor: pointer; white-space: nowrap; }
 .ratesToggle:hover { text-decoration: underline; }
-.ratesDetailRow td { padding: 0 10px 12px !important; background: var(--soft); }
+.ratesDetailRow > td { padding: 0 10px 12px !important; background: var(--soft); }
 .ratesDetail { max-width: 560px; padding: 12px 14px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); animation: rowIn 0.3s ease both; }
 .ratesFine { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--grey); }
 .pcRates { grid-column: 2; justify-self: start; margin-top: 8px; }
 .pcRatesDetail { grid-column: 1 / -1; margin-top: 8px; max-width: none; }
+/* Oct 29: flat verdict card, no light spots. */
+.verdict::before, .verdict::after { display: none; }
+.verdict { animation: rise 0.5s ease both; box-shadow: none; }

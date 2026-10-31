@@ -66,7 +66,7 @@ export function StepsVisual() {
         </div>
         <span className={v.num}>3</span>
         <h3>Switch, or let us watch</h3>
-        <p>Members get a heads-up only when it&apos;s worth it.</p>
+        <p>Plus members get a heads-up only when it&apos;s worth it.</p>
       </li>
       <li className={v.footnote}>Typical home, 4,000 kWh a year, averaged across Victoria&apos;s networks.</li>
     </ol>
@@ -135,7 +135,7 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
         ))}
       </div>
       <p className={v.gNote}>
-        Utilo prices {planCount} plans from {retailers} retailers, not every plan in the market. Membership is $7 a month, or $39 a year.
+        Utilo prices {planCount} plans from {retailers} retailers, not every plan in the market. Utilo Plus is $7 a month ($84 a year), or $39 a year.
       </p>
     </>
   );

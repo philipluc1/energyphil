@@ -43,7 +43,6 @@ export default function RatesCompare({
     const mineBetter = higherIsBetter ? mine > theirs : mine < theirs;
     return [mineBetter, !mineBetter];
   };
-  const structure = (p: { anytime: number | null; peak: number | null }) => (p.anytime !== null ? "Single rate" : p.peak !== null ? "Time of use" : "—");
 
   return (
     <div className={`${s.wrap} ${dark ? s.dark : ""} ${compact ? s.compact : ""}`}>
@@ -56,11 +55,6 @@ export default function RatesCompare({
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <th scope="row">Tariff</th>
-            <td>{current ? structure(current) : "—"}</td>
-            <td>{structure({ anytime: plan[5], peak: plan[6] })}</td>
-          </tr>
           {rows.map((r) => {
             const mine = current?.[r.key] ?? null;
             const theirs = plan[r.idx] as number | null;
@@ -93,12 +87,9 @@ export default function RatesCompare({
           </tr>
         </tbody>
       </table>
-      <p className={s.note}>
-        {current
-          ? "Including GST. Green is the better rate on each line."
-          : "Including GST. Upload a bill and we fill in your column from it."}{" "}
-        A feed-in tariff only matters if you have solar. Plan rates are as published, before discounts; the plan&apos;s price already takes its discounts off (assuming you pay on time).
-      </p>
+      {!compact && (
+        <p className={s.note}>{current ? "Including GST, before discounts. ✓ marks the better rate." : "Including GST, before discounts."}</p>
+      )}
     </div>
   );
 }

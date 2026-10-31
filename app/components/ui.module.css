@@ -12,7 +12,7 @@
   position: relative;
   overflow: hidden;
 }
-.amber { background: linear-gradient(135deg, #ffd166, #f5a623); color: #1c1403; box-shadow: 0 4px 14px rgba(245, 166, 35, 0.4); }
+.amber { background: #f5a623; color: #1c1403; box-shadow: 0 4px 14px rgba(245, 166, 35, 0.4); }
 .green { background: #16a34a; color: #fff; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); }
 .teal { background: #0ea5a0; color: #fff; }
 .navy { background: var(--track); color: var(--navy-accent-text); }
@@ -23,7 +23,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  background: rgba(255, 255, 255, 0.55);
   transform: translateX(-120%);
   animation: sweep 3.8s ease-in-out infinite;
 }

@@ -70,7 +70,7 @@ export default function WelcomePage() {
       }
       if (cancelled) return;
       if (!member) {
-        setMessage((m) => m || "Your payment went through, but your membership is still being set up.");
+        setMessage((m) => m || "Your payment went through, but Utilo Plus is still being set up.");
         return setStage("error");
       }
 
@@ -132,7 +132,7 @@ export default function WelcomePage() {
             <>
               <p className={styles.lede}>
                 Thanks for joining. Your welcome email is on its way to the address you paid with, and the button in it signs you in. Open it on this
-                device and your membership will finish setting up.
+                device and Utilo Plus will finish setting up.
               </p>
               <div className={styles.row}>
                 <a className={styles.cta} href="https://mail.google.com" target="_blank" rel="noopener noreferrer">Open Gmail</a>

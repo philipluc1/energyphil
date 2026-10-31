@@ -1,0 +1,90 @@
+/* Home (29 Oct 2026): clean, light and flat. One big hook, numbers instead of
+   paragraphs, pictures for the steps, the Plus band, and folded answers. */
+.page { max-width: 1120px; margin: 0 auto; padding: 0 20px 40px; }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 40px; align-items: center; padding: 56px 0 36px; }
+.heroText { display: flex; flex-direction: column; align-items: flex-start; }
+.kicker { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #fff3d6; color: #8a5300; font-size: 13.5px; font-weight: 800; }
+.h1 { margin: 18px 0 0; font: 900 clamp(46px, 6.4vw, 76px)/0.98 "Archivo", sans-serif; letter-spacing: -0.045em; color: var(--ink); }
+.lede { margin: 18px 0 0; font-size: clamp(18px, 2vw, 22px); line-height: 1.4; color: var(--grey); max-width: 26em; }
+.ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 28px; }
+.primary { display: inline-flex; align-items: center; gap: 10px; padding: 18px 28px; border-radius: 14px; background: var(--amber); color: #111827; font-size: 19px; font-weight: 900; text-decoration: none; transition: background 0.15s, transform 0.15s; }
+.primary:hover { background: #e8951a; transform: translateY(-1px); }
+.ghost { font-size: 16px; font-weight: 800; color: var(--navy-accent-text); text-decoration: none; }
+.ghost:hover { text-decoration: underline; }
+.fuels { list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.fuel, .fuelSoon { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 7px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); font-size: 14.5px; font-weight: 800; color: var(--ink); text-decoration: none; }
+.fuel:hover { border-color: #c9cede; }
+.fElec, .fGas, .fNbn { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; }
+.fElec { background: #fff3d6; color: #b45309; }
+.fGas { background: #ffedd5; color: #c2410c; }
+.fNbn { background: #e8ebf8; color: #2d3f9e; }
+.soon { padding: 2px 7px; border-radius: 6px; background: var(--soft); color: var(--grey); font-size: 11.5px; font-weight: 800; }
+.tipForm { display: block; margin-top: 10px; }
+
+/* The example result: a flat object, not a screenshot. */
+.heroArt { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.resultCard { width: 100%; max-width: 380px; padding: 22px; border-radius: 22px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 18px 40px -24px rgba(17, 24, 39, 0.25); display: flex; flex-direction: column; gap: 12px; animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both 0.1s; }
+.rcTag { align-self: flex-start; padding: 4px 9px; border-radius: 7px; background: var(--soft); color: var(--grey); font-size: 12px; font-weight: 800; }
+.rcRow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--grey); font-weight: 700; }
+.rcRow b { font: 900 28px/1 "Archivo", sans-serif; color: var(--ink); letter-spacing: -0.02em; }
+.rcRow small { font-size: 13px; font-weight: 700; color: var(--grey); margin-left: 2px; }
+.rcGood { color: var(--good) !important; }
+.rcSave { padding: 14px; border-radius: 14px; background: #16a34a; color: #fff; text-align: center; font: 900 24px/1.1 "Archivo", sans-serif; letter-spacing: -0.02em; }
+.rcWatch { display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 13.5px; font-weight: 700; color: var(--navy-accent-text); }
+.rcFoot { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--grey); }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* Stats strip */
+.stats { list-style: none; margin: 0; padding: 18px 8px; display: flex; flex-wrap: wrap; justify-content: space-around; gap: 14px 24px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); }
+.stats li { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.stats li > a { display: flex; flex-direction: column; align-items: center; color: inherit; text-decoration: none; }
+.stats b { font: 900 30px/1.05 "Archivo", sans-serif; letter-spacing: -0.02em; color: var(--ink); }
+.stats span { font-size: 13.5px; font-weight: 700; color: var(--grey); }
+.stats a span { color: var(--navy-accent-text); }
+
+/* Sections */
+.section { margin-top: 56px; }
+.h2 { margin: 0 0 18px; font: 900 clamp(28px, 4vw, 40px)/1.1 "Archivo", sans-serif; letter-spacing: -0.03em; color: var(--ink); }
+
+/* Folded answers */
+.faq { display: flex; flex-direction: column; gap: 10px; }
+.faq details { border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; font-size: 16.5px; font-weight: 800; color: var(--ink); }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--soft); font-size: 18px; font-weight: 800; color: var(--grey); }
+.faq details[open] summary::after { content: "–"; }
+.faq details p { margin: 0; padding: 0 18px 16px; font-size: 15px; line-height: 1.55; color: var(--grey); }
+.faq details a { color: var(--navy-accent-text); font-weight: 700; }
+.waitlist { padding: 0 14px 14px; }
+
+/* Founder (only shown once lib/about.ts has a story) */
+.founder { display: flex; gap: 20px; align-items: flex-start; padding: 22px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); }
+.founderPhoto img { border-radius: 50%; }
+.story { margin: 0 0 10px; color: var(--grey); line-height: 1.6; }
+.sign { margin: 0; font-weight: 800; }
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; gap: 26px; padding: 30px 0 24px; }
+  .heroArt { align-items: stretch; }
+  .resultCard { max-width: none; }
+  .rcFoot { justify-content: center; }
+}
+@media (max-width: 520px) {
+  .page { padding: 0 16px 32px; }
+  .h1 { font-size: 46px; }
+  .ctas { width: 100%; }
+  .primary { width: 100%; justify-content: center; font-size: 18px; padding: 17px 20px; }
+  .ghost { width: 100%; text-align: center; }
+  .stats { justify-content: space-between; padding: 16px 14px; }
+  .stats li { flex: 1 1 40%; }
+  .stats b { font-size: 26px; }
+  .section { margin-top: 44px; }
+  .founder { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) { .resultCard { animation: none; } .primary { transition: none; } }
+/* The internet sign-up inside the dark pop-up: light link colours. */
+.tipForm button { color: #fcd34d; }
+.tipForm button[type="submit"] { background: var(--amber); color: #111827; }
+.tipForm input { color: #111827; }

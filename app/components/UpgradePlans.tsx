@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PRICING_PLANS, PLAN_DISPLAY, fmtPrice, type PlanId } from "@/lib/pricingPlans";
+import { PRICING_PLANS, PLAN_DISPLAY, fmtPrice, plusValue, type PlanId } from "@/lib/pricingPlans";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./upgradeplans.module.css";
 
@@ -37,7 +37,7 @@ export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: 
       <p className={styles.sub}>
         {isOnceOff
           ? "You're on the once-off plan, which never renews. To move to a yearly or monthly plan, email us and we'll sort it."
-          : "Same checking on every plan; yearly costs much less per month. Changes are prorated on your next invoice."}
+          : `Same checking either way. ${plusValue().line} Changes are prorated on your next invoice.`}
       </p>
       <div className={styles.grid}>
         {recurring.map((p) => {

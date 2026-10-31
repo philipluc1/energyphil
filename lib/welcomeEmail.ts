@@ -80,16 +80,16 @@ export function welcomeEmail(i: WelcomeEmailInput): { subject: string; title: st
     : "";
 
   const html = `
-    <p>Your membership is active. From tomorrow morning we re-price your plan against every plan we track, and email you only when switching is worth ${money(WORTH_SWITCHING_PER_YEAR)} or more a year.</p>
+    <p>Utilo Plus is on. From tomorrow morning we re-price your plan against every plan we track, and email you only when switching is worth ${money(WORTH_SWITCHING_PER_YEAR)} or more a year.</p>
     ${matchBox}
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 ${i.signInUrl ? 8 : 24}px;"><tr><td style="border-radius:999px;background:#f5a623;">
       <a href="${i.signInUrl ?? dash}" style="display:inline-block;padding:13px 26px;font:700 15px Arial,Helvetica,sans-serif;color:#171305;text-decoration:none;border-radius:999px;">${i.signInUrl ? "Sign in to my dashboard" : "Open my dashboard"} &rarr;</a>
     </td></tr></table>
-    ${i.signInUrl ? `<p style="margin:0 0 24px;font-size:13px;color:#5f6b82;">That button signs you in on this device. It works once, for about an hour. After that, go to <a href="${dash}" style="color:#0d6f78;">Member login</a> and enter this email address for a fresh link.</p>` : ""}
+    ${i.signInUrl ? `<p style="margin:0 0 24px;font-size:13px;color:#5f6b82;">That button signs you in on this device. It works once, for about an hour. After that, go to <a href="${dash}" style="color:#0d6f78;">Log in</a> and enter this email address for a fresh link.</p>` : ""}
     <p style="font:800 16px Arial,Helvetica,sans-serif;color:#131c57;margin:4px 0 12px;">Three quick things</p>
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 8px;">
       ${i.signInUrl
-        ? step(1, "Sign in", "Use the button above. No password: whenever you come back, Member login emails you a link like this one.")
+        ? step(1, "Sign in", "Use the button above. No password: whenever you come back, Log in emails you a link like this one.")
         : step(1, "Sign in", "We've sent you a separate sign-in link. Use that, or enter this email address on the sign-in page.")}
       ${i.fromBill
         ? step(2, "Snap each new bill", "We've read this one. Snap the next one when it arrives, so your checks follow your real usage through the year.")

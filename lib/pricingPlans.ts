@@ -119,9 +119,8 @@ const MONTHLY = 700;
 export const PLAN_DISPLAY: Record<PlanId, PlanDisplay> = {
   annual: {
     tag: { label: "Best value", tone: "green" },
-    perMonthCents: 325,
     anchorCents: MONTHLY * 12,
-    note: "Less than a coffee a month.",
+    note: "One payment a year. Cancel any time.",
     featured: true,
     features: ["Prices re-checked daily, summary monthly", "Alerts before your discount or fixed price ends", "1 July price-change re-check", "More bill reads (10 a day), every result saved"],
   },
@@ -152,6 +151,31 @@ export const PLAN_DISPLAY: Record<PlanId, PlanDisplay> = {
     features: ["Everything in Monthly", "Never renews", "Monitored for good"],
   },
 };
+
+/** What the paid tier is called everywhere on the site (Oct 2026: was "membership"). */
+export const PLUS_NAME = "Utilo Plus";
+export const PLUS_SHORT = "Plus";
+
+/**
+ * The value framing (Phil, 29 Oct 2026): lead with the monthly price, show
+ * what it adds up to over a year, then what paying yearly saves. All from the
+ * price list, so it can't drift.
+ */
+export function plusValue() {
+  const monthly = findPlan("monthly")!;
+  const annual = findPlan("annual")!;
+  const monthlyYear = monthly.priceCents * 12;
+  const save = monthlyYear - annual.priceCents;
+  return {
+    monthly: fmtPrice(monthly.priceCents),
+    monthlyYear: fmtPrice(monthlyYear),
+    annual: fmtPrice(annual.priceCents),
+    save: fmtPrice(save),
+    savePct: Math.round((save / monthlyYear) * 100),
+    /** "$7 a month is $84 a year. Pay yearly: $39, you save $45." */
+    line: `${fmtPrice(monthly.priceCents)} a month is ${fmtPrice(monthlyYear)} a year. Pay yearly: ${fmtPrice(annual.priceCents)}, you save ${fmtPrice(save)}.`,
+  };
+}
 
 export function savePct(plan: PricingPlan): number | null {
   const a = PLAN_DISPLAY[plan.id].anchorCents;

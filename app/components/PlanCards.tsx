@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { PLAN_DISPLAY, PLANS_ON_SALE, fmtPrice, type PlanId } from "@/lib/pricingPlans";
-import Tag from "./Tag";
+import { PLAN_DISPLAY, PLANS_ON_SALE, fmtPrice, plusValue, type PlanId } from "@/lib/pricingPlans";
 import styles from "./plancards.module.css";
-import ScrollReveal from "./ScrollReveal";
 
-/** The membership plans on sale. Pass `onChoose` to make the buttons start checkout
- * (results page), or `href` to link them somewhere (pricing page). */
+/**
+ * The Utilo Plus plans on sale, side by side: Monthly first as the anchor
+ * ("$7 a month is $84 a year"), then Yearly with what it saves. Pass
+ * `onChoose` to make the buttons start checkout, or `href` to link them.
+ */
 export default function PlanCards({
   onChoose,
   loadingPlan = null,
@@ -19,42 +20,31 @@ export default function PlanCards({
   cta?: string;
   dark?: boolean;
 }) {
+  const v = plusValue();
+  // Monthly first: it sets the yardstick the yearly price is measured against.
+  const plans = [...PLANS_ON_SALE].sort((a, b) => (a.id === "monthly" ? -1 : b.id === "monthly" ? 1 : 0));
   return (
     <div className={`${styles.grid} ${dark ? styles.dark : ""}`}>
-      {PLANS_ON_SALE.map((plan, i) => {
+      {plans.map((plan) => {
         const d = PLAN_DISPLAY[plan.id];
-        const recurring = plan.mode === "subscription";
+        const yearly = plan.id === "annual";
         return (
-          <ScrollReveal key={plan.id} delayMs={i * 90} className={`${styles.card} ${d.featured ? styles.featured : ""}`}>
-            <div className={styles.tagRow}>
-              {d.tag && (
-                <Tag tone={d.tag.tone}>
-                  {d.tag.label}
-                </Tag>
+          <div key={plan.id} className={`${styles.card} ${d.featured ? styles.featured : ""}`}>
+            {yearly && <span className={styles.ribbon}>Best value · save {v.save}</span>}
+            <div className={styles.name}>{plan.name}</div>
+            <div className={styles.priceRow}>
+              {yearly && <span className={styles.anchor}>{v.monthlyYear}</span>}
+              <span className={styles.price}>{fmtPrice(plan.priceCents)}</span>
+              <span className={styles.per}>{yearly ? "/ year" : "/ month"}</span>
+            </div>
+            <div className={styles.value}>
+              {yearly ? (
+                <><b>You save {v.save} a year</b> ({v.savePct}% off monthly)</>
+              ) : (
+                <>That&apos;s <b>{v.monthlyYear} a year</b></>
               )}
             </div>
-            <div className={styles.name}>{plan.name}</div>
-
-            <div className={styles.priceRow}>
-              <span className={styles.price}>{fmtPrice(plan.priceCents)}</span>
-            </div>
-            <div className={styles.cadence}>
-              {recurring ? plan.cadenceLabel : "one payment, once"}
-            </div>
-            {d.perMonthCents && plan.id !== "monthly" ? (
-              <div className={styles.perMonth}>
-                Works out at {fmtPrice(d.perMonthCents)} a month
-              </div>
-            ) : (
-              <div className={styles.perMonth}>{plan.id === "once_off" ? "Under 9 months of Monthly" : "Pay month to month"}</div>
-            )}
-
-            <ul className={styles.features}>
-              {d.features.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-
+            <div className={styles.small}>{yearly ? "One payment a year · cancel any time" : "Month to month · cancel any time"}</div>
             {href ? (
               <Link href={href} className={d.featured ? styles.btnFeatured : styles.btn}>
                 {cta}
@@ -66,10 +56,10 @@ export default function PlanCards({
                 onClick={() => onChoose?.(plan.id)}
                 disabled={loadingPlan !== null}
               >
-                {loadingPlan === plan.id ? "Redirecting…" : cta}
+                {loadingPlan === plan.id ? "Opening payment…" : cta}
               </button>
             )}
-          </ScrollReveal>
+          </div>
         );
       })}
     </div>

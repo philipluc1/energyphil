@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 // Members' and sign-up pages: never in search results.
 export const metadata: Metadata = {
-  title: "Membership",
+  title: "Utilo Plus",
   robots: { index: false, follow: false },
 };
 

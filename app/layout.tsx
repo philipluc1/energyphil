@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import LeaveSiteGuard from "./components/LeaveSiteGuard";
 import { SourceCapture } from "./components/SourceBanner";
+import ScrollMotion from "./components/ScrollMotion";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 const DESCRIPTION =
@@ -24,12 +25,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#131c57",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-AU">
+    <html lang="en-AU" data-theme="light">
       <head>
         {/* Fonts: linked here rather than @import-ed from the CSS, so the
             browser fetches them straight away instead of after the stylesheet. */}
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <LeaveSiteGuard />
         <SourceCapture />
+        <ScrollMotion />
       </body>
     </html>
   );

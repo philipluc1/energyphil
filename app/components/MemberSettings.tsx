@@ -9,7 +9,7 @@ import Icon from "./Icon";
 import a from "../account/account.module.css";
 import s from "./membersettings.module.css";
 
-// The member's own settings on the Membership tab: a referral link to share,
+// The member's own settings on the Plus tab: a referral link to share,
 // how big a saving is worth an email, and deleting their data.
 
 async function authHeaders(): Promise<Record<string, string> | null> {

@@ -12,6 +12,8 @@ export default function Disclosures({ priceDate }: { priceDate?: string }) {
         {independenceLine()}
         {priceDate ? ` Prices last checked ${priceDate}.` : ""}
       </p>
+      <details className={s.more2}>
+        <summary>Read the details</summary>
       <dl className={s.grid}>
         {GENERAL_DISCLOSURES.map((d) => (
           <div key={d.title} className={s.item}>
@@ -23,6 +25,7 @@ export default function Disclosures({ priceDate }: { priceDate?: string }) {
       <p className={s.more}>
         More in our <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy Policy</Link>.
       </p>
+      </details>
     </section>
   );
 }

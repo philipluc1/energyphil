@@ -69,7 +69,7 @@ export default function HeroSnap({ plans, retailers, gasPlans, gasRetailers }: {
         <p key={fuel} className={s.detail} aria-live="polite">
           {fuel === "elec" && <><b>{plans.toLocaleString("en-AU")} plans from {retailers} retailers</b>, priced on your real usage. Snap → read in about 30 seconds → your cheapest plan.</>}
           {fuel === "gas" && <>{gasPlans > 0 ? <><b>{gasPlans.toLocaleString("en-AU")} gas plans from {gasRetailers} retailers.</b> </> : null}Gas-only or dual-fuel bills both work. Victoria has no default offer for gas, so your own bill is the yardstick.</>}
-          {fuel === "nbn" && <><b>Being built.</b> Snap your internet bill, we check the speed tier you&apos;re on against every provider, and warn you before a promo rolls off. Members get it first, at no extra cost.</>}
+          {fuel === "nbn" && <><b>Being built.</b> Snap your internet bill, we check the speed tier you&apos;re on against every provider, and warn you before a promo rolls off. Plus members get it first, at no extra cost.</>}
         </p>
 
         {fuel === "nbn" ? (
@@ -86,7 +86,7 @@ export default function HeroSnap({ plans, retailers, gasPlans, gasRetailers }: {
         )}
         <p className={s.fine}>
           {fuel === "nbn"
-            ? "Electricity and gas are live today. Internet joins the same membership when it opens, at no extra cost."
+            ? "Electricity and gas are live today. Internet joins the same Utilo Plus when it opens, at no extra cost."
             : <>Free, no sign-up, about a minute. Paper bill, PDF or a screenshot from your retailer&apos;s app.</>}
         </p>
       </div>

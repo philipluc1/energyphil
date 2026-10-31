@@ -18,3 +18,5 @@
 .dark .table th, .dark .table td { border-bottom-color: rgba(255, 255, 255, 0.16); color: #fff; }
 .dark .table thead th, .dark .table tbody th small, .dark .note { color: rgba(255, 255, 255, 0.72); }
 .dark .table td.win { color: #86efac; }
+
+

@@ -27,7 +27,7 @@
 .month { height: 100%; display: grid; grid-template-rows: 1fr auto; }
 .col { position: relative; }
 .bar { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 6px 6px 3px 3px; background: color-mix(in srgb, var(--teal) 45%, var(--track)); }
-.now .bar { background: linear-gradient(180deg, var(--amber-light), var(--amber)); }
+.now .bar { background: var(--amber); }
 .val { position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 800; color: var(--ink); white-space: nowrap; }
 .lab { margin-top: 6px; text-align: center; font-size: 12px; font-weight: 700; color: var(--grey); }
 .now .lab { color: var(--ink); }
@@ -65,7 +65,7 @@
 .fcNote { margin: 8px 0 0; max-width: 40em; font-size: 14px; line-height: 1.5; color: color-mix(in srgb, var(--ink) 80%, var(--bg)); }
 .fcNote b { color: var(--ink); }
 .billed .bar { background: var(--navy-accent-text); }
-.billed.now .bar { background: linear-gradient(180deg, var(--amber-light), var(--amber)); }
+.billed.now .bar { background: var(--amber); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: -6px; font-size: 12.5px; color: var(--grey); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }

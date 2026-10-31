@@ -80,7 +80,7 @@ export default function SaveCheck(p: Props) {
   if (state === "guest") {
     return (
       <p className={styles.helper}>
-        Members can save each month&apos;s check to <Link href="/account">My Dashboard</Link>.
+        Plus members can save each month&apos;s check to <Link href="/account">My Dashboard</Link>.
       </p>
     );
   }

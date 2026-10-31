@@ -28,7 +28,7 @@ export default function MarketPage() {
         </section>
         <MarketBoard />
         <p className={styles.lede} style={{ marginTop: 24 }}>
-          Members get each of these priced against their own bill. <Link href="/check">Start with the free check</Link>.
+          Plus members get each of these priced against their own bill. <Link href="/check">Start with the free check</Link>.
         </p>
       </div>
     </>

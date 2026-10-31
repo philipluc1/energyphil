@@ -65,7 +65,7 @@
 /* Tip carousel (dashboard side column) */
 .carousel {
   position: relative; overflow: hidden; padding: 16px 16px 12px; border-radius: 18px; color: #fff;
-  background: radial-gradient(320px 180px at 100% 0%, rgba(253, 224, 71, 0.22), transparent 60%), linear-gradient(140deg, #0f766e, #155e75);
+  background: #155e75;
   box-shadow: 0 10px 26px rgba(15, 118, 110, 0.22);
 }
 .carHead { display: flex; justify-content: space-between; align-items: center; }

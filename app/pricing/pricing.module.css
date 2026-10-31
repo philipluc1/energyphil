@@ -1,0 +1,34 @@
+.hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 52px 0 30px; }
+.hero > p { margin-left: auto; margin-right: auto; }
+.h1 { margin: 16px 0 0; font: 900 clamp(46px, 7vw, 80px)/1 "Archivo", sans-serif; letter-spacing: -0.045em; color: var(--ink); }
+
+/* $7 a month = $84 a year, or $39 */
+.value { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 12px; margin-top: 28px; }
+.vBox { display: flex; flex-direction: column; align-items: center; min-width: 120px; padding: 14px 18px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+.vBox b { font: 900 36px/1 "Archivo", sans-serif; letter-spacing: -0.03em; color: var(--ink); }
+.vBox span { margin-top: 4px; font-size: 13.5px; font-weight: 700; color: var(--grey); }
+.vEq, .vOr { font-size: 18px; font-weight: 800; color: var(--grey); }
+.vBest { background: #16a34a; border-color: #16a34a; }
+.vBest b, .vBest span { color: #fff; }
+
+/* Free vs Plus */
+.compare { max-width: 760px; margin: 10px auto 0; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+.cHead, .cRow { display: grid; grid-template-columns: minmax(0, 1fr) 110px 120px; align-items: center; gap: 8px; padding: 12px 16px; }
+.cHead { font-size: 13.5px; font-weight: 800; color: var(--grey); text-align: center; border-bottom: 1px solid var(--border); }
+.cPlus { color: #fff; background: #22306e; padding: 6px 8px; border-radius: 8px; }
+.cRow + .cRow { border-top: 1px solid var(--border); }
+.cLabel { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 15px; font-weight: 700; color: var(--ink); }
+.cCell { display: grid; place-items: center; }
+.cPlusCell { }
+.yes { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #16a34a; color: #fff; }
+.no { font-size: 18px; font-weight: 800; color: var(--grey-soft); }
+@media (max-width: 560px) {
+  .hero { padding: 34px 0 22px; }
+  .vBox { min-width: 0; flex: 1 1 28%; padding: 12px 8px; }
+  .vBox b { font-size: 28px; }
+  .vOr { flex-basis: 100%; }
+  .cHead, .cRow { grid-template-columns: minmax(0, 1fr) 62px 62px; padding: 11px 12px; gap: 6px; }
+  .cHead { font-size: 12px; }
+  .cPlus { padding: 5px 4px; }
+  .cLabel { font-size: 14px; }
+}

@@ -338,7 +338,7 @@ export default function GasCheck() {
               <span className={styles.resultHeroKicker}>Based on your gas bill</span>
               <div className={styles.resultHeroLabel}>Good news</div>
               <div className={styles.resultHeroNum}>You&apos;re on a good gas deal</div>
-              <div className={styles.resultHeroSub}>Nothing beats it by {money0(WORTH_SWITCHING_PER_YEAR)} a year or more. Members get told when that changes.</div>
+              <div className={styles.resultHeroSub}>Nothing beats it by {money0(WORTH_SWITCHING_PER_YEAR)} a year or more. Plus members get told when that changes.</div>
             </div>
           ) : (
             <div className={`${styles.resultHero} ${haveBill ? styles.resultHeroBad : ""}`}>
@@ -389,7 +389,7 @@ export default function GasCheck() {
           <div className={g.member}>
             <div>
               <b>Keep both bills watched</b>
-              <span>Members get gas and electricity re-checked every morning, and an email only when switching saves {money0(WORTH_SWITCHING_PER_YEAR)}+ a year.</span>
+              <span>Plus members get gas and electricity re-checked every morning, and an email only when switching saves {money0(WORTH_SWITCHING_PER_YEAR)}+ a year.</span>
             </div>
             <Link href="/pricing" className={g.memberBtn}>Join for $7 a month →</Link>
           </div>

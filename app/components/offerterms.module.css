@@ -43,18 +43,12 @@
 .dark .condSave b { color: #fde047; }
 .dark .restricted { background: rgba(253, 224, 71, 0.12); border-color: rgba(253, 224, 71, 0.4); color: #fef9c3; }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .chip.good { background: rgba(22, 163, 74, 0.16); color: #86efac; border-color: rgba(134, 239, 172, 0.3); }
-  :root:not([data-theme="light"]) .chip.info { background: rgba(59, 130, 246, 0.16); color: #bfdbfe; border-color: rgba(191, 219, 254, 0.25); }
-  :root:not([data-theme="light"]) .chip.warn { background: rgba(245, 158, 11, 0.16); color: #fde68a; border-color: rgba(253, 230, 138, 0.3); }
-  :root:not([data-theme="light"]) .restricted { background: rgba(245, 158, 11, 0.14); border-color: rgba(253, 230, 138, 0.35); color: #fef3c7; }
-  :root:not([data-theme="light"]) .condSave b { color: #bfdbfe; }
-}
-:root[data-theme="dark"] .chip.good { background: rgba(22, 163, 74, 0.16); color: #86efac; border-color: rgba(134, 239, 172, 0.3); }
-:root[data-theme="dark"] .chip.info { background: rgba(59, 130, 246, 0.16); color: #bfdbfe; border-color: rgba(191, 219, 254, 0.25); }
-:root[data-theme="dark"] .chip.warn { background: rgba(245, 158, 11, 0.16); color: #fde68a; border-color: rgba(253, 230, 138, 0.3); }
-:root[data-theme="dark"] .restricted { background: rgba(245, 158, 11, 0.14); border-color: rgba(253, 230, 138, 0.35); color: #fef3c7; }
-:root[data-theme="dark"] .condSave b { color: #bfdbfe; }
+
+
+
+
+
+
 
 /* Fees and contract terms, folded so the discounts and sign-up needs stay in view */
 .fold { border-top: 1px dashed var(--border, #e1e6f0); padding-top: 8px; }

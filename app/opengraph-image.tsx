@@ -11,9 +11,9 @@ export const contentType = "image/png";
 export default function OpengraphImage() {
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 72px", background: "linear-gradient(135deg, #131c57 0%, #1d2a7a 60%, #0d6f78 100%)", color: "#fff", fontFamily: "sans-serif" }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 72px", background: "#22306e", color: "#fff", fontFamily: "sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-          <div style={{ width: 84, height: 84, borderRadius: 22, background: "linear-gradient(135deg, #ffd36b, #f5a623)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 84, height: 84, borderRadius: 22, background: "#f5a623", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="52" height="52" viewBox="0 0 24 24" fill="#171305"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg>
           </div>
           <div style={{ display: "flex", fontSize: 60, fontWeight: 900, letterSpacing: -1 }}>

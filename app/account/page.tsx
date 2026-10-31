@@ -5,11 +5,13 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
-import { findPlan, fmtPrice } from "@/lib/pricingPlans";
+import { findPlan, fmtPrice, plusValue, PLUS_NAME, PLUS_SHORT } from "@/lib/pricingPlans";
 import { accumulatedSavings, mergeChecks, monthlySavings, type SavedCheck } from "@/lib/savings";
 import { RETAILER_COUNT, findPlanRow } from "@/lib/plans";
 import { switchedPlanNow } from "@/lib/switched";
 import SiteHeader from "../components/SiteHeader";
+import DashHeader from "../components/DashHeader";
+import JoinDirect from "../components/JoinDirect";
 import { TipCarousel } from "../components/EnergyTips";
 import PlanAside, { type PlanAsideData } from "../components/PlanAside";
 import Disclosures from "../components/Disclosures";
@@ -28,10 +30,8 @@ import { useColorScheme } from "@/lib/useColorScheme";
 import { DASH_THEMES, DEFAULT_DASH_THEME, isDashTheme, type DashThemeId } from "@/lib/dashThemes";
 import ProfilePanels, { type ProfileData } from "../components/ProfilePanels";
 import type { LatestCheck } from "../components/LatestCheckCard";
-import LearnCard from "../components/LearnCard";
 import { VerdictCard, CompareSection, MemberMarket, summariseComparison, billCheckFacts, type ComparisonInput, type Period } from "../components/DashboardComparison";
 import PlanBand from "../components/PlanBand";
-import PlanCards from "../components/PlanCards";
 import UpgradePlans from "../components/UpgradePlans";
 import type { Distributor } from "@/lib/plans";
 import { DEFAULT_PROFILE, estimateWithBill, type HomeProfile } from "@/lib/profileUsage";
@@ -611,7 +611,7 @@ export default function AccountPage() {
     { id: "compare", label: "Compare", icon: "scale", hint: "All plans, ranked" },
     { id: "home", label: "My home", icon: "home", hint: "Address and usage" },
     { id: "savings", label: "Savings", icon: "dollar", hint: "What you've saved", dot: isMember && !doneThisMonth },
-    { id: "membership", label: "Membership", icon: "receipt", hint: "Plan and billing" },
+    { id: "membership", label: isMember ? PLUS_SHORT : `Get ${PLUS_SHORT}`, icon: "bolt", hint: isMember ? "Plan and billing" : "Unlock everything" },
   ];
 
   useEffect(() => {
@@ -818,7 +818,17 @@ export default function AccountPage() {
 
   return (
     <>
-      <SiteHeader active="account" />
+      {stage === "signedIn" ? (
+        <DashHeader
+          email={userEmail ?? ""}
+          name={firstName}
+          isMember={isMember}
+          onPlan={() => { changeTab("membership"); document.getElementById("dash-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+          onLogout={handleLogout}
+        />
+      ) : (
+        <SiteHeader active="account" />
+      )}
       <div className={styles.wrap}>
         <div
           className={`${styles.card} ${stage === "signedIn" ? styles.cardDash : ""}`}
@@ -875,17 +885,7 @@ export default function AccountPage() {
               <div className={styles.dashHead}>
                 <div>
                   <h1 className={styles.dashTitle}>{firstName ? `Hi ${firstName}` : "My Dashboard"}</h1>
-                  <p className={styles.signedInAs}>Signed in as {userEmail}</p>
-                </div>
-                <div className={styles.headActions}>
-                  {isMember ? (
-                    <a href="#membership" className={styles.memberPill}>{findPlan(sub!.plan)?.name ?? sub!.plan} member · Active</a>
-                  ) : (
-                    !subLoading && <a href="#membership" className={styles.freePill}>Free account · See plans</a>
-                  )}
-                  <button type="button" className={styles.logoutTop} onClick={handleLogout}>
-                    <Icon name="power" size={15} /> Log out
-                  </button>
+                  <p className={styles.signedInAs}>{isMember ? `${PLUS_NAME} · we check your plan every morning` : "Free account"}</p>
                 </div>
               </div>
 
@@ -1024,7 +1024,7 @@ export default function AccountPage() {
                               </h2>
                               <p className={styles.stateSub}>
                                 Same figure as the top of your dashboard: {summary.bestPlan}, priced against {summary.haveBill ? "your last bill" : "the default offer"}.
-                                {!episodesLoading && accumulated.total > 0 && accumulated.sinceDate && (
+                                {!episodesLoading && accumulated.total >= 1 && accumulated.sinceDate && (
                                   <> Since we first spotted it on {fmtDate(accumulated.sinceDate)}, staying put has cost you about <b>{fmtDollars(accumulated.total)}</b>.</>
                                 )}
                               </p>
@@ -1055,12 +1055,11 @@ export default function AccountPage() {
                             <>
                               <span className={styles.stateLabel}>Your next move</span>
                               <h2 className={styles.stateHead}>Nothing to do. You&apos;re on a good deal.</h2>
-                              <p className={styles.stateSub}>We re-check every morning and email you only if something beats your plan by more than your alert amount ($50 a year unless you change it on the Membership tab).</p>
+                              <p className={styles.stateSub}>We re-check every morning and email you only if something beats your plan by more than your alert amount ($50 a year unless you change it on the Plus tab).</p>
                             </>
                           )}
                         </section>
 
-                        <ValueTally sub={sub!} saved={switchedAt ? accumulated.total : 0} switched={!!switchedAt} />
 
                         <section className={styles.panelCard}>
                           <div className={styles.panelTitleRow}>
@@ -1151,10 +1150,10 @@ export default function AccountPage() {
                       <div className={styles.panelCard}>
                         <div className={styles.panelTitle}>Track what you save</div>
                         <p className={styles.panelText}>
-                          Members get a bill read every month, a running tally of what they&apos;ve saved since switching, and an email only when a move is worth it.
+                          Plus members get a bill read every month, a running tally of what they&apos;ve saved since switching, and an email only when a move is worth it.
                         </p>
                         <div className={styles.stateActions}>
-                          <button type="button" className={styles.btnPrimary} onClick={() => changeTab("membership")}>See membership plans</button>
+                          <button type="button" className={styles.btnPrimary} onClick={() => changeTab("membership")}>See {PLUS_NAME}</button>
                           <Link href="/check" className={styles.btnGhost}>Run another free check</Link>
                         </div>
                       </div>
@@ -1170,7 +1169,7 @@ export default function AccountPage() {
                           <section className={styles.panelCard}>
                             <div className={styles.panelTitleRow}>
                               <div>
-                                <div className={styles.panelTitle}>{findPlan(sub!.plan)?.name ?? sub!.plan} membership</div>
+                                <div className={styles.panelTitle}>{PLUS_NAME} · {findPlan(sub!.plan)?.name ?? sub!.plan}</div>
                                 <div className={styles.planMeta}>
                                   {sub!.amount_cents !== null ? fmtPrice(sub!.amount_cents) : "—"}
                                   {" · "}
@@ -1179,7 +1178,7 @@ export default function AccountPage() {
                                 </div>
                               </div>
                               <button type="button" className={styles.btnGhost} onClick={handleManageBilling} disabled={portalLoading}>
-                                {portalLoading ? "Opening…" : "Manage or cancel"}
+                                {portalLoading ? "Opening…" : "Manage billing"}
                               </button>
                             </div>
                             {portalError && <p className={styles.error}>{portalError}</p>}
@@ -1196,7 +1195,7 @@ export default function AccountPage() {
                         <>
                           {sub && (
                             <section className={styles.panelCard}>
-                              <div className={styles.panelTitle}>{findPlan(sub.plan)?.name ?? sub.plan} membership</div>
+                              <div className={styles.panelTitle}>{PLUS_NAME} · {findPlan(sub.plan)?.name ?? sub.plan}</div>
                               <div className={styles.planMeta}><span className={styles.statusOther}>{statusLabel(sub.status)}</span></div>
                               <button type="button" className={styles.btnGhost} onClick={handleManageBilling} disabled={portalLoading}>
                                 {portalLoading ? "Opening…" : "Manage billing"}
@@ -1205,14 +1204,16 @@ export default function AccountPage() {
                           )}
                           <PlanBand
                             id="join"
-                            title="Want this checked for you every month?"
-                            intro={<>Members get the comparison re-run every morning, a bill read every month, and an email only when switching is worth it.</>}
-                            cards={<PlanCards href="/check#pricing" cta="Join" dark />}
+                            title="Let us check for you, every morning."
+                            intro={<>{plusValue().line}</>}
+                            cards={<JoinDirect cancelPath="/account" />}
                           />
                         </>
                       )}
-                      <LearnCard />
-                      <DeleteDataCard isMember={isMember} />
+                      <details className={styles.quietDetails}>
+                        <summary>Privacy and your data</summary>
+                        <DeleteDataCard isMember={isMember} />
+                      </details>
                     </>
                   )}
                 </DashTabs>
@@ -1234,17 +1235,14 @@ export default function AccountPage() {
               {!subLoading && <aside className={styles.dashSide} aria-label="Your plan and tips">{sideCards}</aside>}
               </div>
 
-              <button type="button" className={`${styles.logoutBtn} ${styles.logoutBtnSpaced}`} onClick={handleLogout}>
-                Log out
-              </button>
             </>
           )}
 
-          <div className={styles.footerLinks}>
+          {stage !== "signedIn" && <div className={styles.footerLinks}>
             <Link href="/privacy">Privacy Policy</Link>
             <Link href="/cancellation-policy">Cancellation Policy</Link> · <Link href="/terms">Terms</Link>
             <Link href="/default-offer">About the VDO</Link>
-          </div>
+          </div>}
         </div>
       </div>
     </>
@@ -1286,7 +1284,7 @@ function ValueTally({ sub, saved, switched }: { sub: SubscriberSummary; saved: n
   const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
   return (
     <section className={styles.panelCard}>
-      <div className={styles.panelTitle}>Your membership so far</div>
+      <div className={styles.panelTitle}>Utilo Plus so far</div>
       <div className={styles.tally}>
         <div className={styles.tallyRow}>
           <span>Saved by switching</span>
@@ -1294,7 +1292,7 @@ function ValueTally({ sub, saved, switched }: { sub: SubscriberSummary; saved: n
           <b>{money(saved)}</b>
         </div>
         <div className={styles.tallyRow}>
-          <span>Membership paid</span>
+          <span>Utilo Plus paid</span>
           <span className={styles.tallyTrack}><span className={styles.tallyPaid} style={{ width: `${(paid / max) * 100}%` }} /></span>
           <b>{money(paid)}</b>
         </div>
@@ -1303,7 +1301,7 @@ function ValueTally({ sub, saved, switched }: { sub: SubscriberSummary; saved: n
         {!switched
           ? "Savings start counting the day you switch. Tell us the date on the Savings tab once you've moved."
           : ahead >= 0
-            ? `You're about ${money(ahead)} ahead after paying for membership.`
+            ? `You're about ${money(ahead)} ahead after paying for Utilo Plus.`
             : `Not ahead yet: savings build up month by month after you switch.`}{" "}
         Savings are estimates from your usage and today&apos;s prices.
       </p>

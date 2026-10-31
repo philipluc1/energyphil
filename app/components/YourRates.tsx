@@ -95,7 +95,7 @@ export default function YourRates({
       <div className={styles.subQ}>
         <span className={styles.subQLabel}>Does a discount or &ldquo;benefit period&rdquo; end soon? <span className={styles.opt}>(optional)</span></span>
         <span className={styles.rateHint}>
-          Many plans are only cheap for the first year. If your bill or welcome pack gives an end date, add it and members get a reminder a month before.
+          Many plans are only cheap for the first year. If your bill or welcome pack gives an end date, add it and Plus members get a reminder a month before.
         </span>
         <label className={styles.inline}>
           Ends on <input type="date" value={form.discountEnds} onChange={(e) => onChange({ discountEnds: e.target.value })} />

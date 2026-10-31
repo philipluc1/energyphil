@@ -200,7 +200,6 @@ export default function BillPhotoUpload({
     return (
       <div className={snap.strip}>
         <div className={snap.stripText}>
-          <span className={snap.stripIcon} aria-hidden="true"><Icon name="camera" size={24} /></span>
           <span>
             <b>{reading ? READING_STEPS[readingStep] : stripTitle ?? "Got your bill? Skip these questions."}</b>
             {!reading && <small>{stripSub ?? (fuel === "gas" ? "A photo fills in your network, the days and the MJ. About 30 seconds." : "A photo fills in everything, including your real rates. About 30 seconds.")}</small>}
@@ -291,7 +290,7 @@ export default function BillPhotoUpload({
       </div>
       <p className={styles.helper}>
         Snap a photo, upload the PDF, or screenshot your plan in your retailer&apos;s app. We read your usage <b>and the rates you actually pay</b>, so the answer is exact. You can check everything before we calculate.
-        {access === "member" ? "" : " Up to 5 free bill reads a day; members get more, and keep every month's result."}
+        {access === "member" ? "" : " Up to 5 free bill reads a day; Plus members get more, and keep every month's result."}
       </p>
 
       <div className={styles.photoActions}>

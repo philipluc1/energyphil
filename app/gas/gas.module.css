@@ -45,12 +45,12 @@
 .member {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
   margin-top: 16px; padding: 16px 18px; border-radius: 16px; color: #fff;
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  background: var(--navy-deep);
 }
 .member div { display: grid; gap: 3px; flex: 1 1 280px; }
 .member b { font-size: 16px; }
 .member span { font-size: 13.5px; color: rgba(255, 255, 255, 0.75); }
-.memberBtn { padding: 11px 18px; border-radius: 999px; background: linear-gradient(135deg, var(--amber-light), var(--amber)); color: var(--amber-ink); font-weight: 800; text-decoration: none; white-space: nowrap; }
+.memberBtn { padding: 11px 18px; border-radius: 999px; background: var(--amber); color: var(--amber-ink); font-weight: 800; text-decoration: none; white-space: nowrap; }
 
 @media (max-width: 720px) {
   .zones, .row2 { grid-template-columns: 1fr; }

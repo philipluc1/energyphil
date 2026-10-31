@@ -97,7 +97,7 @@ export default function PlanAside({ d, uploadHref, best, onEdit }: { d: PlanAsid
       {best ? (
         <div className={s.rates}>
           <span className={s.ratesTitle}>Your rates vs the cheapest plan</span>
-          <span className={s.ratesSub}>{best.hideName ? "Members see which retailer and plan" : `${best.label}: ${best.plan[2]}`}</span>
+          <span className={s.ratesSub}>{best.hideName ? "Plus members see which retailer and plan" : `${best.label}: ${best.plan[2]}`}</span>
           <RatesCompare current={r} plan={best.plan} planLabel={best.label} compact />
         </div>
       ) : (

@@ -11,7 +11,7 @@ import s from "./joindirect.module.css";
 // Stripe. Straight after paying, the welcome page asks for the bill and the
 // dashboard sets itself up from it.
 
-export default function JoinDirect() {
+export default function JoinDirect({ cancelPath = "/pricing" }: { cancelPath?: "/pricing" | "/" | "/account" } = {}) {
   const [plan, setPlan] = useState<PlanId | null>(null);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,7 +28,7 @@ export default function JoinDirect() {
     const res = await fetch("/api/create-checkout-session", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ planId: plan, email, profile: {}, cancelPath: "/pricing" }),
+      body: JSON.stringify({ planId: plan, email, profile: {}, cancelPath }),
     }).catch(() => null);
     const body = await res?.json().catch(() => null);
     if (!body?.ok || !body.url) {
@@ -42,19 +42,19 @@ export default function JoinDirect() {
 
   return (
     <div className={s.wrap}>
-      <PlanCards onChoose={(id) => { setPlan(id); setError(""); setAlreadyMember(false); }} loadingPlan={busy ? plan : null} cta="Join now" dark />
+      <PlanCards onChoose={(id) => { setPlan(id); setError(""); setAlreadyMember(false); }} loadingPlan={busy ? plan : null} cta="Choose" dark />
       {chosen && (
         <form className={s.panel} onSubmit={pay} aria-live="polite">
           <div className={s.panelHead}>
             <b>{chosen.name}: {fmtPrice(chosen.priceCents)} {chosen.cadenceLabel}</b>
-            <span>Pay now, then snap your bill on the next screen. Your dashboard sets itself up from it.</span>
+            <span>Pay, then snap your bill. Your dashboard sets itself up from it.</span>
           </div>
           <div className={s.row}>
             <label htmlFor="join-email" className={s.srOnly}>Your email</label>
             <input id="join-email" type="email" required autoFocus placeholder="you@example.com" value={email} onChange={(ev) => setEmail(ev.target.value)} />
             <button type="submit" className={s.go} disabled={busy}>{busy ? "Opening payment…" : "Go to payment →"}</button>
           </div>
-          <p className={s.fine}>Your sign-in link and every alert go to this address. Card details are taken by Stripe; we never see them.</p>
+          <p className={s.fine}>Your sign-in link and alerts go here. Card details go to Stripe; we never see them.</p>
           {error && (
             <p className={s.err}>
               {error}{alreadyMember ? <> <Link href="/account">Log in</Link>.</> : null}

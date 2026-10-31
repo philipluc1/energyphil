@@ -79,10 +79,7 @@
   .barRow { grid-template-columns: 88px 1fr 60px; }
   .money, .suffixWrap { max-width: none; }
 }
-@media (prefers-color-scheme: dark) {
-  .checkOk { color: #86efac; } .checkWarn { color: #fcd34d; }
-  .bigOn { box-shadow: 0 0 0 3px rgba(157, 178, 255, 0.18); }
-}
+
 @media (prefers-reduced-motion: reduce) { .q, .barFill { animation: none; } }
 
 /* Third choice in step 3: the average home, full width under the two big buttons */

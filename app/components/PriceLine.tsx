@@ -106,7 +106,7 @@ export default function PriceLine({
               key={it.retailer + it.plan + i}
               className={s.dot}
               style={{ left: `calc(${xs[i]}% + ${nudge[i]}px)`, top: base - 4 - (lane[i] + 1) * DOT_ROW }}
-              title={it.locked ? `Members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
+              title={it.locked ? `Plus members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
             />
           )
         ))}
@@ -114,7 +114,7 @@ export default function PriceLine({
           <div
             className={`${s.bubble} ${s.best}`}
             style={{ left: `${x(best.value)}%`, top: 0 }}
-            title={best.locked ? `Members see this plan: ${money(best.value)} ${per}` : `${best.retailer}: ${best.plan}, ${money(best.value)} ${per}`}
+            title={best.locked ? `Plus members see this plan: ${money(best.value)} ${per}` : `${best.retailer}: ${best.plan}, ${money(best.value)} ${per}`}
           >
             <span className={s.face}>
               {best.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={best.retailer} size={36} square />}
@@ -129,7 +129,7 @@ export default function PriceLine({
             key={it.retailer + it.plan + i}
             className={`${s.bubble} ${it.cheapest ? s.best : ""}`}
             style={{ left: `${xs[i]}%`, top: (rows - 1 - lane[i]) * ROW, animationDelay: `${i * 60}ms` }}
-            title={it.locked ? `Members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
+            title={it.locked ? `Plus members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
           >
             <span className={s.face}>
               {it.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={it.retailer} size={36} square />}

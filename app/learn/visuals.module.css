@@ -29,9 +29,9 @@
 .s2 .num { background: #f5a623; color: #171305; }
 .s3 .num { background: #7c6cf0; }
 .pic { height: 150px; display: grid; place-items: center; padding: 16px; }
-.s1 .pic { background: linear-gradient(135deg, rgba(14, 165, 160, 0.16), rgba(14, 165, 160, 0.04)); }
-.s2 .pic { background: linear-gradient(135deg, rgba(245, 166, 35, 0.18), rgba(245, 166, 35, 0.04)); }
-.s3 .pic { background: linear-gradient(135deg, rgba(124, 108, 240, 0.18), rgba(124, 108, 240, 0.04)); }
+.s1 .pic { background: none; }
+.s2 .pic { background: none; }
+.s3 .pic { background: none; }
 .footnote { grid-column: 1 / -1; font-size: 12px; color: var(--grey); }
 
 /* step 1: phone + bill + scan line */
@@ -60,7 +60,7 @@
 .barTrack { height: 14px; border-radius: 99px; background: rgba(98, 108, 129, 0.12); overflow: hidden; }
 .barGrey, .barTeal { display: block; height: 100%; border-radius: 99px; }
 .barGrey { background: #b8c0d2; }
-.barTeal { background: linear-gradient(90deg, #5eead4, #0ea5a0); }
+.barTeal { background: #0ea5a0; }
 .saveTag { justify-self: center; margin-top: 4px; padding: 5px 12px; border-radius: 99px; background: #0f766e; color: #fff; font-weight: 800; font-size: 13px; }
 
 /* step 3: notifications */
@@ -103,9 +103,7 @@
 .roleUs {
   border: none;
   color: #fff;
-  background:
-    radial-gradient(90% 70% at 100% 0%, rgba(14, 165, 160, 0.3) 0%, transparent 60%),
-    linear-gradient(135deg, #22306e 0%, #0a0f28 100%);
+  background: #22306e;
 }
 .roleUs b { color: #5eead4; }
 .roleUs .roleJob { color: #fff; }
@@ -118,7 +116,7 @@
 .gRow > span { padding: 12px 14px; text-align: center; }
 .gRow > .gLabel { text-align: left; display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 14.5px; color: var(--ink); }
 .gHead > span { font-weight: 800; font-size: 13px; color: var(--grey); }
-.gUsHead { color: #fff !important; background: linear-gradient(135deg, #22306e 0%, #0a0f28 100%); }
+.gUsHead { color: #fff !important; background: #22306e; }
 .gUs { background: rgba(14, 165, 160, 0.08); align-self: stretch; display: grid; place-items: center; }
 .gIcon { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(98, 108, 129, 0.08); font-size: 17px; }
 .yes { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #0ea5a0; color: #fff; font-weight: 900; font-size: 14px; }

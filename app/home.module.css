@@ -10,7 +10,7 @@
   right: -160px;
   width: 440px;
   height: 440px;
-  background: radial-gradient(circle, rgba(245, 166, 35, 0.18) 0%, rgba(245, 166, 35, 0) 70%);
+  background: none;
   pointer-events: none;
   z-index: 0;
 }
@@ -21,7 +21,7 @@
   left: -140px;
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(14, 165, 160, 0.14) 0%, rgba(14, 165, 160, 0) 70%);
+  background: none;
   pointer-events: none;
   z-index: 0;
 }
@@ -66,7 +66,7 @@
   min-width: 0;
 }
 .proofCard {
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  background: var(--navy-deep);
   color: #fff;
   border-radius: 16px;
   box-shadow: var(--shadow);
@@ -174,11 +174,7 @@
   background: rgba(245, 166, 35, 0.16);
   color: #b4740f;
 }
-@media (prefers-color-scheme: dark) {
-  .stepTagPaid {
-    color: var(--amber-light);
-  }
-}
+
 
 /* --- how-it-works icons --- */
 .howIcon {
@@ -201,7 +197,7 @@
   color: #fff;
 }
 .howIconAmber {
-  background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
+  background: var(--amber);
   color: var(--navy-deep);
 }
 
@@ -229,27 +225,19 @@
   background: rgba(245, 166, 35, 0.16);
   color: #b4740f;
 }
-@media (prefers-color-scheme: dark) {
-  .badgeIconAmber {
-    color: var(--amber-light);
-  }
-}
+
 
 /* --- EV panel --- */
 .evPanel {
   display: flex;
   gap: 22px;
   align-items: flex-start;
-  background: linear-gradient(135deg, rgba(14, 165, 160, 0.08) 0%, rgba(34, 48, 110, 0.05) 100%);
+  background: none;
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 26px 24px;
 }
-@media (prefers-color-scheme: dark) {
-  .evPanel {
-    background: linear-gradient(135deg, rgba(45, 212, 199, 0.1) 0%, rgba(74, 98, 196, 0.08) 100%);
-  }
-}
+
 @media (max-width: 620px) {
   .evPanel {
     flex-direction: column;
@@ -292,7 +280,7 @@
   justify-content: space-between;
   gap: 18px;
   flex-wrap: wrap;
-  background: linear-gradient(135deg, rgba(34, 48, 110, 0.06) 0%, rgba(14, 165, 160, 0.06) 100%);
+  background: none;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px 22px;
@@ -306,11 +294,7 @@
 .howSummaryText strong {
   color: var(--ink);
 }
-@media (prefers-color-scheme: dark) {
-  .howSummary {
-    background: linear-gradient(135deg, rgba(74, 98, 196, 0.1) 0%, rgba(45, 212, 199, 0.08) 100%);
-  }
-}
+
 
 /* Friendlier hero + FAQ */
 .hello { font-size: 15px; font-weight: 600; color: var(--navy-accent-text); margin: 0 0 8px; }
@@ -331,7 +315,7 @@
 /* ============ Home: big hero band ============ */
 .heroBand {
   position: relative; overflow: hidden; color: #fff;
-  background: linear-gradient(165deg, #1a2468 0%, #0d1236 55%, #080c1c 100%);
+  background: #22306e;
   padding: 56px 20px 84px;
 }
 .orbAmber, .orbTeal { position: absolute; border-radius: 50%; filter: blur(70px); pointer-events: none; }
@@ -349,7 +333,7 @@
 
 .ctaBig {
   display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
-  background: linear-gradient(135deg, #ffd166, #f5a623); color: #1c1403;
+  background: #f5a623; color: #1c1403;
   font-weight: 800; font-size: 17px; padding: 16px 28px; border-radius: 14px;
   box-shadow: 0 10px 30px rgba(245, 166, 35, 0.45);
   transition: transform 0.2s, box-shadow 0.2s;
@@ -389,7 +373,7 @@
 .barTrack { height: 10px; border-radius: 10px; background: var(--track); overflow: hidden; }
 .barFull, .barBest { height: 100%; border-radius: 10px; transform-origin: left; animation: grow 1.3s 0.9s cubic-bezier(0.22, 0.7, 0.3, 1) both; }
 .barFull { width: 100%; background: var(--grey-soft); }
-.barBest { width: var(--w, 60%); background: linear-gradient(90deg, #16a34a, #34d399); animation-delay: 1.25s; }
+.barBest { width: var(--w, 60%); background: #34d399; animation-delay: 1.25s; }
 @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .floatNote { margin-top: 10px; font-size: 11.5px; color: var(--grey-soft); }
 
@@ -408,7 +392,7 @@
 
 .closing {
   display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 0; align-items: stretch; overflow: hidden;
-  border-radius: 28px; color: #fff; background: linear-gradient(135deg, #1a2468, #080c1c);
+  border-radius: 28px; color: #fff; background: #22306e;
 }
 @media (max-width: 760px) { .closing { grid-template-columns: 1fr; } }
 .closingText { padding: 40px 36px; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
@@ -479,3 +463,9 @@
 .leadList li::before { content: "✓"; flex: none; font-weight: 900; color: var(--teal); }
 .leadList li b { color: var(--ink); }
 .soon { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--teal) 14%, transparent); color: var(--teal); vertical-align: 1px; white-space: nowrap; }
+
+/* Oct 29: page heroes are bigger and simpler. */
+.pageHead { padding: 52px 0 10px; gap: 14px; }
+.pageHead h1 { font: 900 clamp(40px, 6.4vw, 72px)/1 "Archivo", sans-serif; letter-spacing: -0.04em; }
+.pageHead > p { font-size: clamp(17px, 2vw, 20px); line-height: 1.45; color: var(--grey); max-width: 34em; margin: 0; }
+@media (max-width: 520px) { .pageHead { padding-top: 32px; } }

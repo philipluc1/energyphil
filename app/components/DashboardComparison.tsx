@@ -244,7 +244,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             </>
           ) : (
             <>
-              <b className={styles.sideLocked}><Icon name="lock" size={16} /> Members see which</b>
+              <b className={styles.sideLocked}><Icon name="lock" size={16} /> Plus members see which</b>
               <span className={styles.sidePlan}>Retailer and plan hidden</span>
             </>
           )}
@@ -410,7 +410,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
       {retailerBest && retailerBest !== top && isLocked(retailerBest) && (
         <div className={styles.stay}>
           <b>Staying with {currentRetailer}?</b> One of the {lockedTop.length} cheapest plans is theirs, at {money(retailerBest.total * k)} {PERIOD_LABEL[period]}.
-          Members see which one, so you can ask {currentRetailer} to move you without changing company.
+          Plus members see which one, so you can ask {currentRetailer} to move you without changing company.
         </div>
       )}
       {retailerBest && retailerBest !== top && !isLocked(retailerBest) && (
@@ -494,7 +494,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
                         <span className={styles.lockedCell}>
                           <span className={styles.lockBadge}><Icon name="lock" size={14} /></span>
                           <span className={styles.lockedBar} aria-hidden="true" />
-                          <a href="#membership">{i === 0 ? "The cheapest plan: members see which" : "Members see this plan"}</a>
+                          <a href="#membership">{i === 0 ? "The cheapest plan: members see which" : "Plus members see this plan"}</a>
                         </span>
                       </td>
                       <td className={styles.num}>{money(m.total * k)}</td>
@@ -535,7 +535,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
                       <td colSpan={7}>
                         <div className={styles.ratesDetail}>
                           <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
-                          <p className={styles.ratesFine}>Published rates including GST, before any discounts. {chargeHelp(m.plan)}</p>
+                          <p className={styles.ratesFine}>Including GST, before discounts.{input.currentRates ? " ✓ marks the better rate." : ""}</p>
                         </div>
                       </td>
                     </tr>
@@ -561,7 +561,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
                       <span className={styles.lockBadge}><Icon name="lock" size={14} /></span>
                       <span className={styles.lockedBar} aria-hidden="true" />
                     </div>
-                    <a className={styles.pcPlan} href="#membership">Members see this plan</a>
+                    <a className={styles.pcPlan} href="#membership">Plus members see this plan</a>
                   </div>
                   <div className={styles.pcNums}>
                     <b>{whole(m.total * k)}</b>
@@ -596,7 +596,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
                 {openRates === key && (
                   <div className={`${styles.ratesDetail} ${styles.pcRatesDetail}`}>
                     <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
-                    <p className={styles.ratesFine}>Published rates including GST, before any discounts.</p>
+                    <p className={styles.ratesFine}>Including GST, before discounts.{input.currentRates ? " ✓ marks the better rate." : ""}</p>
                   </div>
                 )}
               </li>
@@ -619,7 +619,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
         </div>
         {!member && (
           <p className={styles.upsell}>
-            Members get this table re-run every morning, a bill read every month, and an email the day something cheaper appears.{" "}
+            Plus members get this table re-run every morning, a bill read every month, and an email the day something cheaper appears.{" "}
             <Link href="#membership">See plans</Link>
           </p>
         )}
@@ -629,7 +629,7 @@ export function CompareSection({ input, member, period }: Omit<Props, "onPeriod"
         <section className={styles.table}>
           <div className={styles.tableHead}>
             <h3>Before you switch</h3>
-            <p>Members see the cheapest plan&apos;s retailer, discounts, sign-up conditions, credits and fees here, from the retailer&apos;s own price feed.</p>
+            <p>Plus members see the cheapest plan&apos;s retailer, discounts, sign-up conditions, credits and fees here, from the retailer&apos;s own price feed.</p>
           </div>
           <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> Unlock the cheapest plans →</a>
         </section>
@@ -707,7 +707,7 @@ function CurrentPricing({ input, usage, best, bestTotal, you, haveBill, hideName
           </div>
           <div>
             <b>Cheapest</b>
-            <span>{hideName ? "Members see which retailer" : `${best[0]} · ${best[2]}`}</span>
+            <span>{hideName ? "Plus members see which retailer" : `${best[0]} · ${best[2]}`}</span>
             <em className={bestTerms === "fixed" ? styles.badgeFixed : styles.badge}>{PRICE_TYPE_LABEL[bestTerms]}</em>
           </div>
         </div>

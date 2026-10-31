@@ -115,7 +115,7 @@ function MarketTeaser({ events }: { events: MarketEvent[] }) {
         {perRetailer(events, 3).map(({ e, more }) => <Row key={e.retailer} e={e} more={more} />)}
       </ul>
       <div className={s.teaserFoot}>
-        <p><b>Would you have spotted these?</b> Members get every one checked against their own bill each morning.</p>
+        <p><b>Would you have spotted these?</b> Plus members get every one checked against their own bill each morning.</p>
         <Link href="/market" className={s.more}>See all {events.length} changes →</Link>
       </div>
     </section>
@@ -236,7 +236,7 @@ export default function MarketBoard({ personal, compact = false }: { personal?: 
         ) : (
           <>
             <p>
-              <b>Confusing? That&apos;s the point of us.</b> Members get every one of these checked against their own bill each morning, and hear from us
+              <b>Confusing? That&apos;s the point of us.</b> Plus members get every one of these checked against their own bill each morning, and hear from us
               only when switching is worth it.
             </p>
             <Link href="/check" className={s.cta}>Check my bill free →</Link>

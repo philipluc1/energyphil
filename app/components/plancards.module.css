@@ -1,61 +1,28 @@
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 300px)); justify-content: center; gap: 14px; align-items: stretch; margin-top: 22px; }
+/* Utilo Plus plan cards: flat, two side by side, yearly highlighted. */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 300px)); justify-content: center; gap: 14px; align-items: stretch; margin-top: 20px; }
+@media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
 
-@media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+.card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 22px 20px 18px; border-radius: 18px; background: var(--surface); border: 1.5px solid var(--border); color: var(--ink); }
+.featured { border: 2px solid var(--amber); }
+.ribbon { position: absolute; top: -12px; left: 18px; padding: 4px 10px; border-radius: 8px; background: var(--amber); color: #111827; font-size: 12px; font-weight: 900; letter-spacing: 0.01em; }
+.name { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 16px; color: var(--grey); }
+.priceRow { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.price { font-family: "Archivo", sans-serif; font-weight: 900; font-size: 48px; line-height: 1; letter-spacing: -0.03em; }
+.per { font-size: 15px; font-weight: 700; color: var(--grey); }
+.anchor { font-size: 20px; font-weight: 800; color: var(--grey-soft); text-decoration: line-through; text-decoration-thickness: 2px; }
+.value { font-size: 15px; color: var(--ink); }
+.value b { color: var(--good); }
+.card:not(.featured) .value b { color: var(--ink); }
+.small { font-size: 12.5px; color: var(--grey); margin-bottom: 12px; }
 
-.card {
-  position: relative; display: flex; flex-direction: column;
-  background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px;
-  padding: 22px 20px 20px;
-  transition: transform 0.25s cubic-bezier(0.22, 0.7, 0.3, 1), box-shadow 0.25s, border-color 0.25s;
-}
-.card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--navy-accent-text); }
-.featured {
-  border-color: var(--amber); border-width: 2px;
-  background: linear-gradient(180deg, rgba(245, 166, 35, 0.12), var(--surface) 55%);
-  box-shadow: 0 14px 40px rgba(245, 166, 35, 0.22);
-}
-@media (min-width: 961px) { .featured { transform: translateY(-10px); } .featured:hover { transform: translateY(-14px); } }
-
-.tagRow { height: 28px; display: flex; align-items: center; }
-.name { margin-top: 10px; font-family: "Archivo", sans-serif; font-weight: 800; font-size: 17px; }
-
-.priceRow { display: flex; align-items: baseline; gap: 10px; margin-top: 14px; min-height: 52px; }
-.price { font-family: "Archivo", sans-serif; font-weight: 900; font-size: 52px; line-height: 1; letter-spacing: -0.03em; }
-.anchor { font-size: 17px; font-weight: 700; color: var(--grey-soft); text-decoration: line-through; text-decoration-thickness: 2px; }
-.cadence { margin-top: 8px; font-size: 13.5px; color: var(--grey); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.save { background: var(--good-bg); color: var(--good); font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 100px; }
-.perMonth { margin-top: 6px; font-size: 14px; color: var(--ink); min-height: 21px; }
-
-.features { list-style: none; margin: 16px 0 20px; padding: 14px 0 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 9px; flex: 1; }
-.features li { font-size: 13.5px; padding-left: 24px; position: relative; line-height: 1.4; }
-.features li::before {
-  content: ""; position: absolute; left: 0; top: 1px; width: 16px; height: 16px; border-radius: 50%;
-  background: var(--good-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4.5 8.3 2.3 2.3 4.7-5' fill='none' stroke='%2316a34a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat;
-}
-
-.btn, .btnFeatured {
-  display: block; width: 100%; text-align: center; text-decoration: none; cursor: pointer; font-family: inherit;
-  border-radius: 12px; padding: 13px 16px; font-size: 15px; font-weight: 800; border: none;
-  transition: transform 0.15s, filter 0.15s;
-}
-.btn { background: var(--navy); color: #fff; }
-.btnFeatured { background: linear-gradient(135deg, #ffd166, #f5a623); color: #1c1403; box-shadow: 0 6px 18px rgba(245, 166, 35, 0.4); }
-.btn:hover, .btnFeatured:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.btn, .btnFeatured { display: block; width: 100%; margin-top: auto; text-align: center; text-decoration: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 13px 16px; font-size: 15.5px; font-weight: 900; border: none; transition: background 0.15s; }
+.btn { background: var(--soft); color: var(--ink); border: 1.5px solid var(--border); }
+.btn:hover { background: var(--track); }
+.btnFeatured { background: var(--amber); color: #111827; }
+.btnFeatured:hover { background: #e8951a; }
 .btn:disabled, .btnFeatured:disabled { opacity: 0.6; cursor: default; }
 .btn:focus-visible, .btnFeatured:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .card, .btn, .btnFeatured { transition: none; } }
 
-/* On the dark membership band: glass cards, white featured card. */
-.dark .card { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.16); color: #fff; backdrop-filter: blur(6px); }
-.dark .card:hover { border-color: rgba(255,255,255,0.4); box-shadow: 0 16px 40px rgba(0,0,0,0.35); }
-.dark .cadence, .dark .perMonth, .dark .anchor { color: rgba(255,255,255,0.75); }
-.dark .features { border-top-color: rgba(255,255,255,0.14); }
-.dark .btn { background: #fff; color: #131c57; }
-.dark .featured { background: #fff; color: #131c57; border-color: #fbbf24; box-shadow: 0 0 0 6px rgba(251,191,36,0.18), 0 24px 60px rgba(245,166,35,0.35); animation: glow 3s ease-in-out infinite; }
-.dark .featured .cadence, .dark .featured .perMonth, .dark .featured .anchor { color: #5b6378; }
-.dark .featured .features { border-top-color: #e6e9f2; }
-@keyframes glow { 0%, 100% { box-shadow: 0 0 0 6px rgba(251,191,36,0.18), 0 24px 60px rgba(245,166,35,0.35); } 50% { box-shadow: 0 0 0 10px rgba(251,191,36,0.1), 0 24px 70px rgba(245,166,35,0.55); } }
-@media (prefers-reduced-motion: reduce) { .dark .featured { animation: none; } }
-
-/* Calm pass (Oct 2026) */
-.dark .featured { animation: none; box-shadow: 0 0 0 2px #fbbf24; }
+/* On the navy Utilo Plus band: white cards, so they read as objects to pick. */
+.dark .card { background: #fff; border-color: transparent; }
+.dark .featured { border-color: var(--amber); }

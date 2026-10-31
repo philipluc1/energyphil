@@ -146,7 +146,7 @@
   margin-bottom: 16px;
   padding: 18px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  background: var(--navy-deep);
   color: #fff;
 }
 .savingsLabel {
@@ -371,30 +371,25 @@
 
 /* ---- A little colour: each card gets a tint and a coloured edge so the
    dashboard reads as distinct areas, not a stack of grey boxes. ---- */
-.toneAmber { background: linear-gradient(135deg, #fff7e0, #fff1c7); border-color: #f5a623; }
-.toneTeal { background: linear-gradient(135deg, #e6fbf8, #d6f5f0); border-left: 5px solid #0ea5a0; }
-.toneViolet { background: linear-gradient(135deg, #f1efff, #e7e3ff); border-left: 5px solid #7c6cf0; }
-.toneNavy { background: linear-gradient(135deg, #eef1fb, #e3e8fa); border-left: 5px solid #2d3f9e; }
-.savingsBox { background: linear-gradient(135deg, #0d6f78 0%, #131c57 60%, #22306e 100%); }
+.toneAmber { background: #fff1c7; border-color: #f5a623; }
+.toneTeal { background: #d6f5f0; border-left: 5px solid #0ea5a0; }
+.toneViolet { background: #e7e3ff; border-left: 5px solid #7c6cf0; }
+.toneNavy { background: #e3e8fa; border-left: 5px solid #2d3f9e; }
+.savingsBox { background: #22306e; }
 .chartBox { border-left: 5px solid #f5a623; }
 .tariffBox { border-left: 5px solid #0ea5a0; }
-@media (prefers-color-scheme: dark) {
-  .toneAmber { background: rgba(245,166,35,0.12); }
-  .toneTeal { background: rgba(14,165,160,0.12); }
-  .toneViolet { background: rgba(124,108,240,0.14); }
-  .toneNavy { background: rgba(45,63,158,0.18); }
-}
+
 
 /* ---- Dashboard v3: one wide column, verdict first ---- */
 .cardWide { max-width: 1040px; }
 .dashHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 16px; }
 .dashHead .signedInAs { margin: 0; }
 .memberPill, .freePill { padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 800; text-decoration: none; }
-.memberPill { background: linear-gradient(135deg, #ffd166, #f5a623); color: #1c1403; }
+.memberPill { background: #f5a623; color: #1c1403; }
 .freePill { background: rgba(13,148,136,0.12); color: #0d9488; border: 1px solid rgba(13,148,136,0.35); }
 .sectionTitle { margin: 26px 0 12px; font-size: 20px; font-weight: 900; letter-spacing: -0.02em; scroll-margin-top: 90px; }
 .syncNote { margin-bottom: 14px; padding: 14px 16px; border-radius: 14px; background: #fff7e0; border: 1px solid #f5a623; font-size: 14px; line-height: 1.5; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-@media (prefers-color-scheme: dark) { .syncNote { background: rgba(245,166,35,0.12); } }
+
 
 /* ---- Dashboard v4: verdict on top, then tabs ---- */
 .cardDash { max-width: 1040px; background: transparent; border: 0; box-shadow: none; padding: 0; }
@@ -404,7 +399,7 @@
 .btnGhost:disabled { opacity: 0.6; cursor: default; }
 
 .emptyVerdict { border-radius: 20px; padding: 26px; margin-bottom: 14px; color: #fff; display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
-  background: radial-gradient(600px 300px at 100% 0%, rgba(14,165,160,0.45), transparent 60%), linear-gradient(135deg, #1b2a6b 0%, #0d6f78 100%); }
+  background: #0d6f78; }
 .emptyVerdict h2 { margin: 0; font-size: clamp(22px, 3.6vw, 32px); font-weight: 900; letter-spacing: -0.02em; }
 .emptyVerdict p { margin: 0; opacity: 0.85; font-size: 14.5px; }
 .emptyVerdict .stateLabel { color: #fff; opacity: 0.8; }
@@ -446,13 +441,10 @@ details[open] > .panelSummary::after { content: " ▴"; }
   .emptyVerdict, .stateCard, .panelCard { padding: 16px; }
   .dashTitle { font-size: 22px; }
 }
-@media (prefers-color-scheme: dark) {
-  .stateAmt { color: #f87171; } .stateBig { color: #4ade80; }
-  .chipDone { color: #4ade80; } .chipDue { color: #fbbf24; }
-}
+
 
 /* ---- Theme hooks (values come from lib/dashThemes.ts via inline CSS variables) ---- */
-.memberPill { background: var(--member-bg, linear-gradient(135deg, #ffd166, #f5a623)); color: var(--member-fg, #1c1403); }
+.memberPill { background: var(--member-bg, #f5a623); color: var(--member-fg, #1c1403); }
 .freePill { background: var(--good-bg); color: var(--navy-accent-text); border-color: var(--border); }
 .emptyVerdict { background: var(--v-est); }
 .stateAct::before { background: var(--accent-mild); }
@@ -529,3 +521,8 @@ details[open] > .panelSummary::after { content: " ▴"; }
 
 /* The member's own day-shape chart, under the tabs. */
 .shapeWrap { margin-top: 18px; }
+
+/* Oct 29: quiet, folded settings (data deletion etc.) */
+.quietDetails { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 10px; }
+.quietDetails summary { cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--grey); padding: 6px 0; }
+.quietDetails[open] summary { margin-bottom: 8px; }

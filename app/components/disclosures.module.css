@@ -7,3 +7,6 @@
 .more { margin: 12px 0 0; font-size: 12.5px; color: var(--grey); }
 .more a { color: var(--navy-accent-text, #2d3f9e); font-weight: 700; }
 @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+.more2 { margin-top: 8px; }
+.more2 summary { cursor: pointer; font-size: 13px; font-weight: 800; color: var(--navy-accent-text, #2d3f9e); }
+.legendLine { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }

@@ -55,6 +55,8 @@ import PricingSection, { type SubscribeProfile } from "./PricingSection";
 import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
 import MemberLock, { MEMBER_PRICE_LINE } from "./MemberLock";
+import InfoTip from "./InfoTip";
+import { PLUS_NAME, plusValue } from "@/lib/pricingPlans";
 import PlanViewToggle from "./PlanViewToggle";
 import BillExplainer from "./BillExplainer";
 import EstimatePanel, { BillKwhCard, EstimateStrip, thisMonth, type BillFigure } from "./EstimatePanel";
@@ -673,6 +675,9 @@ export default function Comparator() {
     demandKw: usageSource === "bill" ? demandKw : null,
   };
   // Why the customer can't move on yet (shown under the step), if anything.
+  // Not shown while the postcode is still empty or half-typed: the greyed
+  // button is enough there, and red text before they've typed reads as an error.
+  const quietBlock = onStep1 && propertyType === "home" && postcode.length < 4;
   const blockReason =
     onStep1 && propertyType !== "home"
       ? "Utilo compares home electricity plans for now."
@@ -854,7 +859,7 @@ export default function Comparator() {
   // The cheapest plan this household can get (offers needing a membership,
   // existing customers only and so on stay in the list but aren't picked).
   const top = topOpen(matches);
-  // Free result: the best plan plus the next two. Members see every plan and the forecast.
+  // Free result: the best plan plus the next two. Plus members see every plan and the forecast.
   const member = useMember();
   const locked = member !== true;
   // Free users see plans from #3 on; the cheapest ones are for members.
@@ -1754,7 +1759,6 @@ export default function Comparator() {
                     {!onePage && <span className={w.qNum}>{qn(3)}</span>}
                     <div>
                       <h3 className={w.qTitle}>Here&apos;s what we think your home uses</h3>
-                      <p className={w.qSub}>{onePage ? "From your answers above." : "From your answers in step 2."} Change those and this updates.</p>
                     </div>
                   </div>
                   <EstimatePanel
@@ -1923,7 +1927,7 @@ export default function Comparator() {
           </div>
         )}
 
-        {blockReason && !(onStep1 && propertyType !== "home") && (
+        {blockReason && !quietBlock && !(onStep1 && propertyType !== "home") && (
           <p className={styles.blockNote} role="status">
             {blockReason}
             {inputStep === 3 && usageSource === "bill" && !billFlag && (
@@ -1979,7 +1983,7 @@ export default function Comparator() {
         </div>
         <div className={styles.stickyBar}>
           {/* A greyed button says nothing on its own: show what's missing right above it. */}
-          {blockReason && <p className={styles.stickyReason} role="status">{blockReason}</p>}
+          {blockReason && !quietBlock && <p className={styles.stickyReason} role="status">{blockReason}</p>}
           {inputStep < 3 && !onePage ? (
             <button type="button" className={styles.stickyBtn} disabled={!!blockReason} onClick={() => { setInputStep((s) => nextInputStep(s)); scrollToTop(); }}>
               Next · step {inputStep} of 3 →
@@ -2170,8 +2174,10 @@ export default function Comparator() {
                     <a href="#top-plan" className={r.heroBtn}>See the plan ↓</a>
                   )}
                   <span className={r.fine}>
-                    Averages a month from your {days}-day {haveBill ? "bill" : "period"}. Includes each plan&apos;s discounts, assuming you pay on time; leaves out
-                    sign-up credits, fees and concessions. Confirm with the retailer. {PRICE_CHANGE_CLAUSE}
+                    <InfoTip tone="dark" text="How we worked this out" label="How we worked this out">
+                      Averages a month from your {days}-day {haveBill ? "bill" : "period"}. Includes each plan&apos;s discounts, assuming you pay on time; leaves out
+                      sign-up credits, fees and concessions. Confirm with the retailer. {PRICE_CHANGE_CLAUSE}
+                    </InfoTip>
                   </span>
                 </div>
               )}
@@ -2209,43 +2215,33 @@ export default function Comparator() {
                     </div>
                   </div>
                   <div className={styles.resultHeroSub}>
-                    Nothing we found beats what you pay now by enough to bother. Members get an email when a plan would save them enough to be worth switching.
+                    Nothing we found beats what you pay now by enough to bother. Plus members get an email when a plan would save them enough to be worth switching.
                   </div>
                 </div>
               )}
               <section className={styles.planListTop} aria-label="Plans compared">
                     <div className={r.listHead}>
-                      <b>{allPlans ? `All ${matches.length} plans, cheapest first` : `Each retailer's cheapest plan, cheapest first`}</b>
+                      <b>{allPlans ? "All plans, cheapest first" : "Cheapest plan from each retailer"}</b>
                       <PlanViewToggle all={allPlans} onChange={setAllPlans} retailers={perRetailer.length} plans={matches.length} />
-                      <span>
-                        Prices are {PERIOD_LABEL[period]} for your usage. The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}.
-                      </span>
-                      <span className={r.legend}>
-                        <span className={r.chipMarket}>Market offer</span> a retailer&apos;s own deal ·{" "}
-                        <span className={r.chipStanding}>Standing offer</span> the regulated default price, usually dearer ·{" "}
-                        <span className={r.chip}>12% below default offer</span> compared with the Victorian Default Offer, the government&apos;s reference price, for your usage
-                      </span>
-                      <span className={r.legend}>
-                        Prices include each plan&apos;s discounts, assuming you pay on time. Green ✓ labels are in the price; blue ones (credits, other
-                        conditions) aren&apos;t; amber ! ones are limits on who can get it or fees to know about.
+                      {member === true && <span className={r.memberView}><Icon name="check" size={13} /> Member view: you see every plan by name. Free checks see the 2 cheapest locked.</span>}
+                      <span className={r.legendLine}>
+                        Prices {PERIOD_LABEL[period]}, discounts included. Green = your saving.
+                        <InfoTip label="What the labels mean">
+                          The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}. <b>Market offer</b>: a retailer&apos;s own deal. <b>Standing offer</b>: the regulated default price, usually dearer. <b>% below default offer</b>: against the Victorian Default Offer for your usage. Prices assume you pay on time. Green ✓ labels are in the price; blue ones (credits, other conditions) aren&apos;t; amber ! ones are limits or fees to know about.
+                        </InfoTip>
                       </span>
                     </div>
 
-                    <div className={`${r.youBox} ${haveBill ? r.youBoxBill : ""}`}>
-                      <div className={r.youTop}>
-                        <span><Icon name="receipt" size={16} /> {haveBill ? `${youName} now` : "The default offer (VDO)"}</span>
-                        <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
-                      </div>
-                      {listed.length > 0 && (
-                        <p className={r.youBeat}>
-                          {beatBill === 0
-                            ? <>None of the {listed.length} {allPlans ? "plans" : "retailers"} below beats {haveBill ? "it" : "the default offer"}.</>
-                            : beatBill === listed.length
-                              ? <><b>Every one</b> of the {listed.length} {allPlans ? "plans" : "retailers"} below is cheaper than {haveBill ? "your bill" : "the default offer"}.</>
-                              : <><b>{beatBill} of {listed.length}</b> {allPlans ? "plans" : "retailers"} {beatBill === 1 ? "is" : "are"} cheaper than {haveBill ? "your bill" : "the default offer"}. Look for the marker in the list.</>}
-                        </p>
-                      )}
-                      <p>
+                    <div className={`${r.youLine} ${haveBill ? r.youLineBill : ""}`}>
+                      <Icon name="receipt" size={18} />
+                      <span>
+                        {listed.length === 0 || beatBill === 0
+                          ? <>Nothing here beats {haveBill ? "your bill" : "the default offer"}</>
+                          : beatBill === listed.length
+                            ? <><b>All {listed.length} {allPlans ? "plans" : "retailers"}</b> are cheaper than {haveBill ? "your bill" : "the default offer"}</>
+                            : <><b>{beatBill} {allPlans ? (beatBill === 1 ? "plan" : "plans") : beatBill === 1 ? "retailer" : "retailers"}</b> {beatBill === 1 ? "is" : "are"} cheaper than {haveBill ? "your bill" : "the default offer"}</>}
+                      </span>
+                      <InfoTip label="About your bill">
                         {useAvg ? "The average Victorian home" : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
                         <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day)
                         {/* Only say how they're charged when it came from their bill: an estimate doesn't know. */}
@@ -2269,7 +2265,7 @@ export default function Comparator() {
                             <> You&apos;re under the default offer and nothing we found is cheaper.</>
                           )
                         )}
-                      </p>
+                      </InfoTip>
                     </div>
 
                     {lockedTop.length > 0 && (
@@ -2284,7 +2280,7 @@ export default function Comparator() {
                                   <span className={r.rank}>#{i + 1}</span>
                                   <span className={r.blurBar} style={{ width: `${[62, 48, 70][i % 3]}%` }} aria-hidden="true" />
                                 </span>
-                                <span className={r.planName}>{i === 0 ? "The cheapest plan for your home" : "Members see the retailer, plan and rates"}</span>
+                                <span className={r.planName}>{i === 0 ? "The cheapest plan for your home" : "Plus members see the retailer, plan and rates"}</span>
                               </span>
                               <span className={r.priceCol}>
                                 <span className={r.price}>{fmtCurrency(m.total * k)}</span>
@@ -2311,7 +2307,7 @@ export default function Comparator() {
                           {i === billAt && billMark}
                           <div className={`${r.row} ${isTop ? r.rowTop : ""}`}>
                             <button type="button" className={r.rowMain} onClick={() => setExpandedKey((x) => (x === rowKey ? null : rowKey))} aria-expanded={isOpen}>
-                              <span className={r.avatar}><RetailerLogo name={m.plan[0]} size={48} /></span>
+                              <span className={r.avatar}><RetailerLogo name={m.plan[0]} size={48} square /></span>
                               <span className={r.info}>
                                 <span className={r.nameLine}>
                                   {locked && <span className={r.rank}>#{rankOf(m)}</span>}
@@ -2372,7 +2368,7 @@ export default function Comparator() {
                         body={
                           <>
                             From {fmtCurrency(Math.min(...hiddenRows.map((x) => x.total)) * k)} to {fmtCurrency(Math.max(...hiddenRows.map((x) => x.total)) * k)}{" "}
-                            {PERIOD_LABEL[period]}. Members see every plan with its rates, and get an email when a cheaper one turns up.
+                            {PERIOD_LABEL[period]}. Plus members see every plan with its rates, and get an email when a cheaper one turns up.
                           </>
                         }
                         cta={`See all ${matches.length} plans`}
@@ -2381,9 +2377,25 @@ export default function Comparator() {
                     )}
                     {billAfterHidden && billMark}
               </section>
-              {haveBill && (
+              {locked && (
+                <div className={styles.dailyCard}>
+                  <span className={styles.dailyKicker}><Icon name="refresh" size={14} /> {PLUS_NAME}</span>
+                  <h3 className={styles.dailyTitle}>
+                    {haveBill ? "We\u2019ll check this bill for you every morning." : <>Snap your bill once.<br />We check for you every morning.</>}
+                  </h3>
+                  <ul className={styles.dailyTicks}>
+                    <li><Icon name="camera" size={16} /> <span><b>{haveBill ? "Your real usage" : "Your real usage, not our guess"}</b>{haveBill ? ", from this bill" : ": one photo of your bill"}</span></li>
+                    <li><Icon name="refresh" size={16} /> <span><b>All {matches.length} plans on your network</b> re-priced every morning</span></li>
+                    <li><Icon name="mail" size={16} /> <span><b>An email only when it&apos;s worth it</b>: a saving of ${WORTH_SWITCHING_PER_YEAR}+ a year</span></li>
+                    <li><Icon name="lock" size={16} /> <span><b>The {lockedTop.length || 2} cheapest plans by name</b>, straight away</span></li>
+                  </ul>
+                  <button type="button" className={styles.dailyBtn} onClick={joinScroll}>Start my daily checks →</button>
+                  <p className={styles.dailyFine}>{MEMBER_PRICE_LINE}</p>
+                </div>
+              )}
+              {!locked && haveBill && (
                 <div className={styles.billNudge}>
-                  <b>Based on one bill.</b> These are today&apos;s prices, worked out for the usage on that bill. Members get every plan re-priced each morning and a saved result every month, so the
+                  <b>Based on one bill.</b> These are today&apos;s prices, worked out for the usage on that bill. Plus members get every plan re-priced each morning and a saved result every month, so the
                   answer stays current.
                 </div>
               )}
@@ -2396,21 +2408,21 @@ export default function Comparator() {
                     olderVersion: onOlderVersion && todaysVersion ? { planName: todaysVersion.plan[2], perMonth: perMonth(olderVersionGap), perYear: perYear(olderVersionGap) } : null,
                     planIsCurrent: !!todaysVersion && !onOlderVersion,
                     retailerBest: retailerBest
-                      ? { planName: isLockedPlan(retailerBest) ? "one of their plans (members see which)" : retailerBest.plan[2], savingPerYear: perYear(bench - retailerBest.total) }
+                      ? { planName: isLockedPlan(retailerBest) ? "one of their plans (Plus members see which)" : retailerBest.plan[2], savingPerYear: perYear(bench - retailerBest.total) }
                       : null,
                     retailerCount: RETAILER_COUNT,
                     worthPerYear: WORTH_SWITCHING_PER_YEAR,
                   }}
                 />
               )}
-              <div className={styles.bestCard} id="top-plan">
+              <div className={`${styles.bestCard} ${locked ? styles.hideForFree : ""}`} id="top-plan">
                 <span className={styles.bestTag}>{haveBill && worthSwitching ? "Yes, you'd save with" : haveBill ? "Cheapest we found (not worth switching)" : "Cheapest plan for a home like yours"}</span>
                 {locked ? (
                   <>
                     <div className={`${styles.retailer} ${r.lockedName}`}>
                       <Icon name="lock" size={22} /> <span className={r.blurName} aria-hidden="true" /> <span className={r.srOnly}>Retailer hidden</span>
                     </div>
-                    <div className={styles.plan}>Members see the retailer, plan, rates and sign-up conditions</div>
+                    <div className={styles.plan}>Plus members see the retailer, plan, rates and sign-up conditions</div>
                   </>
                 ) : (<>
                 <div className={styles.retailer}>
@@ -2479,10 +2491,7 @@ export default function Comparator() {
                     <span className={r.unlockIcon}><Icon name="lock" size={22} /></span>
                     <div>
                       <b>See which retailer, and how to switch</b>
-                      <span>
-                        Members see the {lockedTop.length} cheapest plans by name, with their rates, discounts and sign-up conditions, plus every plan on your
-                        network re-checked each morning. {MEMBER_PRICE_LINE}
-                      </span>
+                      <span>With {PLUS_NAME}. {plusValue().monthly} a month, or {plusValue().annual} a year.</span>
                     </div>
                     <button type="button" className={styles.switchBtn} onClick={joinScroll}>Unlock the cheapest plans →</button>
                   </div>
@@ -2511,7 +2520,7 @@ export default function Comparator() {
                   <div>
                     <b>Staying with {currentRetailer}?</b> One of the {lockedTop.length} cheapest plans is theirs, at about{" "}
                     {fmtCurrency(perMonth(retailerBest.total))} a month{haveBill && bench - retailerBest.total > 0.005 ? <> ({fmtCurrency(perMonth(bench - retailerBest.total))} a month less than your bill)</> : null}.
-                    Members see which one, so you can ask {currentRetailer} to move you without changing company.
+                    Plus members see which one, so you can ask {currentRetailer} to move you without changing company.
                   </div>
                 </div>
               )}
