@@ -46,7 +46,7 @@ function Row({ e, vs, more = 0 }: { e: MarketEvent; vs?: VsYou | null; /** Other
         <Deal e={e} />
         {vs && <span className={vs.tone === "better" ? s.vsBetter : vs.tone === "worse" ? s.vsWorse : s.vsMuted}>{vs.text}</span>}
       </span>
-      <span className={e.kind === "new" ? s.tagNew : s.tagPrice}>{e.kind === "new" ? "New offer" : "Price change"}</span>
+      <span className={e.kind === "new" ? s.tagNew : s.tagPrice}>{e.kind === "new" ? "New offer" : "Updated offer"}</span>
     </li>
   );
 }
@@ -78,7 +78,9 @@ export function MarketSideCard({ personal, events, onOpen }: { personal: MarketP
         {perRetailer(events, 3).map(({ e, more }) => <Row key={e.retailer} e={e} more={more} vs={personal.vs(e)} />)}
       </ul>
       {onOpen ? (
-        <button type="button" className={`${s.more} ${s.moreBtn}`} onClick={onOpen}>See every retailer and change →</button>
+        <button type="button" className={s.openBtn} onClick={onOpen}>
+          See all {personal.checked} changes and the cheapest retailers <span aria-hidden="true">→</span>
+        </button>
       ) : (
         <Link href="/market" className={s.more}>All changes in Victoria →</Link>
       )}
@@ -111,7 +113,7 @@ function MarketTeaser({ events }: { events: MarketEvent[] }) {
       </div>
       <div className={s.stats}>
         {newOffers > 0 && <div className={s.stat}><b className={s.nNew}><CountUp value={newOffers} /></b><span>new offers</span></div>}
-        {priceChanges > 0 && <div className={s.stat}><b className={s.nPrice}><CountUp value={priceChanges} /></b><span>price changes</span></div>}
+        {priceChanges > 0 && <div className={s.stat}><b className={s.nPrice}><CountUp value={priceChanges} /></b><span>updated offers</span></div>}
         <div className={s.stat}><b><CountUp value={retailers} /></b><span>retailers involved</span></div>
         {perWeek >= 2 && <div className={`${s.stat} ${s.statWeek}`}><b>~{perWeek}</b><span>changes a week</span></div>}
       </div>
@@ -181,7 +183,7 @@ export default function MarketBoard({ personal, compact = false }: { personal?: 
         {priceChanges > 0 && (
           <div className={s.stat}>
             <b className={s.nPrice}><CountUp value={priceChanges} /></b>
-            <span>price changes</span>
+            <span>updated offers</span>
           </div>
         )}
         <div className={s.stat}>
@@ -215,7 +217,7 @@ export default function MarketBoard({ personal, compact = false }: { personal?: 
           <div className={s.axis}><span>{fmtDay(days[0].date)}</span><span>Today</span></div>
           <div className={s.key}>
             <span><i className={s.keyNew} /> New offer</span>
-            <span><i className={s.keyPrice} /> Price change</span>
+            <span><i className={s.keyPrice} /> Updated offer</span>
           </div>
         </div>
 

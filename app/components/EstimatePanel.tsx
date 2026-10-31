@@ -133,6 +133,7 @@ export function BillKwhCard({
   dollarsRaw,
   onDollars,
   kwhFromDollars,
+  compact = false,
 }: {
   bill: BillKwhInput;
   days: number;
@@ -145,6 +146,8 @@ export function BillKwhCard({
   onDollars: (raw: string) => void;
   /** kWh worked out from the dollars (null when it can't be). */
   kwhFromDollars: number | null;
+  /** Inside "Enter the kWh from my bill": no heading or "no bill" line, the option says it. */
+  compact?: boolean;
 }) {
   const answersOnly = useMemo(() => monthlyEstimate(profile).breakdown.total, [profile]);
   const [guide, setGuide] = useState(false);
@@ -152,13 +155,13 @@ export function BillKwhCard({
   const dollars = parseFloat(dollarsRaw);
   return (
     <section className={`${s.top1} ${fc ? s.top1On : ""}`} aria-labelledby="bill-kwh-title">
-      <div className={s.top1Head}>
+      {!compact && <div className={s.top1Head}>
         <span className={s.top1Icon} aria-hidden="true"><Icon name="receipt" size={22} /></span>
         <div>
           <h3 id="bill-kwh-title" className={s.top1Title}>Got a recent bill? Start with it</h3>
           <p className={s.top1Sub}>One real number beats our best guess. Then answer the questions below so we know how your use moves through the year.</p>
         </div>
-      </div>
+      </div>}
       <div className={s.top1Body}>
       <div className={s.top1Inputs}>
       <div className={s.figure} role="group" aria-label="What you can find on your bill">
@@ -214,7 +217,7 @@ export function BillKwhCard({
           <span> (your answers alone would say {n(answersOnly)})</span>
         </p>
       ) : (
-        <p className={s.top1Skip}>No bill handy? Skip this: we&apos;ll estimate from your answers.</p>
+        compact ? null : <p className={s.top1Skip}>No bill handy? Skip this: we&apos;ll estimate from your answers.</p>
       )}
     </section>
   );

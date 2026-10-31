@@ -1,0 +1,32 @@
+/* "How much power you use" on the one-page questions (31 Oct 2026): three
+   options, one open at a time. The average home is the default. */
+.choose { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--border, #e4e7ee); background: var(--surface, #fff); font: inherit; color: var(--ink, #12141c); text-align: left; cursor: pointer; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; }
+.row:hover { border-color: #c9cede; }
+.row:focus-visible { outline: 2px solid var(--navy-accent-text, #22306e); outline-offset: 2px; }
+.rowOn { border-color: var(--amber, #f5a623); background: #fffaf0; box-shadow: 0 10px 24px -18px rgba(180, 110, 0, 0.6); }
+.radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #c9cede; display: grid; place-items: center; transition: border-color 0.15s; }
+.radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--amber, #f5a623); transform: scale(0); transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.rowOn .radio { border-color: var(--amber, #f5a623); }
+.rowOn .radio::after { transform: scale(1); }
+.rowText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rowText b { font-size: 16px; font-weight: 800; }
+.rowText small { font-size: 13.5px; line-height: 1.4; color: var(--grey, #5b6476); }
+.badge { padding: 4px 10px; border-radius: 999px; background: #e7f6ec; color: #15803d; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.chev { font-size: 14px; color: var(--grey, #5b6476); transition: transform 0.2s; }
+.rowOn .chev { transform: rotate(180deg); }
+.body { padding: 4px 4px 12px; animation: open 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.avgLine { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--soft, #f4f6fb); font-size: 14.5px; line-height: 1.5; color: var(--ink, #12141c); }
+.more { margin-top: 14px; border-top: 1px solid var(--border, #e4e7ee); padding-top: 12px; }
+.more summary { cursor: pointer; font-size: 15px; font-weight: 800; color: var(--navy-accent-text, #22306e); list-style: none; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary::before { content: "+ "; }
+.more[open] summary::before { content: "– "; }
+.more summary span { font-weight: 600; color: var(--grey, #5b6476); }
+.more[open] summary { margin-bottom: 12px; }
+@media (max-width: 560px) {
+  .row { padding: 12px 13px; gap: 10px; }
+  .badge { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .row, .radio::after, .chev { transition: none; } .body { animation: none; } }

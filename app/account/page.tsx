@@ -32,6 +32,11 @@ import ProfilePanels, { type ProfileData } from "../components/ProfilePanels";
 import type { LatestCheck } from "../components/LatestCheckCard";
 import { VerdictCard, CompareSection, MemberMarket, summariseComparison, billCheckFacts, type ComparisonInput, type Period } from "../components/DashboardComparison";
 import PlanBand from "../components/PlanBand";
+import { MiddayCard } from "../components/MiddaySaver";
+import { ForecastCard } from "../components/BillForecast";
+import { CountdownCard, LikeYoursCard } from "../components/HomeCards";
+import WhatIfPanel from "../components/WhatIfPanel";
+import InstallBanner from "../components/InstallBanner";
 import UpgradePlans from "../components/UpgradePlans";
 import type { Distributor } from "@/lib/plans";
 import { DEFAULT_PROFILE, estimateWithBill, type HomeProfile } from "@/lib/profileUsage";
@@ -774,11 +779,29 @@ export default function AccountPage() {
     };
   }, [sub]);
 
+  // Their home answers, when they've given them (the seasonal forecast,
+  // "homes like yours" and the what-if seasons need them).
+  const homeProfile = useMemo<HomeProfile | null>(() => {
+    const hp = (sub?.home_profile ?? null) as (Partial<HomeProfile> & { answered?: boolean }) | null;
+    if (!hp || hp.answered === false || typeof hp.daytimeHome !== "string") return null;
+    return { ...DEFAULT_PROFILE, ...hp } as HomeProfile;
+  }, [sub]);
+  // "Add the date" on the countdown: open the dates form on the Savings tab.
+  function editDealDates() {
+    changeTab("savings");
+    setDealForm({ discount: sub?.discount_ends_at ?? "", fixed: sub?.current_price_fixed_until ?? "" });
+    setTimeout(() => document.getElementById("deal-dates")?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+  }
+
   const sideCards = (
     <>
       {fuel === "gas" && sub && <GasAside member={sub} />}
       {fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
+      {fuel === "elec" && cmpInput && myShape && <MiddayCard input={cmpInput} shape={myShape.shape} evOvernight={myShape.evOvernight} profile={homeProfile} member={isMember} />}
+      {fuel === "elec" && cmpInput && <ForecastCard input={cmpInput} profile={homeProfile} member={isMember} />}
+      {fuel === "elec" && isMember && <CountdownCard input={cmpInput} discountEndsAt={sub!.discount_ends_at ?? null} fixedUntil={sub!.current_price_fixed_until ?? null} onEdit={editDealDates} />}
       {fuel === "elec" && cmpInput && <MemberMarket input={cmpInput} member={isMember} compact />}
+      {fuel === "elec" && cmpInput && homeProfile && <LikeYoursCard input={cmpInput} profile={homeProfile} />}
           <div className={styles.panelCard}>
             <div className={styles.panelTitle}>Gas</div>
             {isMember && sub!.gas_zone && sub!.gas_mj ? (
@@ -937,6 +960,7 @@ export default function AccountPage() {
                 <GasDashboard member={sub ?? { gas_zone: null, gas_billing_days: null, gas_mj: null, gas_reference_total: null, gas_current_plan_name: null, gas_updated_at: null }} isMember={isMember} period={period} onPeriod={setPeriod} />
               )}
               {/* Always on top: are you on the cheapest plan? */}
+              {!subLoading && sub && <InstallBanner />}
               {!subLoading && fuel === "elec" && cmpInput && (
                 <VerdictCard input={cmpInput} member={isMember} period={period} onPeriod={setPeriod} />
               )}
@@ -962,7 +986,10 @@ export default function AccountPage() {
                 <DashTabs tabs={fuel === "gas" ? tabs.filter((t) => t.id !== "compare") : tabs} active={shownTab} onChange={changeTab}>
                   {shownTab === "compare" && (
                     cmpInput ? (
-                      <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
+                      <>
+                        <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} />
+                        <WhatIfPanel input={cmpInput} member={isMember} profile={homeProfile} />
+                      </>
                     ) : (
                       <div className={styles.panelCard}>
                         <div className={styles.panelTitle}>Retailer comparison</div>
@@ -1061,7 +1088,7 @@ export default function AccountPage() {
                         </section>
 
 
-                        <section className={styles.panelCard}>
+                        <section className={styles.panelCard} id="deal-dates">
                           <div className={styles.panelTitleRow}>
                             <div className={styles.panelTitle}>Price changes we&apos;re watching for you</div>
                             {!dealForm && (

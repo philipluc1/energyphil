@@ -46,3 +46,7 @@
 .knob { width: 26px; height: 26px; border-radius: 50%; background: var(--grey-soft); transition: background 0.2s; }
 .switchOn { border-color: var(--teal); color: var(--teal); }
 .switchOn .knob { background: var(--teal); }
+
+/* Phone notifications (31 Oct 2026). */
+.testBtn { margin: 6px 0 4px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 800; color: var(--navy-accent-text); cursor: pointer; }
+.testBtn:hover { text-decoration: underline; }

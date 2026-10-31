@@ -170,9 +170,29 @@ export default function MarketRewards({
                   <small title={hide ? undefined : m.plan[2]}>{hide ? "Retailer and plan hidden" : m.plan[2]}</small>
                 </span>
               </div>
-              {r.kind === "credit" && r.value > 0 && diff + r.value >= 1 && (
-                <p className={styles.yearOne}>Year one with the credit: <b>{whole(diff + r.value)} less</b> than {against}</p>
-              )}
+              {r.kind === "credit" && r.value > 0 && (() => {
+                // Year one has the credit; later years don't. Against what they pay now.
+                const nowYear = you * perYear;
+                const planYear = nowYear - diff;
+                const y1 = Math.max(0, planYear - r.value);
+                const top = Math.max(nowYear, planYear, 1);
+                const rows: [string, number, string][] = [
+                  [against[0].toUpperCase() + against.slice(1), nowYear, styles.ybNow],
+                  ["Year 1", y1, styles.ybOne],
+                  ["Year 2 on", planYear, styles.ybLater],
+                ];
+                return (
+                  <div className={styles.years} aria-label={`Year one ${whole(y1)}, later years ${whole(planYear)}, against ${whole(nowYear)} now`}>
+                    {rows.map(([label, v, cls]) => (
+                      <div key={label} className={styles.yRow}>
+                        <span>{label}</span>
+                        <span className={styles.yTrack}><i className={cls} style={{ width: `${(v / top) * 100}%` }} /></span>
+                        <b>{whole(v)}</b>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               <div className={styles.foot}>
                 {r.kind === "discount" && <span className={r.inPrice ? styles.inPrice : styles.notPrice}>{r.inPrice ? "In the price" : "Not in our price"}</span>}
                 <span className={diff >= 1 ? styles.pos : diff <= -1 ? styles.neg : styles.same}>

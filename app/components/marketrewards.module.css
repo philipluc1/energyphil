@@ -101,3 +101,16 @@
 .sideMore:hover { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { .side, .side:hover { transition: none; transform: none; } .sideList li { animation: none; } }
 .sideList li::before { display: none; }
+
+/* Year one (with the credit) against later years and what they pay now. */
+.years { display: flex; flex-direction: column; gap: 5px; padding: 9px 10px; border-radius: 10px; background: #f6f7fa; }
+.yRow { display: grid; grid-template-columns: 64px minmax(0, 1fr) 52px; align-items: center; gap: 8px; font-size: 12px; }
+.yRow > span:first-child { font-weight: 700; color: #5b6476; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yRow > b { text-align: right; font-variant-numeric: tabular-nums; font-size: 12.5px; }
+.yTrack { height: 8px; border-radius: 4px; background: #e6e9f0; overflow: hidden; }
+.yTrack i { display: block; height: 100%; border-radius: 4px; transform-origin: left; animation: yGrow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both 0.15s; }
+.ybNow { background: #e8590c; }
+.ybOne { background: #16a34a; }
+.ybLater { background: #22306e; }
+@keyframes yGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .yTrack i { animation: none; } }

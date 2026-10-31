@@ -17,7 +17,7 @@ export const metadata = pageMeta({ title: "Utilo Plus: $7 a month or $39 a year"
 const ROWS: { label: string; free: boolean | string; plus: boolean | string; tip?: string }[] = [
   { label: "Your saving, from a photo of your bill", free: true, plus: true },
   { label: "The two cheapest plans by name", free: false, plus: true },
-  { label: "Every plan re-checked every morning", free: false, plus: true, tip: "Each day's new offers and price changes, priced against the usage on your bill. You don't lift a finger." },
+  { label: "Every plan re-checked every morning", free: false, plus: true, tip: "Each day's new and updated offers, priced against the usage on your bill. You don't lift a finger." },
   { label: `An email when switching saves $${WORTH_SWITCHING_PER_YEAR}+`, free: false, plus: true, tip: "Silence otherwise. You can set your own amount on your dashboard." },
   { label: "A month's warning before a discount ends", free: false, plus: true },
   { label: "Dashboard, bill history and savings tally", free: false, plus: true },

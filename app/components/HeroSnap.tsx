@@ -81,7 +81,7 @@ export default function HeroSnap({ plans, retailers, gasPlans, gasRetailers }: {
               <span key={fuel} className={s.ctaText}>Snap my {fuel === "gas" ? "gas" : "electricity"} bill</span>
               <span className={s.ctaArrow} aria-hidden="true">→</span>
             </Link>
-            <Link href={fuel === "gas" ? "/gas" : "/check?start=questions"} className={s.secondary}>No bill handy? Estimate it instead</Link>
+            <Link href={fuel === "gas" ? "/gas" : "/check?start=questions"} className={s.secondary}>No bill handy? Use the average home</Link>
           </div>
         )}
         <p className={s.fine}>

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { ALERT_MIN_CHOICES } from "@/lib/alertChoices";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
 import Icon from "./Icon";
+import PushToggle from "./PushToggle";
 import a from "../account/account.module.css";
 import s from "./membersettings.module.css";
 
@@ -175,6 +176,7 @@ function AlertCard({ value, onSaved, monthly, onMonthly }: { value: number | nul
         </button>
       </div>
       {mMsg && <p className={s.muted} role="status">{mMsg}</p>}
+      <PushToggle />
     </section>
   );
 }

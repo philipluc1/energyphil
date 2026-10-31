@@ -18,10 +18,10 @@ const dates = {
 };
 const pc = marketActivity({ dates, network: "Powercor", now });
 assert.deepEqual([pc.newOffers, pc.priceChanges, pc.ready], [1, 1, true]);
-assert.equal(activityWords(pc), "1 new offer and 1 price change");
+assert.equal(activityWords(pc), "1 new offer and 1 updated offer");
 // Since a join date.
 assert.equal(marketActivity({ dates, network: "Powercor", since: "2026-11-05", now }).priceChanges, 0);
-assert.equal(activityWords({ newOffers: 0, priceChanges: 3, retailers: 2, ready: true }), "3 price changes");
+assert.equal(activityWords({ newOffers: 0, priceChanges: 3, retailers: 2, ready: true }), "3 updated offers");
 
 // Offers already there when tracking began count as new from the date they took effect
 // (the same rule as the "New offer" badge); offers dated ahead don't count yet.

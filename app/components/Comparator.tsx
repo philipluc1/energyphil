@@ -31,6 +31,7 @@ import { checkLocality, suburbsIn, type Localities } from "@/lib/localityCheck";
 import NotifyMe from "./NotifyMe";
 import s1 from "./step1.module.css";
 import s2 from "./step2.module.css";
+import uc from "./usagechooser.module.css";
 import {
   DEFAULT_PROFILE,
   AVERAGE_ANNUAL_KWH,
@@ -282,6 +283,10 @@ export default function Comparator() {
   const [currentBillRaw, setCurrentBillRaw] = useState("");
   // No-bill path: a bill's kWh (and the month it ended) to forecast the year from.
   const [calKwhRaw, setCalKwhRaw] = useState("");
+  // One-page questions (/check?start=questions): which option is open, and a kWh set aside.
+  const [questionsPage, setQuestionsPage] = useState(false);
+  const [billRowOpen, setBillRowOpen] = useState(false);
+  const [savedKwhRaw, setSavedKwhRaw] = useState("");
   // Can't find the kWh? They can give the bill's dollar total instead (stored in currentBillRaw).
   const [calFigure, setCalFigure] = useState<BillFigure>("kwh");
   const [calEndMonth, setCalEndMonth] = useState(() => (thisMonth() + 11) % 12);
@@ -325,7 +330,7 @@ export default function Comparator() {
     // /check?start=questions or ?start=type skips the photo panel.
     const start = new URLSearchParams(window.location.search).get("start");
     if (start === "questions" || start === "type") {
-      setTimeout(() => { setEntry("wizard"); setUsageSource(start === "questions" ? "estimate" : "bill"); }, 0);
+      setTimeout(() => { setEntry("wizard"); if (start === "questions") { setQuestionsPage(true); setUsageSource("average"); } else setUsageSource("bill"); }, 0);
     }
     if (!raw) {
       const t0 = setTimeout(() => setHydrated(true), 0);
@@ -498,7 +503,26 @@ export default function Comparator() {
   }
   const useEst = usageSource === "estimate";
   // No bill: every question on one page, with the usage estimate updating live.
-  const onePage = useEst;
+  // The one-page questions start on the average home (4,000 kWh a year) and
+  // stay on one page when someone picks it there.
+  const onePage = useEst || (questionsPage && usageSource === "average");
+  // Which of the three usage options is open on the one-page questions.
+  const usagePick: "average" | "home" | "bill" = usageSource === "average" ? "average" : billRowOpen ? "bill" : "home";
+  function pickUsage(p: "average" | "home" | "bill") {
+    setQuestionsPage(true);
+    if (p === "average") { setUsageSource("average"); return; }
+    setUsageSource("estimate");
+    if (p === "home") {
+      // Set the bill's kWh aside so the estimate comes from the answers alone.
+      if (calKwhRaw) setSavedKwhRaw(calKwhRaw);
+      setCalKwhRaw("");
+      setCalFigure("kwh");
+      setBillRowOpen(false);
+    } else {
+      if (!calKwhRaw && savedKwhRaw) setCalKwhRaw(savedKwhRaw);
+      setBillRowOpen(true);
+    }
+  }
   const onStep1 = onePage || inputStep === 1;
   const qn = (k: number) => (onePage ? k - 1 : k);
   // Victorian postcodes start with 3 (or 8 for PO boxes). Others can't be priced yet.
@@ -983,6 +1007,224 @@ export default function Comparator() {
   const topDetail = top ? billDetail(top.plan, usage) : null;
   const topOffer = top ? offerFor(top.plan) : null;
 
+  // The questions about the home: on the one-page questions they sit inside
+  // "Estimate from my home" (or, optional, under "Enter the kWh from my bill").
+  const homeQuestions = (
+    <>
+            <div className={s2.grid}>
+              <div>
+                <span className={s2.label}>People living here</span>
+                <Choice
+                  value={profile.people}
+                  onChange={(v) => patchProfile({ people: v })}
+                  options={[1, 2, 3, 4, 5, 6].map((n) => ({ value: n, label: n === 6 ? "6+" : String(n) }))}
+                />
+              </div>
+              <div>
+                <span className={s2.label}>Tariff on your bill</span>
+                <Choice
+                  value={profile.tariff ?? "unsure"}
+                  onChange={(v) => patchProfile({ tariff: v })}
+                  options={[
+                    { value: "unsure", label: "Not sure" },
+                    { value: "single", label: "Single rate" },
+                    { value: "tou", label: "Time of use" },
+                  ]}
+                />
+                <span className={s2.hint}>Not sure? We compare single-rate plans, which any meter can be on.</span>
+              </div>
+              <div>
+                <span className={s2.label}>Home during the day?</span>
+                <Choice
+                  value={profile.daytimeHome}
+                  onChange={(v) => patchProfile({ daytimeHome: v })}
+                  options={[
+                    { value: "away", label: "Mostly out" },
+                    { value: "some", label: "Some days" },
+                    { value: "home", label: "Most days" },
+                  ]}
+                />
+              </div>
+              <div>
+                <span className={s2.label}>Heating</span>
+                <Choice
+                  value={profile.heating}
+                  onChange={(v) => patchProfile({ heating: v })}
+                  options={[
+                    { value: "gas_none", label: "Gas or none" },
+                    { value: "reverse_cycle", label: "Split system" },
+                    { value: "resistive", label: "Electric heaters" },
+                  ]}
+                />
+              </div>
+              <div>
+                <span className={s2.label}>Hot water</span>
+                <Choice
+                  value={profile.hotWater === "electric_controlled" ? "electric_general" : profile.hotWater}
+                  onChange={(v) => patchProfile({ hotWater: v === "electric_general" && profile.hotWater === "electric_controlled" ? "electric_controlled" : v })}
+                  options={[
+                    { value: "gas_solar", label: "Gas or solar" },
+                    { value: "electric_general", label: "Electric" },
+                    { value: "heat_pump", label: "Heat pump" },
+                  ]}
+                />
+                {(profile.hotWater === "electric_general" || profile.hotWater === "electric_controlled") && (
+                  <div className={s2.follow}>
+                    <span className={s2.followLabel}>On a separate off-peak meter?</span>
+                    <Choice
+                      value={profile.hotWater}
+                      onChange={(v) => patchProfile({ hotWater: v })}
+                      options={[
+                        { value: "electric_controlled", label: "Yes" },
+                        { value: "electric_general", label: "No or not sure" },
+                      ]}
+                    />
+                    <span className={s2.followHint}>If it is, your bill has a &ldquo;controlled load&rdquo; line.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className={s2.extrasWrap}>
+              <span className={s2.label}>Do you have any of these? <span className={s2.labelSoft}>Tap all that apply</span></span>
+              <div className={s2.extras}>
+                {([
+                  ["cooling", "snow", "Air-con for cooling"],
+                  ["pool", "waves", "Pool or spa"],
+                  ["ev", "car", "Electric car"],
+                  ["hasSolar", "sun", "Solar panels"],
+                ] as const).map(([key, icon, label]) => {
+                  const on = profile[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={on}
+                      className={on ? s2.tileOn : s2.tile}
+                      onClick={() => patchProfile({ [key]: !on } as Partial<HomeProfile>)}
+                    >
+                      <span className={s2.tileIcon}><Icon name={icon} size={26} /></span>
+                      <span className={s2.tileText}>{label}</span>
+                      {on && <span className={s2.tick}><Icon name="check" size={14} /></span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {profile.ev && (
+                <div className={s2.follow}>
+                  <span className={s2.followLabel}>When do you charge the car?</span>
+                  <Choice
+                    value={profile.evCharging}
+                    onChange={(v) => patchProfile({ evCharging: v })}
+                    options={[
+                      { value: "overnight", label: "Mostly overnight" },
+                      { value: "anytime", label: "Whenever" },
+                    ]}
+                  />
+                  <span className={s2.followHint}>We&apos;ll also show plans with cheap overnight charging.</span>
+                </div>
+              )}
+              {profile.hasSolar && (
+                <div className={s1.solar}>
+                  {profile.solarInput === "panels" ? (
+                    <>
+                      <label className={s1.solarLabel} htmlFor="solarPanels">How many panels are on your roof?</label>
+                      <div className={s1.stepper}>
+                        <button type="button" aria-label="One fewer panel" onClick={() => patchProfile({ solarPanels: Math.max(1, profile.solarPanels - 1) })}>−</button>
+                        <input
+                          id="solarPanels"
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={100}
+                          value={profile.solarPanels || ""}
+                          onChange={(e) => patchProfile({ solarPanels: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
+                        />
+                        <button type="button" aria-label="One more panel" onClick={() => patchProfile({ solarPanels: Math.min(100, profile.solarPanels + 1) })}>+</button>
+                        <span>panels</span>
+                      </div>
+                      <span className={s1.qHint}>Count them from the street or on Google Maps&apos; satellite view. Close enough is fine.</span>
+                      <span className={s1.solarLabel}>Roughly when were they put in?</span>
+                      <Choice
+                        value={profile.solarAge}
+                        onChange={(v: SolarAge) => patchProfile({ solarAge: v })}
+                        options={[
+                          { value: "pre2016", label: "Before 2016" },
+                          { value: "2016to2020", label: "2016 to 2020" },
+                          { value: "2021on", label: "2021 or later" },
+                          { value: "unsure", label: "Not sure" },
+                        ]}
+                      />
+                      <p className={s1.solarSum}>
+                        {profile.solarPanels > 0 ? <>That&apos;s about <b>{profile.solarKw} kW</b> of solar.</> : <>Enter how many panels you have.</>}{" "}
+                        <button type="button" className={s1.linkBtn} onClick={() => patchProfile({ solarInput: "kw" })}>I know the system size</button>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <label className={s1.solarLabel} htmlFor="solarKw">System size (kW)</label>
+                      <div className={s1.stepper}>
+                        <input
+                          id="solarKw"
+                          type="number"
+                          min={0.5}
+                          step={0.1}
+                          value={profile.solarKw}
+                          onChange={(e) => patchProfile({ solarKw: Math.max(0, parseFloat(e.target.value) || 0) })}
+                        />
+                        <span>kW</span>
+                      </div>
+                      <span className={s1.qHint}>It&apos;s on the installer&apos;s paperwork or the inverter app.</span>
+                      <p className={s1.solarSum}>
+                        <button type="button" className={s1.linkBtn} onClick={() => patchProfile({ solarInput: "panels" })}>Count my panels instead</button>
+                      </p>
+                    </>
+                  )}
+                  <div className={s1.solarBill}>
+                    <span className={s1.solarLabel}>From your bill <span className={s1.opt}>(optional, but it sharpens the answer)</span></span>
+                    <div className={s1.solarBillRow}>
+                      <label>
+                        <span>Solar sent to the grid</span>
+                        <span className={s1.unitIn}>
+                          <input type="number" inputMode="decimal" min={0} placeholder="e.g. 160" value={solarExportRaw} onChange={(e) => setSolarExportRaw(e.target.value)} />
+                          kWh
+                        </span>
+                      </label>
+                      <label>
+                        <span>What you&apos;re paid now for solar you send out (feed-in tariff)</span>
+                        <span className={s1.unitIn}>
+                          <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 3.3" value={ratesForm.fit} onChange={(e) => patchRates({ fit: e.target.value })} />
+                          c/kWh
+                        </span>
+                      </label>
+                    </div>
+                    <span className={s1.qHint}>
+                      Look for a &ldquo;solar credit&rdquo;, &ldquo;feed-in&rdquo; or &ldquo;export&rdquo; line on your bill. The kWh is for the whole bill ({days} days).
+                    </span>
+                    {(() => {
+                      const best = bestFitOn(distributor);
+                      const yours = parseFloat(ratesForm.fit);
+                      const exp = typedSolarExport > 0 ? typedSolarExport : est.solarExportKwh;
+                      if (!best || !(yours >= 0) || ratesForm.fit.trim() === "") return null;
+                      const gap = (best.rate - yours / 100) * exp;
+                      return best.rate * 100 > yours + 0.05 ? (
+                        <p className={s1.fitTip}>
+                          You get {yours.toLocaleString("en-AU", { maximumFractionDigits: 2 })}c. The best feed-in in your area pays up to {(best.rate * 100).toLocaleString("en-AU", { maximumFractionDigits: 2 })}c
+                          {exp > 0 && gap >= 1 ? <>: on {Math.round(exp).toLocaleString("en-AU")} kWh that&apos;s up to <b>{fmtCurrency(gap)} more a bill</b></> : null}. Some plans pay their top rate only on the first few kWh a day, and your results weigh feed-in against each plan&apos;s other prices.
+                        </p>
+                      ) : (
+                        <p className={s1.fitTip}>Your feed-in is as good as any plan on {distributor}.</p>
+                      );
+                    })()}
+                  </div>
+                  <span className={styles.unitNote}>We use each plan&apos;s real feed-in rate ({totalWithSolarFit()} of {PLAN_COUNT} publish one).</span>
+                </div>
+              )}
+            </div>
+    </>
+  );
+
   return (
     <>
       <SiteHeader active="check" />
@@ -1452,12 +1694,57 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>2</span> About your home
+                  <span className={styles.stepNum}>2</span> {onePage ? "How much power you use" : "About your home"}
                 </div>
-                <span className={styles.stepSub}>Rough answers are fine. They tell us how much power you use, and when.</span>
+                <span className={styles.stepSub}>{onePage ? "Pick one. You can switch any time and the results follow." : "Rough answers are fine. They tell us how much power you use, and when."}</span>
               </div>
             </div>
-            {useEst && (
+            {onePage ? (
+              <div className={uc.choose} role="radiogroup" aria-label="How to work out your usage">
+                <button type="button" role="radio" aria-checked={usagePick === "average"} className={`${uc.row} ${usagePick === "average" ? uc.rowOn : ""}`} onClick={() => pickUsage("average")}>
+                  <span className={uc.radio} aria-hidden="true" />
+                  <span className={uc.rowText}>
+                    <b>Use the average home</b>
+                    <small>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year, the Victorian benchmark. No bill needed.</small>
+                  </span>
+                  <span className={uc.badge}>Quickest</span>
+                </button>
+                {usagePick === "average" && (
+                  <div className={uc.body}>
+                    <p className={uc.avgLine}>
+                      We&apos;ll price every plan for <b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year</b> (about {(AVERAGE_ANNUAL_KWH / 365).toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh a day), the usage the Essential Services Commission uses for the default offer.{" "}
+                      <InfoTip label="About the average home">
+                        It shows what each plan costs a typical Victorian home on your network. Your own costs could be quite different: a bill, or a few answers about your home, gives a sharper answer.
+                      </InfoTip>
+                    </p>
+                  </div>
+                )}
+
+                <button type="button" role="radio" aria-checked={usagePick === "home"} className={`${uc.row} ${usagePick === "home" ? uc.rowOn : ""}`} onClick={() => pickUsage("home")}>
+                  <span className={uc.radio} aria-hidden="true" />
+                  <span className={uc.rowText}>
+                    <b>Estimate from my home</b>
+                    <small>A few taps about who lives there, heating and hot water.</small>
+                  </span>
+                  <span className={uc.chev} aria-hidden="true">▾</span>
+                </button>
+                {usagePick === "home" && (
+                  <div className={uc.body}>
+                    <EstimateStrip profile={profile} forecast={billForecast} />
+                    {homeQuestions}
+                  </div>
+                )}
+
+                <button type="button" role="radio" aria-checked={usagePick === "bill"} className={`${uc.row} ${usagePick === "bill" ? uc.rowOn : ""}`} onClick={() => pickUsage("bill")}>
+                  <span className={uc.radio} aria-hidden="true" />
+                  <span className={uc.rowText}>
+                    <b>Enter the kWh from my bill</b>
+                    <small>One number from your last bill. Most accurate without a photo.</small>
+                  </span>
+                  <span className={uc.chev} aria-hidden="true">▾</span>
+                </button>
+                {usagePick === "bill" && (
+                  <div className={uc.body}>
               <BillKwhCard
                 bill={{ kwhRaw: calKwhRaw, endMonth: calEndMonth, onKwh: setCalKwhRaw, onEndMonth: setCalEndMonth, forecast: billForecast }}
                 days={days}
@@ -1468,221 +1755,19 @@ export default function Comparator() {
                 dollarsRaw={currentBillRaw}
                 onDollars={setCurrentBillRaw}
                 kwhFromDollars={kwhFromDollars}
+                compact
               />
-            )}
-            {useEst && <EstimateStrip profile={profile} forecast={billForecast} />}
-
-            <div className={s2.grid}>
-              <div>
-                <span className={s2.label}>People living here</span>
-                <Choice
-                  value={profile.people}
-                  onChange={(v) => patchProfile({ people: v })}
-                  options={[1, 2, 3, 4, 5, 6].map((n) => ({ value: n, label: n === 6 ? "6+" : String(n) }))}
-                />
-              </div>
-              <div>
-                <span className={s2.label}>Tariff on your bill</span>
-                <Choice
-                  value={profile.tariff ?? "unsure"}
-                  onChange={(v) => patchProfile({ tariff: v })}
-                  options={[
-                    { value: "unsure", label: "Not sure" },
-                    { value: "single", label: "Single rate" },
-                    { value: "tou", label: "Time of use" },
-                  ]}
-                />
-                <span className={s2.hint}>Not sure? We compare single-rate plans, which any meter can be on.</span>
-              </div>
-              <div>
-                <span className={s2.label}>Home during the day?</span>
-                <Choice
-                  value={profile.daytimeHome}
-                  onChange={(v) => patchProfile({ daytimeHome: v })}
-                  options={[
-                    { value: "away", label: "Mostly out" },
-                    { value: "some", label: "Some days" },
-                    { value: "home", label: "Most days" },
-                  ]}
-                />
-              </div>
-              <div>
-                <span className={s2.label}>Heating</span>
-                <Choice
-                  value={profile.heating}
-                  onChange={(v) => patchProfile({ heating: v })}
-                  options={[
-                    { value: "gas_none", label: "Gas or none" },
-                    { value: "reverse_cycle", label: "Split system" },
-                    { value: "resistive", label: "Electric heaters" },
-                  ]}
-                />
-              </div>
-              <div>
-                <span className={s2.label}>Hot water</span>
-                <Choice
-                  value={profile.hotWater === "electric_controlled" ? "electric_general" : profile.hotWater}
-                  onChange={(v) => patchProfile({ hotWater: v === "electric_general" && profile.hotWater === "electric_controlled" ? "electric_controlled" : v })}
-                  options={[
-                    { value: "gas_solar", label: "Gas or solar" },
-                    { value: "electric_general", label: "Electric" },
-                    { value: "heat_pump", label: "Heat pump" },
-                  ]}
-                />
-                {(profile.hotWater === "electric_general" || profile.hotWater === "electric_controlled") && (
-                  <div className={s2.follow}>
-                    <span className={s2.followLabel}>On a separate off-peak meter?</span>
-                    <Choice
-                      value={profile.hotWater}
-                      onChange={(v) => patchProfile({ hotWater: v })}
-                      options={[
-                        { value: "electric_controlled", label: "Yes" },
-                        { value: "electric_general", label: "No or not sure" },
-                      ]}
-                    />
-                    <span className={s2.followHint}>If it is, your bill has a &ldquo;controlled load&rdquo; line.</span>
+                    <EstimateStrip profile={profile} forecast={billForecast} />
+                    <details className={uc.more}>
+                      <summary>Tell us about your home <span>(optional, sharpens the seasons)</span></summary>
+                      {homeQuestions}
+                    </details>
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className={s2.extrasWrap}>
-              <span className={s2.label}>Do you have any of these? <span className={s2.labelSoft}>Tap all that apply</span></span>
-              <div className={s2.extras}>
-                {([
-                  ["cooling", "snow", "Air-con for cooling"],
-                  ["pool", "waves", "Pool or spa"],
-                  ["ev", "car", "Electric car"],
-                  ["hasSolar", "sun", "Solar panels"],
-                ] as const).map(([key, icon, label]) => {
-                  const on = profile[key];
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      aria-pressed={on}
-                      className={on ? s2.tileOn : s2.tile}
-                      onClick={() => patchProfile({ [key]: !on } as Partial<HomeProfile>)}
-                    >
-                      <span className={s2.tileIcon}><Icon name={icon} size={26} /></span>
-                      <span className={s2.tileText}>{label}</span>
-                      {on && <span className={s2.tick}><Icon name="check" size={14} /></span>}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {profile.ev && (
-                <div className={s2.follow}>
-                  <span className={s2.followLabel}>When do you charge the car?</span>
-                  <Choice
-                    value={profile.evCharging}
-                    onChange={(v) => patchProfile({ evCharging: v })}
-                    options={[
-                      { value: "overnight", label: "Mostly overnight" },
-                      { value: "anytime", label: "Whenever" },
-                    ]}
-                  />
-                  <span className={s2.followHint}>We&apos;ll also show plans with cheap overnight charging.</span>
-                </div>
-              )}
-              {profile.hasSolar && (
-                <div className={s1.solar}>
-                  {profile.solarInput === "panels" ? (
-                    <>
-                      <label className={s1.solarLabel} htmlFor="solarPanels">How many panels are on your roof?</label>
-                      <div className={s1.stepper}>
-                        <button type="button" aria-label="One fewer panel" onClick={() => patchProfile({ solarPanels: Math.max(1, profile.solarPanels - 1) })}>−</button>
-                        <input
-                          id="solarPanels"
-                          type="number"
-                          inputMode="numeric"
-                          min={1}
-                          max={100}
-                          value={profile.solarPanels || ""}
-                          onChange={(e) => patchProfile({ solarPanels: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
-                        />
-                        <button type="button" aria-label="One more panel" onClick={() => patchProfile({ solarPanels: Math.min(100, profile.solarPanels + 1) })}>+</button>
-                        <span>panels</span>
-                      </div>
-                      <span className={s1.qHint}>Count them from the street or on Google Maps&apos; satellite view. Close enough is fine.</span>
-                      <span className={s1.solarLabel}>Roughly when were they put in?</span>
-                      <Choice
-                        value={profile.solarAge}
-                        onChange={(v: SolarAge) => patchProfile({ solarAge: v })}
-                        options={[
-                          { value: "pre2016", label: "Before 2016" },
-                          { value: "2016to2020", label: "2016 to 2020" },
-                          { value: "2021on", label: "2021 or later" },
-                          { value: "unsure", label: "Not sure" },
-                        ]}
-                      />
-                      <p className={s1.solarSum}>
-                        {profile.solarPanels > 0 ? <>That&apos;s about <b>{profile.solarKw} kW</b> of solar.</> : <>Enter how many panels you have.</>}{" "}
-                        <button type="button" className={s1.linkBtn} onClick={() => patchProfile({ solarInput: "kw" })}>I know the system size</button>
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <label className={s1.solarLabel} htmlFor="solarKw">System size (kW)</label>
-                      <div className={s1.stepper}>
-                        <input
-                          id="solarKw"
-                          type="number"
-                          min={0.5}
-                          step={0.1}
-                          value={profile.solarKw}
-                          onChange={(e) => patchProfile({ solarKw: Math.max(0, parseFloat(e.target.value) || 0) })}
-                        />
-                        <span>kW</span>
-                      </div>
-                      <span className={s1.qHint}>It&apos;s on the installer&apos;s paperwork or the inverter app.</span>
-                      <p className={s1.solarSum}>
-                        <button type="button" className={s1.linkBtn} onClick={() => patchProfile({ solarInput: "panels" })}>Count my panels instead</button>
-                      </p>
-                    </>
-                  )}
-                  <div className={s1.solarBill}>
-                    <span className={s1.solarLabel}>From your bill <span className={s1.opt}>(optional, but it sharpens the answer)</span></span>
-                    <div className={s1.solarBillRow}>
-                      <label>
-                        <span>Solar sent to the grid</span>
-                        <span className={s1.unitIn}>
-                          <input type="number" inputMode="decimal" min={0} placeholder="e.g. 160" value={solarExportRaw} onChange={(e) => setSolarExportRaw(e.target.value)} />
-                          kWh
-                        </span>
-                      </label>
-                      <label>
-                        <span>What you&apos;re paid now for solar you send out (feed-in tariff)</span>
-                        <span className={s1.unitIn}>
-                          <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 3.3" value={ratesForm.fit} onChange={(e) => patchRates({ fit: e.target.value })} />
-                          c/kWh
-                        </span>
-                      </label>
-                    </div>
-                    <span className={s1.qHint}>
-                      Look for a &ldquo;solar credit&rdquo;, &ldquo;feed-in&rdquo; or &ldquo;export&rdquo; line on your bill. The kWh is for the whole bill ({days} days).
-                    </span>
-                    {(() => {
-                      const best = bestFitOn(distributor);
-                      const yours = parseFloat(ratesForm.fit);
-                      const exp = typedSolarExport > 0 ? typedSolarExport : est.solarExportKwh;
-                      if (!best || !(yours >= 0) || ratesForm.fit.trim() === "") return null;
-                      const gap = (best.rate - yours / 100) * exp;
-                      return best.rate * 100 > yours + 0.05 ? (
-                        <p className={s1.fitTip}>
-                          You get {yours.toLocaleString("en-AU", { maximumFractionDigits: 2 })}c. The best feed-in in your area pays up to {(best.rate * 100).toLocaleString("en-AU", { maximumFractionDigits: 2 })}c
-                          {exp > 0 && gap >= 1 ? <>: on {Math.round(exp).toLocaleString("en-AU")} kWh that&apos;s up to <b>{fmtCurrency(gap)} more a bill</b></> : null}. Some plans pay their top rate only on the first few kWh a day, and your results weigh feed-in against each plan&apos;s other prices.
-                        </p>
-                      ) : (
-                        <p className={s1.fitTip}>Your feed-in is as good as any plan on {distributor}.</p>
-                      );
-                    })()}
-                  </div>
-                  <span className={styles.unitNote}>We use each plan&apos;s real feed-in rate ({totalWithSolarFit()} of {PLAN_COUNT} publish one).</span>
-                </div>
-              )}
-            </div>
+            ) : (
+              homeQuestions
+            )}
           </div>
         )}
 
@@ -1698,7 +1783,7 @@ export default function Comparator() {
                 </div>
                 <span className={styles.stepSub}>
                   {onePage
-                    ? "Worked out from your answers above. Change them and it updates."
+                    ? usageSource === "average" ? "The average Victorian home. Pick another option above to make it yours." : "Worked out from your answers above. Change them and it updates."
                     : "A few numbers from your bill make this exact. No bill? We'll estimate."}
                 </span>
               </div>
@@ -1706,10 +1791,9 @@ export default function Comparator() {
 
             {onePage && (
               <p className={w.switchLine}>
-                Got a bill after all?{" "}
-                <button type="button" onClick={() => { setUsageSource("bill"); setInputStep(3); }}>Type in its numbers</button>{" "}
-                or snap it at the top for exact figures. Not sure about your home?{" "}
-                <button type="button" onClick={() => { setUsageSource("average"); setInputStep(3); }}>Use the average home</button>
+                Got the whole bill?{" "}
+                <button type="button" onClick={() => { setUsageSource("bill"); setInputStep(3); }}>Type in all its numbers</button>{" "}
+                or snap it at the top for exact figures and your real rates.
               </p>
             )}
 
@@ -1820,22 +1904,26 @@ export default function Comparator() {
               </>
             ) : usageSource === "average" ? (
               <section className={w.q}>
-                <div className={w.qHead}>
-                  <span className={w.qNum}>3</span>
-                  <div>
-                    <h3 className={w.qTitle}>We&apos;ll use the average Victorian home</h3>
-                    <p className={w.qSub}>For when you don&apos;t have a bill or don&apos;t know your usage.</p>
+                {!onePage && (
+                  <div className={w.qHead}>
+                    <span className={w.qNum}>3</span>
+                    <div>
+                      <h3 className={w.qTitle}>We&apos;ll use the average Victorian home</h3>
+                      <p className={w.qSub}>For when you don&apos;t have a bill or don&apos;t know your usage.</p>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className={w.estimate}>
                   <div className={w.estBig}>
                     <b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year</b>, about {(AVERAGE_ANNUAL_KWH / 365).toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh a day, or ~
-                    {(avg.peak + avg.shoulder + avg.offpeak).toLocaleString("en-AU")} kWh a bill.
+                    {Math.round(avg.peak + avg.shoulder + avg.offpeak + avg.anytime).toLocaleString("en-AU")} kWh a bill.
                   </div>
-                  <span className={w.rateHint}>
-                    It&apos;s the figure the Essential Services Commission uses for the Victorian Default Offer, so you&apos;ll see what each plan costs a
-                    typical home. Your own costs could be quite different: add a bill or answer the questions about your home for a sharper answer.
-                  </span>
+                  {!onePage && (
+                    <span className={w.rateHint}>
+                      It&apos;s the figure the Essential Services Commission uses for the Victorian Default Offer, so you&apos;ll see what each plan costs a
+                      typical home. Your own costs could be quite different: add a bill or answer the questions about your home for a sharper answer.
+                    </span>
+                  )}
                 </div>
               </section>
             ) : (

@@ -5,6 +5,7 @@ import RatesCompare from "./RatesCompare";
 import Icon from "./Icon";
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { RETAILER_COUNT, billDetail, rankPlans, topOpen, isEvFriendly, fmtRateCents, fmtRatePerDay, type Distributor, type UsageInput, type PlanRow } from "@/lib/plans";
 import { describeOffer } from "@/lib/planExtras";
 import OfferTerms, { OfferChips } from "./OfferTerms";
@@ -28,6 +29,7 @@ import { periodScale } from "@/lib/periods";
 import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
+import { useOpenParam } from "@/lib/useOpenParam";
 import styles from "./dashcompare.module.css";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -96,7 +98,7 @@ export interface ComparisonSummary {
 
 /** Shared maths for the verdict, the table and the Savings tab, so every
  *  figure on the dashboard comes from the same calculation. */
-function compute(input: ComparisonInput) {
+export function compute(input: ComparisonInput) {
   // Not enough usage on file (none, under a week, or under 1 kWh a day
   // without solar)? Use the average Victorian home, 4,000 kWh a year.
   const { usage, average } = usageOrAverage({ days: input.days, peak: input.peak, shoulder: input.shoulder, offpeak: input.offpeak, anytime: input.anytime, cl: input.cl, solarExportKwh: input.solarExportKwh, demandKw: input.demandKw ?? null });
@@ -130,7 +132,7 @@ function compute(input: ComparisonInput) {
 
 /** Free users: the two cheapest plans (and anything above the cheapest one
  *  anyone can get) are for members, the same rule as the results page. */
-function lockedTopFor(c: NonNullable<ReturnType<typeof compute>>, member: boolean) {
+export function lockedTopFor(c: NonNullable<ReturnType<typeof compute>>, member: boolean) {
   return member ? [] : c.matches.slice(0, Math.max(2, c.matches.indexOf(c.top) + 1));
 }
 
@@ -325,6 +327,8 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
   // false = closed; otherwise the section the page opens at.
   const [open, setOpen] = useState<false | "top" | "rewards">(false);
   const rewards = useMemo(() => (c ? rewardItems(c.matches, c.you, c.perYear) : []), [c]);
+  useOpenParam("market", () => setOpen("top"), compact && !!c);
+  useOpenParam("rewards", () => setOpen("rewards"), compact && !!c);
   const personal = useMemo<MarketPersonal | null>(() => {
     if (!c) return null;
     const byKey = new Map(c.matches.map((m) => [`${m.plan[0]}|${m.plan[2]}`, m]));
@@ -787,6 +791,8 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", key); document.body.style.overflow = prev; };
   }, [onClose]);
+  const [allRet, setAllRet] = useState(false);
+  const [allFeed, setAllFeed] = useState(false);
   const locked = new Set(lockedTopFor(c, member));
   const perRet = cheapestPerRetailer(c.matches.filter((m) => !m.restricted), c.top);
   const yearly = (t: number) => t * c.perYear;
@@ -806,7 +812,12 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
   const bestSave = best ? Math.max(0, (c.you - best.total) * c.perYear) : 0;
   const shortDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "UTC" });
   const against = c.haveBill ? "your bill" : "the default offer";
-  return (
+  // Top 5 retailers and the 10 latest changes; the rest fold out.
+  const RET_SHOWN = 5;
+  const FEED_SHOWN = 10;
+  const retShown = allRet ? perRet : perRet.slice(0, RET_SHOWN);
+  const feedShown = allFeed ? events : events.slice(0, FEED_SHOWN);
+  return createPortal(
     <div className={styles.mdOverlay} role="dialog" aria-modal="true" aria-labelledby="md-title">
       <div className={styles.mdBar}>
         <button type="button" className={styles.mdBack} onClick={onClose}>← Back to my dashboard</button>
@@ -825,12 +836,12 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
 
         <section className={styles.mdCard} aria-labelledby="md-chart">
           <h3 id="md-chart">Changes by day</h3>
-          <p className={styles.mdSub}>{newOffers} new offers and {events.length - newOffers} price changes in 30 days.</p>
+          <p className={styles.mdSub}>{newOffers} new offers and {events.length - newOffers} updated offers in 30 days.</p>
           <div className={styles.mdChart} role="img" aria-label={`${events.length} changes over 30 days`}>
             {days.map((d) => {
               const t = d.newOffers + d.priceChanges;
               return (
-                <span key={d.date} className={styles.mdCol} title={`${shortDay(d.date)}: ${d.newOffers} new, ${d.priceChanges} price changes`}>
+                <span key={d.date} className={styles.mdCol} title={`${shortDay(d.date)}: ${d.newOffers} new, ${d.priceChanges} updated`}>
                   <i className={styles.mdPrice} style={{ height: `${(d.priceChanges / dayMax) * 100}%` }} />
                   <i className={styles.mdNew} style={{ height: `${(d.newOffers / dayMax) * 100}%` }} />
                   {t === 0 && <i className={styles.mdZero} />}
@@ -839,14 +850,14 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
             })}
           </div>
           <div className={styles.mdAxis}><span>{shortDay(days[0].date)}</span><span>Today</span></div>
-          <div className={styles.mdLegend}><span><i className={styles.mdNew} /> New offer</span><span><i className={styles.mdPrice} /> Price change</span></div>
+          <div className={styles.mdLegend}><span><i className={styles.mdNew} /> New offer</span><span><i className={styles.mdPrice} /> Updated offer</span></div>
         </section>
 
         <section className={styles.mdCard} aria-labelledby="md-ret">
-          <h3 id="md-ret">Every retailer, priced for your home</h3>
+          <h3 id="md-ret">Cheapest retailers for your home</h3>
           <p className={styles.mdSub}>Each retailer&apos;s cheapest plan you can get, a year. The line is {against}: {whole(youYear)}.</p>
           <ol className={styles.mdRank}>
-            {perRet.map((m, i) => {
+            {retShown.map((m, i) => {
               const diff = (c.you - m.total) * c.perYear;
               const hide = locked.has(m);
               const ch = changesBy.get(m.plan[0]);
@@ -873,14 +884,22 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
               );
             })}
           </ol>
+          {perRet.length > RET_SHOWN && (
+            <button type="button" className={styles.mdMore} aria-expanded={allRet} onClick={() => setAllRet((v) => !v)}>
+              {allRet ? "Show the top 5" : `Show all ${perRet.length} retailers`}
+            </button>
+          )}
         </section>
 
         <MarketRewards matches={c.matches} you={c.you} perYear={c.perYear} against={against} locked={locked as Set<unknown>} whole={whole} />
 
         <section className={styles.mdCard} aria-labelledby="md-feed">
-          <h3 id="md-feed">Every change, newest first</h3>
+          <h3 id="md-feed">Latest changes on your network</h3>
+          <p className={styles.mdSub}>
+            New offers, and offers a retailer has republished with new rates, discounts or terms for new customers. Each one priced for your home.
+          </p>
           <ul className={styles.mdFeed}>
-            {events.map((e, i) => {
+            {feedShown.map((e, i) => {
               const v = personal.vs(e);
               return (
                 <li key={`${e.retailer}|${e.plan}|${i}`}>
@@ -890,15 +909,21 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
                     <b>{e.retailer}</b>
                     <small title={e.plan}>{e.plan}</small>
                   </span>
-                  <span className={e.kind === "new" ? styles.mdTagNew : styles.mdTagPrice}>{e.kind === "new" ? "New offer" : "Price change"}</span>
+                  <span className={e.kind === "new" ? styles.mdTagNew : styles.mdTagPrice}>{e.kind === "new" ? "New offer" : "Updated offer"}</span>
                   {v && <span className={v.tone === "better" ? styles.mdVsGood : v.tone === "worse" ? styles.mdVsBad : styles.mdVsMuted}>{v.text}</span>}
                 </li>
               );
             })}
           </ul>
+          {events.length > FEED_SHOWN && (
+            <button type="button" className={styles.mdMore} aria-expanded={allFeed} onClick={() => setAllFeed((v) => !v)}>
+              {allFeed ? "Show the latest 10" : `Show all ${events.length} changes`}
+            </button>
+          )}
         </section>
         <button type="button" className={styles.mdBackBottom} onClick={onClose}>← Back to my dashboard</button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

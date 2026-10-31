@@ -7,7 +7,7 @@ import home from "../home.module.css";
 
 export const metadata = pageMeta({
   title: "What changed in Victoria's power market",
-  description: "Every new electricity offer and price change from Victorian retailers in the last 30 days, from their published plan data, updated daily.",
+  description: "Every new and updated electricity offer from Victorian retailers in the last 30 days, from their published plan data, updated daily.",
   path: "/market",
 });
 
@@ -22,7 +22,7 @@ export default function MarketPage() {
         <section className={home.pageHead}>
           <h1>What changed in the market</h1>
           <p className={styles.lede}>
-            Every new offer and price change from the retailers we track, from their own published plan data, checked every morning. Plan names are the
+            Every new and updated offer from the retailers we track, from their own published plan data, checked every morning. Plan names are the
             retailers&apos; own.
           </p>
         </section>

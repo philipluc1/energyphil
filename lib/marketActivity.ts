@@ -101,9 +101,9 @@ export function dailyChanges(events: MarketEvent[], days = 30, now = Date.now())
   return out;
 }
 
-/** "12 new offers and 30 price changes" (or just one part when the other is 0). */
+/** "12 new offers and 30 updated offers" (or just one part when the other is 0). */
 export function activityWords(a: MarketActivity): string {
   const n = (k: number, one: string, many: string) => `${k.toLocaleString("en-AU")} ${k === 1 ? one : many}`;
-  const parts = [a.newOffers ? n(a.newOffers, "new offer", "new offers") : "", a.priceChanges ? n(a.priceChanges, "price change", "price changes") : ""].filter(Boolean);
+  const parts = [a.newOffers ? n(a.newOffers, "new offer", "new offers") : "", a.priceChanges ? n(a.priceChanges, "updated offer", "updated offers") : ""].filter(Boolean);
   return parts.join(" and ");
 }

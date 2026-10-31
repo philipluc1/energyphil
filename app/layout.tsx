@@ -3,6 +3,7 @@ import "./globals.css";
 import LeaveSiteGuard from "./components/LeaveSiteGuard";
 import { SourceCapture } from "./components/SourceBanner";
 import ScrollMotion from "./components/ScrollMotion";
+import PwaRegister from "./components/PwaRegister";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 const DESCRIPTION =
@@ -22,6 +23,8 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: SITE_NAME, locale: "en_AU" },
   twitter: { card: "summary_large_image" },
   formatDetection: { telephone: false },
+  // Added to an iPhone home screen: opens full screen, named "Utilo".
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
@@ -47,6 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <LeaveSiteGuard />
         <SourceCapture />
         <ScrollMotion />
+        <PwaRegister />
       </body>
     </html>
   );

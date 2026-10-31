@@ -22,6 +22,8 @@ jobs:
           node-version: 22
       - name: Pull current plans from every retailer's CDR feed
         run: node scripts/pull-plans.mjs
+      - name: Add today's cheapest prices to the price index
+        run: npx --yes tsx scripts/price-index.ts
       - name: Commit if anything changed (Vercel deploys on push)
         run: |
           if git diff --quiet -- lib/plans.ts lib/gasPlans.ts lib/planTerms.ts lib/planExtras.ts lib/retailerDirectory.ts; then

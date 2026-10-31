@@ -11,7 +11,9 @@ import { esc } from "./email";
 import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 import { RETAILER_LINKS } from "./retailerLinks";
 import { REFERRAL_CREDIT_CENTS, referralDollars } from "./referralOffer";
-import { button, chips, dateBanner, heading, iconRow, iconRows, money, note, planCard, signOff, statusBox, step, steps, tip, unsubscribe } from "./emailParts";
+import { button, chips, columns, dateBanner, glance, glanceRow, heading, iconRow, iconRows, miniBars, money, note, planCard, signOff, statusBox, step, steps, tip, unsubscribe } from "./emailParts";
+import type { SummaryFacts } from "./monthlySummary";
+import { middayWorthIt } from "./monthlySummary";
 
 export interface Email { subject: string; title: string; html: string }
 
@@ -158,8 +160,12 @@ export function monthlyCheck(i: {
   unsubscribeUrl: string;
   /** Members with a gas bill on file: the cheapest gas plan vs their gas bill. */
   gas?: { retailer: string; planName: string; yearly: number } | null;
-  /** New offers and price changes on their network this month, e.g. "8 new offers and 21 price changes". */
+  /** New offers and price changes on their network this month, e.g. "8 new offers and 21 updated offers". */
   activity?: string | null;
+  /** How many offers changed on their network this month (for the numbers row). */
+  activityCount?: number | null;
+  /** The monthly summary's extra sections (lib/monthlySummary.ts). Without it, the short check. */
+  facts?: SummaryFacts | null;
 }): Email {
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
   const gasWorth = !!i.gas && i.gas.yearly >= WORTH_SWITCHING_PER_YEAR;
@@ -174,7 +180,19 @@ export function monthlyCheck(i: {
   const card = worth
     ? planCard({ kicker: "You could pay less", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: "a year less than your last bill." }, link: retailerLink(i.retailer), tone: "amber" })
     : statusBox({ kicker: `Your ${esc(i.monthName)} check`, headline: "You're on a good deal", body: `Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more. We'll keep watching.`, tone: "green" });
-  const html = `
+  const f = i.facts ?? null;
+  const html = f
+    ? `
+    <p>${i.isJuly ? "Retailers changed their prices on 1 July, so we've re-checked your plan against the new ones." : "Your month in 30 seconds. We re-checked your plan against today's prices"}${i.activityCount && !i.isJuly ? `, including ${i.activityCount} offers that changed on your network.` : i.isJuly ? "" : "."}</p>
+    ${i.gas ? heading("Electricity") : ""}
+    ${card}
+    ${i.gas ? heading("Gas") + gasBlock : ""}
+    ${summaryGlance(i, f)}
+    ${tip(`<strong>Tip: ${esc(f.tip.title)}.</strong> ${esc(f.tip.body)}`)}
+    ${button("Open my full summary", `${i.origin}/account#compare`)}
+    ${note(`Switched recently? <a href="${i.origin}/account">Add the date on your dashboard</a> so your savings count from the right day. New bill? Snap it there and every figure updates. All figures are estimates from your bill and today's prices.`)}
+    ${unsubscribe(i.unsubscribeUrl, "You're getting this monthly summary as a Utilo member. You can also turn it off on the Plus tab. This won't cancel Utilo Plus.")}`
+    : `
     <p>${lead}${i.activity ? ` This month retailers made ${esc(i.activity)} on your network, and we checked every one against your home.` : ""}</p>
     ${i.gas ? heading("Electricity") : ""}
     ${card}
@@ -187,6 +205,98 @@ export function monthlyCheck(i: {
     title: i.isJuly ? "Your 1 July re-check" : `Your ${esc(i.monthName)} check`,
     html,
   };
+}
+
+/* ---------- Monthly summary sections ---------- */
+const shortDate = (isoDate: string) => new Date(`${isoDate}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "UTC" });
+type MonthlyInput = Parameters<typeof monthlyCheck>[0];
+
+const INK = { you: "#e8590c", best: "#16a34a", vdo: "#b8bfcf", navy: "#22306e", light: "#c7cde0", amber: "#f5a623", teal: "#14b8a6", free: "#16a34a", soak: "#5eead4", peak: "#f87171", off: "#c7cde0" };
+
+/** "At a glance": one line per topic with a small chart and a link to the full chart on the dashboard. */
+function summaryGlance(i: MonthlyInput, f: SummaryFacts): string {
+  const open = (what: string) => `${i.origin}/account?open=${what}#home`;
+  const rows: string[] = [];
+  const y = f.charts.year;
+
+  if (y.vsBill) {
+    rows.push(glanceRow({
+      dot: INK.you,
+      title: `Your year: ${money(y.you)} now, ${money(y.best)} on the cheapest`,
+      line: `The default offer would be ${money(y.vdo)}.`,
+      link: { label: "Compare every retailer", url: `${i.origin}/account#compare` },
+      chart: miniBars([{ value: y.you, color: INK.you }, { value: y.best, color: INK.best }, { value: y.vdo, color: INK.vdo }]),
+    }));
+  }
+  if (f.nextBill && f.charts.months) {
+    const gap = f.nextBill.now - f.nextBill.best;
+    rows.push(glanceRow({
+      dot: INK.navy,
+      title: `Next bill about ${money(f.nextBill.now)}`,
+      line: `To ${esc(shortDate(f.nextBill.end))}${gap >= 5 ? `, or about ${money(f.nextBill.best)} on the cheapest plan` : ""}. Winter is the dear stretch.`,
+      link: { label: "See your year ahead", url: open("year") },
+      chart: columns(f.charts.months.map((m) => ({ parts: [{ value: m.now, color: m.next ? INK.navy : INK.light }] })), { height: 30, gap: 1 }),
+    }));
+  }
+  if (f.ending) {
+    const e = f.ending;
+    const pct = Math.max(4, Math.min(100, Math.round((1 - e.days / 90) * 100)));
+    const col = e.days <= 30 ? "#dc2626" : INK.amber;
+    rows.push(glanceRow({
+      dot: col,
+      title: `Your ${esc(e.what)} ends ${esc(shortDate(e.date))}`,
+      line: `In ${e.days} day${e.days === 1 ? "" : "s"}. Prices often go up then: switch, or ask your retailer to match.`,
+      link: { label: "See your options", url: `${i.origin}/account#compare` },
+      chart: `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eceff5;border-radius:5px;"><tr><td><table role="presentation" width="${pct}%" cellspacing="0" cellpadding="0"><tr><td height="10" bgcolor="${col}" style="height:10px;background:${col};border-radius:5px;font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr></table>`,
+    }));
+  }
+  const m = f.charts.market;
+  if (m && m.some((d) => d.newOffers + d.priceChanges > 0)) {
+    const n = m.reduce((a, d) => a + d.newOffers, 0);
+    const p = m.reduce((a, d) => a + d.priceChanges, 0);
+    rows.push(glanceRow({
+      dot: INK.teal,
+      title: `${n + p} changes on your network`,
+      line: `${n} new offers and ${p} updated offers in 30 days. We priced every one for your home.`,
+      link: { label: "See every change", url: open("market") },
+      chart: columns(m.map((d) => ({ parts: [{ value: d.newOffers, color: INK.teal }, { value: d.priceChanges, color: INK.amber }] })), { height: 30, gap: 1 }),
+    }));
+  }
+  if (f.midday && f.charts.hourly) {
+    const gap = f.midday.bestYear - f.midday.choresYear;
+    const colour = (h: number) => (h >= 11 && h < 14 ? INK.free : h >= 14 && h < 16 ? INK.soak : h >= 16 && h < 21 ? INK.peak : INK.off);
+    rows.push(glanceRow({
+      dot: INK.free,
+      title: middayWorthIt(f.midday) ? `Free midday power could save ${money(gap)} a year` : "Free midday power: checked for you",
+      line: middayWorthIt(f.midday)
+        ? "On Victoria's new Midday Power Saver (free 11am to 2pm), with the washing and dishwasher at midday."
+        : `Victoria's new Midday Power Saver would cost about ${gap >= 0 ? `${money(gap)} a year less` : `${money(-gap)} a year more`} than the cheapest plan for you.`,
+      link: { label: "See your day", url: open("midday") },
+      chart: columns(f.charts.hourly.map((v, h) => ({ parts: [{ value: v, color: colour(h) }] })), { height: 30, gap: 1 }),
+    }));
+  }
+  if (f.credit) {
+    const yearOne = Math.max(0, y.you - f.credit.yearOneVsNow);
+    const good = y.vsBill && f.credit.yearOneVsNow >= WORTH_SWITCHING_PER_YEAR;
+    rows.push(glanceRow({
+      dot: INK.best,
+      title: `${money(f.credit.amount)} sign-up credit at ${esc(f.credit.retailer)}`,
+      line: good ? `Year one would come to about ${money(yearOne)}. Credits are usually for new customers.` : "The biggest on your network. Even with it, it doesn't beat what you pay by much.",
+      link: { label: "See all rewards", url: open("rewards") },
+      chart: good ? miniBars([{ value: y.you, color: INK.you }, { value: yearOne, color: INK.best }]) : undefined,
+    }));
+  }
+  if (f.like) {
+    const r = f.like.you / f.like.typical;
+    rows.push(glanceRow({
+      dot: "#8b5cf6",
+      title: `You use ${f.like.you.toFixed(1)} kWh a day`,
+      line: `A home like yours: about ${f.like.typical.toFixed(1)}. ${Math.abs(r - 1) < 0.1 ? "About right." : r < 1 ? "Nicely done." : "This month's tip might help."}`,
+      link: { label: "See where it goes", url: `${i.origin}/account#home` },
+      chart: miniBars([{ value: f.like.you, color: INK.you }, { value: f.like.typical, color: INK.navy }]),
+    }));
+  }
+  return rows.length ? heading("Your month at a glance") + glance(rows) : "";
 }
 
 /* ---------- Referral: a friend joined with the member's link ----------

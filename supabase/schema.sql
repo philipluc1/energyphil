@@ -297,3 +297,21 @@ alter table public.subscribers add column if not exists referral_credited boolea
 alter table public.subscribers add column if not exists alert_min_saving numeric;
 -- The monthly summary email (1st of the month). Off = the member only gets alerts worth money.
 alter table public.subscribers add column if not exists monthly_summary boolean not null default true;
+
+-- 31 Oct 2026: phone notifications (the home-screen app). One row per phone
+-- or browser a member turned notifications on for. The endpoint and keys are
+-- what the phone's push service gave us; they identify the device, not the
+-- person, and stop working when notifications are turned off there.
+create table if not exists public.push_subscriptions (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  email text not null,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  last_sent_at timestamptz
+);
+create index if not exists push_subscriptions_email on public.push_subscriptions (lower(email));
+alter table public.push_subscriptions enable row level security;
+-- No policies: only the server (secret key) writes and reads these.

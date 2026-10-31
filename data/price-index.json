@@ -1,0 +1,50 @@
+{
+ "about": "Cheapest plan for an average home (4,000 kWh a year, single rate) on each network, and the default offer for the same usage, $ a year incl. GST.",
+ "rows": [
+  {
+   "date": "2026-10-20",
+   "network": "AusNet Services",
+   "cheapest": 1359,
+   "retailer": "1st Energy",
+   "plan": "1st Emerald, Residential - Anytime",
+   "vdo": 1748,
+   "plans": 131
+  },
+  {
+   "date": "2026-10-20",
+   "network": "Citipower",
+   "cheapest": 1123,
+   "retailer": "1st Energy",
+   "plan": "1st Emerald, Residential - Anytime",
+   "vdo": 1482,
+   "plans": 131
+  },
+  {
+   "date": "2026-10-20",
+   "network": "Jemena",
+   "cheapest": 1184,
+   "retailer": "1st Energy",
+   "plan": "1st Emerald, Residential - Anytime",
+   "vdo": 1564,
+   "plans": 131
+  },
+  {
+   "date": "2026-10-20",
+   "network": "Powercor",
+   "cheapest": 1236,
+   "retailer": "1st Energy",
+   "plan": "1st Emerald, Residential - Anytime",
+   "vdo": 1632,
+   "plans": 131
+  },
+  {
+   "date": "2026-10-20",
+   "network": "United Energy",
+   "cheapest": 1140,
+   "retailer": "Sumo",
+   "plan": "Sumo Sunrise Plus",
+   "vdo": 1531,
+   "plans": 132
+  }
+ ]
+}

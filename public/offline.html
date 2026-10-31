@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Offline | Utilo</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box; background: #ffffff; color: #12141c; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-align: center; }
+  .mark { width: 64px; height: 64px; border-radius: 18px; background: #f5a623; display: grid; place-items: center; margin: 0 auto 18px; }
+  h1 { margin: 0 0 8px; font-size: 24px; }
+  p { margin: 0 auto 20px; max-width: 30ch; color: #5b6476; line-height: 1.5; }
+  button { padding: 13px 22px; border: 0; border-radius: 12px; background: #22306e; color: #fff; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+  <main>
+    <div class="mark"><svg width="36" height="36" viewBox="0 0 24 24" fill="#171305" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg></div>
+    <h1>You're offline</h1>
+    <p>Utilo needs a connection to check today's prices. Your dashboard will be right here when you're back.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+</body>
+</html>

@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // sign-in account itself. An active membership must be cancelled first, so
 // nobody keeps paying for an account that no longer exists. Payment records
 // stay with Stripe, which must keep them by law.
-const TABLES = ["leads", "bill_checks", "bill_reads", "savings_episodes", "waitlist", "subscribers"] as const;
+const TABLES = ["leads", "bill_checks", "bill_reads", "savings_episodes", "waitlist", "push_subscriptions", "subscribers"] as const;
 
 export async function POST(req: NextRequest) {
   if (!supabaseAdmin) return NextResponse.json({ ok: false, message: "Accounts aren't switched on yet." });

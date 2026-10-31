@@ -13,6 +13,7 @@ import { offerDates } from "@/lib/planTerms";
 import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
 import { PRIVACY } from "@/lib/about";
+import { sendPush } from "@/lib/push";
 
 // Vercel Cron (see vercel.json) hits this once a day. It re-prices every
 // saved profile against today's lib/plans.ts data and emails anyone for whom
@@ -83,7 +84,7 @@ interface GasRow {
 function offerNote(retailer: string, plan: string): string | null {
   const d = offerDates(retailer, plan);
   if (d.badge === "New") return `This is a new offer from ${retailer}${d.badgeDate ? `, released ${d.badgeDate}` : ""}.`;
-  if (d.badge === "Price change") return `${retailer} changed this plan's prices${d.badgeDate ? ` on ${d.badgeDate}` : ""}.`;
+  if (d.badge === "Price change") return `${retailer} updated this offer${d.badgeDate ? ` on ${d.badgeDate}` : ""}.`;
   return d.label ? `${d.label}.` : null;
 }
 
@@ -188,6 +189,9 @@ export async function GET(req: NextRequest) {
 
       if (sent) {
         subscribersNotified++;
+        // The same news on their phone, if they turned notifications on.
+        const save = Math.round(((previousBest! - best.bestTotal) * 365) / days);
+        await sendPush(sub.email, { title: "A cheaper plan for you", body: `${best.bestRetailer} could save you about $${save.toLocaleString("en-AU")} a year. Tap to see it.`, url: "/account#compare", tag: "cheaper-electricity" });
         const notifiedAt = new Date().toISOString();
         await supabaseAdmin
           .from("subscribers")
@@ -351,6 +355,8 @@ export async function GET(req: NextRequest) {
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
         dealAlerts++;
+        const short = due.what.startsWith("discount") ? "discount" : "fixed price";
+        await sendPush(sub.email, { title: `Your ${short} ends ${when}`, body: `In ${due.days} day${due.days === 1 ? "" : "s"}. Prices often go up then. Tap to see your options.`, url: "/account#compare", tag: "deal-ending" });
         await supabaseAdmin.from("subscribers").update({ deal_alert_sent_for: due.date }).eq("id", sub.id);
       }
     } catch (err) {
@@ -450,6 +456,8 @@ export async function GET(req: NextRequest) {
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
         gasAlerts++;
+        const gSave = Math.round(((previous! - top.total) * 365) / gDays);
+        await sendPush(sub.email, { title: "A cheaper gas plan for you", body: `${top.plan[0]} could save you about $${gSave.toLocaleString("en-AU")} a year on gas. Tap to see it.`, url: "/account", tag: "cheaper-gas" });
         await supabaseAdmin
           .from("subscribers")
           .update({ gas_best_retailer: top.plan[0], gas_best_plan_name: top.plan[2], gas_best_total: top.total, gas_updated_at: new Date().toISOString() })

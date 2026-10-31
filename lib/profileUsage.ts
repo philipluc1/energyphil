@@ -106,7 +106,7 @@ const SOLAR_KWH_PER_KW_YEAR = 1300; // typical Victorian yield
 // Everyday use rises a little in winter (lights, dryer, more time inside);
 // heating is May–Sep; cooling Dec–Mar; hot water works harder in winter;
 // the pool pump runs more in summer; solar makes ~3x more in Jan than Jun.
-const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+export const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const EVERYDAY_SHAPE = [0.95, 0.95, 0.95, 0.98, 1.03, 1.1, 1.12, 1.08, 1.0, 0.96, 0.94, 0.94];
 const HEATING_SHARE = [0, 0, 0, 4, 12, 22, 26, 22, 11, 3, 0, 0]; // % of the year's heating
 const COOLING_SHARE = [32, 27, 12, 2, 0, 0, 0, 0, 0, 2, 8, 17]; // % of the year's cooling
