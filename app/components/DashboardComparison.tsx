@@ -27,7 +27,7 @@ import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { periodScale } from "@/lib/periods";
 import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
-import MarketRewards from "./MarketRewards";
+import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
 import styles from "./dashcompare.module.css";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -322,7 +322,9 @@ function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
 export function MemberMarket({ input, member, compact = false }: { input: ComparisonInput; member: boolean; compact?: boolean }) {
   const c = useMemo(() => compute(input), [input]);
   // The full market page opens over the dashboard, so members never leave it.
-  const [open, setOpen] = useState(false);
+  // false = closed; otherwise the section the page opens at.
+  const [open, setOpen] = useState<false | "top" | "rewards">(false);
+  const rewards = useMemo(() => (c ? rewardItems(c.matches, c.you, c.perYear) : []), [c]);
   const personal = useMemo<MarketPersonal | null>(() => {
     if (!c) return null;
     const byKey = new Map(c.matches.map((m) => [`${m.plan[0]}|${m.plan[2]}`, m]));
@@ -365,16 +367,18 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
       },
     };
   }, [c, input.distributor, member]);
-  if (!c || !personal || personal.checked === 0) return null;
+  if (!c || !personal) return null;
   if (compact) {
     const events = marketEvents({ days: 30, network: input.distributor });
     return (
       <>
-        <MarketSideCard personal={personal} events={events} onOpen={() => setOpen(true)} />
-        {open && <MarketDetail c={c} input={input} member={member} personal={personal} events={events} onClose={() => setOpen(false)} />}
+        {personal.checked > 0 && <MarketSideCard personal={personal} events={events} onOpen={() => setOpen("top")} />}
+        <RewardsSideCard items={rewards} locked={new Set(lockedTopFor(c, member))} onOpen={() => setOpen("rewards")} />
+        {open && <MarketDetail c={c} input={input} member={member} personal={personal} events={events} startAt={open} onClose={() => setOpen(false)} />}
       </>
     );
   }
+  if (personal.checked === 0) return null;
   return <MarketBoard personal={personal} />;
 }
 
@@ -754,14 +758,27 @@ function CurrentPricing({ input, usage, best, bestTotal, you, haveBill, hideName
  * card): what changed, a chart of the month, every retailer's cheapest plan
  * priced for their home against what they pay, and every change, newest first.
  */
-function MarketDetail({ c, input, member, personal, events, onClose }: {
+function MarketDetail({ c, input, member, personal, events, onClose, startAt = "top" }: {
   c: NonNullable<ReturnType<typeof compute>>;
   input: ComparisonInput;
   member: boolean;
   personal: MarketPersonal;
   events: MarketEvent[];
   onClose: () => void;
+  startAt?: "top" | "rewards";
 }) {
+  // Opened from the rewards card: glide down to that section.
+  useEffect(() => {
+    if (startAt !== "rewards") return;
+    const t = window.setTimeout(() => {
+      const el = document.getElementById("md-rewards");
+      const box = el?.closest("[role=dialog]") as HTMLElement | null;
+      if (!el || !box) return;
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      box.scrollTo({ top: el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 76, behavior: reduce ? "auto" : "smooth" });
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [startAt]);
   // Esc closes; the page behind doesn't scroll while this is open.
   useEffect(() => {
     const key = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
