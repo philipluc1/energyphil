@@ -916,8 +916,10 @@ export default function Comparator() {
   const beatBill = listed.filter((m) => m.total < bench - 0.005).length;
   // Every shown plan beats the bill and some members-only ones do too: the marker goes below those.
   const billAfterHidden = billAt === -1 && hiddenRows.some((m) => m.total < bench - 0.005);
+  // Is the marker on the page at all? (The top strip only jumps when it is.)
+  const billShown = billAt >= 0 || billAfterHidden || (billAt === -1 && listRows.length > 0);
   const billMark = (
-    <div className={r.billMark} role="note">
+    <div id="your-bill-mark" className={r.billMark} role="note" tabIndex={-1}>
       <span className={r.billPin}><Icon name="receipt" size={15} /> {haveBill ? youName : "The default offer"}</span>
       <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
       <span className={r.billMarkNote}>
@@ -929,6 +931,18 @@ export default function Comparator() {
       </span>
     </div>
   );
+  // Scroll down to the marker, then make it pulse once it lands.
+  const jumpToBill = () => {
+    const el = typeof document !== "undefined" ? document.getElementById("your-bill-mark") : null;
+    if (!el) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    el.classList.remove(r.billMarkFlash);
+    void el.offsetWidth; // restart the animation on a second tap
+    el.classList.add(r.billMarkFlash);
+    el.focus({ preventScroll: true });
+    window.setTimeout(() => el.classList.remove(r.billMarkFlash), 2600);
+  };
   // What the check knows about this home: sent to checkout, and to a member's record when they save a check.
   const subscribeProfile: SubscribeProfile = {
     distributor,
@@ -2260,14 +2274,25 @@ export default function Comparator() {
 
                     {listed.length > 0 && (
                     <div className={`${r.youLine} ${haveBill ? r.youLineBill : ""}`}>
-                      <Icon name="receipt" size={18} />
-                      <span>
+                      <button type="button" className={r.youJump} onClick={jumpToBill} disabled={!billShown} aria-controls="your-bill-mark">
+                        <span className={r.youPin}><Icon name="receipt" size={14} /> {haveBill ? youName : "Default offer"}</span>
+                        <b className={r.youAmt}>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
+                        {/* Every listed plan as a tick, cheapest first; the pin is where the bill falls. */}
+                        <span className={r.youTrack} aria-hidden="true">
+                          {listed.slice(0, 48).map((m, i) => (
+                            <i key={i} className={m.total < bench - 0.005 ? r.youTickGood : r.youTick} />
+                          ))}
+                          <em className={r.youTrackPin} style={{ left: `${(Math.min(beatBill, Math.min(listed.length, 48)) / Math.max(1, Math.min(listed.length, 48))) * 100}%` }} />
+                        </span>
+                        <span className={r.youCount}>
                         {listed.length === 0 || beatBill === 0
                           ? <>Nothing here beats {haveBill ? "your bill" : "the default offer"}</>
                           : beatBill === listed.length
                             ? <><b>All {listed.length} {allPlans ? "plans" : "retailers"}</b> are cheaper than {haveBill ? "your bill" : "the default offer"}</>
                             : <><b>{beatBill} {allPlans ? (beatBill === 1 ? "plan" : "plans") : beatBill === 1 ? "retailer" : "retailers"}</b> {beatBill === 1 ? "is" : "are"} cheaper than {haveBill ? "your bill" : "the default offer"}</>}
-                      </span>
+                        </span>
+                        {billShown && <span className={r.youGo}>See where it sits <span className={r.youArrow} aria-hidden="true">↓</span></span>}
+                      </button>
                       <InfoTip label="About your bill">
                         {useAvg ? "The average Victorian home" : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
                         <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day)

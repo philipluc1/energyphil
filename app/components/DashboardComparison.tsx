@@ -27,6 +27,7 @@ import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { periodScale } from "@/lib/periods";
 import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
+import MarketRewards from "./MarketRewards";
 import styles from "./dashcompare.module.css";
 
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -856,6 +857,8 @@ function MarketDetail({ c, input, member, personal, events, onClose }: {
             })}
           </ol>
         </section>
+
+        <MarketRewards matches={c.matches} you={c.you} perYear={c.perYear} against={against} locked={locked as Set<unknown>} whole={whole} />
 
         <section className={styles.mdCard} aria-labelledby="md-feed">
           <h3 id="md-feed">Every change, newest first</h3>

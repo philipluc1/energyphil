@@ -189,3 +189,46 @@ button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; di
 @media (max-width: 520px) { .filters { margin-left: 0; width: 100%; } .filter { flex: 1; } .filter select { width: 100%; } }
 .noMatch { margin: 10px 0 0; font-size: 14.5px; color: var(--grey); }
 .noMatch button { padding: 0; border: 0; background: none; font: inherit; font-weight: 800; color: var(--navy-accent-text); text-decoration: underline; cursor: pointer; }
+
+/* Oct 31: the "Your bill" strip at the top of the list is a button. It shows
+   the bill, a tick per plan with a pin where the bill falls, and jumps down to
+   the dashed marker, which pulses when it arrives. */
+.youLine { padding: 6px 8px 6px 6px; }
+.youJump { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
+.youJump:hover:not(:disabled) { background: color-mix(in srgb, #e8590c 7%, transparent); }
+.youJump:disabled { cursor: default; }
+.youJump:focus-visible { outline: 2px solid #e8590c; outline-offset: 2px; }
+.youPin { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800; background: #e8590c; color: #fff; }
+.youAmt { font-size: 18px; font-weight: 900; color: var(--ink); white-space: nowrap; }
+.youAmt small { font-size: 12.5px; font-weight: 600; color: var(--grey); }
+.youTrack { position: relative; display: flex; align-items: center; gap: 2px; width: 120px; height: 18px; flex: none; }
+.youTick, .youTickGood { flex: 1; height: 10px; border-radius: 2px; background: #dfe3ec; }
+.youTickGood { background: #22c55e; }
+.youTrackPin { position: absolute; top: -2px; bottom: -2px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: #e8590c; box-shadow: 0 0 0 2px var(--surface); animation: pinDrop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both 0.2s; }
+.youCount { flex: 1 1 160px; min-width: 0; font-size: 14.5px; color: var(--ink); }
+.youGo { display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; font-weight: 800; color: #c2410c; white-space: nowrap; }
+.youArrow { display: inline-block; animation: arrowBob 1.6s ease-in-out infinite; }
+@keyframes arrowBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+@keyframes pinDrop { from { opacity: 0; transform: translateY(-8px) scaleY(0.4); } to { opacity: 1; transform: none; } }
+
+.billMark { scroll-margin: 90px; transition: background 0.3s; }
+.billMark:focus { outline: none; }
+.billMarkFlash { animation: billFlash 2.2s ease-out 0.35s both; }
+.billMarkFlash .billPin { animation: pinWiggle 0.6s ease-in-out 0.45s 2; }
+@keyframes billFlash {
+  0% { box-shadow: 0 0 0 0 rgba(232, 89, 12, 0.55); transform: scale(1); }
+  12% { transform: scale(1.025); background: color-mix(in srgb, #e8590c 20%, var(--surface)); }
+  30% { transform: scale(1); }
+  60% { box-shadow: 0 0 0 14px rgba(232, 89, 12, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(232, 89, 12, 0); }
+}
+@keyframes pinWiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+@media (max-width: 560px) {
+  .youTrack { order: 5; width: 100%; }
+  .youCount { flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .youArrow, .youTrackPin, .billMarkFlash, .billMarkFlash .billPin { animation: none; }
+  .billMarkFlash { background: color-mix(in srgb, #e8590c 16%, var(--surface)); }
+}
+.youLine > .youJump ~ span { flex: none; }

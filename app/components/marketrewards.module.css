@@ -1,0 +1,82 @@
+/* Discounts and rewards on the dashboard's market page (31 Oct 2026). */
+.card { padding: 20px; border-radius: 18px; background: #fff; border: 1px solid #e4e7ee; }
+.head { display: flex; align-items: center; gap: 8px; }
+.head h3 { margin: 0; font: 800 20px/1.2 "Archivo", sans-serif; }
+.sub { margin: 4px 0 14px; font-size: 14px; color: #5b6476; }
+
+.highlights { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.hl { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 14px; background: #f6f7fa; border: 1px solid #eceef3; animation: rwIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hl:nth-child(2) { animation-delay: 80ms; }
+.hl:nth-child(3) { animation-delay: 160ms; }
+.hl > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.hl b { font: 900 24px/1.05 "Archivo", sans-serif; letter-spacing: -0.02em; color: #12141c; }
+.hl small { font-size: 12.5px; font-weight: 700; color: #5b6476; }
+.hlIcon { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #fdeee7; color: #c2410c; }
+.hlCredit { background: #ecfdf3; border-color: #c9f0d8; }
+.hlCredit .hlIcon { background: #16a34a; color: #fff; }
+.hlCredit b { color: #15803d; }
+.hlPoints { background: #fff7e6; border-color: #fde7b0; }
+.hlPoints .hlIcon { background: #f5a623; color: #fff; }
+.hlCredit .hlIcon svg, .hlPoints .hlIcon svg { animation: rwBob 2.4s ease-in-out infinite; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid #e4e7ee; background: #fff; font: inherit; font-size: 13.5px; font-weight: 800; color: #3a4252; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.tab:hover { border-color: #c9cede; }
+.tab svg { width: 15px; height: 15px; }
+.tabOn { background: #22306e; border-color: #22306e; color: #fff; }
+.n { padding: 1px 7px; border-radius: 999px; background: #f1f3f8; color: #5b6476; font-size: 11.5px; }
+.tabOn .n { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+.grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.item { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; border: 1px solid #e4e7ee; background: #fff; overflow: hidden; animation: rwIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; transition: transform 0.15s, box-shadow 0.15s; }
+.item:hover { transform: translateY(-2px); box-shadow: 0 12px 26px -18px rgba(20, 24, 60, 0.45); }
+.item::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 4px; }
+.credit::before { background: #16a34a; }
+.points::before { background: #f5a623; }
+.gift::before { background: #8b5cf6; }
+.discount::before { background: #2d3f9e; }
+.itemTop { display: flex; align-items: center; gap: 10px; }
+.kindIcon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; }
+.credit .kindIcon { background: #e7f6ec; color: #15803d; }
+.points .kindIcon { background: #fff3d6; color: #b45309; }
+.gift .kindIcon { background: #f1ebfe; color: #6d28d9; }
+.discount .kindIcon { background: #e8ebf8; color: #2d3f9e; }
+.headline { font: 900 19px/1.15 "Archivo", sans-serif; letter-spacing: -0.01em; color: #12141c; }
+.credit .headline { color: #15803d; }
+.detail { margin: 0; font-size: 12.5px; line-height: 1.4; color: #5b6476; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.who { display: flex; align-items: center; gap: 9px; margin-top: auto; padding-top: 8px; border-top: 1px solid #eef0f4; }
+.who > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.who b { font-size: 13.5px; }
+.who small { font-size: 12px; color: #5b6476; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lock { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #22306e; color: #fde047; }
+.yearOne { margin: 0; padding: 7px 9px; border-radius: 9px; background: #ecfdf3; font-size: 12.5px; color: #166534; }
+.yearOne b { font-weight: 900; }
+.foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.inPrice, .notPrice { padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 800; }
+.inPrice { background: #e7f6ec; color: #15803d; }
+.notPrice { background: #f1f3f8; color: #5b6476; }
+.pos, .neg, .same { font-size: 12.5px; font-weight: 800; }
+.pos { color: #15803d; }
+.neg { color: #b91c1c; }
+.same { color: #8a91a1; }
+.more { display: block; margin: 12px auto 0; padding: 9px 16px; border-radius: 10px; border: 1px solid #e4e7ee; background: #fff; font: inherit; font-size: 14px; font-weight: 800; color: #22306e; cursor: pointer; }
+.more:hover { background: #f1f3f8; }
+
+@keyframes rwIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes rwBob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-2px) rotate(-8deg); } }
+@media (max-width: 640px) {
+  .card { padding: 16px; }
+  .highlights { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hl { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; }
+  .hl:nth-child(3) { display: none; }
+  .hl b { font-size: 19px; }
+  .hlIcon { width: 32px; height: 32px; border-radius: 10px; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px 12px; padding: 0 16px 2px; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; }
+  .grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hl, .item, .hlCredit .hlIcon svg, .hlPoints .hlIcon svg { animation: none; }
+  .item, .item:hover { transition: none; transform: none; }
+}
