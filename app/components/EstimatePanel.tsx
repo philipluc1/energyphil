@@ -90,6 +90,32 @@ function KwhGuide() {
   );
 }
 
+/** A made-up bill with an arrow at the number to copy: the kWh total, or the
+ *  amount for this bill when they only know the dollars. */
+function MiniBill({ figure }: { figure: BillFigure }) {
+  const kwh = figure === "kwh";
+  return (
+    <figure className={s.mini} aria-label={kwh ? "Example bill: the total usage in kWh is the number to copy" : "Example bill: the new charges for this bill is the number to copy"}>
+      <span className={s.miniTag}>Example bill</span>
+      <div className={s.miniPaper}>
+        <span className={s.miniLogo} />
+        <span className={s.miniLine} style={{ width: "62%" }} />
+        <span className={s.miniLine} style={{ width: "44%" }} />
+        <div className={s.miniTable}>
+          <div><span>Peak</span><span>612 kWh</span></div>
+          <div><span>Off-peak</span><span>538 kWh</span></div>
+          <div className={kwh ? s.miniHit : undefined}><span>Total usage</span><b>1,150 kWh</b></div>
+        </div>
+        <div className={`${s.miniTotal} ${!kwh ? s.miniHit : ""}`}><span>New charges</span><b>$425.31</b></div>
+      </div>
+      <span className={`${s.miniArrow} ${kwh ? s.miniArrowKwh : s.miniArrowDollars}`} aria-hidden="true">
+        <svg viewBox="0 0 60 30" width="60" height="30"><path d="M58 4 C 40 4, 26 10, 10 22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /><path d="M4 26 L14 16 M4 26 L17 26" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
+        <em>{kwh ? "Copy this" : "This one"}</em>
+      </span>
+    </figure>
+  );
+}
+
 /**
  * The first thing on the no-bill page: "Got a recent bill? Start with it".
  * One real figure beats any amount of guessing, so it sits above the
@@ -120,7 +146,6 @@ export function BillKwhCard({
   /** kWh worked out from the dollars (null when it can't be). */
   kwhFromDollars: number | null;
 }) {
-  const options = useMemo(() => recentMonths(), []);
   const answersOnly = useMemo(() => monthlyEstimate(profile).breakdown.total, [profile]);
   const [guide, setGuide] = useState(false);
   const fc = bill.forecast;
@@ -134,6 +159,8 @@ export function BillKwhCard({
           <p className={s.top1Sub}>One real number beats our best guess. Then answer the questions below so we know how your use moves through the year.</p>
         </div>
       </div>
+      <div className={s.top1Body}>
+      <div className={s.top1Inputs}>
       <div className={s.figure} role="group" aria-label="What you can find on your bill">
         <button type="button" aria-pressed={figure === "kwh"} onClick={() => onFigure("kwh")}>I can see the kWh</button>
         <button type="button" aria-pressed={figure === "dollars"} onClick={() => onFigure("dollars")}>I only know the $ amount</button>
@@ -159,13 +186,6 @@ export function BillKwhCard({
           ))}
           {!BILL_LENGTHS.some(([d]) => d === days) && <span className={s.lengthOther}>{days} days</span>}
         </div>
-        <span className={s.calWords}>ending</span>
-        <label className={s.calMonth}>
-          <span className={s.srOnly}>Month the bill ended</span>
-          <select value={bill.endMonth} onChange={(e) => bill.onEndMonth(parseInt(e.target.value, 10))}>
-            {options.map(([mm, label]) => <option key={label} value={mm}>{label}</option>)}
-          </select>
-        </label>
         {(figure === "kwh" ? bill.kwhRaw : dollarsRaw) && (
           <button type="button" className={s.calClear} onClick={() => (figure === "kwh" ? bill.onKwh("") : onDollars(""))}>Clear</button>
         )}
@@ -185,7 +205,9 @@ export function BillKwhCard({
           {kwhFromDollars !== null && <> That works out at about <b>{n(kwhFromDollars)} kWh</b>.</>}
         </small>
       )}
-      <small className={s.calHint}>Odd bill length? Set the exact days under &ldquo;Your usage&rdquo; below.</small>
+      </div>
+      <MiniBill figure={figure} />
+      </div>
       {fc ? (
         <p className={s.top1Result}>
           <Icon name="check" size={16} /> Forecast from your bill: <b>{n(fc.annual)} kWh a year</b>

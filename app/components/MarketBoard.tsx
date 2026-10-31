@@ -63,9 +63,9 @@ function perRetailer(events: MarketEvent[], n: number): { e: MarketEvent; more: 
 }
 
 /** A member's dashboard side card: the count checked, how many beat them, and the three latest. */
-export function MarketSideCard({ personal, events }: { personal: MarketPersonal; events: MarketEvent[] }) {
+export function MarketSideCard({ personal, events, onOpen }: { personal: MarketPersonal; events: MarketEvent[]; /** Open the full view in place (dashboard). */ onOpen?: () => void }) {
   return (
-    <section className={`${s.board} ${s.sideCard}`} aria-labelledby="market-side-title">
+    <section className={`${s.board} ${s.sideCard} ${onOpen ? s.sideOpenable : ""}`} aria-labelledby="market-side-title" onClick={onOpen ? (e) => { if (!(e.target as HTMLElement).closest("button, a")) onOpen(); } : undefined}>
       <span className={s.live}><i aria-hidden="true" /> Last 30 days, {personal.network}</span>
       <h3 id="market-side-title" className={s.sideTitle}>
         <b>{personal.checked}</b> changed offers checked against {personal.against}
@@ -77,7 +77,11 @@ export function MarketSideCard({ personal, events }: { personal: MarketPersonal;
       <ul className={`${s.list} ${s.teaserList}`}>
         {perRetailer(events, 3).map(({ e, more }) => <Row key={e.retailer} e={e} more={more} vs={personal.vs(e)} />)}
       </ul>
-      <Link href="/market" className={s.more}>All changes in Victoria →</Link>
+      {onOpen ? (
+        <button type="button" className={`${s.more} ${s.moreBtn}`} onClick={onOpen}>See every retailer and change →</button>
+      ) : (
+        <Link href="/market" className={s.more}>All changes in Victoria →</Link>
+      )}
     </section>
   );
 }

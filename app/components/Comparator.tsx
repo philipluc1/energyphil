@@ -241,6 +241,9 @@ export default function Comparator() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   // The plan list shows each retailer's cheapest plan unless they ask for all.
   const [allPlans, setAllPlans] = useState(false);
+  // Plan list filters, top right of the list: offer type and tariff type.
+  const [offerFilter, setOfferFilter] = useState<"all" | "MARKET" | "STANDING">("all");
+  const [tariffFilter, setTariffFilter] = useState<"all" | "single" | "tou">("all");
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
   const [suburb, setSuburb] = useState("");
@@ -879,8 +882,6 @@ export default function Comparator() {
   const vdoForUsage = vdoBillForUsage(distributor, usage);
   const vsVdo = (total: number) => (vdoForUsage > 0 ? (total - vdoForUsage) / vdoForUsage : 0);
   const pctVdo = (x: number) => { const n = Math.round(x * 100); return `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n)}%`; };
-  // The same, in words a newcomer can read on a chip.
-  const vdoWords = (x: number) => { const n = Math.round(x * 100); return n < 0 ? `${-n}% below default offer` : n > 0 ? `${n}% above default offer` : "Same as default offer"; };
   const kwhInPeriod = usagePeak + usageShoulder + usageOffpeak + usageAnytime + clKwh;
   // Plain numbers for the result: a month and a year, stay vs switch.
   const perMonth = (x: number) => (days > 0 ? (x * (365 / 12)) / days : 0);
@@ -899,8 +900,12 @@ export default function Comparator() {
   // Free list: the two cheapest plans (and anything above the cheapest one
   // anyone can get) are locked, with price and saving but no name. The next
   // three are open; the rest sit behind the members' teaser.
-  const perRetailer = cheapestPerRetailer(matches, top);
-  const listed = allPlans ? matches : perRetailer;
+  const filtering = offerFilter !== "all" || tariffFilter !== "all";
+  const filteredMatches = filtering
+    ? matches.filter((m) => (offerFilter === "all" || m.plan[3] === offerFilter) && (tariffFilter === "all" || (tariffFilter === "single" ? m.plan[5] !== null : m.plan[5] === null)))
+    : matches;
+  const perRetailer = cheapestPerRetailer(filteredMatches, filteredMatches.includes(top as (typeof matches)[number]) ? top : null);
+  const listed = allPlans ? filteredMatches : perRetailer;
   const lockedTop = locked && top ? listed.slice(0, Math.max(TOP_LOCKED, listed.indexOf(top) + 1)) : [];
   const isLockedPlan = (m: (typeof matches)[number] | null | undefined) => !!m && lockedTop.includes(m);
   const listRows = locked ? listed.slice(lockedTop.length, lockedTop.length + FREE_ROWS) : listed;
@@ -1355,8 +1360,9 @@ export default function Comparator() {
               )}
             </div>
 
-            {/* 3. Network: worked out for them from the postcode or meter number. */}
-            {!nonVic && (
+            {/* 3. Network: worked out for them from the postcode or meter number.
+                Only asked when we can't tell (members can change it on My home). */}
+            {!nonVic && (!networkKnown || showNetworkPicker) && (
               <div className={s1.q}>
                 <span className={s1.qLabel}>Your electricity network</span>
                 {networkKnown ? (
@@ -2222,16 +2228,37 @@ export default function Comparator() {
               <section className={styles.planListTop} aria-label="Plans compared">
                     <div className={r.listHead}>
                       <b>{allPlans ? "All plans, cheapest first" : "Cheapest plan from each retailer"}</b>
-                      <PlanViewToggle all={allPlans} onChange={setAllPlans} retailers={perRetailer.length} plans={matches.length} />
+                      <div className={r.listTools}>
+                        <PlanViewToggle all={allPlans} onChange={setAllPlans} retailers={perRetailer.length} plans={filteredMatches.length} />
+                        <div className={r.filters} role="group" aria-label="Filter plans">
+                          <label className={r.filter}>
+                            <span className={r.srOnly}>Offer type</span>
+                            <select value={offerFilter} onChange={(e) => setOfferFilter(e.target.value as typeof offerFilter)}>
+                              <option value="all">All offers</option>
+                              <option value="MARKET">Market offers</option>
+                              <option value="STANDING">Standing offers</option>
+                            </select>
+                          </label>
+                          <label className={r.filter}>
+                            <span className={r.srOnly}>Tariff</span>
+                            <select value={tariffFilter} onChange={(e) => setTariffFilter(e.target.value as typeof tariffFilter)}>
+                              <option value="all">Any tariff</option>
+                              <option value="single">Single rate</option>
+                              <option value="tou">Time of use</option>
+                            </select>
+                          </label>
+                        </div>
+                      </div>
                       {member === true && <span className={r.memberView}><Icon name="check" size={13} /> Member view: you see every plan by name. Free checks see the 2 cheapest locked.</span>}
                       <span className={r.legendLine}>
                         Prices {PERIOD_LABEL[period]}, discounts included. Green = your saving.
                         <InfoTip label="What the labels mean">
-                          The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}. <b>Market offer</b>: a retailer&apos;s own deal. <b>Standing offer</b>: the regulated default price, usually dearer. <b>% below default offer</b>: against the Victorian Default Offer for your usage. Prices assume you pay on time. Green ✓ labels are in the price; blue ones (credits, other conditions) aren&apos;t; amber ! ones are limits or fees to know about.
+                          The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}. Use the filters to show <b>market offers</b> (a retailer&apos;s own deal) or <b>standing offers</b> (the regulated default price, usually dearer), and single-rate or time-of-use plans. Prices assume you pay on time. Green ✓ labels are in the price; blue ones (credits, other conditions) aren&apos;t; amber ! ones are limits or fees to know about.
                         </InfoTip>
                       </span>
                     </div>
 
+                    {listed.length > 0 && (
                     <div className={`${r.youLine} ${haveBill ? r.youLineBill : ""}`}>
                       <Icon name="receipt" size={18} />
                       <span>
@@ -2267,6 +2294,7 @@ export default function Comparator() {
                         )}
                       </InfoTip>
                     </div>
+                    )}
 
                     {lockedTop.length > 0 && (
                       <div className={r.lockedTop}>
@@ -2295,6 +2323,12 @@ export default function Comparator() {
                         </button>
                       </div>
                     )}
+                    {filtering && listed.length === 0 && (
+                      <p className={r.noMatch}>
+                        No plans match those filters.{" "}
+                        <button type="button" onClick={() => { setOfferFilter("all"); setTariffFilter("all"); }}>Show all plans</button>
+                      </p>
+                    )}
                     <div className={r.list}>
                       {listRows.map((m, i) => {
                         const diff = bench - m.total;
@@ -2317,11 +2351,7 @@ export default function Comparator() {
                                 </span>
                                 <span className={r.planName} title={m.plan[2]}>{tidyPlanName(m.plan)}</span>
                                 <span className={r.chips}>
-                                  <span className={m.plan[3] === "MARKET" ? r.chipMarket : r.chipStanding}>{m.plan[3] === "MARKET" ? "Market offer" : "Standing offer"}</span>
-                                  <span className={r.chip}>{m.plan[5] !== null ? "Single rate" : "Time of use"}</span>
-                                  <span className={Math.round(vsVdo(m.total) * 100) < 0 ? r.chipGood : Math.round(vsVdo(m.total) * 100) > 0 ? r.chipBad : r.chip} title="Against the Victorian Default Offer for the same usage">
-                                    {vdoWords(vsVdo(m.total))}
-                                  </span>
+                                  {m.plan[3] !== "MARKET" && <span className={r.chipStanding}>Standing offer</span>}
                                   {isEvFriendly(m.plan) && <span className={r.chip}>EV plan</span>}
                                   {solarExportKwh > 0 && m.plan[10] !== null && m.plan[10] > 0 && <span className={r.chip}>Solar credit {(m.plan[10] * 100).toFixed(m.plan[10] * 100 < 0.1 ? 2 : 1)}c</span>}
                                   <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />

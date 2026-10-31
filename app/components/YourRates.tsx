@@ -68,11 +68,6 @@ export default function YourRates({
         {showSolar && <RateField id="r-fit" label="Solar feed-in" unit="c/kWh" placeholder="e.g. 3.30" value={form.fit} onChange={(v) => onChange({ fit: v })} />}
       </div>
 
-      <label className={styles.check}>
-        <input type="checkbox" checked={form.exGst} onChange={(e) => onChange({ exGst: e.target.checked })} />
-        <span>My bill shows these <b>excluding GST</b> (we&apos;ll add 10%)</span>
-      </label>
-
       <div className={styles.subQ}>
         <span className={styles.subQLabel}>Are your prices fixed or variable?</span>
         <div className={styles.pills}>
@@ -90,16 +85,6 @@ export default function YourRates({
             Fixed until <input type="date" value={form.fixedUntil} onChange={(e) => onChange({ fixedUntil: e.target.value })} />
           </label>
         )}
-      </div>
-
-      <div className={styles.subQ}>
-        <span className={styles.subQLabel}>Does a discount or &ldquo;benefit period&rdquo; end soon? <span className={styles.opt}>(optional)</span></span>
-        <span className={styles.rateHint}>
-          Many plans are only cheap for the first year. If your bill or welcome pack gives an end date, add it and Plus members get a reminder a month before.
-        </span>
-        <label className={styles.inline}>
-          Ends on <input type="date" value={form.discountEnds} onChange={(e) => onChange({ discountEnds: e.target.value })} />
-        </label>
       </div>
 
       <label className={styles.rate} htmlFor="r-plan">

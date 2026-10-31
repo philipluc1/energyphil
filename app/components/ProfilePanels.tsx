@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import styles from "./profilepanels.module.css";
+import NetworkEdit from "./NetworkEdit";
 
 export interface ProfileData {
   customer_name: string | null;
@@ -85,7 +86,7 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
         <h3>Your plan &amp; home</h3>
         <Row label="Name" value={d.customer_name} />
         <Row label="Supply address" value={addr || null} />
-        <Row label="Network" value={d.distributor} hint="Set on the check page" />
+        <NetworkEdit value={d.distributor} />
         <Row label="Meter number (NMI)" value={d.nmi} />
         <Row label="Current retailer" value={d.current_retailer} hint="Tell us on the check page" />
         <Row label="Current offer" value={d.current_plan_name} />

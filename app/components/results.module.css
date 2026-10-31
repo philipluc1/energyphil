@@ -180,3 +180,12 @@ button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; di
 .youLine > span:first-of-type { flex: 1; min-width: 0; }
 .youLineBill { border-color: rgba(220, 38, 38, 0.25); background: rgba(220, 38, 38, 0.04); }
 .youLineBill > svg { color: #c2410c; }
+/* Oct 31: list tools: view switch on the left, filters on the right. */
+.listTools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.filters { display: flex; gap: 6px; margin-left: auto; }
+.filter select { appearance: none; -webkit-appearance: none; padding: 8px 30px 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%235b6476' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right 10px center / 12px no-repeat; font: inherit; font-size: 13.5px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.filter select:focus-visible { outline: 2px solid var(--navy-accent-text); outline-offset: 2px; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 520px) { .filters { margin-left: 0; width: 100%; } .filter { flex: 1; } .filter select { width: 100%; } }
+.noMatch { margin: 10px 0 0; font-size: 14.5px; color: var(--grey); }
+.noMatch button { padding: 0; border: 0; background: none; font: inherit; font-weight: 800; color: var(--navy-accent-text); text-decoration: underline; cursor: pointer; }

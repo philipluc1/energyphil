@@ -118,3 +118,27 @@
 .guideSkip td:last-child { text-decoration: none; color: #c2410c; }
 .guideList { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; line-height: 1.5; color: color-mix(in srgb, var(--ink) 80%, var(--bg)); }
 @media (max-width: 560px) { .guideTable th:nth-child(2), .guideTable th:nth-child(3), .guideTable td:nth-child(2), .guideTable td:nth-child(3) { display: none; } }
+/* Oct 31: the bill box with a made-up bill beside it, arrow on the number to copy. */
+.top1Body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 18px; align-items: start; }
+.top1Inputs { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mini { position: relative; margin: 0; }
+.miniTag { display: inline-block; margin-bottom: 6px; padding: 2px 8px; border-radius: 6px; background: var(--soft, #f1f3f8); color: var(--grey); font-size: 11.5px; font-weight: 800; }
+.miniPaper { padding: 12px 12px 10px; border-radius: 8px; background: #fff; border: 1px solid var(--border); box-shadow: 0 8px 20px -14px rgba(20, 24, 60, 0.4); display: flex; flex-direction: column; gap: 6px; transform: rotate(-1.5deg); }
+.miniLogo { width: 38px; height: 10px; border-radius: 3px; background: #c9cede; }
+.miniLine { height: 6px; border-radius: 3px; background: #e7e9ee; }
+.miniTable { margin-top: 4px; padding-top: 6px; border-top: 1px solid #eceef2; display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: #5b6476; }
+.miniTable > div, .miniTotal { display: flex; justify-content: space-between; gap: 8px; padding: 3px 5px; border-radius: 5px; }
+.miniTotal { margin-top: 2px; border-top: 1px solid #eceef2; padding-top: 6px; font-size: 11.5px; color: #5b6476; }
+.miniTable b, .miniTotal b { color: #151826; }
+.miniHit { background: #fff3c4; box-shadow: 0 0 0 2px #f5a623; animation: hitPulse 2.4s ease-in-out infinite; }
+@keyframes hitPulse { 0%, 100% { box-shadow: 0 0 0 2px #f5a623; } 50% { box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.45); } }
+.miniArrow { position: absolute; right: -6px; display: flex; flex-direction: column; align-items: flex-end; color: #e8590c; pointer-events: none; }
+.miniArrow em { font-style: normal; font-size: 12px; font-weight: 800; margin-top: -4px; }
+.miniArrowKwh { top: 70px; transform: translateX(46px); }
+.miniArrowDollars { top: 102px; transform: translateX(46px); }
+@media (max-width: 700px) {
+  .top1Body { grid-template-columns: 1fr; }
+  .mini { max-width: 240px; }
+  .miniArrow { right: auto; left: 228px; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .miniHit { animation: none; } }

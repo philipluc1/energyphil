@@ -88,3 +88,36 @@
 .tipForm button { color: #fcd34d; }
 .tipForm button[type="submit"] { background: var(--amber); color: #111827; }
 .tipForm input { color: #111827; }
+
+/* Oct 31: the stats strip, with some life. Icon tiles, numbers that count up,
+   a live dot on the daily check, and a hover on the market link. */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 6px; justify-content: stretch; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 18px 40px -32px rgba(20, 24, 60, 0.45); }
+.stats li.stat { flex-direction: row; align-items: center; justify-content: flex-start; text-align: left; gap: 12px; padding: 16px 18px; position: relative; }
+.stats li.stat + li.stat::before { content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 1px; background: var(--border); }
+.statLink > a { display: flex !important; flex-direction: row !important; align-items: center; gap: 12px; width: 100%; color: inherit; text-decoration: none; border-radius: 14px; margin: -8px -10px; padding: 8px 10px; transition: background 0.2s; }
+.statLink > a:hover { background: var(--soft, #f1f3f8); }
+.statIcon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; }
+.stats .siPlans { background: #fff3d6; color: #b45309; }
+.stats .siRetailers { background: #e8ebf8; color: #2d3f9e; }
+.stats .siDaily { background: #e7f6ec; color: #15803d; }
+.siDaily svg { animation: spinSlow 6s linear infinite; }
+.stats .siMarket { background: #fdeee7; color: #c2410c; }
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+.statText { display: flex; flex-direction: column; min-width: 0; }
+.stats .statNum, .stats .statNum span { font: 900 30px/1.05 "Archivo", sans-serif; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.stats .statLabel { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--grey); }
+.stats .statLink .statLabel { color: var(--navy-accent-text); }
+.liveDot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; animation: livePulse 1.8s ease-out infinite; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); } 70% { box-shadow: 0 0 0 7px rgba(22, 163, 74, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); } }
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats li.stat:nth-child(3)::before { display: none; }
+  .stats li.stat:nth-child(n+3) { border-top: 1px solid var(--border); }
+}
+@media (max-width: 520px) {
+  .stats li.stat { padding: 14px 10px; gap: 10px; flex: initial; }
+  .statIcon { width: 38px; height: 38px; border-radius: 11px; }
+  .stats .statNum, .stats .statNum span { font-size: 24px; }
+  .stats .statLabel { font-size: 12.5px; }
+}
+@media (prefers-reduced-motion: reduce) { .siDaily svg, .liveDot { animation: none; } }

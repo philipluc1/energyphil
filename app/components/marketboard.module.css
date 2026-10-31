@@ -116,3 +116,6 @@
 .sideCard .row > :last-child { display: none; }
 .sideCard .what b { font-size: 13px; }
 .sideCard .plan { font-size: 12px; }
+.moreBtn { padding: 0; border: 0; background: none; font: inherit; font-weight: 800; cursor: pointer; text-align: left; }
+.sideOpenable { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.sideOpenable:hover { transform: translateY(-2px); box-shadow: 0 18px 36px -20px rgba(20, 24, 60, 0.6); }

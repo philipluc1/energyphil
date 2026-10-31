@@ -74,7 +74,7 @@ export default function Home() {
               <br />
               for power.
             </h1>
-            <p className={h.lede}>Snap your bill. We find your cheapest plan in about a minute.</p>
+            <p className={h.lede}>Snap your bill. We find your cheapest plan.</p>
             <div className={h.ctas}>
               <Link href="/check" className={h.primary}>
                 <Icon name="camera" size={20} /> Snap my bill, free
@@ -111,11 +111,25 @@ export default function Home() {
 
         {/* 2. Three numbers, no paragraph. */}
         <ul className={h.stats} data-motion="" data-stagger=":scope > li">
-          <li><b><CountUp value={PLANS.length} /></b><span>plans checked</span></li>
-          <li><b><CountUp value={RETAILER_COUNT} /></b><span>retailers</span></li>
-          <li><b>Daily</b><span>price updates</span></li>
+          <li className={h.stat}>
+            <span className={`${h.statIcon} ${h.siPlans}`}><Icon name="search" size={20} /></span>
+            <span className={h.statText}><b className={h.statNum}><CountUp value={PLANS.length} /></b><span className={h.statLabel}>plans checked</span></span>
+          </li>
+          <li className={h.stat}>
+            <span className={`${h.statIcon} ${h.siRetailers}`}><Icon name="bolt" size={20} /></span>
+            <span className={h.statText}><b className={h.statNum}><CountUp value={RETAILER_COUNT} /></b><span className={h.statLabel}>retailers compared</span></span>
+          </li>
+          <li className={h.stat}>
+            <span className={`${h.statIcon} ${h.siDaily}`}><Icon name="refresh" size={20} /></span>
+            <span className={h.statText}><b className={h.statNum}>Daily</b><span className={h.statLabel}><span className={h.liveDot} aria-hidden="true" /> prices updated</span></span>
+          </li>
           {market.ready && changed > 0 && (
-            <li><Link href="/market"><b><CountUp value={changed} /></b><span>offers changed in 30 days →</span></Link></li>
+            <li className={`${h.stat} ${h.statLink}`}>
+              <Link href="/market">
+                <span className={`${h.statIcon} ${h.siMarket}`}><Icon name="chart" size={20} /></span>
+                <span className={h.statText}><b className={h.statNum}><CountUp value={changed} /></b><span className={h.statLabel}>changes in 30 days →</span></span>
+              </Link>
+            </li>
           )}
         </ul>
 

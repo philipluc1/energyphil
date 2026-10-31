@@ -3,7 +3,7 @@
 import OfferDate from "./OfferDate";
 import RatesCompare from "./RatesCompare";
 import Icon from "./Icon";
-import { Fragment, useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { RETAILER_COUNT, billDetail, rankPlans, topOpen, isEvFriendly, fmtRateCents, fmtRatePerDay, type Distributor, type UsageInput, type PlanRow } from "@/lib/plans";
 import { describeOffer } from "@/lib/planExtras";
@@ -25,7 +25,7 @@ import type { BillCheckFacts } from "./BillCheckCard";
 import { samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { periodScale } from "@/lib/periods";
-import { marketEvents } from "@/lib/marketActivity";
+import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import styles from "./dashcompare.module.css";
 
@@ -320,6 +320,8 @@ function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
  */
 export function MemberMarket({ input, member, compact = false }: { input: ComparisonInput; member: boolean; compact?: boolean }) {
   const c = useMemo(() => compute(input), [input]);
+  // The full market page opens over the dashboard, so members never leave it.
+  const [open, setOpen] = useState(false);
   const personal = useMemo<MarketPersonal | null>(() => {
     if (!c) return null;
     const byKey = new Map(c.matches.map((m) => [`${m.plan[0]}|${m.plan[2]}`, m]));
@@ -363,7 +365,15 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
     };
   }, [c, input.distributor, member]);
   if (!c || !personal || personal.checked === 0) return null;
-  if (compact) return <MarketSideCard personal={personal} events={marketEvents({ days: 30, network: input.distributor })} />;
+  if (compact) {
+    const events = marketEvents({ days: 30, network: input.distributor });
+    return (
+      <>
+        <MarketSideCard personal={personal} events={events} onOpen={() => setOpen(true)} />
+        {open && <MarketDetail c={c} input={input} member={member} personal={personal} events={events} onClose={() => setOpen(false)} />}
+      </>
+    );
+  }
   return <MarketBoard personal={personal} />;
 }
 
@@ -735,5 +745,140 @@ function CurrentPricing({ input, usage, best, bestTotal, you, haveBill, hideName
       )}
       <p className={styles.fineDark}>{youTerms ? PRICE_TYPE_HELP[youTerms] : PRICE_TYPE_HELP.variable}</p>
     </section>
+  );
+}
+
+/**
+ * The member's market, in full (opened from the dashboard's "last 30 days"
+ * card): what changed, a chart of the month, every retailer's cheapest plan
+ * priced for their home against what they pay, and every change, newest first.
+ */
+function MarketDetail({ c, input, member, personal, events, onClose }: {
+  c: NonNullable<ReturnType<typeof compute>>;
+  input: ComparisonInput;
+  member: boolean;
+  personal: MarketPersonal;
+  events: MarketEvent[];
+  onClose: () => void;
+}) {
+  // Esc closes; the page behind doesn't scroll while this is open.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", key);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", key); document.body.style.overflow = prev; };
+  }, [onClose]);
+  const locked = new Set(lockedTopFor(c, member));
+  const perRet = cheapestPerRetailer(c.matches.filter((m) => !m.restricted), c.top);
+  const yearly = (t: number) => t * c.perYear;
+  const youYear = yearly(c.you);
+  const max = Math.max(youYear, ...perRet.map((m) => yearly(m.total)), 1);
+  const changesBy = new Map<string, { n: number; last: string }>();
+  for (const e of events) {
+    const x = changesBy.get(e.retailer);
+    if (!x) changesBy.set(e.retailer, { n: 1, last: e.date });
+    else { x.n++; if (e.date > x.last) x.last = e.date; }
+  }
+  const days = dailyChanges(events, 30);
+  const dayMax = Math.max(...days.map((d) => d.newOffers + d.priceChanges), 1);
+  const newOffers = events.filter((e) => e.kind === "new").length;
+  const cheaper = perRet.filter((m) => (c.you - m.total) * c.perYear >= 1).length;
+  const best = perRet[0];
+  const bestSave = best ? Math.max(0, (c.you - best.total) * c.perYear) : 0;
+  const shortDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "UTC" });
+  const against = c.haveBill ? "your bill" : "the default offer";
+  return (
+    <div className={styles.mdOverlay} role="dialog" aria-modal="true" aria-labelledby="md-title">
+      <div className={styles.mdBar}>
+        <button type="button" className={styles.mdBack} onClick={onClose}>← Back to my dashboard</button>
+        <span className={styles.mdNet}>{input.distributor} network · last 30 days</span>
+      </div>
+      <div className={styles.mdBody}>
+        <h2 id="md-title" className={styles.mdTitle}>Your market this month</h2>
+        <p className={styles.mdLede}>Every offer that changed on your network, priced for your home against {against}.</p>
+
+        <div className={styles.mdTiles}>
+          <div className={styles.mdTile}><b>{personal.checked}</b><span>changed offers checked for you</span></div>
+          <div className={`${styles.mdTile} ${styles.mdTileGood}`}><b>{personal.beat}</b><span>beat {against} by ${WORTH_SWITCHING_PER_YEAR}+ a year</span></div>
+          <div className={styles.mdTile}><b>{cheaper}</b><span>of {perRet.length} retailers are cheaper than {against}</span></div>
+          <div className={`${styles.mdTile} ${styles.mdTileSave}`}><b>{whole(bestSave)}</b><span>a year: the most you could save{member && best ? `, with ${best.plan[0]}` : ""}</span></div>
+        </div>
+
+        <section className={styles.mdCard} aria-labelledby="md-chart">
+          <h3 id="md-chart">Changes by day</h3>
+          <p className={styles.mdSub}>{newOffers} new offers and {events.length - newOffers} price changes in 30 days.</p>
+          <div className={styles.mdChart} role="img" aria-label={`${events.length} changes over 30 days`}>
+            {days.map((d) => {
+              const t = d.newOffers + d.priceChanges;
+              return (
+                <span key={d.date} className={styles.mdCol} title={`${shortDay(d.date)}: ${d.newOffers} new, ${d.priceChanges} price changes`}>
+                  <i className={styles.mdPrice} style={{ height: `${(d.priceChanges / dayMax) * 100}%` }} />
+                  <i className={styles.mdNew} style={{ height: `${(d.newOffers / dayMax) * 100}%` }} />
+                  {t === 0 && <i className={styles.mdZero} />}
+                </span>
+              );
+            })}
+          </div>
+          <div className={styles.mdAxis}><span>{shortDay(days[0].date)}</span><span>Today</span></div>
+          <div className={styles.mdLegend}><span><i className={styles.mdNew} /> New offer</span><span><i className={styles.mdPrice} /> Price change</span></div>
+        </section>
+
+        <section className={styles.mdCard} aria-labelledby="md-ret">
+          <h3 id="md-ret">Every retailer, priced for your home</h3>
+          <p className={styles.mdSub}>Each retailer&apos;s cheapest plan you can get, a year. The line is {against}: {whole(youYear)}.</p>
+          <ol className={styles.mdRank}>
+            {perRet.map((m, i) => {
+              const diff = (c.you - m.total) * c.perYear;
+              const hide = locked.has(m);
+              const ch = changesBy.get(m.plan[0]);
+              return (
+                <li key={`${m.plan[0]}|${m.plan[2]}`} className={styles.mdRow}>
+                  <span className={styles.mdRankNo}>{i + 1}</span>
+                  {hide ? <span className={styles.mdLock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={m.plan[0]} size={34} square />}
+                  <span className={styles.mdWho}>
+                    <b>{hide ? "Plus members see this retailer" : m.plan[0]}</b>
+                    <small>{hide ? "Retailer and plan hidden" : m.plan[2]}</small>
+                    {ch && !hide && <em className={styles.mdChg}>{ch.n} change{ch.n === 1 ? "" : "s"} · latest {shortDay(ch.last)}</em>}
+                  </span>
+                  <span className={styles.mdBarWrap}>
+                    <span className={styles.mdTrack}>
+                      <span className={diff >= 0 ? styles.mdBarGood : styles.mdBarBad} style={{ width: `${(yearly(m.total) / max) * 100}%` }} />
+                      <span className={styles.mdYou} style={{ left: `${(youYear / max) * 100}%` }} aria-hidden="true" />
+                    </span>
+                  </span>
+                  <span className={styles.mdNums}>
+                    <b>{whole(yearly(m.total))}</b>
+                    <small className={diff >= 0 ? styles.pos : styles.neg}>{Math.abs(diff) < 1 ? "Same" : diff > 0 ? `save ${whole(diff)}` : `+${whole(-diff)}`}</small>
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+
+        <section className={styles.mdCard} aria-labelledby="md-feed">
+          <h3 id="md-feed">Every change, newest first</h3>
+          <ul className={styles.mdFeed}>
+            {events.map((e, i) => {
+              const v = personal.vs(e);
+              return (
+                <li key={`${e.retailer}|${e.plan}|${i}`}>
+                  <span className={styles.mdDate}>{shortDay(e.date)}</span>
+                  <RetailerLogo name={e.retailer} size={28} square />
+                  <span className={styles.mdWho}>
+                    <b>{e.retailer}</b>
+                    <small title={e.plan}>{e.plan}</small>
+                  </span>
+                  <span className={e.kind === "new" ? styles.mdTagNew : styles.mdTagPrice}>{e.kind === "new" ? "New offer" : "Price change"}</span>
+                  {v && <span className={v.tone === "better" ? styles.mdVsGood : v.tone === "worse" ? styles.mdVsBad : styles.mdVsMuted}>{v.text}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+        <button type="button" className={styles.mdBackBottom} onClick={onClose}>← Back to my dashboard</button>
+      </div>
+    </div>
   );
 }
