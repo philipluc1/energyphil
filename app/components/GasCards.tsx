@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import RetailerLogo from "./RetailerLogo";
+import DayChanges from "./DayChanges";
 import DashOverlay from "./DashOverlay";
 import { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
@@ -11,7 +12,7 @@ import { GAS_ZONES, gasDataReady, rankGasPlans, type GasZone, type RankedGas } f
 import { topOpen } from "@/lib/planExtras";
 import { heatingShareFor } from "@/lib/gasUsage";
 import { forecastGasYear, gasOfferKeys, gasPricer, medianGasSupply, planGasPricer, typicalGasPricer, type GasForecast } from "@/lib/gasInsights";
-import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivity";
+import { marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import { MONTH_NAMES } from "@/lib/profileUsage";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { useOpenParam } from "@/lib/useOpenParam";
@@ -254,8 +255,6 @@ function GasMarketDetail({ c, personal, events, onClose, startAt }: { c: GasCtx;
     if (!x) changesBy.set(e.retailer, { n: 1, last: e.date });
     else { x.n++; if (e.date > x.last) x.last = e.date; }
   }
-  const days = dailyChanges(events, 30);
-  const dayMax = Math.max(...days.map((d) => d.newOffers + d.priceChanges), 1);
   const newOffers = events.filter((e) => e.kind === "new").length;
   const cheaper = perRet.filter((m) => (c.you - m.total) * c.perYear >= 1).length;
   const best = perRet[0];
@@ -286,20 +285,7 @@ function GasMarketDetail({ c, personal, events, onClose, startAt }: { c: GasCtx;
           <section className={styles.mdCard} aria-labelledby="gmd-chart">
             <h3 id="gmd-chart">Changes by day</h3>
             <p className={styles.mdSub}>{newOffers} new gas offers and {events.length - newOffers} updated offers in 30 days.</p>
-            <div className={styles.mdChart} role="img" aria-label={`${events.length} gas offer changes over 30 days`}>
-              {days.map((d) => {
-                const t = d.newOffers + d.priceChanges;
-                return (
-                  <span key={d.date} className={styles.mdCol} title={`${shortDay(d.date)}: ${d.newOffers} new, ${d.priceChanges} updated`}>
-                    <i className={styles.mdPrice} style={{ height: `${(d.priceChanges / dayMax) * 100}%` }} />
-                    <i className={styles.mdNew} style={{ height: `${(d.newOffers / dayMax) * 100}%` }} />
-                    {t === 0 && <i className={styles.mdZero} />}
-                  </span>
-                );
-              })}
-            </div>
-            <div className={styles.mdAxis}><span>{shortDay(days[0].date)}</span><span>Today</span></div>
-            <div className={styles.mdLegend}><span><i className={styles.mdNew} /> New offer</span><span><i className={styles.mdPrice} /> Updated offer</span></div>
+            <DayChanges events={events} label="gas " />
           </section>
         )}
 

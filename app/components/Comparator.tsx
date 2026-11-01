@@ -47,7 +47,6 @@ import {
   vdoBillForUsage,
   type HomeProfile,
 } from "@/lib/profileUsage";
-import { supabaseConfigured } from "@/lib/supabaseClient";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { periodBreakdown } from "@/lib/savings";
@@ -75,7 +74,7 @@ import YourRates from "./YourRates";
 import w from "./wizard.module.css";
 import snap from "./snap.module.css";
 import { EMPTY_RATES_FORM, costFromRates, ratesFromForm, ratesToForm, type RatesForm } from "@/lib/currentRates";
-import { BROAD_COVERAGE, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
+import { BROAD_COVERAGE, FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 
 const RETAILERS = Array.from(new Set(PLANS.map((p) => p[0]))).sort();
 /** The highest solar feed-in any plan pays on a network ($ a kWh), and whose it is. */
@@ -901,9 +900,11 @@ export default function Comparator() {
   // The cheapest plan this household can get (offers needing a membership,
   // existing customers only and so on stay in the list but aren't picked).
   const top = topOpen(matches);
-  // Free result: the best plan plus the next two. Plus members see every plan and the forecast.
+  // Every plan by name for everyone (FREE_SHOWS_NAMES); Plus is sold on
+  // watching. `free` decides where the Plus pitch goes, `locked` whether names hide.
   const member = useMember();
-  const locked = member !== true;
+  const free = member !== true;
+  const locked = free && !FREE_SHOWS_NAMES;
   // Free users see plans from #3 on; the cheapest ones are for members.
   const TOP_LOCKED = 2;
   const FREE_ROWS = 3;
@@ -2428,7 +2429,7 @@ export default function Comparator() {
                           </label>
                         </div>
                       </div>
-                      {member === true && <span className={r.memberView}><Icon name="check" size={13} /> Member view: you see every plan by name. Free checks see the 2 cheapest locked.</span>}
+                      {member === true && !FREE_SHOWS_NAMES && <span className={r.memberView}><Icon name="check" size={13} /> Member view: you see every plan by name. Free checks see the 2 cheapest locked.</span>}
                       <span className={r.legendLine}>
                         Prices {PERIOD_LABEL[period]}, discounts included. Green = your saving.
                         <InfoTip label="What the labels mean">
@@ -2597,23 +2598,47 @@ export default function Comparator() {
                     )}
                     {billAfterHidden && billMark}
               </section>
-              {locked && (
+              {free && (
+                <>
+                <div className={styles.leadCard} id="email-result">
+                  <span className={styles.leadIcon} aria-hidden="true"><Icon name="mail" size={20} /></span>
+                  <div className={styles.leadMain}>
+                    <h3>Email me this result</h3>
+                    <p>{top && worthSwitching ? <>{top.plan[0]}&apos;s plan and your saving, ready when you switch.</> : "Your result, so it's easy to find later."}</p>
+                    {leadStatus === "saved" ? (
+                      <p className={styles.leadOk}><Icon name="check" size={15} /> Sent. Check your inbox{wantsAlerts ? ", and we'll tell you if a cheaper plan turns up" : ""}.</p>
+                    ) : (
+                      <form className={styles.leadForm} onSubmit={handleLeadSubmit}>
+                        <input type="email" required aria-label="Your email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                        <button type="submit" className={styles.btnPrimary} disabled={leadStatus === "saving"}>{leadStatus === "saving" ? "Sending…" : "Email me"}</button>
+                      </form>
+                    )}
+                    {leadStatus !== "saved" && (
+                      <label className={styles.alertsCheckboxRow}>
+                        <input type="checkbox" checked={wantsAlerts} onChange={(e) => setWantsAlerts(e.target.checked)} />
+                        Tell me if a cheaper plan turns up (unsubscribe any time)
+                      </label>
+                    )}
+                    {leadStatus === "error" && <p className={styles.leadErr}>That didn&apos;t send. Please try again in a moment.</p>}
+                  </div>
+                </div>
                 <div className={styles.dailyCard}>
                   <span className={styles.dailyKicker}><Icon name="refresh" size={14} /> {PLUS_NAME}</span>
                   <h3 className={styles.dailyTitle}>
-                    {haveBill ? "We\u2019ll check this bill for you every morning." : <>Snap your bill once.<br />We check for you every morning.</>}
+                    {haveBill ? <>That&apos;s today&apos;s answer.<br />We keep watching this bill.</> : <>That&apos;s today&apos;s answer.<br />We keep watching.</>}
                   </h3>
                   <ul className={styles.dailyTicks}>
-                    <li><Icon name="camera" size={16} /> <span><b>{haveBill ? "Your real usage" : "Your real usage, not our guess"}</b>{haveBill ? ", from this bill" : ": one photo of your bill"}</span></li>
-                    <li><Icon name="refresh" size={16} /> <span><b>All {matches.length} plans on your network</b> re-priced every morning</span></li>
-                    <li><Icon name="mail" size={16} /> <span><b>An email only when it&apos;s worth it</b>: a saving of ${WORTH_SWITCHING_PER_YEAR}+ a year</span></li>
-                    <li><Icon name="lock" size={16} /> <span><b>The {lockedTop.length || 2} cheapest plans by name</b>, straight away</span></li>
+                    <li><Icon name="refresh" size={16} /> <span><b>All {matches.length} plans</b> re-checked daily</span></li>
+                    <li><Icon name="bell" size={16} /> <span><b>A warning</b> before your discount ends</span></li>
+                    <li><Icon name="mail" size={16} /> <span><b>An email</b> only for ${WORTH_SWITCHING_PER_YEAR}+ a year savings</span></li>
+                    <li><Icon name="flame" size={16} /> <span><b>Gas too</b>, on the same membership</span></li>
                   </ul>
-                  <button type="button" className={styles.dailyBtn} onClick={joinScroll}>Start my daily checks →</button>
+                  <button type="button" className={styles.dailyBtn} onClick={joinScroll}>Keep watching for me →</button>
                   <p className={styles.dailyFine}>{MEMBER_PRICE_LINE}</p>
                 </div>
+                </>
               )}
-              {!locked && haveBill && (
+              {!free && haveBill && (
                 <div className={styles.billNudge}>
                   <b>Based on one bill.</b> These are today&apos;s prices, worked out for the usage on that bill. Plus members get every plan re-priced each morning and a saved result every month, so the
                   answer stays current.
@@ -2866,38 +2891,6 @@ export default function Comparator() {
             </>
           )}
 
-        <div className={styles.leadCard}>
-          <h3>Want a copy of this result?</h3>
-          <p>We&apos;ll email your result so it&apos;s easy to find later.</p>
-          <label className={styles.alertsCheckboxRow}>
-            <input type="checkbox" checked={wantsAlerts} onChange={(e) => setWantsAlerts(e.target.checked)} />
-            Also send me a couple of tips this week and tell me if a cheaper plan appears (unsubscribe any time).
-          </label>
-          <form className={styles.leadForm} onSubmit={handleLeadSubmit}>
-            <input
-              type="email"
-              required
-              aria-label="Your email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button type="submit" className={styles.btnPrimary} disabled={leadStatus === "saving" || leadStatus === "saved"}>
-              {leadStatus === "saving" ? "Saving…" : leadStatus === "saved" ? "Saved" : "Email me this"}
-            </button>
-          </form>
-          {leadStatus === "saved" && (
-            <p className={styles.leadOk}>Thanks — we&apos;ve noted your email for this result.</p>
-          )}
-          {leadStatus === "error" && (
-            <p className={styles.leadErr}>Something went wrong saving that — please try again in a moment.</p>
-          )}
-          {!supabaseConfigured && (
-            <p className={styles.leadNote}>
-              This preview build isn&apos;t connected to live storage yet — signups above are confirmed on-screen only.
-            </p>
-          )}
-        </div>
           </>
         )}
 

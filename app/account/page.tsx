@@ -44,8 +44,9 @@ import { DEFAULT_PROFILE, estimateWithBill, type HomeProfile } from "@/lib/profi
 import { kwhFromBill } from "@/lib/billReconcile";
 import { EMPTY_RATES_FORM, ratesFromForm, ratesToForm } from "@/lib/currentRates";
 import SolarCard from "../components/SolarCard";
-import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
+import BillTracker from "../components/BillTracker";
 import BillReview from "../components/BillReview";
 import type { CurrentRates, ExtractedBill } from "@/lib/billExtraction";
 import SwitchReminder from "../components/SwitchReminder";
@@ -761,7 +762,7 @@ export default function AccountPage() {
   const rateDist = isMember ? sub?.distributor ?? null : localCheck?.distributor ?? null;
   const bestRow = (summary && rateDist ? findPlanRow(summary.bestRetailer, summary.bestPlan, rateDist) : null) ?? tariffPlan;
   // Free users don't see the cheapest plan's name (members do).
-  const bestForRates = bestRow ? { plan: bestRow, label: isMember ? bestRow[0] : "Cheapest plan", hideName: !isMember } : null;
+  const bestForRates = bestRow ? { plan: bestRow, label: isMember || FREE_SHOWS_NAMES ? bestRow[0] : "Cheapest plan", hideName: !isMember && !FREE_SHOWS_NAMES } : null;
   // The member's own day shape: their kWh a day, solar export, EV, and the
   // pattern their answers point to.
   const myShape = useMemo(() => {
@@ -1166,6 +1167,8 @@ export default function AccountPage() {
                             <BillPhotoUpload onApply={onBillRead} />
                           )}
                         </section>
+
+                        <BillTracker key={fuel} initialFuel={fuel === "gas" ? "gas" : "electricity"} gasAccount={!!sub?.gas_zone} />
 
                         <section className={styles.panelCard}>
                           <div className={styles.panelTitle}>Savings by month</div>

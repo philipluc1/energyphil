@@ -15,18 +15,19 @@ import SwitchReminder from "./SwitchReminder";
 import type { ResultsChartPalette } from "@/lib/dashThemes";
 import { AVERAGE_ANNUAL_KWH, usageOrAverage, vdoBillForUsage } from "@/lib/profileUsage";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
-import { WORTH_SWITCHING_PER_YEAR, OVERPRICED_PER_YEAR, OVERPRICED_SHARE } from "@/lib/dataPolicy";
+import { FREE_SHOWS_NAMES, WORTH_SWITCHING_PER_YEAR, OVERPRICED_PER_YEAR, OVERPRICED_SHARE } from "@/lib/dataPolicy";
 import { useCountUp } from "@/lib/useCountUp";
 import PriceLine from "./PriceLine";
 import PlanViewToggle from "./PlanViewToggle";
 import { cheapestPerRetailer } from "@/lib/onePerRetailer";
 import FunEquivalents from "./FunEquivalents";
 import RetailerLogo from "./RetailerLogo";
+import DayChanges from "./DayChanges";
 import type { BillCheckFacts } from "./BillCheckCard";
 import { samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { periodScale } from "@/lib/periods";
-import { dailyChanges, marketEvents, type MarketEvent } from "@/lib/marketActivity";
+import { marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
 import { useOpenParam } from "@/lib/useOpenParam";
@@ -136,7 +137,7 @@ export function compute(input: ComparisonInput) {
 /** Free users: the two cheapest plans (and anything above the cheapest one
  *  anyone can get) are for members, the same rule as the results page. */
 export function lockedTopFor(c: NonNullable<ReturnType<typeof compute>>, member: boolean) {
-  return member ? [] : c.matches.slice(0, Math.max(2, c.matches.indexOf(c.top) + 1));
+  return member || FREE_SHOWS_NAMES ? [] : c.matches.slice(0, Math.max(2, c.matches.indexOf(c.top) + 1));
 }
 
 /** Facts for the "We checked your bill" card, from the same maths as the verdict. Null without a bill. */
@@ -178,6 +179,8 @@ interface Props {
 /** Top of the dashboard: are you on the cheapest plan or not. Always shown
  *  above the tabs. */
 export function VerdictCard({ input, member, period, onPeriod }: Props) {
+  // Everyone sees names (FREE_SHOWS_NAMES); the watching is what Plus adds.
+  const names = member || FREE_SHOWS_NAMES;
   const c = useMemo(() => compute(input), [input]);
   const k = c ? periodScale(period, input.days) : 0;
   // The headline uses the same scaling as the tiles below it.
@@ -187,6 +190,8 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
   const { distributor, days, currentRetailer, currentPlanName, source } = input;
   const bestTerms = planPriceType(top.plan[0], top.plan[2]);
 
+  // Paying more than the government reference price is flagged in red (any amount from 1%).
+  const overVdo = haveBill && c.vdo > 0 && Math.round(((you - c.vdo) / c.vdo) * 100) >= 1;
   return (
     <section className={`${styles.verdict} ${styles[verdict]} ${severe ? styles.severe : ""}`}>
       <div className={styles.verdictTop}>
@@ -216,11 +221,11 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             : <>Against the default offer, the cheapest plan saves up to <span className={styles.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>}
       </h2>
       {/* The small print that changes the number: one quiet strip, open on tap. */}
-      {(c.mismatch || (haveBill && c.vdo > 0 && (you - c.vdo) / c.vdo >= 0.05)) && (
+      {(c.mismatch || overVdo) && (
         <div className={styles.facts}>
-          {haveBill && c.vdo > 0 && (you - c.vdo) / c.vdo >= 0.05 && (
-            <details className={styles.fact}>
-              <summary><Icon name="alert" size={14} /> <b>{Math.round(((you - c.vdo) / c.vdo) * 100)}% above the default offer</b><span className={styles.factMore}>why it matters</span></summary>
+          {overVdo && (
+            <details className={`${styles.fact} ${styles.factBad}`}>
+              <summary><Icon name="alert" size={14} /> <b>You pay {Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b><span className={styles.factMore}>why it matters</span></summary>
               <p>
                 The default offer is the government&apos;s reference price: {money(c.vdo * k)} {PERIOD_LABEL[period]} for your usage. Most people can do better than
                 the default, so a plan that costs more than it is one worth moving off.
@@ -243,7 +248,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         <div className={styles.arrow} aria-hidden="true">→</div>
         <div className={`${styles.side} ${styles.sideBest}`} style={{ "--n": 1 } as CSSProperties}>
           <span className={styles.sideLabel}>Cheapest we found</span>
-          {member ? (
+          {names ? (
             <>
               <b>{top.plan[0]}</b>
               <span className={styles.sidePlan}>{top.plan[2]}</span>
@@ -255,8 +260,8 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             </>
           )}
           <span key={period} className={styles.sideCost}>{money(top.total * k)}</span>
-          {member && bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
-          {member && <span className={styles.sideChips}><OfferChips o={c.offerFor(top.plan)} /></span>}
+          {names && bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
+          {names && <span className={styles.sideChips}><OfferChips o={c.offerFor(top.plan)} /></span>}
         </div>
         {verdict !== "good" && savingYear > 0 && (
           <>
@@ -264,7 +269,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             <div className={`${styles.side} ${styles.sideSave}`} style={{ "--n": 2 } as CSSProperties}>
               <span className={styles.sideLabel}>You save</span>
               <b>By switching</b>
-              <span className={styles.sidePlan}>{PERIOD_LABEL[period]}, to {member ? top.plan[0] : "the cheapest plan"}</span>
+              <span className={styles.sidePlan}>{PERIOD_LABEL[period]}, to {names ? top.plan[0] : "the cheapest plan"}</span>
               <span key={period} className={styles.sideCost}>{money((you - top.total) * k)}</span>
             </div>
           </>
@@ -272,10 +277,10 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
       </div>
       {verdict !== "good" && savingYear > 0 && <FunEquivalents dollars={savingYear} />}
       <div className={styles.verdictActions}>
-        {!member && (
+        {!names && (
           <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> See which retailer →</a>
         )}
-        {member && verdict !== "good" && RETAILER_LINKS[top.plan[0]] && (
+        {names && verdict !== "good" && RETAILER_LINKS[top.plan[0]] && (
           <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={input.distributor} target="_blank" rel="noopener noreferrer" className={styles.go}>Go to {top.plan[0]} →</a>
         )}
         {member && verdict !== "good" && savingYear > 0 && (
@@ -350,7 +355,7 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
       if (!closest || diff < closest.diff) closest = { retailer: e.retailer, diff };
     }
     // Non-members don't see the cheapest plans by name: don't name the retailer here either.
-    const who = (r: string) => (member ? r : "One of them");
+    const who = (r: string) => (member || FREE_SHOWS_NAMES ? r : "One of them");
     const closestText = !closest
       ? null
       : closest.diff < 0
@@ -457,7 +462,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
       {retailerBest && retailerBest !== top && !isLocked(retailerBest) && (
         <div className={styles.stay}>
           <b>Staying with {currentRetailer}?</b> Their cheapest current plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at {money(retailerBest.total * k)} {PERIOD_LABEL[period]},{" "}
-          <span className={styles.stayGap}>{whole((retailerBest.total - top.total) * k)} more</span> than {member ? top.plan[0] : "the cheapest plan"}.
+          <span className={styles.stayGap}>{whole((retailerBest.total - top.total) * k)} more</span> than {member || FREE_SHOWS_NAMES ? top.plan[0] : "the cheapest plan"}.
           {!haveBill && <> You may be on an older, dearer {currentRetailer} plan: upload your bill to see what you actually pay.</>}
         </div>
       )}
@@ -466,36 +471,6 @@ export function CompareSection({ input: billInput, member, period, profile = nul
         <div className={styles.tableHead}>
           <h3>Retailer comparison</h3>
           <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setShowAll(false); }} retailers={perRetailer.length} plans={allMatches.length} />
-          {base && !base.average && (
-            <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-label="What if my usage changes?">
-              <div className={ins.wiSlider}>
-                <label htmlFor="use-range">
-                  <span>{whatIf ? "What if: usage" : "Your usage"}</span>
-                  <b>{kwhDay.toFixed(1)} kWh a day{pctUse !== 100 ? ` · ${pctUse}% of your bill` : ""}</b>
-                </label>
-                <input id="use-range" type="range" min={50} max={200} step={5} value={pctUse} onChange={(e) => setPctUse(Number(e.target.value))} aria-describedby="use-hint" />
-                <div className={ins.wiTicks} id="use-hint"><span>Half</span><span>Your bill</span><span>Double</span></div>
-              </div>
-              <div className={ins.wiChips}>
-                {seasons && (
-                  <>
-                    <button type="button" aria-pressed={season === "winter"} className={`${ins.shift} ${season === "winter" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "winter" ? "none" : "winter")}>
-                      <Icon name="snow" size={15} /> Winter <small>{seasons.winter >= 1 ? "+" : ""}{Math.round((seasons.winter - 1) * 100)}%</small>
-                    </button>
-                    <button type="button" aria-pressed={season === "summer"} className={`${ins.shift} ${season === "summer" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "summer" ? "none" : "summer")}>
-                      <Icon name="sun" size={15} /> Summer <small>{seasons.summer >= 1 ? "+" : ""}{Math.round((seasons.summer - 1) * 100)}%</small>
-                    </button>
-                  </>
-                )}
-                {billInput.ev !== true && (
-                  <button type="button" aria-pressed={evWhatIf} className={`${ins.shift} ${evWhatIf ? ins.shiftOn : ""}`} onClick={() => setEvWhatIf(!evWhatIf)}>
-                    <Icon name="car" size={15} /> Add an EV <small>+{WHATIF_EV_KWH_PER_DAY} kWh a day</small>
-                  </button>
-                )}
-                {whatIf && <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button>}
-              </div>
-            </div>
-          )}
         </div>
         <div className={styles.chart}>
           <PriceLine
@@ -525,6 +500,36 @@ export function CompareSection({ input: billInput, member, period, profile = nul
             }
           />
         </div>
+        {base && !base.average && (
+          <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-label="What if my usage changes?">
+            <div className={ins.wiSlider}>
+              <label htmlFor="use-range">
+                <span>{whatIf ? "What if: usage" : "Your usage"}</span>
+                <b>{kwhDay.toFixed(1)} kWh a day{pctUse !== 100 ? ` · ${pctUse}% of your bill` : ""}</b>
+              </label>
+              <input id="use-range" type="range" min={50} max={200} step={5} value={pctUse} onChange={(e) => setPctUse(Number(e.target.value))} aria-describedby="use-hint" />
+              <div className={ins.wiTicks} id="use-hint"><span>Half</span><span>Your bill</span><span>Double</span></div>
+            </div>
+            <div className={ins.wiChips}>
+              {seasons && (
+                <>
+                  <button type="button" aria-pressed={season === "winter"} className={`${ins.shift} ${season === "winter" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "winter" ? "none" : "winter")}>
+                    <Icon name="snow" size={15} /> Winter <small>{seasons.winter >= 1 ? "+" : ""}{Math.round((seasons.winter - 1) * 100)}%</small>
+                  </button>
+                  <button type="button" aria-pressed={season === "summer"} className={`${ins.shift} ${season === "summer" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "summer" ? "none" : "summer")}>
+                    <Icon name="sun" size={15} /> Summer <small>{seasons.summer >= 1 ? "+" : ""}{Math.round((seasons.summer - 1) * 100)}%</small>
+                  </button>
+                </>
+              )}
+              {billInput.ev !== true && (
+                <button type="button" aria-pressed={evWhatIf} className={`${ins.shift} ${evWhatIf ? ins.shiftOn : ""}`} onClick={() => setEvWhatIf(!evWhatIf)}>
+                  <Icon name="car" size={15} /> Add an EV <small>+{WHATIF_EV_KWH_PER_DAY} kWh a day</small>
+                </button>
+              )}
+              {whatIf && <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button>}
+            </div>
+          </div>
+        )}
 
         {/* Wide screens: the full table */}
         <div className={styles.tableWide}>
@@ -672,13 +677,13 @@ export function CompareSection({ input: billInput, member, period, profile = nul
         </details>
         {!member && (
           <p className={styles.upsell}>
-            Plus members get this table re-run every morning, a bill read every month, and an email the day something cheaper appears.{" "}
-            <Link href="#membership">See plans</Link>
+            That&apos;s today&apos;s answer. Plus keeps watching: this table re-run every morning, a warning before your discount ends, and an email the day something cheaper appears.{" "}
+            <Link href="#membership">See Utilo Plus</Link>
           </p>
         )}
       </section>
 
-      {!member ? (
+      {!(member || FREE_SHOWS_NAMES) ? (
         <section className={styles.table}>
           <div className={styles.tableHead}>
             <h3>Before you switch</h3>
@@ -704,7 +709,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
       </details>
       )}
 
-      <CurrentPricing input={billInput} usage={real.usage} best={real.top.plan} bestTotal={real.top.total} you={real.you} haveBill={real.haveBill} hideName={!member} />
+      <CurrentPricing input={billInput} usage={real.usage} best={real.top.plan} bestTotal={real.top.total} you={real.you} haveBill={real.haveBill} hideName={!(member || FREE_SHOWS_NAMES)} />
     </>
   );
 }
@@ -841,8 +846,6 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
     if (!x) changesBy.set(e.retailer, { n: 1, last: e.date });
     else { x.n++; if (e.date > x.last) x.last = e.date; }
   }
-  const days = dailyChanges(events, 30);
-  const dayMax = Math.max(...days.map((d) => d.newOffers + d.priceChanges), 1);
   const newOffers = events.filter((e) => e.kind === "new").length;
   const cheaper = perRet.filter((m) => (c.you - m.total) * c.perYear >= 1).length;
   const best = perRet[0];
@@ -868,26 +871,13 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
           <div className={styles.mdTile}><b>{personal.checked}</b><span>changed offers checked for you</span></div>
           <div className={`${styles.mdTile} ${styles.mdTileGood}`}><b>{personal.beat}</b><span>beat {against} by ${WORTH_SWITCHING_PER_YEAR}+ a year</span></div>
           <div className={styles.mdTile}><b>{cheaper}</b><span>of {perRet.length} retailers are cheaper than {against}</span></div>
-          <div className={`${styles.mdTile} ${styles.mdTileSave}`}><b>{whole(bestSave)}</b><span>a year: the most you could save{member && best ? `, with ${best.plan[0]}` : ""}</span></div>
+          <div className={`${styles.mdTile} ${styles.mdTileSave}`}><b>{whole(bestSave)}</b><span>a year: the most you could save{(member || FREE_SHOWS_NAMES) && best ? `, with ${best.plan[0]}` : ""}</span></div>
         </div>
 
         <section className={styles.mdCard} aria-labelledby="md-chart">
           <h3 id="md-chart">Changes by day</h3>
           <p className={styles.mdSub}>{newOffers} new offers and {events.length - newOffers} updated offers in 30 days.</p>
-          <div className={styles.mdChart} role="img" aria-label={`${events.length} changes over 30 days`}>
-            {days.map((d) => {
-              const t = d.newOffers + d.priceChanges;
-              return (
-                <span key={d.date} className={styles.mdCol} title={`${shortDay(d.date)}: ${d.newOffers} new, ${d.priceChanges} updated`}>
-                  <i className={styles.mdPrice} style={{ height: `${(d.priceChanges / dayMax) * 100}%` }} />
-                  <i className={styles.mdNew} style={{ height: `${(d.newOffers / dayMax) * 100}%` }} />
-                  {t === 0 && <i className={styles.mdZero} />}
-                </span>
-              );
-            })}
-          </div>
-          <div className={styles.mdAxis}><span>{shortDay(days[0].date)}</span><span>Today</span></div>
-          <div className={styles.mdLegend}><span><i className={styles.mdNew} /> New offer</span><span><i className={styles.mdPrice} /> Updated offer</span></div>
+          <DayChanges events={events} />
         </section>
 
         <section className={styles.mdCard} aria-labelledby="md-ret">

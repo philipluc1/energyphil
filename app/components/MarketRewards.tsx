@@ -161,18 +161,17 @@ export default function MarketRewards({
           const hide = locked.has(m);
           return (
             <li key={`${m.plan[0]}|${r.kind}|${r.headline}`} className={`${styles.item} ${styles[r.kind]}`} style={{ animationDelay: `${Math.min(i, 10) * 40}ms` }}>
+              {/* The reward is the hero; who offers it sits right beside it. */}
               <div className={styles.itemTop}>
-                <span className={styles.kindIcon}><KindIcon kind={r.kind} /></span>
-                <b className={styles.headline}>{r.headline}</b>
-              </div>
-              <p className={styles.detail}>{r.detail ?? "Check the retailer's terms for who gets it and when."}</p>
-              <div className={styles.who}>
-                {hide ? <span className={styles.lock}><Icon name="lock" size={13} /></span> : <RetailerLogo name={m.plan[0]} size={26} square />}
-                <span>
-                  <b>{hide ? "Plus members see this retailer" : m.plan[0]}</b>
-                  <small title={hide ? undefined : m.plan[2]}>{hide ? "Retailer and plan hidden" : m.plan[2]}</small>
+                {hide ? <span className={`${styles.lock} ${styles.topLogo}`}><Icon name="lock" size={16} /></span> : <span className={styles.topLogo}><RetailerLogo name={m.plan[0]} size={38} square /></span>}
+                <span className={styles.topText}>
+                  <b className={styles.headline}>{r.headline}</b>
+                  <span className={styles.byLine} title={hide ? undefined : `${m.plan[0]}: ${m.plan[2]}`}>
+                    {hide ? "Plus members see this retailer" : <><b>{m.plan[0]}</b> · {m.plan[2]}</>}
+                  </span>
                 </span>
               </div>
+              <p className={styles.detail}>{r.detail ?? "Check the retailer's terms for who gets it and when."}</p>
               {r.kind === "credit" && r.value > 0 && (() => {
                 // Year one has the credit; later years don't. Against what they pay now.
                 const nowYear = you * perYear;

@@ -315,3 +315,29 @@ create table if not exists public.push_subscriptions (
 create index if not exists push_subscriptions_email on public.push_subscriptions (lower(email));
 alter table public.push_subscriptions enable row level security;
 -- No policies: only the server (secret key) writes and reads these.
+
+-- 1 Nov 2026: the bill tracker. Every bill a member uploads (or types in for
+-- a month they missed), one row per fuel per billing period. The dashboard
+-- spreads each bill over the months it covered and charts them.
+create table if not exists public.bills (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  email text not null,
+  fuel text not null default 'electricity' check (fuel in ('electricity', 'gas')),
+  period_end date not null,
+  billing_days integer not null check (billing_days between 1 and 366),
+  kwh numeric,
+  mj numeric,
+  amount numeric,
+  retailer text,
+  source text not null default 'photo' check (source in ('photo', 'typed')),
+  unique (email, fuel, period_end)
+);
+create index if not exists bills_email on public.bills (lower(email));
+alter table public.bills enable row level security;
+grant select on public.bills to authenticated;
+drop policy if exists "member can view own bills" on public.bills;
+create policy "member can view own bills"
+  on public.bills for select to authenticated
+  using ((select auth.email()) = email);
+-- Writes happen only on the server (secret key): /api/bills and /api/apply-bill.

@@ -307,3 +307,19 @@
 .foldCard[open] .foldChev { transform: rotate(180deg); }
 .foldCard[open] > summary { margin-bottom: 14px; }
 @media (prefers-reduced-motion: reduce) { .foldChev { transition: none; } }
+
+/* Logos on top of each day's bar (1 Nov 2026). */
+.mdChart { height: 210px; }
+.mdCol { align-items: center; }
+.mdLogos { display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; padding-bottom: 3px; animation: mdLogoIn 0.4s ease both 0.45s; }
+.mdLogos > * { box-shadow: 0 1px 3px rgba(18, 20, 28, 0.18); background: #fff; }
+.mdLogos em { font-style: normal; font-size: 10px; font-weight: 800; color: #3a4252; line-height: 1; padding: 2px 3px; border-radius: 6px; }
+@keyframes mdLogoIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) { .mdLogos > :not(:first-child) { display: none; } .mdLogos { transform: scale(0.8); } }
+@media (max-width: 560px) { .mdLogos { display: none; } .mdChart { height: 120px; } }
+@media (prefers-reduced-motion: reduce) { .mdLogos { animation: none; } }
+
+/* Paying more than the default offer is flagged in red (1 Nov 2026). */
+.factBad { background: #dc2626; border-color: #f87171; box-shadow: 0 10px 24px -14px rgba(220, 38, 38, 0.8); }
+.factBad summary svg { color: #fff; }
+.factBad .factMore { opacity: 1; }

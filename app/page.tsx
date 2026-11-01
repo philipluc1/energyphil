@@ -168,7 +168,7 @@ export default function Home() {
           <div className={h.faq}>
             <details>
               <summary>Is the check really free?</summary>
-              <p>Yes, every time. You see how much you&apos;d save and the plans that do it. {PLUS_NAME} adds the two cheapest plans by name and keeps checking for you.</p>
+              <p>Yes, every time. You see how much you&apos;d save and every plan by name, and you can email yourself the result. {PLUS_NAME} keeps watching after that: every plan re-checked each morning, and a warning before your discount ends.</p>
             </details>
             <details>
               <summary>How do you make money?</summary>

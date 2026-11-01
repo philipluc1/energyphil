@@ -178,3 +178,5 @@
 .useBar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 18px; align-items: center; margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--soft, #f4f6fb); border: 1px solid transparent; transition: background 0.2s, border-color 0.2s; }
 .useBarOn { background: #fff7e6; border-color: #fde7b0; }
 .useBar .wiChips { align-items: center; }
+/* The what-if bar sits under the price chart (1 Nov 2026). */
+.useBar { margin: 4px 0 14px; }

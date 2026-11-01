@@ -4,6 +4,7 @@ import type { CurrentRates } from "@/lib/billExtraction";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActiveMember } from "@/lib/memberAccess";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { billRowFrom } from "@/lib/billRows";
 import { DISTRIBUTORS, bestPlan, type Distributor, type UsageInput } from "@/lib/plans";
 import { vdoBillForUsage } from "@/lib/profileUsage";
 import { GAS_ZONES, bestGasPlan, gasBenchmark, type GasZone } from "@/lib/gasPlans";
@@ -20,6 +21,16 @@ export async function POST(req: NextRequest) {
 
   const b = await req.json().catch(() => null);
   const memberEmail = member.email;
+
+  // Keep the bill in the tracker too (electricity and/or gas). Never blocks
+  // the rest: a database without the bills table yet just skips it.
+  {
+    const rows = billRowFrom(b, memberEmail, new Date().toISOString().slice(0, 10));
+    if (rows.length) {
+      const { error: tErr } = await supabaseAdmin.from("bills").upsert(rows, { onConflict: "email,fuel,period_end" });
+      if (tErr) console.warn("apply-bill: bill tracker not saved (run supabase/schema.sql)", tErr.message);
+    }
+  }
 
   // Gas, when the bill has it (gas-only or dual). Saved on the membership and
   // priced against the gas plans we hold. Victoria has no gas default offer,

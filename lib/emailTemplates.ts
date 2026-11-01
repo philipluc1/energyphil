@@ -8,7 +8,7 @@
 // To change wording: edit the strings below, keep the ${...} parts.
 
 import { esc } from "./email";
-import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
+import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 import { RETAILER_LINKS } from "./retailerLinks";
 import { REFERRAL_CREDIT_CENTS, referralDollars } from "./referralOffer";
 import { button, chips, columns, dateBanner, glance, glanceRow, heading, iconRow, iconRows, miniBars, money, note, planCard, signOff, statusBox, step, steps, tip, unsubscribe } from "./emailParts";
@@ -21,8 +21,8 @@ const SWITCH_FACTS = ["About 10 minutes online", "Your power stays on", "10-day 
 const retailerLink = (r: string) => (RETAILER_LINKS[r] ? { label: `See the plan on ${esc(r)}'s site`, url: RETAILER_LINKS[r] } : null);
 
 /* ---------- 1. Your result (sent straight after a free check) ----------
-   Free users get the saving, not the retailer: the cheapest plans are for
-   members, the same as on the results page. */
+   The cheapest plan by name (FREE_SHOWS_NAMES, 1 Nov 2026), the same as on
+   the results page; then why Plus keeps watching. */
 export function resultEmail(i: {
   origin: string;
   retailer: string;
@@ -38,19 +38,25 @@ export function resultEmail(i: {
   const card = worth
     ? planCard({
         kicker: "Cheapest for you",
-        retailer: "Utilo Plus shows which retailer",
-        planName: "The plan name, rates and sign-up conditions are on your dashboard.",
+        retailer: FREE_SHOWS_NAMES ? i.retailer : "Utilo Plus shows which retailer",
+        planName: FREE_SHOWS_NAMES ? i.planName : "The plan name, rates and sign-up conditions are on your dashboard.",
         figure: { amount: i.yearly, after: i.vsBill ? "a year less than your bill." : "a year less than the default offer." },
-        link: { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` },
+        link: FREE_SHOWS_NAMES ? retailerLink(i.retailer) : { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` },
       })
     : statusBox({ kicker: "Your result", headline: "Nothing beats it by enough to bother", body: `The cheapest plan we found saves less than ${money(WORTH_SWITCHING_PER_YEAR)} a year. Stay put.`, tone: "green" });
   const html = `
     <p>${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : "Here's your result, so it's easy to find later."}</p>
     ${card}
     ${!i.vsBill && worth ? tip(`This is against the default offer. <strong>Snap your bill</strong> for your exact saving: <a href="${i.origin}/check">check again with a photo</a>.`) : ""}
-    ${worth ? button("See the cheapest plan", `${i.origin}/pricing`) : button("See my result again", `${i.origin}/check`)}
     ${worth ? chips(SWITCH_FACTS) : ""}
-    ${note(`Prices change through the year. Utilo Plus re-checks you every morning and tells you when switching is worth it. <a href="${i.origin}/pricing">$7 a month, or $39 a year</a>.`)}
+    ${heading("That's today's answer. We keep watching.")}
+    ${iconRows([
+      iconRow("&#128260;", "Every morning:", "every plan re-priced against your bill."),
+      iconRow("&#128276;", "30 days before:", "your new discount ends and the price jumps."),
+      iconRow("&#9993;&#65039;", "One email:", `only when switching saves ${money(WORTH_SWITCHING_PER_YEAR)}+ a year.`),
+    ])}
+    ${button("Keep watching for me", `${i.origin}/pricing`)}
+    ${note(`${esc(PRICE_CHANGE_CLAUSE)} Utilo Plus is <a href="${i.origin}/pricing">$7 a month, or $39 a year</a>.`)}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you asked for your result by email.")}`;
   return { subject, title, html };
 }
@@ -76,7 +82,7 @@ export function followUpMembership(i: { origin: string; unsubscribeUrl: string }
 export function followUpWeek(i: { origin: string; retailer: string | null; planName: string | null; yearly: number | null; unsubscribeUrl: string }): Email {
   const weekly = i.yearly && i.yearly >= WORTH_SWITCHING_PER_YEAR ? i.yearly / 52 : null;
   const html = `
-    <p>A week ago we found a cheaper plan for you. Utilo Plus shows which retailer, and re-checks it every morning: <a href="${i.origin}/pricing">$7 a month, or $39 a year</a>.</p>
+    <p>${FREE_SHOWS_NAMES && i.retailer ? `A week ago we found a cheaper plan for you with ${esc(i.retailer)}${i.planName ? ` (&ldquo;${esc(i.planName)}&rdquo;)` : ""}.` : "A week ago we found a cheaper plan for you."} Utilo Plus re-checks it every morning and warns you before your discount ends: <a href="${i.origin}/pricing">$7 a month, or $39 a year</a>.</p>
     ${weekly ? statusBox({ kicker: "Still on the old plan?", headline: `About ${money(weekly)} a week`, body: "That's what the old plan costs you each week, compared with the one we found.", tone: "amber" }) : ""}
     ${button("Check again with today's prices", `${i.origin}/check`)}
     <p>Already switched? Nice work. This is the last of these emails.</p>
@@ -116,9 +122,9 @@ export function cheaperGasForMember(i: { origin: string; retailer: string; planN
 export function cheaperForLead(i: { origin: string; previousRetailer: string | null; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null }): Email {
   const html = `
     <p>Prices have moved since you checked your plan, and there's now something cheaper.</p>
-    ${planCard({ kicker: "New cheapest in your area", retailer: "Utilo Plus shows which retailer", planName: "The plan, its rates and sign-up conditions are on your dashboard.", figure: { amount: i.yearly, after: "a year cheaper than your earlier best match." }, link: { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` }, tone: "amber" })}
+    ${planCard({ kicker: "New cheapest in your area", retailer: FREE_SHOWS_NAMES ? i.retailer : "Utilo Plus shows which retailer", planName: FREE_SHOWS_NAMES ? i.planName : "The plan, its rates and sign-up conditions are on your dashboard.", figure: { amount: i.yearly, after: "a year cheaper than your earlier best match." }, link: FREE_SHOWS_NAMES ? retailerLink(i.retailer) : { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` }, tone: "amber" })}
     ${button("Check it with my bill", `${i.origin}/check`)}
-    ${tip(`Want this done for you every morning, without waiting for an email like this? <a href="${i.origin}/pricing">Utilo Plus is $7 a month, or $39 a year</a>.`)}
+    ${tip(`This is priced on the usage from your earlier check. Utilo Plus watches your own bill every morning and warns you before your discount ends: <a href="${i.origin}/pricing">$7 a month, or $39 a year</a>.`)}
     ${note(esc(PRICE_CHANGE_CLAUSE))}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you asked to be told about cheaper plans.")}`;
   return { subject: "A cheaper electricity plan just showed up in your area", title: "Prices moved in your favour.", html };

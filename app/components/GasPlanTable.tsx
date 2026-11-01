@@ -77,7 +77,6 @@ export default function GasPlanTable({
             <button type="button" role="tab" aria-selected={!allPlans} className={!allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(false); setShowAll(false); }}>Cheapest per retailer <em>{retailers}</em></button>
             <button type="button" role="tab" aria-selected={allPlans} className={allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(true); setShowAll(false); }}>All plans <em>{ranked.length}</em></button>
           </div>
-          {controls}
         </div>
         {chart && you !== null && perRetailer.length > 0 && (
           <div className={v.chart}>
@@ -91,6 +90,7 @@ export default function GasPlanTable({
             />
           </div>
         )}
+        {controls}
         <div className={v.tableWide}>
           <table>
             <thead>

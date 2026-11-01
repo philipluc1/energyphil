@@ -13,7 +13,7 @@
 
 /* Free vs Plus */
 .compare { max-width: 760px; margin: 10px auto 0; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
-.cHead, .cRow { display: grid; grid-template-columns: minmax(0, 1fr) 110px 120px; align-items: center; gap: 8px; padding: 12px 16px; }
+.cHead, .cRow { display: grid; grid-template-columns: minmax(0, 1fr) 104px 104px 120px; align-items: center; gap: 8px; padding: 12px 16px; }
 .cHead { font-size: 13.5px; font-weight: 800; color: var(--grey); text-align: center; border-bottom: 1px solid var(--border); }
 .cPlus { color: #fff; background: #22306e; padding: 6px 8px; border-radius: 8px; }
 .cRow + .cRow { border-top: 1px solid var(--border); }
@@ -27,8 +27,18 @@
   .vBox { min-width: 0; flex: 1 1 28%; padding: 12px 8px; }
   .vBox b { font-size: 28px; }
   .vOr { flex-basis: 100%; }
-  .cHead, .cRow { grid-template-columns: minmax(0, 1fr) 62px 62px; padding: 11px 12px; gap: 6px; }
+  .cHead, .cRow { grid-template-columns: minmax(0, 1fr) 58px 54px 58px; padding: 11px 10px; gap: 4px; }
   .cHead { font-size: 12px; }
   .cPlus { padding: 5px 4px; }
   .cLabel { font-size: 14px; }
+}
+
+/* "On your own" column (1 Nov 2026): what it takes without Utilo. */
+.cOwn { color: var(--grey-soft, #8a91a1); }
+.cOwnCell { background: none; }
+.part { display: inline-block; padding: 3px 8px; border-radius: 999px; background: #fff3d6; color: #8a5300; font-size: 12.5px; font-weight: 800; white-space: nowrap; }
+.cFoot { margin: 0; padding: 10px 16px 14px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--grey); }
+@media (max-width: 560px) {
+  .part { padding: 2px 5px; font-size: 10.5px; white-space: normal; text-align: center; line-height: 1.2; }
+  .cFoot { padding: 10px 12px 12px; }
 }

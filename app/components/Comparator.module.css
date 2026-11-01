@@ -1734,7 +1734,8 @@
 .dailyFine { margin: 0; text-align: center; font-size: 12.5px; color: rgba(255, 255, 255, 0.7); }
 @keyframes dailyIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes dailySpin { to { transform: rotate(360deg); } }
-@media (max-width: 520px) { .dailyCard { padding: 20px 16px 16px; border-radius: 18px; } .dailyBtn { width: 100%; } }
+@media (max-width: 520px) { .dailyCard { padding: 20px 16px 16px; border-radius: 18px; } .dailyBtn { width: 100%; } .dailyTicks li { white-space: nowrap; } .dailyTicks li span { overflow: hidden; text-overflow: ellipsis; } }
+@media (max-width: 360px) { .dailyTicks li { font-size: 13px; } }
 @media (prefers-reduced-motion: reduce) { .dailyCard, .dailyKicker svg { animation: none; } .dailyBtn { transition: none; } }
 
 /* ---- Oct 29: clean light header. White bar, dark text, one flat amber button. ---- */
@@ -1765,3 +1766,16 @@
 /* Oct 29: free results already show the locked plans and the Plus pitch; the
    second "cheapest plan" card only repeated them. */
 .hideForFree { display: none !important; }
+
+/* "Email me this result" on the free result (1 Nov 2026), above the Plus card. */
+.leadCard:has(.leadMain) { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 16px; padding: 18px 20px; border-radius: 18px; }
+.leadIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #fff3d6; color: #8a5300; }
+.leadMain h3 { margin: 0; font-size: 18px; font-weight: 900; }
+.leadMain p { margin: 4px 0 12px; }
+.leadMain .leadOk { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; font-size: 14px; }
+.leadMain .alertsCheckboxRow { margin: 10px 0 0; }
+@media (max-width: 520px) {
+  .leadCard:has(.leadMain) { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 16px; }
+  .leadIcon { display: none; }
+  .leadMain .leadForm .btnPrimary { flex: 1 1 100%; padding: 13px 18px; font-size: 15px; }
+}

@@ -37,3 +37,11 @@ export const DATA_FACTS = {
  *  the cheapest plan saves at least this much a year, or this share of the bill. */
 export const OVERPRICED_PER_YEAR = 300;
 export const OVERPRICED_SHARE = 0.2;
+
+/**
+ * Free checks name every plan (decided 1 Nov 2026): the one-off answer is
+ * free, and Utilo Plus is sold on watching (daily re-checks, warnings before
+ * a discount ends, the monthly summary, gas). Set to false to lock the two
+ * cheapest plans for non-members again, everywhere at once.
+ */
+export const FREE_SHOWS_NAMES = true;

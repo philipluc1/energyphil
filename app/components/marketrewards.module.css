@@ -114,3 +114,11 @@
 .ybLater { background: #22306e; }
 @keyframes yGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) { .yTrack i { animation: none; } }
+
+/* Logo and retailer beside the reward (1 Nov 2026); the reward stays the hero. */
+.itemTop { align-items: flex-start; }
+.topLogo { flex: none; display: grid; place-items: center; width: 38px; height: 38px; }
+.lock.topLogo { width: 38px; height: 38px; border-radius: 10px; }
+.topText { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.byLine { font-size: 12.5px; color: #5b6476; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byLine b { color: #12141c; font-weight: 800; }
