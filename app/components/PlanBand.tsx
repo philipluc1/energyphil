@@ -34,10 +34,10 @@ export default function PlanBand({
       </div>
       {/* What you get: the hero of the band. */}
       {gets && <ul className={styles.gets}>
-        <li><span className={styles.getIcon}><Icon name="refresh" size={20} /></span><b>Every plan, every morning</b><span>Re-priced against your own bill.</span></li>
-        <li><span className={styles.getIcon}><Icon name="bell" size={20} /></span><b>A month&apos;s warning</b><span>Before your discount ends and prices jump.</span></li>
-        <li><span className={styles.getIcon}><Icon name="mail" size={20} /></span><b>Only emails that pay</b><span>When switching saves ${WORTH_SWITCHING_PER_YEAR}+ a year.</span></li>
-        <li><span className={styles.getIcon}><Icon name="chart" size={20} /></span><b>Your bills, tracked</b><span>Power and gas, month by month.</span></li>
+        <li><span className={styles.getIcon}><Icon name="bell" size={20} /></span><b>Never miss a price jump</b><span>A month&apos;s warning before your discount or fixed price ends.</span></li>
+        <li><span className={styles.getIcon}><Icon name="refresh" size={20} /></span><b>Know the day it&apos;s cheaper</b><span>Every plan re-checked against your own bill, each morning.</span></li>
+        <li><span className={styles.getIcon}><Icon name="mail" size={20} /></span><b>Only emails that pay</b><span>One email, when switching saves ${WORTH_SWITCHING_PER_YEAR}+ a year.</span></li>
+        <li><span className={styles.getIcon}><Icon name="home" size={20} /></span><b>One membership, every bill</b><span>Power and gas now, more to come. Tracked in one place.</span></li>
       </ul>}
       {children && <div className={styles.step}>{children}</div>}
       <div className={styles.cards}>{cards}</div>

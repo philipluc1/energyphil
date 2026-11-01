@@ -174,7 +174,25 @@ export function plusValue() {
     savePct: Math.round((save / monthlyYear) * 100),
     /** "$7 a month is $84 a year. Pay yearly: $39, you save $45." */
     line: `${fmtPrice(monthly.priceCents)} a month is ${fmtPrice(monthlyYear)} a year. Pay yearly: ${fmtPrice(annual.priceCents)}, you save ${fmtPrice(save)}.`,
+    /** The yearly price a week: "75c". */
+    perWeek: annual.priceCents / 52 < 100 ? `${Math.round(annual.priceCents / 52)}c` : fmtPrice(Math.round(annual.priceCents / 52)),
   };
+}
+
+/**
+ * Founding members (2 Nov 2026): the launch price stays theirs for as long as
+ * they're a member. Stripe keeps each subscription on the price it started
+ * with, so a later price rise only reaches new members. Turn the wording off
+ * here when the founding offer closes.
+ */
+export const FOUNDING_OFFER = true;
+export const foundingLine = () => `Founding member price: ${fmtPrice(findPlan("annual")!.priceCents)} a year, locked in while you stay.`;
+
+/** How many times over a yearly saving pays for the yearly price (1 decimal under 10), or null if under 2×. */
+export function timesPrice(yearlySaving: number): string | null {
+  const x = yearlySaving / (findPlan("annual")!.priceCents / 100);
+  if (!(x >= 2)) return null;
+  return x >= 10 ? `${Math.floor(x)}` : `${Math.floor(x * 10) / 10}`.replace(/\.0$/, "");
 }
 
 export function savePct(plan: PricingPlan): number | null {

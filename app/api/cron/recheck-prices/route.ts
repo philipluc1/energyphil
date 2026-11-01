@@ -4,7 +4,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 import { topOpen } from "@/lib/planExtras";
-import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, resultEmail } from "@/lib/emailTemplates";
+import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, renewalRecap, resultEmail } from "@/lib/emailTemplates";
+import { daysWatched, recapDue, savedSince, RECAP_PLANS, type Episode } from "@/lib/renewalRecap";
+import { marketActivity } from "@/lib/marketActivity";
+import { FOUNDING_OFFER, findPlan, fmtPrice } from "@/lib/pricingPlans";
 import { computeBest, isMeaningfullyCheaper, priceOfPlan, referenceForUsage } from "@/lib/priceWatch";
 import { ratesFromJson } from "@/lib/billReconcile";
 import { switchedPlanNow } from "@/lib/switched";
@@ -184,6 +187,9 @@ export async function GET(req: NextRequest) {
         offerNote: offerNote(best.bestRetailer, best.bestPlanName),
         yearly: ((previousBest! - best.bestTotal) * 365) / days,
         unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
+        prevYear: (previousBest! * 365) / days,
+        newYear: (best.bestTotal * 365) / days,
+        prevRetailer: sub.last_notified_retailer ?? sub.baseline_retailer ?? null,
       });
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
 
@@ -278,6 +284,8 @@ export async function GET(req: NextRequest) {
         planName: best.bestPlanName,
         yearly: ((previousBest! - best.bestTotal) * 365) / (lead.billing_days ?? 91),
         unsubscribeUrl: unsubUrl(origin, "lead", lead.id),
+        prevYear: (previousBest! * 365) / (lead.billing_days ?? 91),
+        newYear: (best.bestTotal * 365) / (lead.billing_days ?? 91),
       });
       const sent = await sendEmail({ to: lead.email, subject: e.subject, title: e.title, html: e.html });
 
@@ -351,6 +359,8 @@ export async function GET(req: NextRequest) {
         best: best ? { retailer: best.bestRetailer, planName: best.bestPlanName } : null,
         yearly,
         unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
+        nowYear: best && ref?.vsBill && !best.average ? (ref.total * 365) / days : null,
+        bestYear: best && ref?.vsBill && !best.average ? (best.bestTotal * 365) / days : null,
       });
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
@@ -370,7 +380,7 @@ export async function GET(req: NextRequest) {
   let dripSent = 0;
   const { data: dripLeads, error: dripErr } = await supabaseAdmin
     .from("leads")
-    .select("id, email, created_at, drip_step, best_retailer, best_plan_name, estimated_saving, billing_days, wants_price_alerts")
+    .select("id, email, created_at, drip_step, best_retailer, best_plan_name, estimated_saving, billing_days, wants_price_alerts, best_total, current_bill")
     // Everyone who asked gets their result (step 0). Follow-ups (steps 1-2)
     // only go to people who ticked the box (Spam Act consent).
     .or("wants_price_alerts.eq.true,drip_step.eq.0")
@@ -411,7 +421,13 @@ export async function GET(req: NextRequest) {
           ? resultEmail({ origin, retailer: lead.best_retailer ?? "the cheapest plan", planName: lead.best_plan_name, yearly: yearly ?? 0, vsBill: false, unsubscribeUrl: unsub, sentLater: true })
           : step === 1
             ? followUpMembership({ origin, unsubscribeUrl: unsub })
-            : followUpWeek({ origin, retailer: lead.best_retailer, planName: lead.best_plan_name, yearly, unsubscribeUrl: unsub });
+            : followUpWeek({
+                origin, retailer: lead.best_retailer, planName: lead.best_plan_name, yearly, unsubscribeUrl: unsub,
+                // Both a year, from what the result showed: what they pay (or the default offer) and the cheapest.
+                nowYear: lead.best_total != null && lead.estimated_saving != null && lead.billing_days ? ((lead.best_total + lead.estimated_saving) * 365) / lead.billing_days : null,
+                bestYear: lead.best_total != null && lead.billing_days ? (lead.best_total * 365) / lead.billing_days : null,
+                vsBill: lead.current_bill != null,
+              });
       const sent = await sendEmail({ to: lead.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
         dripSent++;
@@ -452,6 +468,8 @@ export async function GET(req: NextRequest) {
         yearly: ((previous! - top.total) * 365) / gDays,
         vsBill: sub.gas_reference_total !== null,
         unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
+        prevYear: (previous! * 365) / gDays,
+        newYear: (top.total * 365) / gDays,
       });
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
@@ -485,7 +503,62 @@ export async function GET(req: NextRequest) {
   }
   if (purgeErr) console.error("recheck-prices: bill_reads clean-up failed", purgeErr.message);
 
+  // --- Yearly recap, two weeks before a membership renews (2 Nov 2026) ---
+  let recaps = 0;
+  {
+    const soon = new Date(Date.now() + 15 * 86_400_000).toISOString();
+    const { data: due, error: dueErr } = await supabaseAdmin
+      .from("subscribers")
+      .select("id, email, status, plan, amount_cents, created_at, current_period_end, recap_sent_for, distributor, billing_days, reference_total, baseline_total, baseline_retailer, switched_at, customer_name")
+      .eq("status", "active")
+      .in("plan", [...RECAP_PLANS])
+      .lte("current_period_end", soon)
+      .gte("current_period_end", new Date().toISOString());
+    if (dueErr) console.warn("recheck-prices: renewal recaps off (run supabase/schema.sql)", dueErr.message);
+    for (const sub of (due ?? []) as RecapRow[]) {
+      try {
+        if (!recapDue({ plan: sub.plan, status: sub.status, periodEnd: sub.current_period_end, sentFor: sub.recap_sent_for })) continue;
+        const { data: eps } = await supabaseAdmin.from("savings_episodes").select("started_at, ended_at, daily_rate").eq("subscriber_id", sub.id);
+        const days = sub.billing_days ?? 91;
+        const perYear = 365 / days;
+        const yearStart = new Date(Math.max(Date.parse(sub.created_at), Date.parse(sub.current_period_end!) - 365 * 86_400_000)).toISOString();
+        const market = sub.distributor ? marketActivity({ network: sub.distributor as Distributor, since: yearStart }) : null;
+        const available = sub.reference_total !== null && sub.baseline_total !== null ? (sub.reference_total - sub.baseline_total) * perYear : null;
+        const plan = findPlan(sub.plan);
+        const price = sub.amount_cents ?? plan?.priceCents ?? 0;
+        const cadence = sub.plan === "annual" ? "a year" : sub.plan === "half_yearly" ? "every 6 months" : "a quarter";
+        const e = renewalRecap({
+          origin,
+          name: (sub.customer_name ?? "").trim().split(/\s+/)[0] || null,
+          daysWatched: daysWatched(sub.created_at, sub.current_period_end!),
+          marketChanges: market && market.ready ? market.newOffers + market.priceChanges : 0,
+          network: sub.distributor,
+          switched: !!sub.switched_at,
+          savedSoFar: savedSince((eps ?? []) as Episode[], sub.switched_at),
+          availableYear: available,
+          bestRetailer: sub.baseline_retailer,
+          nowYear: sub.reference_total !== null ? sub.reference_total * perYear : null,
+          bestYear: sub.baseline_total !== null ? sub.baseline_total * perYear : null,
+          renewsOn: new Date(sub.current_period_end!).toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "Australia/Melbourne" }),
+          priceLabel: `${fmtPrice(price)} ${cadence}`,
+          // Founding members: on a price below today's list price, or joined while the founding offer is open.
+          founding: plan ? price < plan.priceCents || (FOUNDING_OFFER && price === plan.priceCents) : false,
+          unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
+        });
+        const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
+        if (sent) {
+          recaps++;
+          await supabaseAdmin.from("subscribers").update({ recap_sent_for: sub.current_period_end!.slice(0, 10) }).eq("id", sub.id);
+        }
+      } catch (err) {
+        console.error("recheck-prices: renewal recap failed", sub.id, err);
+        errors++;
+      }
+    }
+  }
+
   await sendHealthEmail("daily recheck", {
+    "renewal recaps": recaps,
     "members checked": (subsData ?? []).length,
     "members alerted": subscribersNotified,
     "free users alerted": leadsNotified,
@@ -494,7 +567,7 @@ export async function GET(req: NextRequest) {
     "gas alerts": gasAlerts,
     errors,
   });
-  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, errors });
+  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, recaps, errors });
 }
 
 /** Warn this many days before a discount or fixed price ends. */
@@ -531,6 +604,26 @@ interface DripLeadRow {
   best_plan_name: string | null;
   estimated_saving: number | null;
   billing_days: number | null;
+  best_total?: number | null;
+  current_bill?: number | null;
+}
+
+interface RecapRow {
+  id: string;
+  email: string;
+  status: string;
+  plan: string;
+  amount_cents: number | null;
+  created_at: string;
+  current_period_end: string | null;
+  recap_sent_for: string | null;
+  distributor: string | null;
+  billing_days: number | null;
+  reference_total: number | null;
+  baseline_total: number | null;
+  baseline_retailer: string | null;
+  switched_at: string | null;
+  customer_name: string | null;
 }
 
 /** True when the saved home answers say they charge an EV at home. */

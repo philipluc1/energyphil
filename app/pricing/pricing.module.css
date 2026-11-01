@@ -45,3 +45,6 @@
   .part { padding: 2px 5px; font-size: 10.5px; white-space: normal; text-align: center; line-height: 1.2; }
   .cFoot { padding: 10px 12px 12px; }
 }
+
+/* Founding member line under the prices (2 Nov 2026). */
+.founding { margin: 14px auto 0; max-width: 560px; text-align: center; font-size: 14.5px; font-weight: 700; color: var(--ink); }

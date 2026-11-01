@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { PLAN_DISPLAY, PLANS_ON_SALE, fmtPrice, plusValue, type PlanId } from "@/lib/pricingPlans";
+import { FOUNDING_OFFER, PLANS_ON_SALE, fmtPrice, plusValue, type PlanId } from "@/lib/pricingPlans";
 import styles from "./plancards.module.css";
 
 /**
- * The Utilo Plus plans on sale, side by side: Monthly first as the anchor
- * ("$7 a month is $84 a year"), then Yearly with what it saves. Pass
- * `onChoose` to make the buttons start checkout, or `href` to link them.
+ * Utilo Plus (2 Nov 2026): yearly is the offer, shown large, with the
+ * founding price and what it costs a week; month to month sits underneath,
+ * smaller. Pass `onChoose` to start checkout, or `href` to link the buttons.
  */
 export default function PlanCards({
   onChoose,
@@ -21,47 +21,38 @@ export default function PlanCards({
   dark?: boolean;
 }) {
   const v = plusValue();
-  // Monthly first: it sets the yardstick the yearly price is measured against.
-  const plans = [...PLANS_ON_SALE].sort((a, b) => (a.id === "monthly" ? -1 : b.id === "monthly" ? 1 : 0));
+  const annual = PLANS_ON_SALE.find((p) => p.id === "annual");
+  const monthly = PLANS_ON_SALE.find((p) => p.id === "monthly");
+  const action = (id: PlanId, label: string, cls: string) =>
+    href ? (
+      <Link href={href} className={cls}>{label}</Link>
+    ) : (
+      <button type="button" className={cls} onClick={() => onChoose?.(id)} disabled={loadingPlan !== null}>
+        {loadingPlan === id ? "Opening payment…" : label}
+      </button>
+    );
   return (
-    <div className={`${styles.grid} ${dark ? styles.dark : ""}`}>
-      {plans.map((plan) => {
-        const d = PLAN_DISPLAY[plan.id];
-        const yearly = plan.id === "annual";
-        return (
-          <div key={plan.id} className={`${styles.card} ${d.featured ? styles.featured : ""}`}>
-            {yearly && <span className={styles.ribbon}>Best value · save {v.save}</span>}
-            <div className={styles.name}>{plan.name}</div>
-            <div className={styles.priceRow}>
-              {yearly && <span className={styles.anchor}>{v.monthlyYear}</span>}
-              <span className={styles.price}>{fmtPrice(plan.priceCents)}</span>
-              <span className={styles.per}>{yearly ? "/ year" : "/ month"}</span>
-            </div>
-            <div className={styles.value}>
-              {yearly ? (
-                <><b>You save {v.save} a year</b> ({v.savePct}% off monthly)</>
-              ) : (
-                <>That&apos;s <b>{v.monthlyYear} a year</b></>
-              )}
-            </div>
-            <div className={styles.small}>{yearly ? "One payment a year · cancel any time" : "Month to month · cancel any time"}</div>
-            {href ? (
-              <Link href={href} className={d.featured ? styles.btnFeatured : styles.btn}>
-                {cta}
-              </Link>
-            ) : (
-              <button
-                type="button"
-                className={d.featured ? styles.btnFeatured : styles.btn}
-                onClick={() => onChoose?.(plan.id)}
-                disabled={loadingPlan !== null}
-              >
-                {loadingPlan === plan.id ? "Opening payment…" : cta}
-              </button>
-            )}
+    <div className={`${styles.stack} ${dark ? styles.dark : ""}`}>
+      {annual && (
+        <div className={`${styles.card} ${styles.featured} ${styles.hero}`}>
+          <span className={styles.ribbon}>{FOUNDING_OFFER ? "Founding member price" : `Best value · save ${v.save}`}</span>
+          <div className={styles.name}>Yearly</div>
+          <div className={styles.priceRow}>
+            <span className={styles.anchor}>{v.monthlyYear}</span>
+            <span className={styles.price}>{fmtPrice(annual.priceCents)}</span>
+            <span className={styles.per}>/ year</span>
           </div>
-        );
-      })}
+          <div className={styles.week}>That&apos;s <b>{v.perWeek} a week</b>. {v.save} less than paying monthly.</div>
+          <div className={styles.small}>{FOUNDING_OFFER ? "Locked in while you stay · cancel any time" : "One payment a year · cancel any time"}</div>
+          {action(annual.id, cta, styles.btnFeatured)}
+        </div>
+      )}
+      {monthly && (
+        <div className={styles.monthly}>
+          <span>Or <b>{fmtPrice(monthly.priceCents)}</b> month to month <span className={styles.monthlyNote}>({v.monthlyYear} a year)</span></span>
+          {action(monthly.id, href ? "Monthly" : "Choose monthly", styles.btnSmall)}
+        </div>
+      )}
     </div>
   );
 }

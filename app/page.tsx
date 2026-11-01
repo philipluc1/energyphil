@@ -166,7 +166,8 @@ export default function Home() {
         {/* 4. Utilo Plus, front and centre, with direct checkout. */}
         <PlanBand
           id="plus"
-          title="Join Utilo Plus. We keep watching."
+          title="Stop paying the loyalty tax."
+          intro={<>We watch your power and gas every day, from your own bill, for under $1 a week.</>}
           cards={<JoinDirect cancelPath="/" />}
         />
 

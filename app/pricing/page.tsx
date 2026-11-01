@@ -5,7 +5,7 @@ import PlanBand from "../components/PlanBand";
 import SiteHeader from "../components/SiteHeader";
 import Icon from "../components/Icon";
 import InfoTip from "../components/InfoTip";
-import { PLUS_NAME, plusValue } from "@/lib/pricingPlans";
+import { PLUS_NAME, plusValue, FOUNDING_OFFER, foundingLine } from "@/lib/pricingPlans";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import h from "../home3.module.css";
 import p from "./pricing.module.css";
@@ -42,15 +42,16 @@ export default function PricingPage() {
       <main className={h.page}>
         <section className={p.hero}>
           <span className={h.kicker}><Icon name="bolt" size={14} /> {PLUS_NAME}</span>
-          <h1 className={p.h1}>We keep watching.</h1>
-          <p className={h.lede}>The free check gives you today&apos;s answer, every plan by name. {PLUS_NAME} re-checks your bill every morning and warns you before your discount ends.</p>
+          <h1 className={p.h1}>Stop paying the loyalty tax.</h1>
+          <p className={h.lede}>Discounts quietly end. Prices change every 1 July. People who stay put often pay more. {PLUS_NAME} watches your power and gas every day, from your own bill, and tells you when to move, and when not to bother.</p>
           <div className={p.value}>
-            <div className={p.vBox}><b>{v.monthly}</b><span>a month</span></div>
+            <div className={`${p.vBox} ${p.vBest}`}><b>{v.annual}</b><span>a year{FOUNDING_OFFER ? ", founding price" : ""}</span></div>
             <span className={p.vEq}>=</span>
-            <div className={p.vBox}><b>{v.monthlyYear}</b><span>a year</span></div>
+            <div className={p.vBox}><b>{v.perWeek}</b><span>a week</span></div>
             <span className={p.vOr}>or</span>
-            <div className={`${p.vBox} ${p.vBest}`}><b>{v.annual}</b><span>a year, save {v.save}</span></div>
+            <div className={p.vBox}><b>{v.monthly}</b><span>month to month</span></div>
           </div>
+          {FOUNDING_OFFER && <p className={p.founding}>{foundingLine()} Cancel any time from your dashboard.</p>}
         </section>
 
         <section className={p.compare} aria-label="Free check compared with Utilo Plus" data-motion="" data-stagger=":scope > div">
@@ -75,7 +76,7 @@ export default function PricingPage() {
           <p className={p.cFoot}>On your own: the free government and retailer sites, done by hand whenever you remember to.</p>
         </section>
 
-        <PlanBand gets={false} title="Pick how you pay" intro={<>Same {PLUS_NAME} either way. Yearly keeps {v.save} in your pocket.</>} cards={<JoinDirect />} />
+        <PlanBand gets={false} title="One membership, every bill we watch" intro={<>Power and gas now, more to come. Under $1 a week, paid yearly.</>} cards={<JoinDirect />} />
 
         <section className={h.section} data-motion="" data-stagger="details">
           <div className={h.faq}>

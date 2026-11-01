@@ -76,7 +76,9 @@ export default function TermsPage() {
           <h2>5. Membership</h2>
           <p>
             Membership is billed through Stripe at the price shown when you join. Monthly, quarterly and half-yearly memberships
-            renew automatically until you cancel, which you can do at any time from My Dashboard. The once-off membership is a
+            renew automatically until you cancel, which you can do at any time from My Dashboard. We email yearly members a reminder about two
+            weeks before each renewal, with the date and the price. Founding members keep the price they joined on for as long as their membership
+            continues without a break; if it ends and they re-join later, the price at that time applies. The once-off membership is a
             single payment and never renews. Cancelling stops future charges; you keep access to
             the end of the period you&apos;ve paid for. There&apos;s one membership per email address: if you&apos;re charged twice for
             the same email by mistake, we cancel the second membership and refund it in full. Refund rules are in the{" "}

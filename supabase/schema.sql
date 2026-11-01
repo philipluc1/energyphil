@@ -352,3 +352,7 @@ alter table public.bill_reads
   add column if not exists fuel text;
 create index if not exists bill_reads_device_created on public.bill_reads (device, created_at desc);
 create index if not exists bill_reads_lead_email_created on public.bill_reads (lead_email, created_at desc);
+
+-- 2 Nov 2026: the yearly recap two weeks before renewal. The renewal date it
+-- was last sent for, so it goes once per renewal.
+alter table public.subscribers add column if not exists recap_sent_for date;

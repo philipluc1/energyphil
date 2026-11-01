@@ -31,3 +31,17 @@
 .card { align-items: center; text-align: center; }
 .priceRow { justify-content: center; }
 .ribbon { left: 50%; transform: translateX(-50%); white-space: nowrap; }
+
+/* 2 Nov 2026: yearly is the offer (large), month to month underneath (small). */
+.stack { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 22px; }
+.hero { width: 100%; max-width: 420px; padding: 26px 24px 20px; box-shadow: 0 18px 40px -26px rgba(20, 24, 60, 0.55); }
+.hero .price { font-size: 60px; }
+.week { font-size: 15.5px; color: var(--ink); }
+.week b { color: var(--good); }
+.monthly { width: 100%; max-width: 420px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--border); color: var(--ink); font-size: 14.5px; }
+.monthlyNote { color: var(--grey); font-size: 13px; }
+.btnSmall { padding: 9px 14px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--soft); color: var(--ink); font: inherit; font-size: 14px; font-weight: 800; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btnSmall:hover { background: var(--track); }
+.btnSmall:disabled { opacity: 0.6; cursor: default; }
+.dark .monthly { background: rgba(255, 255, 255, 0.95); border-color: transparent; }
+@media (max-width: 460px) { .hero .price { font-size: 52px; } .monthly { justify-content: center; text-align: center; } }

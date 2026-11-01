@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { track } from "@/lib/track";
 import { parseSource, readSourceCookie } from "@/lib/attribution";
 import { REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
-import { type PlanId } from "@/lib/pricingPlans";
+import { type PlanId, timesPrice } from "@/lib/pricingPlans";
 import { marketActivity } from "@/lib/marketActivity";
 import PlanCards from "./PlanCards";
 import PlanBand from "./PlanBand";
@@ -110,15 +110,15 @@ export default function PricingSection({
 
   return (
     <PlanBand
-      title="We keep checking. Every day."
+      title="Stop paying the loyalty tax."
       intro={
         <>
           <span className={styles.liveLine}>
             <span className={styles.liveDot} aria-hidden="true" /> Live{market.ready && changes > 0 ? ` · ${changes} offer changes in the last 30 days` : " · every plan re-checked each morning"}
           </span>
           {yearlySaving >= 20 && profile.referenceTotal !== null
-            ? <>The market can save you <b>${Math.round(yearlySaving).toLocaleString("en-AU")} a year</b> today. Stay in control as it moves.</>
-            : <>Stay in control as the market moves.</>}
+            ? <>The market can save you <b>${Math.round(yearlySaving).toLocaleString("en-AU")} a year</b> today{timesPrice(yearlySaving) ? <>: <b>{timesPrice(yearlySaving)} times</b> the yearly price</> : null}. We watch it for you as it moves.</>
+            : <>We watch the market for you as it moves, for under $1 a week.</>}
         </>
       }
       cards={<PlanCards onChoose={handleChoose} loadingPlan={loadingPlan} dark />}

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } fr
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
-import { findPlan, fmtPrice, plusValue, PLUS_NAME, PLUS_SHORT } from "@/lib/pricingPlans";
+import { findPlan, fmtPrice, PLUS_NAME, PLUS_SHORT } from "@/lib/pricingPlans";
 import { accumulatedSavings, mergeChecks, monthlySavings, type SavedCheck } from "@/lib/savings";
 import { RETAILER_COUNT, findPlanRow } from "@/lib/plans";
 import { switchedPlanNow } from "@/lib/switched";
@@ -1279,8 +1279,8 @@ export default function AccountPage() {
                           )}
                           <PlanBand
                             id="join"
-                            title="Let us check for you, every morning."
-                            intro={<>{plusValue().line}</>}
+                            title="Stop paying the loyalty tax."
+                            intro={<>We watch your power and gas every day, from your own bill, for under $1 a week.</>}
                             cards={<JoinDirect cancelPath="/account" />}
                           />
                         </>
