@@ -68,15 +68,15 @@ export function isStandingOffer(retailer: string, planName: string): boolean {
   return STANDING_KEYS.has(`${retailer}|${planName}`) || /\bstanding offer\b/i.test(planName);
 }
 
-export function offerDates(retailer: string, planName: string, now = Date.now()): OfferDateInfo {
+export function offerDates(retailer: string, planName: string, now = Date.now(), recentDays = RECENT_DAYS): OfferDateInfo {
   const d = PLAN_DATES[`${retailer}|${planName}`];
   if (!d) return { label: null, badge: null, badgeDate: null };
   const start = d.from ?? d.seen;
   const label = start ? `Offer from ${fmtOfferDate(start)}` : null;
   const newDate = d.seen ?? d.from;
-  if (daysAgo(newDate, now) <= RECENT_DAYS) return { label, badge: "New", badgeDate: newDate ? fmtOfferDate(newDate) : null };
+  if (daysAgo(newDate, now) <= recentDays) return { label, badge: "New", badgeDate: newDate ? fmtOfferDate(newDate) : null };
   // Standing offers are repriced once a year (1 July), so a dated change on
   // one at any other time is feed noise: no badge.
-  if (!isStandingOffer(retailer, planName) && daysAgo(d.priceChanged, now) <= RECENT_DAYS) return { label, badge: "Price change", badgeDate: fmtOfferDate(d.priceChanged as string) };
+  if (!isStandingOffer(retailer, planName) && daysAgo(d.priceChanged, now) <= recentDays) return { label, badge: "Price change", badgeDate: fmtOfferDate(d.priceChanged as string) };
   return { label, badge: null, badgeDate: null };
 }

@@ -81,7 +81,7 @@ export default function DashTabs<T extends string>({
   return (
     <>
       <div id="dash-tabs" className={styles.bar} style={{ top }} role="tablist" aria-label="Dashboard sections">
-        <div className={styles.track} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+        <div className={`${styles.track} ${tabs.length > 5 ? styles.many : ""}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
           <span
             className={styles.indicator}
             style={{

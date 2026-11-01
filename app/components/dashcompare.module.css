@@ -323,3 +323,27 @@
 .factBad { background: #dc2626; border-color: #f87171; box-shadow: 0 10px 24px -14px rgba(220, 38, 38, 0.8); }
 .factBad summary svg { color: #fff; }
 .factBad .factMore { opacity: 1; }
+
+/* 1 Nov 2026: plan list shows 6, then 10 more, then all (centred); our pick; "Same name, new rates" tag. */
+.moreRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+.moreRow .more { margin-top: 0; }
+.tagNewRates { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #fff3d6; color: #8a5300; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.pickBox { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 4px; padding: 12px 14px; border-radius: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+.pickLabel { flex: none; padding: 3px 9px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 11.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+
+/* The market page inline, as the phone's Market tab (1 Nov 2026). */
+.mdInline { padding: 0; margin-top: 14px; gap: 14px; }
+.mdInline .mdTitle { font-size: 26px; }
+
+/* 1 Nov 2026: on phones the three verdict tiles are compact rows (name left, price right), not tall boxes. */
+@media (max-width: 560px) {
+  .versus, .versus:has(.sideSave) { grid-template-columns: 1fr; gap: 6px; }
+  .versus .arrow { display: none; }
+  .side { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 0; align-items: center; padding: 10px 12px; text-align: left; border-radius: 12px; }
+  .side > * { grid-column: 1; }
+  .side > .sideCost { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; font-size: 20px; text-align: right; }
+  .side b { font-size: 15px; }
+  .sidePlan { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sideChips { grid-column: 1 / -1; justify-content: flex-start; }
+  .sideSave > b { display: none; }
+}

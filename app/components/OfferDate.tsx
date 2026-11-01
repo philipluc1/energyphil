@@ -2,8 +2,25 @@ import { offerDates } from "@/lib/planTerms";
 import s from "./offerdate.module.css";
 
 /** "Offer from 3 Oct 2026", plus a "New offer" or "Offer updated" badge when recent. */
-export default function OfferDate({ retailer, plan, dark = false }: { retailer: string; plan: string; dark?: boolean }) {
-  const d = offerDates(retailer, plan);
+export default function OfferDate({ retailer, plan, dark = false, badgeOnly = false, recentDays }: {
+  retailer: string;
+  plan: string;
+  dark?: boolean;
+  /** Only the "New" / "Updated" badge, and only when recent (the compact plan list). */
+  badgeOnly?: boolean;
+  recentDays?: number;
+}) {
+  const d = offerDates(retailer, plan, undefined, recentDays);
+  if (badgeOnly) {
+    if (!d.badge) return null;
+    return (
+      <span className={`${s.wrap} ${dark ? s.dark : ""}`}>
+        <span className={d.badge === "New" ? s.new : s.changed} title={d.label ?? undefined}>
+          {d.badge === "New" ? "New" : "Updated"}{d.badgeDate ? ` ${d.badgeDate}` : ""}
+        </span>
+      </span>
+    );
+  }
   if (!d.label && !d.badge) return null;
   return (
     <span className={`${s.wrap} ${dark ? s.dark : ""}`}>

@@ -38,14 +38,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Unknown plan." }, { status: 400 });
   }
 
-  const email = typeof body.email === "string" ? body.email.trim() : "";
-  if (!email || !email.includes("@")) {
-    return NextResponse.json({ ok: false, message: "Please enter a valid email." }, { status: 400 });
+  // Email is optional (1 Nov 2026): with none, Stripe's checkout page asks for
+  // it, and the webhook takes it from there. A second payment from an existing
+  // member is then caught after payment and refunded (lib/membershipGuard.ts).
+  const typed = typeof body.email === "string" ? body.email.trim() : "";
+  const email = typed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed) ? typed : "";
+  if (typed && !email) {
+    return NextResponse.json({ ok: false, message: "Please check your email address." }, { status: 400 });
   }
 
   // One membership per email: an existing member is sent to log in instead,
   // and a past member's Stripe customer is reused.
-  const guard = await checkoutGuard(email);
+  const guard = email ? await checkoutGuard(email) : { active: false, everMember: false, customerId: null as string | null };
   if (guard.active) {
     return NextResponse.json(
       { ok: false, alreadyMember: true, message: "That email already has Utilo Plus. Log in to your dashboard to see it, change plan or cancel." },
@@ -91,6 +95,8 @@ export async function POST(req: NextRequest) {
     currentPlanName: String(profile.currentPlanName ?? "").slice(0, 120),
     // The meter number off their bill, so the dashboard doesn't ask for it again.
     nmi: /^[0-9A-Z]{10,11}$/.test(String(profile.nmi ?? "")) ? String(profile.nmi) : "",
+    // The bill read in the check ends here: it becomes the first bar in their bill tracker.
+    periodEnd: /^\d{4}-\d{2}-\d{2}$/.test(String(profile.periodEnd ?? "")) ? String(profile.periodEnd) : "",
   };
 
   // Where they came from (partner, a member's referral, an ad), from the
@@ -103,7 +109,7 @@ export async function POST(req: NextRequest) {
   if (src?.kind === "referral") {
     const ref = await referrerFor(src.code);
     // New members only, and not your own link (however the address is written).
-    if (ref && !guard.everMember && canonicalEmail(ref.email) !== canonicalEmail(email)) {
+    if (ref && !guard.everMember && (!email || canonicalEmail(ref.email) !== canonicalEmail(email))) {
       const coupon = await ensureFriendCoupon();
       if (coupon) {
         discounts = [{ coupon }];
@@ -117,7 +123,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: plan.mode,
-      ...(guard.customerId ? { customer: guard.customerId } : { customer_email: email }),
+      ...(guard.customerId ? { customer: guard.customerId } : email ? { customer_email: email } : {}),
       // Stripe's "Managed Payments" (merchant-of-record) feature is on by
       // default for newer accounts and requires every product to carry a
       // tax code, which this app doesn't set up. Turning it off restores

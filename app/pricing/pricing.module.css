@@ -17,6 +17,7 @@
 .cHead { font-size: 13.5px; font-weight: 800; color: var(--grey); text-align: center; border-bottom: 1px solid var(--border); }
 .cPlus { color: #fff; background: #22306e; padding: 6px 8px; border-radius: 8px; }
 .cRow + .cRow { border-top: 1px solid var(--border); }
+.cShort { display: none; }
 .cLabel { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 15px; font-weight: 700; color: var(--ink); }
 .cCell { display: grid; place-items: center; }
 .cPlusCell { }
@@ -31,6 +32,8 @@
   .cHead { font-size: 12px; }
   .cPlus { padding: 5px 4px; }
   .cLabel { font-size: 14px; }
+  .cLong { display: none; }
+  .cShort { display: inline; }
 }
 
 /* "On your own" column (1 Nov 2026): what it takes without Utilo. */

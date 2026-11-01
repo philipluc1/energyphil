@@ -73,6 +73,8 @@
 }
 @media (max-width: 520px) {
   .page { padding: 0 16px 32px; }
+  /* Phones: the example card made the first screen twice as long; the check itself shows the real thing. */
+  .heroArt { display: none; }
   .h1 { font-size: 46px; }
   .ctas { width: 100%; }
   .primary { width: 100%; justify-content: center; font-size: 18px; padding: 17px 20px; }

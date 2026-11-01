@@ -54,9 +54,8 @@ import BillPhotoUpload from "./BillPhotoUpload";
 import PricingSection, { type SubscribeProfile } from "./PricingSection";
 import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
-import MemberLock, { MEMBER_PRICE_LINE } from "./MemberLock";
+import MemberLock from "./MemberLock";
 import InfoTip from "./InfoTip";
-import { PLUS_NAME, plusValue } from "@/lib/pricingPlans";
 import PlanViewToggle from "./PlanViewToggle";
 import BillExplainer from "./BillExplainer";
 import EstimatePanel, { BillKwhCard, EstimateStrip, thisMonth, type BillFigure } from "./EstimatePanel";
@@ -97,9 +96,6 @@ const PLAN_COUNT = PLANS.length;
 function fmtCurrency(n: number): string {
   return "$" + n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function fmtPct(n: number): string {
-  return (n * 100).toLocaleString("en-AU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
-}
 const PRICE_AGE_DAYS = Math.floor((Date.now() - new Date(PLAN_DATA_DATE + "T00:00:00").getTime()) / 86_400_000);
 const PRICES_STALE = PRICE_AGE_DAYS > 60;
 
@@ -134,22 +130,6 @@ function RateBreakdown({ plan, solarExportKwh = 0 }: { plan: PlanRow; solarExpor
         </div>
       ))}
     </div>
-  );
-}
-
-function EvBadge() {
-  return (
-    <span className={styles.evBadge} title="Very cheap or free off-peak rate — handy for overnight EV charging">
-      <Icon name="bolt" size={13} /> EV-friendly off-peak
-    </span>
-  );
-}
-
-function SolarBadge() {
-  return (
-    <span className={styles.solarBadge} title="This total already includes this plan's solar feed-in credit">
-      <Icon name="sun" size={13} /> Solar credit included
-    </span>
   );
 }
 
@@ -241,6 +221,8 @@ export default function Comparator() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   // The plan list shows each retailer's cheapest plan unless they ask for all.
   const [allPlans, setAllPlans] = useState(false);
+  // The plan list opens with the top 6, then 10 more, then all (1 Nov 2026).
+  const [rowCount, setRowCount] = useState(6);
   // Plan list filters, top right of the list: offer type and tariff type.
   const [offerFilter, setOfferFilter] = useState<"all" | "MARKET" | "STANDING">("all");
   const [tariffFilter, setTariffFilter] = useState<"all" | "single" | "tou">("all");
@@ -538,6 +520,8 @@ export default function Comparator() {
     }
   }
   const onStep1 = onePage || inputStep === 1;
+  // Name and street on page 1 only to check what a bill read gave us; otherwise just the postcode.
+  const showWho = !onePage && !!lastBill;
   const qn = (k: number) => (onePage ? k - 1 : k);
   // Victorian postcodes start with 3 (or 8 for PO boxes). Others can't be priced yet.
   const nonVic = postcode.length === 4 && !/^[38]/.test(postcode);
@@ -634,16 +618,21 @@ export default function Comparator() {
     const billKwh = (bill.anytimeKwh ?? 0) + (bill.peakKwh ?? 0) + (bill.shoulderKwh ?? 0) + (bill.offpeakKwh ?? 0) + (bill.controlledLoadKwh ?? 0);
     const yearlyKwh = bill.billingDays ? (billKwh / bill.billingDays) * 365 : 0;
     const vicPostcode = !bill.postcode || /^[38]/.test(bill.postcode);
-    setBillFlag(
+    const flag: "business" | "embedded" | "large" | null = (
       bill.embeddedNetwork || (nmiCheck?.status === "notVictorian" && vicPostcode)
         ? "embedded"
         : bill.accountType === "business" || (bill.demandCharge && bill.accountType !== "residential" && bill.demandKw === null)
           ? "business"
           : yearlyKwh > SMALL_CUSTOMER_KWH_PER_YEAR
             ? "large"
-            : null,
+            : null
     );
-    if (bill.billingDays !== null) setDays(bill.billingDays);
+    setBillFlag(flag);
+    if (bill.billingDays !== null) {
+      setDays(bill.billingDays);
+      // Show figures for the bill's own period, so "Your bill" matches the total printed on it.
+      setPeriod(Math.abs(bill.billingDays - 365 / 4) <= 3 ? "quarter" : "month");
+    }
     // A home on a demand tariff: its max kW lets demand plans be priced for it.
     setDemandKw(bill.demandCharge && bill.demandKw !== null ? bill.demandKw : null);
     setUsageSource("bill");
@@ -691,6 +680,15 @@ export default function Comparator() {
     const outsideVic = !!bill.postcode && bill.postcode.length === 4 && !/^[38]/.test(bill.postcode);
     if (network && !outsideVic && hasUsage && bill.billingDays !== null) {
       setEntry("read");
+      // A clean read goes straight to the result (1 Nov 2026): everything we need was on the
+      // bill, nothing to check. A strip at the top of the result shows what we read, with a
+      // way back to change it. Anything doubtful still stops at the "here's what we read" card.
+      const clean = warnings.length === 0 && !askPage && !flag && bill.currentBill !== null && nmiCheck?.status !== "notVictorian";
+      if (clean) {
+        setStage("results");
+        scrollToTop();
+        return;
+      }
     } else {
       setEntry("wizard");
       setInputStep(!network || outsideVic ? 1 : 3);
@@ -924,7 +922,9 @@ export default function Comparator() {
   const pctVdo = (x: number) => { const n = Math.round(x * 100); return `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n)}%`; };
   const kwhInPeriod = usagePeak + usageShoulder + usageOffpeak + usageAnytime + clKwh;
   // Plain numbers for the result: a month and a year, stay vs switch.
-  const perMonth = (x: number) => (days > 0 ? (x * (365 / 12)) / days : 0);
+  // A bill of about a month (27-34 days) shows as it is, the same rule as the plan list, so
+  // "Your bill now" matches the total printed on the bill; other bills are scaled to 365/12 days.
+  const perMonth = (x: number) => (days > 0 ? x * periodScale("month", days) : 0);
   const perYear = (x: number) => (days > 0 ? (x * 365) / days : 0);
   // Same plan name, older price? Price the bill's own rates on this usage and
   // compare with today's version of the plan from the same retailer.
@@ -952,12 +952,26 @@ export default function Comparator() {
   const hiddenRows = locked ? listed.slice(lockedTop.length + FREE_ROWS) : [];
   const rankOf = (m: (typeof matches)[number]) => listed.indexOf(m) + 1;
   // Where "your bill" sits among the plans: just before the first one that costs more.
-  const billAt = listRows.findIndex((m) => m.total > bench + 0.005);
+  const ROWS_FIRST = 6;
+  const shownRows = locked ? listRows : listRows.slice(0, rowCount);
+  const foldedRows = locked ? [] : listRows.slice(rowCount);
+  // "Our pick" with no strings: the cheapest open plan whose price doesn't lean on
+  // pay-on-time or direct-debit discounts, when that isn't the cheapest plan already.
+  const noStrings = (() => {
+    const pick = listed.find((m) => !m.restricted && (billDetail(m.plan, usage)?.conditionalDiscount ?? 0) < 0.005);
+    return pick && pick !== top ? pick : null;
+  })();
+  function openTopRow() {
+    const i = top ? shownRows.indexOf(top) : -1;
+    if (i >= 0 && top) setExpandedKey(top.plan[0] + top.plan[2] + i);
+    setTimeout(() => (document.getElementById("top-plan") ?? document.getElementById("plans-compared"))?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
+  }
+  const billAt = shownRows.findIndex((m) => m.total > bench + 0.005);
   const beatBill = listed.filter((m) => m.total < bench - 0.005).length;
   // Every shown plan beats the bill and some members-only ones do too: the marker goes below those.
-  const billAfterHidden = billAt === -1 && hiddenRows.some((m) => m.total < bench - 0.005);
+  const billAfterHidden = billAt === -1 && [...hiddenRows, ...foldedRows].some((m) => m.total < bench - 0.005);
   // Is the marker on the page at all? (The top strip only jumps when it is.)
-  const billShown = billAt >= 0 || billAfterHidden || (billAt === -1 && listRows.length > 0);
+  const billShown = billAt >= 0 || billAfterHidden || (billAt === -1 && shownRows.length > 0);
   const billMark = (
     <div id="your-bill-mark" className={r.billMark} role="note" tabIndex={-1}>
       <span className={r.billPin}><Icon name="receipt" size={15} /> {haveBill ? youName : "The default offer"}</span>
@@ -1018,10 +1032,8 @@ export default function Comparator() {
     discountEndsAt: ratesForm.discountEnds || null,
     currentPlanName: ratesForm.planName || null,
     currentRetailer,
+    periodEnd: haveBill && lastBill?.periodEnd ? lastBill.periodEnd : null,
   };
-  // The best plan's pay-on-time / direct-debit discount (in its price).
-  const topDetail = top ? billDetail(top.plan, usage) : null;
-  const topOffer = top ? offerFor(top.plan) : null;
 
   // The questions about the home: on the one-page questions they sit inside
   // "Estimate from my home" (or, optional, under "Enter the kWh from my bill").
@@ -1529,24 +1541,26 @@ export default function Comparator() {
             ) : (
               <>
             <div className={`${styles.fieldGrid} ${styles.mt16}`}>
-              <div className={styles.field}>
+              {showWho && <div className={styles.field}>
                 <label htmlFor="custName">
                   First name <span className={styles.unitNote}>(optional, so we can say hi)</span>
                 </label>
                 <input id="custName" type="text" placeholder="Jane" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-              </div>
+              </div>}
               <div className={styles.field}>
                 <label htmlFor="postcode">Postcode</label>
                 <input id="postcode" type="text" inputMode="numeric" maxLength={4} placeholder="3121" value={postcode} onChange={(e) => applyPostcode(e.target.value)} />
               </div>
             </div>
-            <div className={styles.fieldGrid}>
-              <div className={styles.field}>
+            {/* Questions page 1 (1 Nov 2026): just the postcode. Name and street come from the bill or at checkout
+                (shown here only to check what a bill gave us); the suburb only shows when the postcode spans two networks. */}
+            {(showWho || loc.status === "needSuburb" || loc.status === "mismatch") && <div className={styles.fieldGrid}>
+              {showWho && <div className={styles.field}>
                 <label htmlFor="address">
                   Street address <span className={styles.unitNote}>(optional)</span>
                 </label>
                 <input id="address" type="text" placeholder="12 Smith Street" value={address} onChange={(e) => { setAddress(e.target.value); setAddressHintOff(false); }} />
-              </div>
+              </div>}
               <div className={styles.field}>
                 <label htmlFor="suburb">Suburb</label>
                 {localities && locSuburbs.length > 0 && !suburbNotListed && (!suburb.trim() || suburbListed) ? (
@@ -1574,7 +1588,7 @@ export default function Comparator() {
                   />
                 )}
               </div>
-            </div>
+            </div>}
 
             {loc.status === "mismatch" && (
               <div className={s1.check}>
@@ -2207,6 +2221,19 @@ export default function Comparator() {
             </span>
           )}
         </section>
+          {usageSource === "bill" && scanBanner && !useEst && !useAvg && (
+            <div className={styles.readStrip}>
+              <span className={styles.readStripTick} aria-hidden="true">✓</span>
+              <span className={styles.readStripText}>
+                <b>Read from your bill</b>
+                <span>
+                  {scanBanner.retailer ? `${scanBanner.retailer} · ` : ""}{distributor} · {days} days · {Math.round(usageAnytime + usagePeak + usageShoulder + usageOffpeak + clKwh).toLocaleString("en-AU")} kWh
+                  {typedBill !== null && !Number.isNaN(typedBill) ? ` · ${fmtCurrency(typedBill)}` : ""}
+                </span>
+              </span>
+              <button type="button" className={styles.readStripEdit} onClick={() => { setStage("input"); setEntry("read"); scrollToTop(); }}>Check</button>
+            </div>
+          )}
           {top && (
             <SaveCheck
               variant="top"
@@ -2328,20 +2355,20 @@ export default function Comparator() {
                   <div className={r.compare}>
                     <div className={r.tile}>
                       <span className={r.tileLabel}>{haveBill ? `${youName} now` : "The default offer"}</span>
-                      <b>{fmtCurrency(perMonth(bench))}</b>
-                      <small>a month</small>
+                      <b>{fmtCurrency(bench * k)}</b>
+                      <small>{PERIOD_LABEL[period]}{haveBill && k !== 1 ? ` · your ${days}-day bill was ${fmtCurrency(bench)}` : ""}</small>
                     </div>
                     <span className={r.op} aria-hidden="true">→</span>
                     <div className={r.tile}>
                       <span className={r.tileLabel}>{locked ? "With the cheapest plan" : `With ${top.plan[0]}`}</span>
-                      <b>{fmtCurrency(perMonth(top.total))}</b>
-                      <small>a month</small>
+                      <b>{fmtCurrency(top.total * k)}</b>
+                      <small>{PERIOD_LABEL[period]}</small>
                     </div>
                     <span className={r.op} aria-hidden="true">=</span>
                     <div className={`${r.tile} ${r.tileSave}`}>
                       <span className={r.tileLabel}>You save</span>
-                      <b>{fmtCurrency(perMonth(bench - top.total))}</b>
-                      <small>a month</small>
+                      <b>{fmtCurrency((bench - top.total) * k)}</b>
+                      <small>{PERIOD_LABEL[period]}</small>
                     </div>
                   </div>
                   <p className={r.heroNote}>
@@ -2352,12 +2379,11 @@ export default function Comparator() {
                     <button type="button" className={r.heroBtn} onClick={joinScroll}>
                       <Icon name="lock" size={16} /> See which retailer →
                     </button>
-                  ) : RETAILER_LINKS[top.plan[0]] ? (
-                    <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={distributor} target="_blank" rel="noopener noreferrer" className={r.heroBtn}>
-                      See the {top.plan[0]} plan →
-                    </a>
                   ) : (
-                    <a href="#top-plan" className={r.heroBtn}>See the plan ↓</a>
+                    // Stays on the page: down to the top row of the list, opened, with the rates, conditions and the retailer's link.
+                    <a href="#top-plan" className={r.heroBtn} onClick={(e) => { e.preventDefault(); openTopRow(); }}>
+                      See the {top.plan[0]} plan ↓
+                    </a>
                   )}
                   <span className={r.fine}>
                     <InfoTip tone="dark" text="How we worked this out" label="How we worked this out">
@@ -2374,15 +2400,8 @@ export default function Comparator() {
                   </button>
                 </div>
               )}
-              {!locked && RETAILER_LINKS[top.plan[0]] && worthSwitching && (
-                <div className={styles.stickyBar}>
-                  <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={distributor} target="_blank" rel="noopener noreferrer" className={styles.stickyBtn}>
-                    {haveBill
-                      ? <>Switch with {top.plan[0]} · save ${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}/yr →</>
-                      : <>See the cheapest plan: {top.plan[0]} →</>}
-                  </a>
-                </div>
-              )}
+              {/* No floating "Switch with…" bar (1 Nov 2026): it sent people off to the retailer
+                  before they had read the result. The way to switch is on the best-plan card. */}
               {haveBill && !worthSwitching && (
                 <div className={`${styles.resultHero} ${styles.resultHeroGood}`}>
                   <span className={styles.resultHeroKicker}>Based on your bill</span>
@@ -2391,13 +2410,13 @@ export default function Comparator() {
                   <div className={r.compare}>
                     <div className={r.tile}>
                       <span className={r.tileLabel}>{youName} now</span>
-                      <b>{fmtCurrency(perMonth(bench))}</b>
-                      <small>a month</small>
+                      <b>{fmtCurrency(bench * k)}</b>
+                      <small>{PERIOD_LABEL[period]}{haveBill && k !== 1 ? ` · your ${days}-day bill was ${fmtCurrency(bench)}` : ""}</small>
                     </div>
                     <div className={r.tile}>
                       <span className={r.tileLabel}>Cheapest we found</span>
-                      <b>{fmtCurrency(perMonth(top.total))}</b>
-                      <small>a month</small>
+                      <b>{fmtCurrency(top.total * k)}</b>
+                      <small>{PERIOD_LABEL[period]}</small>
                     </div>
                   </div>
                   <div className={styles.resultHeroSub}>
@@ -2405,11 +2424,20 @@ export default function Comparator() {
                   </div>
                 </div>
               )}
-              <section className={styles.planListTop} aria-label="Plans compared">
+              <section className={styles.planListTop} aria-label="Plans compared" id="plans-compared" style={{ scrollMarginTop: 90 }}>
                     <div className={r.listHead}>
-                      <b>{allPlans ? "All plans, cheapest first" : "Cheapest plan from each retailer"}</b>
+                      <div className={r.listTitleRow}>
+                        <b>{allPlans ? "All plans, cheapest first" : "Cheapest plan from each retailer"}</b>
+                        <div className={r.periodSeg} role="tablist" aria-label="Show prices per">
+                          {(["month", "quarter", "year"] as const).map((pp) => (
+                            <button key={pp} type="button" role="tab" aria-selected={period === pp} className={period === pp ? r.periodSegOn : undefined} onClick={() => setPeriod(pp)}>
+                              {pp === "month" ? "Monthly" : pp === "quarter" ? "Quarterly" : "Yearly"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <div className={r.listTools}>
-                        <PlanViewToggle all={allPlans} onChange={setAllPlans} retailers={perRetailer.length} plans={filteredMatches.length} />
+                        <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setRowCount(6); }} retailers={perRetailer.length} plans={filteredMatches.length} />
                         <div className={r.filters} role="group" aria-label="Filter plans">
                           <label className={r.filter}>
                             <span className={r.srOnly}>Offer type</span>
@@ -2487,6 +2515,15 @@ export default function Comparator() {
                     </div>
                     )}
 
+                    {!locked && top && worthSwitching && !filtering && (
+                      <div className={r.picks}>
+                        <span className={r.picksLabel}>Our pick</span>
+                        <span>
+                          <b>{top.plan[0]}</b>, the cheapest for your home{haveBill ? `: about $${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")} a year less than your bill` : ""}.
+                          {noStrings ? <> Rather no conditions? <b>{noStrings.plan[0]}</b> is the cheapest without pay-on-time or direct-debit discounts, {fmtCurrency((noStrings.total - top.total) * k)} {PERIOD_LABEL[period]} more.</> : null}
+                        </span>
+                      </div>
+                    )}
                     {lockedTop.length > 0 && (
                       <div className={r.lockedTop}>
                         {lockedTop.map((m, i) => {
@@ -2521,7 +2558,7 @@ export default function Comparator() {
                       </p>
                     )}
                     <div className={r.list}>
-                      {listRows.map((m, i) => {
+                      {shownRows.map((m, i) => {
                         const diff = bench - m.total;
                         const rowKey = m.plan[0] + m.plan[2] + i;
                         const isOpen = expandedKey === rowKey;
@@ -2530,7 +2567,7 @@ export default function Comparator() {
                         return (
                           <Fragment key={rowKey}>
                           {i === billAt && billMark}
-                          <div className={`${r.row} ${isTop ? r.rowTop : ""}`}>
+                          <div className={`${r.row} ${isTop ? r.rowTop : ""}`} id={isTop ? "top-plan" : undefined} style={isTop ? { scrollMarginTop: 110 } : undefined}>
                             <button type="button" className={r.rowMain} onClick={() => setExpandedKey((x) => (x === rowKey ? null : rowKey))} aria-expanded={isOpen}>
                               <span className={r.avatar}><RetailerLogo name={m.plan[0]} size={48} square /></span>
                               <span className={r.info}>
@@ -2538,6 +2575,7 @@ export default function Comparator() {
                                   {locked && <span className={r.rank}>#{rankOf(m)}</span>}
                                   <b className={r.retailer}>{m.plan[0]}</b>
                                   {isTop && <span className={r.cheapest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
+                                  {m === noStrings && <span className={r.noStrings}>No strings</span>}
                                   {retailerBest && m === retailerBest && currentRetailer && <span className={r.yours}>Your retailer</span>}
                                 </span>
                                 <span className={r.planName} title={m.plan[2]}>{tidyPlanName(m.plan)}</span>
@@ -2545,9 +2583,10 @@ export default function Comparator() {
                                   {m.plan[3] !== "MARKET" && <span className={r.chipStanding}>Standing offer</span>}
                                   {isEvFriendly(m.plan) && <span className={r.chip}>EV plan</span>}
                                   {solarExportKwh > 0 && m.plan[10] !== null && m.plan[10] > 0 && <span className={r.chip}>Solar credit {(m.plan[10] * 100).toFixed(m.plan[10] * 100 < 0.1 ? 2 : 1)}c</span>}
-                                  <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
+                                  <OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly recentDays={7} />
                                   <OfferChips o={offer} />
                                 </span>
+                                <span className={r.ratesLink}>{isOpen ? "Hide details ▴" : "Rates and conditions ▾"}</span>
                               </span>
                               <span className={r.priceCol}>
                                 <span className={r.price}>{fmtCurrency(m.total * k)}</span>
@@ -2555,13 +2594,17 @@ export default function Comparator() {
                                 <span className={diff >= 0.005 ? r.save : diff <= -0.005 ? r.more : r.same}>
                                   {diff >= 0.005 ? `Save ${fmtCurrency(diff * k)}` : diff <= -0.005 ? `${fmtCurrency(-diff * k)} more` : "Same as now"}
                                 </span>
-                                <span className={r.ratesLink}>{isOpen ? "Hide details ▴" : "Rates and conditions ▾"}</span>
                               </span>
                             </button>
                             {isOpen && (
                               <div className={styles.planRowExpanded}>
                                 <p className={r.fullName}>Full plan name: {m.plan[2]}</p>
-                                <RateBreakdown plan={m.plan} solarExportKwh={solarExportKwh} />
+                                <p className={r.fullName}><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></p>
+                                {myRates ? (
+                                  <div className={r.ratesBox}><RatesCompare current={myRates} plan={m.plan} planLabel={m.plan[0]} /></div>
+                                ) : (
+                                  <RateBreakdown plan={m.plan} solarExportKwh={solarExportKwh} />
+                                )}
                                 <OfferTerms
                                   o={offer}
                                   retailer={m.plan[0]}
@@ -2579,8 +2622,21 @@ export default function Comparator() {
                           </Fragment>
                         );
                       })}
-                      {billAt === -1 && listRows.length > 0 && !billAfterHidden && billMark}
+                      {billAt === -1 && shownRows.length > 0 && !billAfterHidden && billMark}
                     </div>
+                    {!locked && listRows.length > ROWS_FIRST && (
+                      <div className={r.showRow}>
+                        {foldedRows.length > 0 && rowCount < 16 && listRows.length > 16 && (
+                          <button type="button" className={r.showAll} onClick={() => setRowCount(16)}>Show the next {Math.min(10, listRows.length - rowCount)} <span aria-hidden="true">▾</span></button>
+                        )}
+                        {foldedRows.length > 0 && (
+                          <button type="button" className={r.showAll} onClick={() => setRowCount(listRows.length)}>Show all {listRows.length} {allPlans ? "plans" : "retailers"} <span aria-hidden="true">▾</span></button>
+                        )}
+                        {rowCount > ROWS_FIRST && (
+                          <button type="button" className={r.showAll} onClick={() => { setRowCount(ROWS_FIRST); document.getElementById("plans-compared")?.scrollIntoView({ block: "start" }); }}>Show the top {ROWS_FIRST} <span aria-hidden="true">▴</span></button>
+                        )}
+                      </div>
+                    )}
                     {hiddenRows.length > 0 && (
                       <MemberLock
                         variant="list"
@@ -2622,20 +2678,6 @@ export default function Comparator() {
                     {leadStatus === "error" && <p className={styles.leadErr}>That didn&apos;t send. Please try again in a moment.</p>}
                   </div>
                 </div>
-                <div className={styles.dailyCard}>
-                  <span className={styles.dailyKicker}><Icon name="refresh" size={14} /> {PLUS_NAME}</span>
-                  <h3 className={styles.dailyTitle}>
-                    {haveBill ? <>That&apos;s today&apos;s answer.<br />We keep watching this bill.</> : <>That&apos;s today&apos;s answer.<br />We keep watching.</>}
-                  </h3>
-                  <ul className={styles.dailyTicks}>
-                    <li><Icon name="refresh" size={16} /> <span><b>All {matches.length} plans</b> re-checked daily</span></li>
-                    <li><Icon name="bell" size={16} /> <span><b>A warning</b> before your discount ends</span></li>
-                    <li><Icon name="mail" size={16} /> <span><b>An email</b> only for ${WORTH_SWITCHING_PER_YEAR}+ a year savings</span></li>
-                    <li><Icon name="flame" size={16} /> <span><b>Gas too</b>, on the same membership</span></li>
-                  </ul>
-                  <button type="button" className={styles.dailyBtn} onClick={joinScroll}>Keep watching for me →</button>
-                  <p className={styles.dailyFine}>{MEMBER_PRICE_LINE}</p>
-                </div>
                 </>
               )}
               {!free && haveBill && (
@@ -2660,106 +2702,7 @@ export default function Comparator() {
                   }}
                 />
               )}
-              <div className={`${styles.bestCard} ${locked ? styles.hideForFree : ""}`} id="top-plan">
-                <span className={styles.bestTag}>{haveBill && worthSwitching ? "Yes, you'd save with" : haveBill ? "Cheapest we found (not worth switching)" : "Cheapest plan for a home like yours"}</span>
-                {locked ? (
-                  <>
-                    <div className={`${styles.retailer} ${r.lockedName}`}>
-                      <Icon name="lock" size={22} /> <span className={r.blurName} aria-hidden="true" /> <span className={r.srOnly}>Retailer hidden</span>
-                    </div>
-                    <div className={styles.plan}>Plus members see the retailer, plan, rates and sign-up conditions</div>
-                  </>
-                ) : (<>
-                <div className={styles.retailer}>
-                  {top.plan[0]}
-                  <span className={`${styles.offerTag} ${top.plan[3] === "MARKET" ? styles.offerMarket : styles.offerStanding}`}>
-                    {top.plan[3] === "MARKET" ? "Market offer" : "Standing offer"}
-                  </span>
-                  {isEvFriendly(top.plan) && <EvBadge />}
-                  {solarExportKwh > 0 && top.plan[10] !== null && <SolarBadge />}
-                </div>
-                <div className={styles.plan}>{top.plan[2]}</div>
-                <div className={styles.offerDateRow}><OfferDate retailer={top.plan[0]} plan={top.plan[2]} dark /></div>
-                </>)}
-                <div className={styles.periodToggle} role="tablist" aria-label="Show figures per">
-                  {(["month", "quarter", "year"] as const).map((pp) => (
-                    <button key={pp} type="button" role="tab" aria-selected={period === pp} className={period === pp ? styles.periodOn : styles.periodBtn} onClick={() => setPeriod(pp)}>
-                      {pp === "month" ? "Monthly" : pp === "quarter" ? "Quarterly" : "Yearly"}
-                    </button>
-                  ))}
-                </div>
-                <div className={styles.nums}>
-                  <div className={styles.numBlock}>
-                    <div className={`${styles.v} mono`}>{fmtCurrency(top.total * k)}</div>
-                    <div className={styles.l}>{PERIOD_LABEL[period]} on this plan</div>
-                  </div>
-                </div>
-                <p className={styles.saveLine}>
-                  {bench - top.total >= 0 ? (
-                    <><b>{fmtCurrency((bench - top.total) * k)} less</b> {PERIOD_LABEL[period]} than {haveBill ? "your bill" : "the default offer"} ({fmtPct(bench > 0 ? (bench - top.total) / bench : 0)} cheaper)</>
-                  ) : (
-                    <><b>{fmtCurrency((top.total - bench) * k)} more</b> {PERIOD_LABEL[period]} than {haveBill ? "your bill" : "the default offer"}</>
-                  )}
-                </p>
-                {topOffer && !locked && (
-                  <OfferTerms
-                    o={topOffer}
-                    retailer={top.plan[0]}
-                    dark
-                    payLateCost={topDetail && topDetail.conditionalDiscount * k >= 0.5 ? `${fmtCurrency(topDetail.conditionalDiscount * k)} ${PERIOD_LABEL[period]}` : null}
-                  />
-                )}
-
-                {!locked && (
-                <button
-                  type="button"
-                  className={styles.rateToggleBtn}
-                  onClick={() => setExpandedKey((k) => (k === "best" ? null : "best"))}
-                >
-                  {expandedKey === "best" ? "Hide rates ▴" : myRates ? "Compare your rates with this plan ▾" : "See the rate breakdown ▾"}
-                </button>
-                )}
-                {expandedKey === "best" && !locked &&
-                  (myRates ? (
-                    <div className={r.ratesBox}>
-                      <RatesCompare current={myRates} plan={top.plan} planLabel={top.plan[0]} dark />
-                    </div>
-                  ) : (
-                    <RateBreakdown plan={top.plan} solarExportKwh={solarExportKwh} />
-                  ))}
-
-                <p className={styles.scaleNote}>
-                  From your {days}-day period, scaled to {PERIOD_LABEL[period]}. Usage changes with the seasons, so a year is the fairest view.
-                </p>
-                {locked ? (
-                  <div className={r.unlockBox}>
-                    <span className={r.unlockIcon}><Icon name="lock" size={22} /></span>
-                    <div>
-                      <b>See which retailer, and how to switch</b>
-                      <span>With {PLUS_NAME}. {plusValue().monthly} a month, or {plusValue().annual} a year.</span>
-                    </div>
-                    <button type="button" className={styles.switchBtn} onClick={joinScroll}>Unlock the cheapest plans →</button>
-                  </div>
-                ) : (
-                <div className={styles.getPlan}>
-                  <RetailerLogo name={top.plan[0]} size={56} />
-                  <div className={styles.getPlanText}>
-                    <b>Get this plan from {top.plan[0]}</b>
-                    <span>
-                      {RETAILER_LINKS[top.plan[0]]
-                        ? `Opens ${top.plan[0]}'s website in a new tab. Look for "${top.plan[2]}". Their page has the full offer details, conditions and the Energy Fact Sheet.`
-                        : `Search for "${top.plan[2]}" on ${top.plan[0]}'s website for the full offer details and the Energy Fact Sheet.`}
-                    </span>
-                  </div>
-                  {RETAILER_LINKS[top.plan[0]] && (
-                    <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={distributor} target="_blank" rel="noopener noreferrer" className={styles.switchBtn}>
-                      Go to {top.plan[0]} →
-                    </a>
-                  )}
-                </div>
-                )}
-              </div>
-
+              {/* One best-plan card (1 Nov 2026): the top row of the list is it. The navy card repeated it. */}
               {retailerBest && top && locked && isLockedPlan(retailerBest) && (
                 <div className={styles.stayCard}>
                   <div>

@@ -526,3 +526,4 @@ details[open] > .panelSummary::after { content: " ▴"; }
 .quietDetails { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 10px; }
 .quietDetails summary { cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--grey); padding: 6px 0; }
 .quietDetails[open] summary { margin-bottom: 8px; }
+.tabTop { margin-top: 14px; }

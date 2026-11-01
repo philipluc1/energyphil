@@ -16,16 +16,16 @@ export const metadata = pageMeta({ title: "Utilo Plus: $7 a month or $39 a year"
 // Free check vs Plus, one line each. Detail lives in the (i) pop-ups.
 // "On your own": what it takes without Utilo (the free government and
 // retailer sites, by hand). Short words only: they sit in a narrow column on phones.
-const ROWS: { label: string; own: false | string; free: boolean | string; plus: boolean | string; tip?: string }[] = [
-  { label: "Your saving, from a photo of your bill", own: "Type it in", free: true, plus: true },
-  { label: "Every plan by name, with rates", own: "Search sites", free: true, plus: true },
-  { label: "Your result by email", own: false, free: true, plus: true },
-  { label: "Every plan re-checked every morning", own: "By hand", free: false, plus: true, tip: "Each day's new and updated offers, priced against the usage and rates on your bill. You don't lift a finger." },
-  { label: `An email when switching saves $${WORTH_SWITCHING_PER_YEAR}+`, own: false, free: false, plus: true, tip: "Silence otherwise. You can set your own amount on your dashboard." },
-  { label: "A month's warning before a discount ends", own: "Diary it", free: false, plus: true, tip: "Most discounts end after a year, and the price usually jumps. We count down and warn you while there's time to move." },
-  { label: "A monthly summary of your bill and the market", own: false, free: false, plus: true },
-  { label: "Dashboard: your year ahead, bill history, savings tally", own: false, free: false, plus: true },
-  { label: "Gas watched too, same membership", own: "Separately", free: false, plus: true, tip: "The free gas check works for anyone. Plus re-checks your gas bill every morning as well." },
+const ROWS: { label: string; short: string; own: false | string; free: boolean | string; plus: boolean | string; tip?: string }[] = [
+  { label: "Your saving, from a photo of your bill", short: "Saving from a bill photo", own: "Type it in", free: true, plus: true },
+  { label: "Every plan by name, with rates", short: "Every plan by name", own: "Search sites", free: true, plus: true },
+  { label: "Your result by email", short: "Result by email", own: false, free: true, plus: true },
+  { label: "Every plan re-checked every morning", short: "Re-checked every morning", own: "By hand", free: false, plus: true, tip: "Each day's new and updated offers, priced against the usage and rates on your bill. You don't lift a finger." },
+  { label: `An email when switching saves $${WORTH_SWITCHING_PER_YEAR}+`, short: `Email when you can save $${WORTH_SWITCHING_PER_YEAR}+`, own: false, free: false, plus: true, tip: "Silence otherwise. You can set your own amount on your dashboard." },
+  { label: "A month's warning before a discount ends", short: "Warning before a discount ends", own: "Diary it", free: false, plus: true, tip: "Most discounts end after a year, and the price usually jumps. We count down and warn you while there's time to move." },
+  { label: "A monthly summary of your bill and the market", short: "Monthly summary email", own: false, free: false, plus: true },
+  { label: "Dashboard: your year ahead, bill history, savings tally", short: "Dashboard and bill history", own: false, free: false, plus: true },
+  { label: "Gas watched too, same membership", short: "Gas watched too", own: "Separately", free: false, plus: true, tip: "The free gas check works for anyone. Plus re-checks your gas bill every morning as well." },
 ];
 
 function Mark({ v }: { v: boolean | string }) {
@@ -63,7 +63,8 @@ export default function PricingPage() {
           {ROWS.map((r) => (
             <div key={r.label} className={p.cRow}>
               <span className={p.cLabel}>
-                {r.label}
+                <span className={p.cLong}>{r.label}</span>
+                <span className={p.cShort}>{r.short}</span>
                 {r.tip && <InfoTip label={`About: ${r.label}`}>{r.tip}</InfoTip>}
               </span>
               <span className={`${p.cCell} ${p.cOwnCell}`}><Mark v={r.own} /></span>

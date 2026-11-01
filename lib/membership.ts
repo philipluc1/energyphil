@@ -11,6 +11,7 @@ import { cleanReferralCode, sourceValue } from "./attribution";
 import { creditReferrer, newReferralCode } from "./referrals";
 import { stripe } from "./stripeClient";
 import { refundDuplicate } from "./membershipGuard";
+import { billRowFrom } from "./billRows";
 
 const KNOWN_RETAILERS = new Set(PLANS.map((p) => p[0]));
 
@@ -180,6 +181,20 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
       { onConflict: "email,month,source" },
     );
     if (checkErr) console.error("Failed to save the free check as the first monthly check", checkErr);
+  }
+
+  // The bill they read in the free check is their first bill in the tracker.
+  // Never blocks joining: a database without the bills table just skips it.
+  if (inserted && md.periodEnd && billingDays && billingDays > 0) {
+    const kwh = ["peak", "shoulder", "offpeak", "anytime", "cl"].reduce((a, key) => a + (toNum(md[key]) ?? 0), 0);
+    const rows = billRowFrom(
+      { typed: true, fuel: "electricity", periodEnd: md.periodEnd, billingDays, kwh: kwh > 0 ? Math.round(kwh) : null, amount: referenceTotal, retailer: md.currentRetailer || null },
+      email,
+    ).map((row) => ({ ...row, source: "photo" as const }));
+    if (rows.length) {
+      const { error: tErr } = await supabaseAdmin.from("bills").upsert(rows, { onConflict: "email,fuel,period_end" });
+      if (tErr) console.warn("join: bill tracker not saved (run supabase/schema.sql)", tErr.message);
+    }
   }
 
   if (inserted && referenceTotal !== null && baselineTotal !== null && billingDays && billingDays > 0) {

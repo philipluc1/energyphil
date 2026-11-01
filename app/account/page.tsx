@@ -1,7 +1,7 @@
 "use client";
 
 import Icon from "../components/Icon";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
@@ -141,10 +141,21 @@ function fmtWhole(n: number): string {
   return "$" + Math.round(n).toLocaleString("en-AU");
 }
 
-type Tab = "compare" | "home" | "savings" | "membership";
+type Tab = "compare" | "market" | "rewards" | "home" | "savings" | "membership";
+
+// Phones and narrow windows (no side column): the market and the rewards get
+// their own swipeable tabs instead of side cards (1 Nov 2026).
+const NARROW = "(max-width: 1100px)";
+function useNarrow(): boolean {
+  return useSyncExternalStore(
+    (cb) => { const m = window.matchMedia(NARROW); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); },
+    () => window.matchMedia(NARROW).matches,
+    () => false,
+  );
+}
 // Old links (#read-bill, #join) still land on the right tab.
 const TAB_FROM_HASH: Record<string, Tab> = {
-  compare: "compare", home: "home", savings: "savings", "read-bill": "savings", membership: "membership", join: "membership",
+  compare: "compare", market: "market", rewards: "rewards", home: "home", savings: "savings", "read-bill": "savings", membership: "membership", join: "membership",
 };
 
 function statusLabel(status: string): string {
@@ -190,7 +201,10 @@ export default function AccountPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("welcome") !== "1") return;
-    const t = setTimeout(() => setJustJoined(true), 0);
+    // First visit only: once seen, it doesn't come back on this device.
+    let seen = false;
+    try { seen = window.localStorage.getItem("utilo-welcomed") === "1"; window.localStorage.setItem("utilo-welcomed", "1"); } catch { /* ignore */ }
+    const t = setTimeout(() => setJustJoined(!seen), 0);
     // Tidy the address bar so a refresh doesn't show it again.
     params.delete("welcome");
     const q = params.toString();
@@ -445,6 +459,7 @@ export default function AccountPage() {
   }, [sub]);
 
   const [tab, setTab] = useState<Tab>("compare");
+  const narrow = useNarrow();
   // Colour theme: the default, or ?theme=slate|mint|brand to preview another.
   const [themeId, setThemeId] = useState<DashThemeId>(DEFAULT_DASH_THEME);
   useEffect(() => {
@@ -613,10 +628,21 @@ export default function AccountPage() {
   }
 
   // On gas the Compare tab isn't offered (gas has its own comparison above).
-  const shownTab: Tab = fuel === "gas" && tab === "compare" ? "home" : tab;
+  // Market and Rewards are tabs only on narrow screens (wide ones show them as side cards).
+  const marketTabs = narrow && fuel === "elec" && !!cmpInput;
+  const shownTab: Tab =
+    fuel === "gas" && (tab === "compare" || tab === "market" || tab === "rewards") ? "home"
+      : !marketTabs && (tab === "market" || tab === "rewards") ? "compare"
+        : tab;
   const tabs: TabDef<Tab>[] = [
     { id: "compare", label: "Compare", icon: "scale", hint: "All plans, ranked" },
-    { id: "home", label: "My home", icon: "home", hint: "Address and usage" },
+    ...(marketTabs
+      ? ([
+          { id: "market", label: "Market", icon: "chart", hint: "What changed" },
+          { id: "rewards", label: "Rewards", icon: "gift", hint: "Credits and perks" },
+        ] as TabDef<Tab>[])
+      : []),
+    { id: "home", label: narrow ? "Home" : "My home", icon: "home", hint: "Address and usage" },
     { id: "savings", label: "Savings", icon: "dollar", hint: "What you've saved", dot: isMember && !doneThisMonth },
     { id: "membership", label: isMember ? PLUS_SHORT : `Get ${PLUS_SHORT}`, icon: "bolt", hint: isMember ? "Plan and billing" : "Unlock everything" },
   ];
@@ -795,15 +821,15 @@ export default function AccountPage() {
     setTimeout(() => document.getElementById("deal-dates")?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
   }
 
-  const sideCards = (
+  const sideCardList = (withPlan: boolean) => (
     <>
       {fuel === "gas" && sub && <GasAside member={sub} />}
       {fuel === "gas" && sub && <GasCards member={sub} />}
-      {fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
+      {withPlan && fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
       {fuel === "elec" && cmpInput && myShape && <MiddayCard input={cmpInput} shape={myShape.shape} evOvernight={myShape.evOvernight} profile={homeProfile} member={isMember} />}
       {fuel === "elec" && cmpInput && <ForecastCard input={cmpInput} profile={homeProfile} member={isMember} />}
       {fuel === "elec" && isMember && <CountdownCard input={cmpInput} discountEndsAt={sub!.discount_ends_at ?? null} fixedUntil={sub!.current_price_fixed_until ?? null} onEdit={editDealDates} />}
-      {fuel === "elec" && cmpInput && <MemberMarket input={cmpInput} member={isMember} compact />}
+      {fuel === "elec" && cmpInput && !marketTabs && <MemberMarket input={cmpInput} member={isMember} compact />}
       {fuel === "elec" && cmpInput && homeProfile && <LikeYoursCard input={cmpInput} profile={homeProfile} />}
           <div className={styles.panelCard}>
             <div className={styles.panelTitle}>Gas</div>
@@ -849,6 +875,7 @@ export default function AccountPage() {
       <TipCarousel />
     </>
   );
+  const sideCards = sideCardList(true);
 
   return (
     <>
@@ -929,17 +956,7 @@ export default function AccountPage() {
                 <div className={styles.welcomeNote} role="status">
                   <Icon name="check" size={18} />
                   <span>
-                    {dashCheck ? (
-                      <>
-                        <b>Welcome aboard.</b> The bill you checked came with you: your usage, rates and best plan are already here, and we&apos;ll
-                        re-check them every morning. Snap each new bill when it arrives.
-                      </>
-                    ) : (
-                      <>
-                        <b>Welcome aboard.</b> Your free check came with you: your home, usage and best plan are already here, and we&apos;ll re-check them
-                        every morning. Upload a bill any time for exact figures.
-                      </>
-                    )}
+                    <b>Welcome aboard.</b> {dashCheck ? "Your bill came with you" : "Your free check came with you"}, and we re-check it every morning.
                   </span>
                   <button type="button" className={styles.linkBtn} onClick={() => setJustJoined(false)} aria-label="Dismiss">×</button>
                 </div>
@@ -961,7 +978,7 @@ export default function AccountPage() {
                     <span className={`${gd.fuelIcon} ${gd.fuelElec}`}><Icon name="bolt" size={18} /></span>
                     <span className={gd.fuelText}>Electricity<span className={gd.fuelSub}>{cmpInput ? (cmpInput.currentRetailer ?? "your plan") : "no bill yet"}</span></span>
                   </button>
-                  <button type="button" role="tab" aria-selected={fuel === "gas"} className={fuel === "gas" ? gd.fuelOn : gd.fuelBtn} onClick={() => { setFuel("gas"); if (tab === "compare") setTab("home"); try { window.history.replaceState(null, "", "#gas"); } catch { /* ignore */ } }}>
+                  <button type="button" role="tab" aria-selected={fuel === "gas"} className={fuel === "gas" ? gd.fuelOn : gd.fuelBtn} onClick={() => { setFuel("gas"); if (tab === "compare" || tab === "market" || tab === "rewards") setTab("home"); try { window.history.replaceState(null, "", "#gas"); } catch { /* ignore */ } }}>
                     <span className={`${gd.fuelIcon} ${gd.fuelGas}`}><Icon name="flame" size={18} /></span>
                     <span className={gd.fuelText}>Gas<span className={gd.fuelSub}>{sub?.gas_zone && sub?.gas_mj ? (sub.gas_current_retailer ?? sub.gas_zone) : "no gas bill yet"}</span></span>
                   </button>
@@ -972,15 +989,17 @@ export default function AccountPage() {
               )}
               {/* Always on top: are you on the cheapest plan? */}
               {!subLoading && sub && <InstallBanner />}
-              {!subLoading && fuel === "elec" && cmpInput && (
-                <VerdictCard input={cmpInput} member={isMember} period={period} onPeriod={setPeriod} />
-              )}
-              {!subLoading && fuel === "elec" && dashCheck && dashCheckFacts && (
-                <div className={styles.billCheckWrap}>
-                  <BillCheckCard check={dashCheck} retailer={cmpInput?.currentRetailer ?? ""} facts={dashCheckFacts} title="We checked your latest bill" />
-                </div>
-              )}
-              {!subLoading && fuel === "elec" && !cmpInput && (
+
+              {!subLoading && (
+                <DashTabs tabs={fuel === "gas" ? tabs.filter((t) => t.id !== "compare") : tabs} active={shownTab} onChange={changeTab}>
+                  {shownTab === "compare" && (
+                    cmpInput ? (
+                      <>
+                        {/* The verdict sits under the tabs, at the top of Compare (1 Nov 2026). */}
+                        <VerdictCard input={cmpInput} member={isMember} period={period} onPeriod={setPeriod} />
+                        <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} profile={homeProfile} />
+                      </>
+                    ) : (
                 <section className={styles.emptyVerdict}>
                   <span className={styles.stateLabel}>Are you on the cheapest plan?</span>
                   <h2>{isMember ? "Upload a bill and we'll tell you." : "Run the free check and your answer lands here."}</h2>
@@ -991,25 +1010,19 @@ export default function AccountPage() {
                     <Link href="/check" className={styles.btnPrimary}>Run a free check</Link>
                   )}
                 </section>
-              )}
-
-              {!subLoading && (
-                <DashTabs tabs={fuel === "gas" ? tabs.filter((t) => t.id !== "compare") : tabs} active={shownTab} onChange={changeTab}>
-                  {shownTab === "compare" && (
-                    cmpInput ? (
-                      <>
-                        <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} profile={homeProfile} />
-                      </>
-                    ) : (
-                      <div className={styles.panelCard}>
-                        <div className={styles.panelTitle}>Retailer comparison</div>
-                        <p className={styles.panelText}>Once we have your usage, every plan we track on your network shows here, cheapest first.</p>
-                      </div>
                     )
                   )}
 
+                  {shownTab === "market" && cmpInput && <MemberMarket input={cmpInput} member={isMember} only="market" />}
+                  {shownTab === "rewards" && cmpInput && <div className={styles.tabTop}><MemberMarket input={cmpInput} member={isMember} only="rewards" /></div>}
+
                   {shownTab === "home" && (
                     <>
+                      {fuel === "elec" && dashCheck && dashCheckFacts && (
+                        <div className={styles.billCheckWrap}>
+                          <BillCheckCard check={dashCheck} retailer={cmpInput?.currentRetailer ?? ""} facts={dashCheckFacts} title="We checked your latest bill" />
+                        </div>
+                      )}
                       {isMember ? (
                         <>
                           <ProfilePanels d={{ ...sub!, source: sub!.nmi || sub!.current_plan_name ? "bill" : "answers" }} />
@@ -1033,7 +1046,20 @@ export default function AccountPage() {
                         </div>
                       )}
 
-                      <div className={styles.sideInTab}>{sideCards}</div>
+                                            {fuel === "elec" && myShape && (
+                        <div className={styles.shapeWrap}>
+                          <UsageShape
+                            shape={myShape.shape}
+                            dailyKwh={myShape.dailyKwh}
+                            exportKwhPerDay={myShape.exportPerDay}
+                            evOvernight={myShape.evOvernight}
+                            title="When your home uses power"
+                            note={`Modelled from ${myShape.fromAnswers ? "your answers" : "your bill's usage and the typical pattern for a home like yours"}, not your meter. It's the shape that decides whether a time-of-use plan beats a single rate for you: the dearer window is shaded.`}
+                          />
+                        </div>
+                      )}
+
+                      <div className={styles.sideInTab}>{sideCardList(false)}</div>
                     </>
                   )}
 
@@ -1256,18 +1282,6 @@ export default function AccountPage() {
                     </>
                   )}
                 </DashTabs>
-              )}
-              {!subLoading && fuel === "elec" && myShape && (
-                <div className={styles.shapeWrap}>
-                  <UsageShape
-                    shape={myShape.shape}
-                    dailyKwh={myShape.dailyKwh}
-                    exportKwhPerDay={myShape.exportPerDay}
-                    evOvernight={myShape.evOvernight}
-                    title="When your home uses power"
-                    note={`Modelled from ${myShape.fromAnswers ? "your answers" : "your bill's usage and the typical pattern for a home like yours"}, not your meter. It's the shape that decides whether a time-of-use plan beats a single rate for you: the dearer window is shaded.`}
-                  />
-                </div>
               )}
               {!subLoading && <Disclosures />}
               </div>

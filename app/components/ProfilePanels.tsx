@@ -129,10 +129,6 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
               })}
           </div>
         )}
-        <div className={styles.placeholder}>
-          <b>12-month usage forecast</b>
-          <span>Coming soon. Once we have two or more bills, we&apos;ll show your expected usage and cost month by month, with seasonal highs for heating and cooling.</span>
-        </div>
         {total === 0 && (
           <p className={styles.note}>
             No usage on file yet. <a href="#read-bill">Upload a bill</a> or <Link href="/check">run the check</Link>.

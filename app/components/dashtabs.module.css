@@ -68,3 +68,8 @@
   .tabLabel { font-size: 13px; }
   .dots { display: none; }
 }
+/* Six tabs on a phone (Compare, Market, Rewards, Home, Savings, Plus). */
+@media (max-width: 640px) {
+  .many .tab, .many .tabOn { padding: 10px 0; }
+  .many .tabLabel { font-size: 11.5px; letter-spacing: -0.01em; }
+}

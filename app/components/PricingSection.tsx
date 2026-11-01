@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { track } from "@/lib/track";
 import { parseSource, readSourceCookie } from "@/lib/attribution";
 import { REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
-import { PLUS_NAME, plusValue, type PlanId } from "@/lib/pricingPlans";
+import { type PlanId } from "@/lib/pricingPlans";
+import { marketActivity } from "@/lib/marketActivity";
 import PlanCards from "./PlanCards";
 import PlanBand from "./PlanBand";
 import styles from "./Comparator.module.css";
@@ -50,20 +51,22 @@ export interface SubscribeProfile {
   currentPlanName?: string | null;
   /** The meter number (NMI), when read off the bill or typed. */
   nmi?: string | null;
+  /** Last day of the bill read in the check (YYYY-MM-DD): the joining bill goes into the bill tracker. */
+  periodEnd?: string | null;
 }
 
 export default function PricingSection({
   email,
-  onEmailChange,
   profile,
   yearlySaving = 0,
-  bestRetailer = "",
 }: {
   email: string;
-  onEmailChange: (v: string) => void;
+  /** Kept for callers; the email box is gone (Stripe asks for it). */
+  onEmailChange?: (v: string) => void;
   profile: SubscribeProfile;
   /** The yearly saving just shown, so the pitch can refer to it. */
   yearlySaving?: number;
+  /** Kept for callers. */
   bestRetailer?: string;
 }) {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
@@ -78,21 +81,15 @@ export default function PricingSection({
   async function handleChoose(planId: PlanId) {
     setError("");
     setAlreadyMember(false);
-    if (!email || !email.includes("@")) {
-      setError("Enter your email above first so we know where to send your alerts.");
-      // The box is above the plan cards, often off screen: take them to it.
-      const box = document.getElementById("subEmail");
-      box?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => box?.focus({ preventScroll: true }), 350);
-      return;
-    }
     setLoadingPlan(planId);
     track("checkout_started", { distributor: profile.distributor });
     try {
+      // No email box: Stripe's page asks for it. If they already gave us one
+      // (e.g. "Email me this result"), it's passed on so they don't type it twice.
       const res = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, email, profile }),
+        body: JSON.stringify({ planId, email: email.includes("@") ? email : "", profile }),
       });
       const body = await res.json().catch(() => ({ ok: false, message: "Something went wrong." }));
       if (!body.ok) {
@@ -108,21 +105,25 @@ export default function PricingSection({
     }
   }
 
+  const market = marketActivity({ days: 30 });
+  const changes = market.newOffers + market.priceChanges;
+
   return (
     <PlanBand
-      title={yearlySaving >= 20 && profile.referenceTotal !== null ? `Keep that $${Math.round(yearlySaving).toLocaleString("en-AU")} a year. We'll keep checking.` : "Stop checking. We'll do it every morning."}
-      intro={<>Prices change every week{bestRetailer ? `, ${bestRetailer}'s included` : ""}. {PLUS_NAME} watches them for you.</>}
+      title="We keep checking. Every day."
+      intro={
+        <>
+          <span className={styles.liveLine}>
+            <span className={styles.liveDot} aria-hidden="true" /> Live{market.ready && changes > 0 ? ` · ${changes} offer changes in the last 30 days` : " · every plan re-checked each morning"}
+          </span>
+          {yearlySaving >= 20 && profile.referenceTotal !== null
+            ? <>The market can save you <b>${Math.round(yearlySaving).toLocaleString("en-AU")} a year</b> today. Stay in control as it moves.</>
+            : <>Stay in control as the market moves.</>}
+        </>
+      }
       cards={<PlanCards onChoose={handleChoose} loadingPlan={loadingPlan} dark />}
     >
-      <div className={styles.field + " " + styles.pricingEmailField}>
-        <label htmlFor="subEmail">Your email, then pick a plan</label>
-        <input id="subEmail" type="email" placeholder="you@example.com" value={email} onChange={(e) => onEmailChange(e.target.value)} />
-      </div>
       {referred && <p className={styles.referralNote}>A friend sent you: {referralDollars(REFERRAL_FRIEND_CENTS)} comes off your first payment at checkout.</p>}
-      <details className={styles.whyKeep}>
-        <summary>Why pay to keep checking?</summary>
-        <p>Today&apos;s cheapest plan rarely stays cheapest: prices move every week, discounts end, and 1 July resets everything. {plusValue().line} The free check stays free.</p>
-      </details>
       {error && (
         <p className={styles.leadErr}>
           {error}

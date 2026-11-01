@@ -57,6 +57,10 @@
 /* ---------- Plan list ---------- */
 .listHead { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
 .listHead b { font-size: 18px; color: var(--ink); }
+.listTitleRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.periodSeg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2, #eef2f4); border: 1px solid var(--border); }
+.periodSeg button { padding: 6px 12px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--grey); cursor: pointer; }
+.periodSeg button.periodSegOn { background: var(--surface, #fff); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 .listHead > span { font-size: 13.5px; color: var(--grey); line-height: 1.5; }
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
@@ -232,3 +236,24 @@ button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; di
   .billMarkFlash { background: color-mix(in srgb, #e8590c 16%, var(--surface)); }
 }
 .youLine > .youJump ~ span { flex: none; }
+
+/* Compact plan list (1 Nov 2026): price and saving beside the name on phones too,
+   dates only when new this week (the rest in the details), first 8 then "Show all". */
+.noStrings { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; color: #075985; }
+.info .ratesLink { margin-top: 2px; }
+.showRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+.showAll { display: inline-block; width: auto; margin-top: 0; padding: 12px; border-radius: 14px; border: 1.5px dashed var(--border); background: var(--surface); font: inherit; font-size: 14.5px; font-weight: 800; color: var(--navy-accent-text); cursor: pointer; }
+.showAll:hover { border-color: #f5a623; }
+.picks { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+.picksLabel { flex: none; padding: 3px 9px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 11.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+@media (max-width: 720px) {
+  .rowMain { grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; padding: 12px; align-items: start; }
+  .priceCol { grid-column: 3; flex-direction: column; flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start; gap: 1px; }
+  .price { font-size: 17px; }
+  .per { font-size: 11px; }
+  .save, .more, .same { font-size: 11.5px; padding: 2px 7px; margin-top: 3px; }
+  .retailer { font-size: 15.5px; }
+  .planName { font-size: 12.5px; }
+  .info .ratesLink { flex-basis: auto; font-size: 12px; }
+  .picks { font-size: 13.5px; padding: 10px 12px; }
+}

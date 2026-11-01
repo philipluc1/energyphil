@@ -24,7 +24,7 @@ import FunEquivalents from "./FunEquivalents";
 import RetailerLogo from "./RetailerLogo";
 import DayChanges from "./DayChanges";
 import type { BillCheckFacts } from "./BillCheckCard";
-import { samePlanName } from "@/lib/planVersion";
+import { PLAN_VS_BILL_TAG, planVsBill, samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { periodScale } from "@/lib/periods";
 import { marketEvents, type MarketEvent } from "@/lib/marketActivity";
@@ -329,7 +329,13 @@ function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
  * what they pay now: proof the checking happens, not just market news.
  * Same maths as the verdict above (compute), so the numbers agree.
  */
-export function MemberMarket({ input, member, compact = false }: { input: ComparisonInput; member: boolean; compact?: boolean }) {
+export function MemberMarket({ input, member, compact = false, only }: {
+  input: ComparisonInput;
+  member: boolean;
+  compact?: boolean;
+  /** The phone's Market and Rewards tabs: that section in full, on the page. */
+  only?: "market" | "rewards";
+}) {
   const c = useMemo(() => compute(input), [input]);
   // The full market page opens over the dashboard, so members never leave it.
   // false = closed; otherwise the section the page opens at.
@@ -380,6 +386,14 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
     };
   }, [c, input.distributor, member]);
   if (!c || !personal) return null;
+  if (only === "market") {
+    const events = marketEvents({ days: 30, network: input.distributor });
+    return <MarketDetail c={c} input={input} member={member} personal={personal} events={events} onClose={() => {}} inline />;
+  }
+  if (only === "rewards") {
+    const against = c.haveBill ? "your bill" : "the default offer";
+    return <MarketRewards matches={c.matches} you={c.you} perYear={c.perYear} against={against} locked={new Set(lockedTopFor(c, member)) as Set<unknown>} whole={whole} />;
+  }
   if (compact) {
     const events = marketEvents({ days: 30, network: input.distributor });
     return (
@@ -397,7 +411,8 @@ export function MemberMarket({ input, member, compact = false }: { input: Compar
 /** The Compare tab: chart plus every comparable plan, ranked. Table on wide
  *  screens, one card per retailer on phones. */
 export function CompareSection({ input: billInput, member, period, profile = null }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette; profile?: HomeProfile | null }) {
-  const [showAll, setShowAll] = useState(false);
+  // Top 6, then 10 more, then everything (1 Nov 2026).
+  const [shownCount, setShownCount] = useState(6);
   // Which plan's rates are open (retailer + plan), on the table or the phone cards.
   const [openRates, setOpenRates] = useState<string | null>(null);
   const [allPlans, setAllPlans] = useState(false);
@@ -449,7 +464,14 @@ export function CompareSection({ input: billInput, member, period, profile = nul
   const topDetail = billDetail(real.top.plan, real.usage);
   const lockedTop = lockedTopFor(c, member);
   const isLocked = (m: (typeof matches)[number] | null) => !!m && lockedTop.includes(m);
-  const rows = showAll ? matches : matches.slice(0, 10);
+  const rows = matches.slice(0, shownCount);
+  // How each plan relates to the one on their bill: "Your plan" only when the rates match.
+  const relation = (m: (typeof matches)[number]) => planVsBill(m.plan, { retailer: currentRetailer ?? null, planName: currentPlanName ?? null, rates: input.currentRates ?? null });
+  const names = member || FREE_SHOWS_NAMES;
+  // Our pick, and the cheapest with no pay-on-time or direct-debit strings (from the real bill, not a what-if).
+  const realOpen = real.matches.filter((m) => !m.restricted);
+  const noStrings = realOpen.find((m) => (billDetail(m.plan, real.usage)?.conditionalDiscount ?? 0) < 0.005) ?? null;
+  const showPick = names && real.top && (real.you - real.top.total) * real.perYear >= 1;
 
   return (
     <>
@@ -470,7 +492,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
       <section className={styles.table}>
         <div className={styles.tableHead}>
           <h3>Retailer comparison</h3>
-          <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setShowAll(false); }} retailers={perRetailer.length} plans={allMatches.length} />
+          <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setShownCount(6); }} retailers={perRetailer.length} plans={allMatches.length} />
         </div>
         <div className={styles.chart}>
           <PriceLine
@@ -531,6 +553,16 @@ export function CompareSection({ input: billInput, member, period, profile = nul
           </div>
         )}
 
+        {showPick && (
+          <div className={styles.pickBox}>
+            <span className={styles.pickLabel}>Our pick</span>
+            <span>
+              <b>{real.top.plan[0]}</b> ({real.top.plan[2]}), the cheapest for your home: about {whole((real.you - real.top.total) * real.perYear)} a year less than {real.haveBill ? "your bill" : "the default offer"}.
+              {noStrings && noStrings !== real.top ? <> Rather no conditions? <b>{noStrings.plan[0]}</b> is the cheapest without pay-on-time or direct-debit discounts, {whole((noStrings.total - real.top.total) * real.perYear)} a year more.</> : null}
+            </span>
+          </div>
+        )}
+
         {/* Wide screens: the full table */}
         <div className={styles.tableWide}>
           <table>
@@ -569,12 +601,12 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                         <RetailerLink name={m.plan[0]} />
                       </span>
                       {m === top && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
-                      {mine && <span className={styles.tagMine}>Your retailer</span>}
+                      {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                       {input.ev && isEvFriendly(m.plan) && <span className={styles.tagEv}><Icon name="bolt" size={12} /> EV charging</span>}
                     </td>
-                    <td className={styles.planName}>{m.plan[2]}<br /><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /><span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /></span></td>
+                    <td className={styles.planName}>{m.plan[2]}<br /><OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly recentDays={7} /><span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /></span></td>
                     <td title={chargeHelp(m.plan)}>
-                      {chargeLabel(m.plan)}
+                      {chargeLabel(m.plan) === "Same price all day" ? "One rate" : chargeLabel(m.plan)}
                       {planPriceType(m.plan[0], m.plan[2]) === "fixed" && <span className={styles.ptFixed}> · <Icon name="lock" size={12} /> Fixed</span>}
                       <br />
                       <button type="button" className={styles.ratesToggle} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
@@ -590,6 +622,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                       <td colSpan={7}>
                         <div className={styles.ratesDetail}>
                           <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
+                          <p className={styles.ratesFine}><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></p>
                           <p className={styles.ratesFine}>Including GST, before discounts.{input.currentRates ? " ✓ marks the better rate." : ""}</p>
                         </div>
                       </td>
@@ -634,10 +667,10 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                     <RetailerLogo name={m.plan[0]} size={26} />
                     <RetailerLink name={m.plan[0]} />
                     {m === top && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Best you can get"}</span>}
-                    {mine && <span className={styles.tagMine}>Yours</span>}
+                    {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                   </div>
-                  <span className={styles.pcPlan}>{m.plan[2]} · {chargeLabel(m.plan)}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · Fixed price" : ""}</span>
-                  <OfferDate retailer={m.plan[0]} plan={m.plan[2]} />
+                  <span className={styles.pcPlan}>{m.plan[2]}{m.plan[5] === null ? " · Cheaper at night" : ""}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · Fixed price" : ""}</span>
+                  <OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly recentDays={7} />
                   <span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /></span>
                 </div>
                 <div className={styles.pcNums}>
@@ -651,6 +684,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                 {openRates === key && (
                   <div className={`${styles.ratesDetail} ${styles.pcRatesDetail}`}>
                     <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
+                    <p className={styles.ratesFine}><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></p>
                     <p className={styles.ratesFine}>Including GST, before discounts.{input.currentRates ? " ✓ marks the better rate." : ""}</p>
                   </div>
                 )}
@@ -659,10 +693,18 @@ export function CompareSection({ input: billInput, member, period, profile = nul
           })}
         </ol>
 
-        {matches.length > 10 && (
-          <button type="button" className={styles.more} onClick={() => setShowAll((v) => !v)}>
-            {showAll ? "Show the top 10" : allPlans ? `Show all ${matches.length} plans` : `Show all ${matches.length} retailers`}
-          </button>
+        {matches.length > 6 && (
+          <div className={styles.moreRow}>
+            {shownCount < matches.length && shownCount < 16 && matches.length > 16 && (
+              <button type="button" className={styles.more} onClick={() => setShownCount(16)}>Show the next {Math.min(10, matches.length - shownCount)} ▾</button>
+            )}
+            {shownCount < matches.length && (
+              <button type="button" className={styles.more} onClick={() => setShownCount(matches.length)}>{allPlans ? `Show all ${matches.length} plans` : `Show all ${matches.length} retailers`} ▾</button>
+            )}
+            {shownCount > 6 && (
+              <button type="button" className={styles.more} onClick={() => setShownCount(6)}>Show the top 6 ▴</button>
+            )}
+          </div>
         )}
         <details className={styles.legendBox}>
           <summary>What the columns and labels mean</summary>
@@ -683,6 +725,9 @@ export function CompareSection({ input: billInput, member, period, profile = nul
         )}
       </section>
 
+      <CurrentPricing input={billInput} usage={real.usage} best={real.top.plan} bestTotal={real.top.total} you={real.you} haveBill={real.haveBill} hideName={!(member || FREE_SHOWS_NAMES)} />
+
+      {/* "Before you switch" sits at the bottom (1 Nov 2026). */}
       {!(member || FREE_SHOWS_NAMES) ? (
         <section className={styles.table}>
           <div className={styles.tableHead}>
@@ -709,7 +754,6 @@ export function CompareSection({ input: billInput, member, period, profile = nul
       </details>
       )}
 
-      <CurrentPricing input={billInput} usage={real.usage} best={real.top.plan} bestTotal={real.top.total} you={real.you} haveBill={real.haveBill} hideName={!(member || FREE_SHOWS_NAMES)} />
     </>
   );
 }
@@ -804,7 +848,7 @@ function CurrentPricing({ input, usage, best, bestTotal, you, haveBill, hideName
  * card): what changed, a chart of the month, every retailer's cheapest plan
  * priced for their home against what they pay, and every change, newest first.
  */
-function MarketDetail({ c, input, member, personal, events, onClose, startAt = "top" }: {
+function MarketDetail({ c, input, member, personal, events, onClose, startAt = "top", inline = false }: {
   c: NonNullable<ReturnType<typeof compute>>;
   input: ComparisonInput;
   member: boolean;
@@ -812,6 +856,8 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
   events: MarketEvent[];
   onClose: () => void;
   startAt?: "top" | "rewards";
+  /** Inline (the phone's Market tab): no overlay, no back buttons, no rewards (they have their own tab). */
+  inline?: boolean;
 }) {
   // Opened from the rewards card: glide down to that section.
   useEffect(() => {
@@ -827,12 +873,13 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
   }, [startAt]);
   // Esc closes; the page behind doesn't scroll while this is open.
   useEffect(() => {
+    if (inline) return;
     const key = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", key);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", key); document.body.style.overflow = prev; };
-  }, [onClose]);
+  }, [onClose, inline]);
   const [allRet, setAllRet] = useState(false);
   const [allFeed, setAllFeed] = useState(false);
   const locked = new Set(lockedTopFor(c, member));
@@ -857,13 +904,8 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
   const FEED_SHOWN = 10;
   const retShown = allRet ? perRet : perRet.slice(0, RET_SHOWN);
   const feedShown = allFeed ? events : events.slice(0, FEED_SHOWN);
-  return createPortal(
-    <div className={styles.mdOverlay} role="dialog" aria-modal="true" aria-labelledby="md-title">
-      <div className={styles.mdBar}>
-        <button type="button" className={styles.mdBack} onClick={onClose}>← Back to my dashboard</button>
-        <span className={styles.mdNet}>{input.distributor} network · last 30 days</span>
-      </div>
-      <div className={styles.mdBody}>
+  const body = (
+      <div className={`${styles.mdBody} ${inline ? styles.mdInline : ""}`}>
         <h2 id="md-title" className={styles.mdTitle}>Your market this month</h2>
         <p className={styles.mdLede}>Every offer that changed on your network, priced for your home against {against}.</p>
 
@@ -918,7 +960,7 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
           )}
         </section>
 
-        <MarketRewards matches={c.matches} you={c.you} perYear={c.perYear} against={against} locked={locked as Set<unknown>} whole={whole} />
+        {!inline && <MarketRewards matches={c.matches} you={c.you} perYear={c.perYear} against={against} locked={locked as Set<unknown>} whole={whole} />}
 
         <section className={styles.mdCard} aria-labelledby="md-feed">
           <h3 id="md-feed">Latest changes on your network</h3>
@@ -948,8 +990,17 @@ function MarketDetail({ c, input, member, personal, events, onClose, startAt = "
             </button>
           )}
         </section>
-        <button type="button" className={styles.mdBackBottom} onClick={onClose}>← Back to my dashboard</button>
+        {!inline && <button type="button" className={styles.mdBackBottom} onClick={onClose}>← Back to my dashboard</button>}
       </div>
+  );
+  if (inline) return body;
+  return createPortal(
+    <div className={styles.mdOverlay} role="dialog" aria-modal="true" aria-labelledby="md-title">
+      <div className={styles.mdBar}>
+        <button type="button" className={styles.mdBack} onClick={onClose}>← Back to my dashboard</button>
+        <span className={styles.mdNet}>{input.distributor} network · last 30 days</span>
+      </div>
+      {body}
     </div>,
     document.body,
   );
