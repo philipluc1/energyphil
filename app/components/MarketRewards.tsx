@@ -51,13 +51,13 @@ export function rewardItems(matches: Match[], you: number, perYear: number, fuel
  * The dashboard's side card: the best of each kind (biggest credit, most
  * points, a gift, the biggest % off) and a button to the full section.
  */
-export function RewardsSideCard({ items, locked, onOpen }: { items: Item[]; locked: Set<unknown>; onOpen: () => void }) {
+export function RewardsSideCard({ items, locked, onOpen, wide = false }: { items: Item[]; locked: Set<unknown>; onOpen: () => void; /** In the main column (Savings tab): picks side by side. */ wide?: boolean }) {
   if (items.length === 0) return null;
-  const picks = KINDS.map((k) => items.find((i) => i.r.kind === k)).filter((i): i is Item => !!i).slice(0, 3);
+  const picks = KINDS.map((k) => items.find((i) => i.r.kind === k)).filter((i): i is Item => !!i).slice(0, wide ? 4 : 3);
   const retailers = new Set(items.map((i) => i.m.plan[0])).size;
   return (
     <section
-      className={styles.side}
+      className={`${styles.side} ${wide ? styles.sideWide : ""}`}
       aria-labelledby="rewards-side-title"
       onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a")) onOpen(); }}
     >

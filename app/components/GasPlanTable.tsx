@@ -60,13 +60,24 @@ export default function GasPlanTable({
   note?: ReactNode;
 }) {
   const [allPlans, setAllPlans] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  // Top 6, then 10 more, then everything (same as electricity).
+  const [shownCount, setShownCount] = useState(6);
   const [openRates, setOpenRates] = useState<string | null>(null);
   const gasOffer = (p: GasPlanRow) => describeOffer("G", p[0], p[2], p[1], { hasSolar: false, currentRetailer });
   const top = topOpen(ranked);
-  const perRetailer = useMemo(() => { const seen = new Set<string>(); return ranked.filter((m) => (seen.has(m.plan[0]) ? false : (seen.add(m.plan[0]), true))); }, [ranked]);
-  const rows = useMemo(() => { const list = allPlans ? ranked : perRetailer; return showAll ? list : list.slice(0, 10); }, [ranked, perRetailer, allPlans, showAll]);
+  // One row per retailer: its cheapest plan, except that the cheapest plan anyone can get stands in for its
+  // retailer when that retailer's cheapest is limited (e.g. only with their electricity), so our pick is in the list.
+  const perRetailer = useMemo(() => {
+    const seen = new Set<string>();
+    const first = ranked.filter((m) => (seen.has(m.plan[0]) ? false : (seen.add(m.plan[0]), true)));
+    return top ? first.map((m) => (m.plan[0] === top.plan[0] ? top : m)).sort((a, b) => a.total - b.total) : first;
+  }, [ranked, top]);
+  const list = allPlans ? ranked : perRetailer;
+  const rows = useMemo(() => list.slice(0, shownCount), [list, shownCount]);
   const retailers = perRetailer.length;
+  // Our pick: the cheapest plan anyone can get, when it beats what they pay. Boxed in the list, with a bubble.
+  const pickYear = top && you !== null && days > 0 ? (you - top.total) * (365 / days) : 0;
+  const pick = top && pickYear >= 1 ? top : null;
 
   return (
     <>
@@ -74,8 +85,8 @@ export default function GasPlanTable({
         <div className={v.tableHead}>
           <h3 className={s.h3}>Gas retailer comparison</h3>
           <div className={s.viewToggle} role="tablist">
-            <button type="button" role="tab" aria-selected={!allPlans} className={!allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(false); setShowAll(false); }}>Cheapest per retailer <em>{retailers}</em></button>
-            <button type="button" role="tab" aria-selected={allPlans} className={allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(true); setShowAll(false); }}>All plans <em>{ranked.length}</em></button>
+            <button type="button" role="tab" aria-selected={!allPlans} className={!allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(false); setShownCount(6); }}>Cheapest per retailer <em>{retailers}</em></button>
+            <button type="button" role="tab" aria-selected={allPlans} className={allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(true); setShownCount(6); }}>All plans <em>{ranked.length}</em></button>
           </div>
         </div>
         {chart && you !== null && perRetailer.length > 0 && (
@@ -91,6 +102,12 @@ export default function GasPlanTable({
           </div>
         )}
         {controls}
+        {pick && (
+          <div className={v.pickBox}>
+            <span className={v.pickLabel}>Our pick</span>
+            <span><b>{pick.plan[0]}</b> ({pick.plan[2]}), the cheapest for your home: about {whole(pickYear)} a year less than {youLabel.toLowerCase()}.</span>
+          </div>
+        )}
         <div className={v.tableWide}>
           <table>
             <thead>
@@ -103,14 +120,15 @@ export default function GasPlanTable({
                 const mine = currentRetailer && m.plan[0] === currentRetailer;
                 return (
                   <Fragment key={key + i}>
-                    <tr className={m === top ? v.rowBest : mine ? v.rowMine : ""}>
+                    <tr className={`${m === top ? v.rowBest : mine ? v.rowMine : ""} ${m === pick ? v.rowPick : ""}`}>
                       <td>{i + 1}</td>
                       <td>
+                        {m === pick && <span className={v.pickBubble}>Our pick</span>}
                         <span className={v.retailerCell}>
                           <RetailerLogo name={m.plan[0]} size={28} />
                           {RETAILER_LINKS[m.plan[0]] ? <a href={RETAILER_LINKS[m.plan[0]]} target="_blank" rel="noopener noreferrer" className={s.rlink}>{m.plan[0]} ↗</a> : <b>{m.plan[0]}</b>}
                         </span>
-                        {m === top && <span className={v.tagBest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
+                        {m === top && m !== pick && <span className={v.tagBest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
                         {mine && <span className={v.tagMine}>Your retailer</span>}
                       </td>
                       <td className={v.planName}>
@@ -146,13 +164,14 @@ export default function GasPlanTable({
             const diff = you !== null ? (you - m.total) * k : null;
             const mine = currentRetailer && m.plan[0] === currentRetailer;
             return (
-              <li key={key + i} className={`${v.pc} ${m === top ? v.rowBest : mine ? v.rowMine : ""}`}>
+              <li key={key + i} className={`${v.pc} ${m === top ? v.rowBest : mine ? v.rowMine : ""} ${m === pick ? v.rowPick : ""}`}>
+                {m === pick && <span className={v.pickBubble}>Our pick</span>}
                 <span className={v.pcRank}>{i + 1}</span>
                 <div className={v.pcMain}>
                   <div className={v.pcTop}>
                     <RetailerLogo name={m.plan[0]} size={26} />
                     <b>{m.plan[0]}</b>
-                    {m === top && <span className={v.tagBest}>{i === 0 ? "Cheapest" : "Best you can get"}</span>}
+                    {m === top && m !== pick && <span className={v.tagBest}>{i === 0 ? "Cheapest" : "Best you can get"}</span>}
                     {mine && <span className={v.tagMine}>Yours</span>}
                   </div>
                   <span className={v.pcPlan}>{m.plan[2]}</span>
@@ -175,10 +194,18 @@ export default function GasPlanTable({
             );
           })}
         </ol>
-        {(allPlans ? ranked.length : retailers) > 10 && (
-          <button type="button" className={v.more} onClick={() => setShowAll((x) => !x)}>
-            {showAll ? "Show the top 10" : allPlans ? `Show all ${ranked.length} plans` : `Show all ${retailers} retailers`}
-          </button>
+        {list.length > 6 && (
+          <div className={v.moreRow}>
+            {shownCount < list.length && shownCount < 16 && list.length > 16 && (
+              <button type="button" className={v.more} onClick={() => setShownCount(16)}>Show the next {Math.min(10, list.length - shownCount)} ▾</button>
+            )}
+            {shownCount < list.length && (
+              <button type="button" className={v.more} onClick={() => setShownCount(list.length)}>{allPlans ? `Show all ${list.length} plans` : `Show all ${list.length} retailers`} ▾</button>
+            )}
+            {shownCount > 6 && (
+              <button type="button" className={v.more} onClick={() => setShownCount(6)}>Show the top 6 ▴</button>
+            )}
+          </div>
         )}
         <details className={v.legendBox}>
           <summary>How we priced these</summary>

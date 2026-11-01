@@ -122,3 +122,9 @@
 .topText { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .byLine { font-size: 12.5px; color: #5b6476; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byLine b { color: #12141c; font-weight: 800; }
+
+/* 1 Nov 2026: the rewards card in the Savings tab (main column): picks side by side. */
+.sideWide { margin-bottom: 14px; padding: 20px; background: linear-gradient(135deg, #fffaf0 0%, #f0fdf4 100%); border-color: #f3e2b8; }
+.sideWide .sideList { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.sideWide .sideList li { background: #fff; border: 1px solid #eef0f4; }
+.sideWide .sideMore { align-self: flex-start; }

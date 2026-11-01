@@ -59,12 +59,21 @@ export default function DashTabs<T extends string>({
   /** Change tab and bring the tab bar back into view. */
   function go(next: number) {
     if (next < 0 || next >= tabs.length) return;
-    onChange(tabs[next].id);
-    const bar = document.getElementById("dash-tabs");
-    if (bar) {
-      const y = bar.getBoundingClientRect().top + window.scrollY - top - 8;
-      if (window.scrollY > y) window.scrollTo({ top: y, behavior: "smooth" });
-    }
+    pick(tabs[next].id);
+  }
+  /**
+   * Change tab, then scroll up to the start of the new tab when we're below it.
+   * Measured from a marker that doesn't stick (the bar itself is sticky, so it
+   * always reads as "in view"), after the new tab has drawn.
+   */
+  function pick(id: T) {
+    onChange(id);
+    requestAnimationFrame(() => {
+      const mark = document.getElementById("dash-tabs-mark");
+      if (!mark) return;
+      const y = mark.getBoundingClientRect().top + window.scrollY - top - 8;
+      if (window.scrollY > y + 4) window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+    });
   }
 
   function onTouchEnd(e: TouchEvent) {
@@ -80,6 +89,7 @@ export default function DashTabs<T extends string>({
 
   return (
     <>
+      <div id="dash-tabs-mark" aria-hidden="true" />
       <div id="dash-tabs" className={styles.bar} style={{ top }} role="tablist" aria-label="Dashboard sections">
         <div className={`${styles.track} ${tabs.length > 5 ? styles.many : ""}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
           <span
@@ -99,7 +109,7 @@ export default function DashTabs<T extends string>({
               aria-selected={t.id === active}
               aria-controls={`panel-${t.id}`}
               className={t.id === active ? styles.tabOn : styles.tab}
-              onClick={() => onChange(t.id)}
+              onClick={() => pick(t.id)}
             >
               {t.icon && <span className={styles.tabIcon}><Icon name={t.icon} size={20} /></span>}
               <span className={styles.tabText}>

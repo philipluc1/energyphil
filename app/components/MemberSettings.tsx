@@ -145,8 +145,11 @@ function AlertCard({ value, onSaved, monthly, onMonthly }: { value: number | nul
     } else setMsg(body?.message || "Couldn't save that. Please try again.");
   }
   return (
-    <section className={a.panelCard} aria-labelledby="alert-title">
-      <div id="alert-title" className={a.panelTitle}>When should we email you?</div>
+    <section className={`${a.panelCard} ${a.alertCard}`} aria-labelledby="alert-title">
+      <div className={a.plusHead}>
+        <span className={`${a.plusIcon} ${a.plusIconBlue}`} aria-hidden="true"><Icon name="bell" size={18} /></span>
+        <div id="alert-title" className={a.panelTitle}>When should we email you?</div>
+      </div>
       <p className={a.panelText}>Only when a plan would save you at least this much a year. Smaller savings still show on your dashboard.</p>
       <div className={s.choices} role="radiogroup" aria-labelledby="alert-title">
         {ALERT_MIN_CHOICES.map((v) => (

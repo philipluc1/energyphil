@@ -59,13 +59,14 @@ function useGasCtx(member: GasMember): GasCtx | null {
   }, [member.gas_zone, member.gas_billing_days, member.gas_mj, member.gas_reference_total, member.gas_current_retailer]);
 }
 
-export default function GasCards({ member }: { member: GasMember }) {
+export default function GasCards({ member, only, noRewards = false }: { member: GasMember; /** "rewardsCard": just the gas rewards card (the Savings tab). */ only?: "rewardsCard"; noRewards?: boolean }) {
   const c = useGasCtx(member);
   if (!c) return null;
+  if (only === "rewardsCard") return <GasMarket c={c} rewardsOnly />;
   return (
     <>
       <GasForecastCard c={c} />
-      <GasMarket c={c} />
+      <GasMarket c={c} noRewards={noRewards} />
     </>
   );
 }
@@ -169,12 +170,12 @@ function GasForecastPage({ f, c, onClose }: { f: GasForecast; c: GasCtx; onClose
 
 /* ---------- The gas market this month, and gas rewards ---------- */
 
-function GasMarket({ c }: { c: GasCtx }) {
+function GasMarket({ c, rewardsOnly = false, noRewards = false }: { c: GasCtx; rewardsOnly?: boolean; noRewards?: boolean }) {
   const [open, setOpen] = useState<false | "top" | "rewards">(false);
   const events = useMemo(() => marketEvents({ days: 30, keys: gasOfferKeys(c.zone) }), [c.zone]);
   const rewards = useMemo(() => rewardItems(c.ranked, c.you, c.perYear, "G"), [c]);
-  useOpenParam("gasmarket", () => setOpen("top"), true);
-  useOpenParam("gasrewards", () => setOpen("rewards"), true);
+  useOpenParam("gasmarket", () => setOpen("top"), !rewardsOnly);
+  useOpenParam("gasrewards", () => setOpen("rewards"), !rewardsOnly);
   const personal = useMemo<MarketPersonal>(() => {
     const byKey = new Map(c.ranked.map((m) => [`${m.plan[0]}|${m.plan[2]}`, m]));
     let checked = 0;
@@ -211,8 +212,8 @@ function GasMarket({ c }: { c: GasCtx }) {
   const none = useMemo(() => new Set<unknown>(), []);
   return (
     <>
-      {personal.checked > 0 && <MarketSideCard personal={personal} events={events.filter((e) => personal.vs(e)?.text !== "Not on your gas network")} onOpen={() => setOpen("top")} />}
-      <RewardsSideCard items={rewards} locked={none} onOpen={() => setOpen("rewards")} />
+      {!rewardsOnly && personal.checked > 0 && <MarketSideCard personal={personal} events={events.filter((e) => personal.vs(e)?.text !== "Not on your gas network")} onOpen={() => setOpen("top")} />}
+      {(rewardsOnly || !noRewards) && <RewardsSideCard items={rewards} locked={none} onOpen={() => setOpen("rewards")} wide={rewardsOnly} />}
       {open && <GasMarketDetail c={c} personal={personal} events={events} startAt={open} onClose={() => setOpen(false)} />}
     </>
   );

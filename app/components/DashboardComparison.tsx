@@ -329,12 +329,14 @@ function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
  * what they pay now: proof the checking happens, not just market news.
  * Same maths as the verdict above (compute), so the numbers agree.
  */
-export function MemberMarket({ input, member, compact = false, only }: {
+export function MemberMarket({ input, member, compact = false, only, noRewards = false }: {
   input: ComparisonInput;
   member: boolean;
   compact?: boolean;
-  /** The phone's Market and Rewards tabs: that section in full, on the page. */
-  only?: "market" | "rewards";
+  /** The phone's Market and Rewards tabs: that section in full, on the page. "rewardsCard": just the rewards card (the Savings tab). */
+  only?: "market" | "rewards" | "rewardsCard";
+  /** Side column: leave the rewards card out (the Savings tab already shows it). */
+  noRewards?: boolean;
 }) {
   const c = useMemo(() => compute(input), [input]);
   // The full market page opens over the dashboard, so members never leave it.
@@ -394,12 +396,21 @@ export function MemberMarket({ input, member, compact = false, only }: {
     const against = c.haveBill ? "your bill" : "the default offer";
     return <MarketRewards matches={c.matches} you={c.you} perYear={c.perYear} against={against} locked={new Set(lockedTopFor(c, member)) as Set<unknown>} whole={whole} />;
   }
+  if (only === "rewardsCard") {
+    const events = marketEvents({ days: 30, network: input.distributor });
+    return (
+      <>
+        <RewardsSideCard items={rewards} locked={new Set(lockedTopFor(c, member))} onOpen={() => setOpen("rewards")} wide />
+        {open && <MarketDetail c={c} input={input} member={member} personal={personal} events={events} startAt={open} onClose={() => setOpen(false)} />}
+      </>
+    );
+  }
   if (compact) {
     const events = marketEvents({ days: 30, network: input.distributor });
     return (
       <>
         {personal.checked > 0 && <MarketSideCard personal={personal} events={events} onOpen={() => setOpen("top")} />}
-        <RewardsSideCard items={rewards} locked={new Set(lockedTopFor(c, member))} onOpen={() => setOpen("rewards")} />
+        {!noRewards && <RewardsSideCard items={rewards} locked={new Set(lockedTopFor(c, member))} onOpen={() => setOpen("rewards")} />}
         {open && <MarketDetail c={c} input={input} member={member} personal={personal} events={events} startAt={open} onClose={() => setOpen(false)} />}
       </>
     );
@@ -472,6 +483,8 @@ export function CompareSection({ input: billInput, member, period, profile = nul
   const realOpen = real.matches.filter((m) => !m.restricted);
   const noStrings = realOpen.find((m) => (billDetail(m.plan, real.usage)?.conditionalDiscount ?? 0) < 0.005) ?? null;
   const showPick = names && real.top && (real.you - real.top.total) * real.perYear >= 1;
+  // The pick's row in the list gets a box and an "Our pick" bubble.
+  const isPick = (m: (typeof matches)[number]) => !!showPick && !!real.top && m.plan[0] === real.top.plan[0] && m.plan[2] === real.top.plan[2];
 
   return (
     <>
@@ -593,14 +606,15 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                 const key = `${m.plan[0]}|${m.plan[2]}`;
                 return (
                   <Fragment key={key + i}>
-                  <tr className={m === top ? styles.rowBest : mine ? styles.rowMine : ""} style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+                  <tr className={`${m === top ? styles.rowBest : mine ? styles.rowMine : ""} ${isPick(m) ? styles.rowPick : ""}`} style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
                     <td>{i + 1}</td>
                     <td>
+                      {isPick(m) && <span className={styles.pickBubble}>Our pick</span>}
                       <span className={styles.retailerCell}>
                         <RetailerLogo name={m.plan[0]} size={28} />
                         <RetailerLink name={m.plan[0]} />
                       </span>
-                      {m === top && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
+                      {m === top && !isPick(m) && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
                       {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                       {input.ev && isEvFriendly(m.plan) && <span className={styles.tagEv}><Icon name="bolt" size={12} /> EV charging</span>}
                     </td>
@@ -660,13 +674,14 @@ export function CompareSection({ input: billInput, member, period, profile = nul
             }
             const key = `${m.plan[0]}|${m.plan[2]}`;
             return (
-              <li key={key + i} className={`${styles.pc} ${m === top ? styles.rowBest : mine ? styles.rowMine : ""}`}>
+              <li key={key + i} className={`${styles.pc} ${m === top ? styles.rowBest : mine ? styles.rowMine : ""} ${isPick(m) ? styles.rowPick : ""}`}>
+                {isPick(m) && <span className={styles.pickBubble}>Our pick</span>}
                 <span className={styles.pcRank}>{i + 1}</span>
                 <div className={styles.pcMain}>
                   <div className={styles.pcTop}>
                     <RetailerLogo name={m.plan[0]} size={26} />
                     <RetailerLink name={m.plan[0]} />
-                    {m === top && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Best you can get"}</span>}
+                    {m === top && !isPick(m) && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Best you can get"}</span>}
                     {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                   </div>
                   <span className={styles.pcPlan}>{m.plan[2]}{m.plan[5] === null ? " · Cheaper at night" : ""}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · Fixed price" : ""}</span>

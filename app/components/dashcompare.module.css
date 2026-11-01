@@ -347,3 +347,11 @@
   .sideChips { grid-column: 1 / -1; justify-content: flex-start; }
   .sideSave > b { display: none; }
 }
+
+/* 1 Nov 2026: our pick's row is boxed in green with an "Our pick" bubble. */
+.table table tr.rowPick { outline: 2px solid #16a34a; outline-offset: -2px; background: #f0fdf4; }
+.table table tr.rowPick td { position: relative; }
+.pickBubble { display: inline-block; margin-bottom: 6px; padding: 3px 9px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; box-shadow: 0 2px 6px -2px rgba(22, 163, 74, 0.6); }
+li.rowPick { position: relative; outline: 2px solid #16a34a; outline-offset: -2px; background: #f0fdf4; border-radius: 12px; padding-top: 22px; }
+li.rowPick > .pickBubble { position: absolute; top: 6px; left: 42px; margin: 0; }
+.table td > .pickBubble { display: block; width: fit-content; }

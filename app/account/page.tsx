@@ -517,7 +517,8 @@ export default function AccountPage() {
       const t = TAB_FROM_HASH[window.location.hash.slice(1)];
       if (!t) return;
       setTab(t);
-      const bar = document.getElementById("dash-tabs");
+      // The marker above the tab bar (the bar is sticky, so it can't be measured).
+      const bar = document.getElementById("dash-tabs-mark");
       const header = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
       if (bar) window.scrollTo({ top: bar.getBoundingClientRect().top + window.scrollY - header - 8, behavior: "smooth" });
     };
@@ -824,12 +825,12 @@ export default function AccountPage() {
   const sideCardList = (withPlan: boolean) => (
     <>
       {fuel === "gas" && sub && <GasAside member={sub} />}
-      {fuel === "gas" && sub && <GasCards member={sub} />}
+      {fuel === "gas" && sub && <GasCards member={sub} noRewards={shownTab === "savings"} />}
       {withPlan && fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
       {fuel === "elec" && cmpInput && myShape && <MiddayCard input={cmpInput} shape={myShape.shape} evOvernight={myShape.evOvernight} profile={homeProfile} member={isMember} />}
       {fuel === "elec" && cmpInput && <ForecastCard input={cmpInput} profile={homeProfile} member={isMember} />}
       {fuel === "elec" && isMember && <CountdownCard input={cmpInput} discountEndsAt={sub!.discount_ends_at ?? null} fixedUntil={sub!.current_price_fixed_until ?? null} onEdit={editDealDates} />}
-      {fuel === "elec" && cmpInput && !marketTabs && <MemberMarket input={cmpInput} member={isMember} compact />}
+      {fuel === "elec" && cmpInput && !marketTabs && <MemberMarket input={cmpInput} member={isMember} compact noRewards={shownTab === "savings"} />}
       {fuel === "elec" && cmpInput && homeProfile && <LikeYoursCard input={cmpInput} profile={homeProfile} />}
           <div className={styles.panelCard}>
             <div className={styles.panelTitle}>Gas</div>
@@ -1122,6 +1123,9 @@ export default function AccountPage() {
                             </>
                           )}
                         </section>
+                        {/* Discounts and rewards on their network (1 Nov 2026): money on the table, next to their saving. */}
+                        {fuel === "elec" && cmpInput && <MemberMarket input={cmpInput} member={isMember} only="rewardsCard" />}
+                        {fuel === "gas" && sub && <GasCards member={sub} only="rewardsCard" />}
 
 
                         <section className={styles.panelCard} id="deal-dates">
@@ -1231,15 +1235,18 @@ export default function AccountPage() {
                         <>
                           <ValueTally sub={sub!} saved={switchedAt ? accumulated.total : 0} switched={!!switchedAt} />
                           <WorkingForYou sub={sub!} />
-                          <section className={styles.panelCard}>
+                          <section className={`${styles.panelCard} ${styles.planCardPlus}`}>
                             <div className={styles.panelTitleRow}>
-                              <div>
+                              <div className={styles.plusHead}>
+                                <span className={`${styles.plusIcon} ${styles.plusIconAmber}`} aria-hidden="true"><Icon name="bolt" size={18} /></span>
+                                <div>
                                 <div className={styles.panelTitle}>{PLUS_NAME} · {findPlan(sub!.plan)?.name ?? sub!.plan}</div>
                                 <div className={styles.planMeta}>
                                   {sub!.amount_cents !== null ? fmtPrice(sub!.amount_cents) : "—"}
                                   {" · "}
                                   <span className={styles.statusActive}>{statusLabel(sub!.status)}</span>
                                   {sub!.current_period_end && <> · Renews {fmtDate(sub!.current_period_end)}</>}
+                                </div>
                                 </div>
                               </div>
                               <button type="button" className={styles.btnGhost} onClick={handleManageBilling} disabled={portalLoading}>
@@ -1336,8 +1343,11 @@ function ValueTally({ sub, saved, switched }: { sub: SubscriberSummary; saved: n
   const max = Math.max(saved, paid, 1);
   const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
   return (
-    <section className={styles.panelCard}>
-      <div className={styles.panelTitle}>Utilo Plus so far</div>
+    <section className={`${styles.panelCard} ${styles.tallyCard}`}>
+      <div className={styles.plusHead}>
+        <span className={styles.plusIcon} aria-hidden="true"><Icon name="chart" size={18} /></span>
+        <div className={styles.panelTitle}>Utilo Plus so far</div>
+      </div>
       <div className={styles.tally}>
         <div className={styles.tallyRow}>
           <span>Saved by switching</span>
@@ -1368,8 +1378,16 @@ function WorkingForYou({ sub }: { sub: SubscriberSummary }) {
   const a = marketActivity({ network: sub.distributor, since: sub.created_at });
   if (!a.ready || a.newOffers + a.priceChanges === 0) return null;
   return (
-    <section className={styles.panelCard}>
-      <div className={styles.panelTitle}>Working for you</div>
+    <section className={`${styles.panelCard} ${styles.workCard}`}>
+      <div className={styles.plusHead}>
+        <span className={`${styles.plusIcon} ${styles.plusIconTeal}`} aria-hidden="true"><Icon name="refresh" size={18} /></span>
+        <div className={styles.panelTitle}>Working for you</div>
+      </div>
+      <div className={styles.workStats}>
+        {a.newOffers > 0 && <span className={styles.workStat}><b>{a.newOffers.toLocaleString("en-AU")}</b> new {a.newOffers === 1 ? "offer" : "offers"}</span>}
+        {a.priceChanges > 0 && <span className={`${styles.workStat} ${styles.workStatBlue}`}><b>{a.priceChanges.toLocaleString("en-AU")}</b> updated</span>}
+        <span className={`${styles.workStat} ${styles.workStatAmber}`}><Icon name="check" size={14} /> all re-priced for you</span>
+      </div>
       <p className={styles.panelText}>
         Since you joined on {fmtDate(sub.created_at)}, retailers have made <b>{activityWords(a)}</b> on the {sub.distributor} network. We&apos;ve
         re-priced every one against your home, so you don&apos;t have to keep up.
