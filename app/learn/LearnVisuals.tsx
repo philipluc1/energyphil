@@ -1,5 +1,7 @@
 import { BROAD_COVERAGE } from "@/lib/dataPolicy";
 import { typicalHouseholdExample } from "@/lib/savings";
+import { PLANS } from "@/lib/plans";
+import { GAS_PLANS } from "@/lib/gasPlans";
 import v from "./visuals.module.css";
 import Icon from "../components/Icon";
 
@@ -9,6 +11,8 @@ export function StepsVisual() {
   const bench = Math.round(ex.annualBench);
   const best = Math.round(ex.annualBest);
   const bestPct = bench > 0 ? Math.max(20, Math.round((best / bench) * 100)) : 70;
+  // Electricity and gas plans we price, rounded down to the hundred ("1,500+").
+  const planCount = (Math.floor((PLANS.length + GAS_PLANS.length) / 100) * 100).toLocaleString("en-AU");
 
   return (
     <ol className={v.steps}>
@@ -26,7 +30,7 @@ export function StepsVisual() {
         </div>
         <span className={v.num}>1</span>
         <h3>Snap your bill</h3>
-        <p>30 seconds. No bill? Answer a few taps.</p>
+        <p>30 seconds. No bill? A few taps.</p>
       </li>
 
       <li className={`${v.step} ${v.s2}`}>
@@ -46,8 +50,8 @@ export function StepsVisual() {
           </div>
         </div>
         <span className={v.num}>2</span>
-        <h3>See your saving</h3>
-        <p>Every plan we track, priced for your home.</p>
+        <h3>We sort {planCount}+ plans</h3>
+        <p>Confusing rates, ranked for your home.</p>
       </li>
 
       <li className={`${v.step} ${v.s3}`}>
@@ -65,8 +69,8 @@ export function StepsVisual() {
           </div>
         </div>
         <span className={v.num}>3</span>
-        <h3>Switch, or let us watch</h3>
-        <p>Plus members get a heads-up only when it&apos;s worth it.</p>
+        <h3>We keep watching</h3>
+        <p>Prices change weekly. We tell you when it pays to move.</p>
       </li>
       <li className={v.footnote}>Typical home, 4,000 kWh a year, averaged across Victoria&apos;s networks.</li>
     </ol>

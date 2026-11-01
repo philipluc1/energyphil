@@ -1,4 +1,5 @@
 import { pageMeta } from "@/lib/seo";
+import { GAS_PLANS } from "@/lib/gasPlans";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,7 +14,6 @@ import StateWaitlist from "./components/StateWaitlist";
 import Icon from "./components/Icon";
 import CountUp from "./components/CountUp";
 import InfoTip from "./components/InfoTip";
-import NbnNotify from "./components/NbnNotify";
 import SourceBanner from "./components/SourceBanner";
 import PlanBand from "./components/PlanBand";
 import JoinDirect from "./components/JoinDirect";
@@ -73,9 +73,9 @@ export default function Home() {
           <div className={h.heroText}>
             <span className={h.kicker}><Icon name="bolt" size={14} /> Victorian homes · electricity and gas</span>
             <h1 className={h.h1}>
-              Stop overpaying
+              Stop overpaying.
               <br />
-              for power.
+              <span className={h.h1Accent}>Start saving.</span>
             </h1>
             <p className={h.lede}>Snap your bill. See your savings.</p>
             {topSave && topSave.save >= 1 && (
@@ -96,15 +96,21 @@ export default function Home() {
               </Link>
               <Link href="/check?start=questions" className={h.ghost}>No bill? Use the average home</Link>
             </div>
-            <ul className={h.fuels} aria-label="Bills we check">
-              <li><Link href="/check" className={h.fuel}><span className={h.fElec}><Icon name="bolt" size={15} /></span> Electricity</Link></li>
-              <li><Link href="/gas" className={h.fuel}><span className={h.fGas}><Icon name="flame" size={15} /></span> Gas</Link></li>
-              <li className={h.fuelSoon}>
-                <span className={h.fNbn}><Icon name="wifi" size={15} /></span> Internet <span className={h.soon}>Soon</span>
-                <InfoTip label="Internet comparison is coming">
-                  <b>Coming to {PLUS_NAME}.</b> Snap your internet bill and we&apos;ll check your speed tier against every provider. Leave your email and we&apos;ll tell you when it opens.
-                  <span className={h.tipForm}><NbnNotify /></span>
-                </InfoTip>
+            {/* Internet ("Soon") is hidden for now: electricity and gas are the offer. */}
+            <ul className={h.fuelsHero} aria-label="Bills we check">
+              <li>
+                <Link href="/check" className={`${h.fuelCard} ${h.fuelCardElec}`}>
+                  <span className={h.fElec}><Icon name="bolt" size={20} /></span>
+                  <span className={h.fuelCardText}><b>Electricity</b><small>Check my power bill</small></span>
+                  <span className={h.fuelGo} aria-hidden="true">→</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/gas" className={`${h.fuelCard} ${h.fuelCardGas}`}>
+                  <span className={h.fGas}><Icon name="flame" size={20} /></span>
+                  <span className={h.fuelCardText}><b>Gas</b><small>Check my gas bill</small></span>
+                  <span className={h.fuelGo} aria-hidden="true">→</span>
+                </Link>
               </li>
             </ul>
           </div>
@@ -128,7 +134,7 @@ export default function Home() {
         <ul className={h.stats} data-motion="" data-stagger=":scope > li">
           <li className={h.stat}>
             <span className={`${h.statIcon} ${h.siPlans}`}><Icon name="search" size={20} /></span>
-            <span className={h.statText}><b className={h.statNum}><CountUp value={PLANS.length} /></b><span className={h.statLabel}>plans checked</span></span>
+            <span className={h.statText}><b className={h.statNum}><CountUp value={PLANS.length + GAS_PLANS.length} /></b><span className={h.statLabel}>power and gas plans</span></span>
           </li>
           <li className={h.stat}>
             <span className={`${h.statIcon} ${h.siRetailers}`}><Icon name="bolt" size={20} /></span>
@@ -157,8 +163,7 @@ export default function Home() {
         {/* 4. Utilo Plus, front and centre, with direct checkout. */}
         <PlanBand
           id="plus"
-          title="Let us do the checking. Every morning."
-          intro={<>{v.monthly} a month is {v.monthlyYear} a year. Go yearly for {v.annual} and keep {v.save}.</>}
+          title="Join Utilo Plus. We keep watching."
           cards={<JoinDirect cancelPath="/" />}
         />
 

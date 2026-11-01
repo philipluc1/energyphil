@@ -74,7 +74,7 @@ export default function PricingPage() {
           <p className={p.cFoot}>On your own: the free government and retailer sites, done by hand whenever you remember to.</p>
         </section>
 
-        <PlanBand title="Pick how you pay" intro={<>Same {PLUS_NAME} either way. Yearly keeps {v.save} in your pocket.</>} cards={<JoinDirect />} />
+        <PlanBand gets={false} title="Pick how you pay" intro={<>Same {PLUS_NAME} either way. Yearly keeps {v.save} in your pocket.</>} cards={<JoinDirect />} />
 
         <section className={h.section} data-motion="" data-stagger="details">
           <div className={h.faq}>

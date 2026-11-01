@@ -26,3 +26,8 @@
 /* On the navy Utilo Plus band: white cards, so they read as objects to pick. */
 .dark .card { background: #fff; border-color: transparent; }
 .dark .featured { border-color: var(--amber); }
+
+/* 1 Nov 2026: centred price and text in each card. */
+.card { align-items: center; text-align: center; }
+.priceRow { justify-content: center; }
+.ribbon { left: 50%; transform: translateX(-50%); white-space: nowrap; }
