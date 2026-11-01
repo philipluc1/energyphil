@@ -4,6 +4,7 @@ import SiteHeader from "../components/SiteHeader";
 import MarketBoard from "../components/MarketBoard";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
+import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({
   title: "What changed in Victoria's power market",
@@ -31,6 +32,7 @@ export default function MarketPage() {
           Plus members get each of these priced against their own bill. <Link href="/check">Start with the free check</Link>.
         </p>
       </div>
+      <SiteFooter />
     </>
   );
 }

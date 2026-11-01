@@ -1,0 +1,10 @@
+.soon { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: #fff3d6; color: #8a5300; font-size: 13px; font-weight: 900; }
+.card { margin: 22px 0 18px; padding: 22px; border-radius: 20px; background: linear-gradient(135deg, #22306e 0%, #1b2554 100%); color: #fff; }
+.card h2 { margin: 0 0 4px; font-size: 22px; font-weight: 900; }
+.card p { margin: 0 0 14px; color: #d6dcf0; font-size: 15px; }
+.points { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.points li { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; line-height: 1.5; color: var(--grey); }
+.points b { display: block; color: var(--ink); font-size: 15px; }
+.icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--amber); color: #1c1917; }
+.home { margin: 22px 0 40px; font-size: 15px; color: var(--grey); }
+.home a { font-weight: 800; color: var(--navy-accent-text, #22306e); }

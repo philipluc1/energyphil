@@ -6,6 +6,7 @@ import { ABOUT } from "@/lib/about";
 import SiteHeader from "../components/SiteHeader";
 import styles from "../components/StaticPage.module.css";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Terms of Service", description: "The terms for using Utilo's free check and membership.", path: "/terms" });
 
@@ -135,6 +136,7 @@ export default function TermsPage() {
           <Link href="/">Home</Link>
         </div>
       </div>
+      <SiteFooter />
     </>
   );
 }

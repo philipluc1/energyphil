@@ -6,6 +6,7 @@ import Tag from "../components/Tag";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 import EvCalculator from "./EvCalculator";
+import SiteFooter from "../components/SiteFooter";
 
 // Kept out of search until the plan data has overnight rates to show.
 export function generateMetadata() {
@@ -37,13 +38,7 @@ export default function EvPage() {
         <section className={styles.sectionGap}>
           <Link href="/check" className={styles.heroCta}>Check my whole bill</Link>
         </section>
-        <footer className={styles.footer}>
-          <div className={styles.fbrand}>Utilo</div>
-          <p>
-            <Link href="/">Home</Link> · <Link href="/learn">Learn</Link> · <Link href="/pricing">Pricing</Link> · <Link href="/faq">FAQ</Link> ·{" "}
-            <Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link>
-          </p>
-        </footer>
+        <SiteFooter />
       </div>
     </>
   );

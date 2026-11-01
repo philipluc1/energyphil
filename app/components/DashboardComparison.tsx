@@ -449,7 +449,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
   // One row per retailer (its cheapest plan) unless they ask for every plan.
   const perRetailer = cheapestPerRetailer(allMatches, top);
   const matches = allPlans ? allMatches : perRetailer;
-  const { distributor, days, currentRetailer, currentPlanName, source } = input;
+  const { days, currentRetailer, currentPlanName, source } = input;
   const k = periodScale(period, days);
   // Each plan against the Victorian Default Offer for the same usage, as a percentage.
   const vsVdo = (total: number) => (vdo > 0 ? (total - vdo) / vdo : 0);
@@ -536,14 +536,30 @@ export function CompareSection({ input: billInput, member, period, profile = nul
           />
         </div>
         {base && !base.average && (
-          <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-label="What if my usage changes?">
+          <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-labelledby="use-title">
+            {/* 1 Nov 2026: says what it is, and what it does, before the slider. */}
+            <div className={ins.useHead}>
+              <span className={ins.useIcon} aria-hidden="true"><Icon name="chart" size={16} /></span>
+              <div>
+                <b id="use-title">What if you use more or less?</b>
+                <span>Slide it, or tap a season. The chart and every price below re-rank for that usage.</span>
+              </div>
+            </div>
+            <p className={ins.useResult} aria-live="polite">
+              {whatIf ? <>What if: <b>{kwhDay.toFixed(1)} kWh a day</b> ({pctUse !== 100 ? `${pctUse}% of your bill` : "your bill"}{season !== "none" ? `, ${season}` : ""}{evWhatIf ? ", plus an EV" : ""}).</> : <>Now: <b>{kwhDay.toFixed(1)} kWh a day</b>, from your {source === "bill" ? "bill" : "answers"}.</>}{" "}
+              Cheapest: <b className={ins.useBest}>{names ? top.plan[0] : "the cheapest plan"}, {whole(top.total * c.perYear)} a year</b>
+              {haveBill ? <>, against {whole(you * c.perYear)} on your plan{whatIf ? " at that usage" : ""}</> : null}.
+            </p>
             <div className={ins.wiSlider}>
-              <label htmlFor="use-range">
-                <span>{whatIf ? "What if: usage" : "Your usage"}</span>
-                <b>{kwhDay.toFixed(1)} kWh a day{pctUse !== 100 ? ` · ${pctUse}% of your bill` : ""}</b>
-              </label>
-              <input id="use-range" type="range" min={50} max={200} step={5} value={pctUse} onChange={(e) => setPctUse(Number(e.target.value))} aria-describedby="use-hint" />
-              <div className={ins.wiTicks} id="use-hint"><span>Half</span><span>Your bill</span><span>Double</span></div>
+              <label htmlFor="use-range" className={ins.srOnly}>Usage, as a share of your bill</label>
+              <input id="use-range" type="range" min={50} max={200} step={5} value={pctUse} onChange={(e) => setPctUse(Number(e.target.value))} aria-describedby="use-hint" aria-valuetext={`${pctUse}% of your bill, ${kwhDay.toFixed(1)} kWh a day`} />
+              {/* Ticks sit where those values are on the slider (50% to 200%), so "Your bill" lines up with the thumb. */}
+              <div className={ins.useTicks} id="use-hint">
+                <span style={{ left: "0%" }}>Half</span>
+                <span style={{ left: `${((100 - 50) / 150) * 100}%` }} className={ins.useTickBill}>Your bill</span>
+                <span style={{ left: `${((150 - 50) / 150) * 100}%` }}>1.5×</span>
+                <span style={{ left: "100%" }}>Double</span>
+              </div>
             </div>
             <div className={ins.wiChips}>
               {seasons && (
@@ -566,14 +582,11 @@ export function CompareSection({ input: billInput, member, period, profile = nul
           </div>
         )}
 
-        {showPick && (
-          <div className={styles.pickBox}>
-            <span className={styles.pickLabel}>Our pick</span>
-            <span>
-              <b>{real.top.plan[0]}</b> ({real.top.plan[2]}), the cheapest for your home: about {whole((real.you - real.top.total) * real.perYear)} a year less than {real.haveBill ? "your bill" : "the default offer"}.
-              {noStrings && noStrings !== real.top ? <> Rather no conditions? <b>{noStrings.plan[0]}</b> is the cheapest without pay-on-time or direct-debit discounts, {whole((noStrings.total - real.top.total) * real.perYear)} a year more.</> : null}
-            </span>
-          </div>
+        {/* Our pick is the boxed row with the bubble (1 Nov 2026); no banner above. */}
+        {showPick && noStrings && noStrings !== real.top && (
+          <p className={styles.noStringsLine}>
+            Rather no conditions? <b>{noStrings.plan[0]}</b> is the cheapest without pay-on-time or direct-debit discounts, {whole((noStrings.total - real.top.total) * real.perYear)} a year more.
+          </p>
         )}
 
         {/* Wide screens: the full table */}

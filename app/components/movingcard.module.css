@@ -1,0 +1,51 @@
+.card { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; padding: 16px 18px; border-radius: 18px; background: linear-gradient(90deg, #eef2ff 0%, var(--surface) 70%); border: 1px solid #dbe3f7; border-left: 5px solid var(--navy, #22306e); }
+.cardOpen { display: block; }
+.icon { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--navy, #22306e); color: #fff; }
+.closedText { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; color: var(--grey); }
+.closedText b { font-size: 16px; color: var(--ink); }
+.openBtn, .saveBtn { padding: 10px 16px; border-radius: 12px; border: 0; background: var(--navy, #22306e); color: #fff; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.saveBtn { background: var(--amber); color: #111827; }
+.saveBtn:disabled { opacity: 0.6; cursor: default; }
+.head { display: flex; gap: 12px; align-items: flex-start; }
+.head > div { flex: 1; }
+.head h3 { margin: 0; font-size: 18px; font-weight: 900; }
+.head p { margin: 2px 0 0; font-size: 14px; color: var(--grey); line-height: 1.5; }
+.close { border: 0; background: none; font-size: 22px; line-height: 1; color: var(--grey); cursor: pointer; padding: 2px 6px; }
+.fields { display: grid; grid-template-columns: 120px 1fr; gap: 10px; margin-top: 14px; }
+.fields label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.fields em { font-style: normal; font-weight: 500; color: var(--grey); }
+.fields input, .network select { box-sizing: border-box; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 15px; color: var(--ink); }
+.wide { grid-column: 1 / -1; }
+.network { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; font-size: 13.5px; color: var(--grey); }
+.network b { color: var(--ink); }
+.result { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 14px; background: #ecfdf3; border: 1px solid #bbf7d0; }
+.tile:nth-child(2) { background: #eef2ff; border-color: #dbe3f7; }
+.tileGrey { background: #f6f7fa; border-color: var(--border); }
+.tile span { font-size: 12px; font-weight: 800; color: var(--grey); }
+.tile b { font: 900 22px/1.1 "Archivo", sans-serif; color: var(--ink); }
+.tile:first-child b { color: #15803d; }
+.tile small { font-size: 12px; color: var(--grey); }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: #fff; border: 1px solid var(--border); }
+.list li::before { display: none; }
+.rank { width: 20px; font-weight: 900; color: var(--grey); text-align: center; }
+.planText { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.planText small { font-size: 12px; color: var(--grey); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.price { font-variant-numeric: tabular-nums; font-size: 16px; }
+.price small { font-size: 11px; color: var(--grey); font-weight: 600; }
+.note { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.fine { margin: 0; font-size: 12.5px; color: var(--grey); line-height: 1.5; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12.5px; color: var(--grey); }
+.actions span { flex: 1; min-width: 200px; }
+.ok { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 700; color: #15803d; }
+.err { margin: 0; font-size: 13.5px; color: #b91c1c; }
+@media (max-width: 560px) {
+  .tiles { grid-template-columns: 1fr; }
+  .tile { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+  .tile span { width: 100%; }
+  .openBtn { width: 100%; }
+}
+.fields input { width: 100%; }
+.fields label { min-width: 0; }

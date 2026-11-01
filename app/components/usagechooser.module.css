@@ -50,3 +50,7 @@
 .stickyRow > button:last-child { flex: 1; }
 .stickyBack { flex: none; width: 52px; border-radius: 14px; border: 1px solid var(--border, #e4e7ee); background: var(--surface, #fff); font-size: 20px; font-weight: 800; color: var(--ink, #12141c); cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .pageFwd, .pageBack { animation: none; } .progressBar i { transition: none; } }
+
+/* Questions page 2: "Roughly what do you pay?" under the usage choice (1 Nov 2026). */
+.payBox { margin-top: 14px; padding: 16px; border-radius: 16px; background: #fffaf0; border: 1px solid #f3e2b8; display: flex; flex-direction: column; gap: 6px; }
+.payBox h3, .payBox p { margin: 0; }

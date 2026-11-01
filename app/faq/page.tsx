@@ -6,6 +6,7 @@ import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
+import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Questions about Utilo", description: "Is it free, do you need a bill, is it independent, how it differs from Victorian Energy Compare, and what happens to your details.", path: "/faq" });
 
@@ -81,13 +82,7 @@ export default function FaqPage() {
             Start my free check
           </Link>
         </section>
-        <footer className={styles.footer}>
-          <div className={styles.fbrand}>Utilo</div>
-          <p>
-            <Link href="/">Home</Link> · <Link href="/pricing">Pricing</Link> · <Link href="/privacy">Privacy</Link> ·{" "}
-            <Link href="/cancellation-policy">Cancellation</Link> · <Link href="/terms">Terms</Link>
-          </p>
-        </footer>
+        <SiteFooter />
       </div>
     </>
   );

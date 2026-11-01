@@ -1,0 +1,59 @@
+import Link from "next/link";
+import Icon from "./Icon";
+import { ABOUT } from "@/lib/about";
+import { PLUS_NAME } from "@/lib/pricingPlans";
+import s from "./sitefooter.module.css";
+
+/** The site footer (1 Nov 2026): one on every public page. */
+export default function SiteFooter() {
+  const who = [ABOUT.businessName, ABOUT.abn ? `ABN ${ABOUT.abn}` : "", ABOUT.location].filter(Boolean).join(" · ");
+  return (
+    <footer className={s.footer}>
+      <div className={s.inner}>
+        <div className={s.brand}>
+          <Link href="/" className={s.logo} aria-label="Utilo home">
+            <span className={s.mark}><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg></span>
+            <span className={s.word}>Util<span>o</span></span>
+          </Link>
+          <p>Every Victorian power and gas plan, priced on your own bill. Not a cent from retailers.</p>
+          <p className={s.proud}>Proudly Australian. Helping homes now, and businesses soon.</p>
+          {ABOUT.contactEmail && <a className={s.mail} href={`mailto:${ABOUT.contactEmail}`}><Icon name="mail" size={14} /> {ABOUT.contactEmail}</a>}
+        </div>
+        <nav className={s.cols} aria-label="Footer">
+          <div>
+            <h3>Check</h3>
+            <Link href="/check">Electricity</Link>
+            <Link href="/gas">Gas</Link>
+            <Link href="/ev">EV plans</Link>
+            <Link href="/market">Market changes</Link>
+          </div>
+          <div>
+            <h3>{PLUS_NAME}</h3>
+            <Link href="/pricing">Pricing</Link>
+            <Link href="/learn">How it works</Link>
+            <Link href="/faq">Questions</Link>
+            <Link href="/account">Log in</Link>
+          </div>
+          <div>
+            <h3>Utilo</h3>
+            <Link href="/">Residential</Link>
+            <Link href="/business">Business <em>Soon</em></Link>
+            <Link href="/default-offer">The default offer</Link>
+          </div>
+          <div>
+            <h3>Legal</h3>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/cancellation-policy">Cancellation</Link>
+          </div>
+        </nav>
+      </div>
+      <div className={s.base}>
+        <p>
+          © {new Date().getFullYear()} Utilo{who ? ` · ${who}` : ""}. Independent: not affiliated with the Victorian Government or any retailer.
+          Prices come from retailers&apos; published offers. Estimates only: confirm the price with the retailer before you switch.
+        </p>
+      </div>
+    </footer>
+  );
+}

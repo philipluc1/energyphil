@@ -8,7 +8,7 @@ import s from "./dashheader.module.css";
 
 /**
  * The dashboard's own header (29 Oct 2026). No site nav, so members stay in
- * their dashboard; the logo brings them back to its top. Log out, billing,
+ * their dashboard; the logo goes to the home page (1 Nov 2026). Log out, billing,
  * policies and the public site sit in a small account menu, out of the way.
  */
 export default function DashHeader({
@@ -40,10 +40,10 @@ export default function DashHeader({
   return (
     <header className={s.top}>
       <div className={s.bar}>
-        <a href="#top" className={s.brand} onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }} aria-label="Back to the top of your dashboard">
+        <Link href="/" className={s.brand} aria-label="Utilo home page">
           <span className={s.mark}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg></span>
           <span className={s.word}>Util<span>o</span></span>
-        </a>
+        </Link>
         <div className={s.right}>
           {isMember ? (
             <span className={s.plus}><Icon name="bolt" size={13} /> {PLUS_NAME}</span>

@@ -76,3 +76,6 @@ h3 {
     opacity 0.65s cubic-bezier(0.22, 0.7, 0.3, 1),
     transform 0.65s cubic-bezier(0.22, 0.7, 0.3, 1);
 }
+
+/* The full-width footer uses 100vw; never let that make the page scroll sideways. */
+html, body { overflow-x: clip; }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PRICING_PLANS, PLAN_DISPLAY, fmtPrice, plusValue, type PlanId } from "@/lib/pricingPlans";
+import { PRICING_PLANS, fmtPrice, plusValue, type PlanId } from "@/lib/pricingPlans";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./upgradeplans.module.css";
 
@@ -10,7 +10,11 @@ export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: 
   const [busy, setBusy] = useState<PlanId | null>(null);
   const [msg, setMsg] = useState("");
   // Plans on sale, plus whatever they are on now (older plans keep working).
-  const recurring = PRICING_PLANS.filter((p) => p.mode === "subscription" && (p.onSale || p.id === currentPlan));
+  // Same order and framing as the home and pricing pages (1 Nov 2026): Monthly, then Yearly
+  // ("Best value · save $45"), then any older plan they're still on, marked as no longer offered.
+  const rank = (p: (typeof PRICING_PLANS)[number]) => (p.id === "monthly" ? 0 : p.id === "annual" ? 1 : 2);
+  const recurring = PRICING_PLANS.filter((p) => p.mode === "subscription" && (p.onSale || p.id === currentPlan)).sort((a, b) => rank(a) - rank(b));
+  const v = plusValue();
   const isOnceOff = currentPlan === "once_off";
 
   async function change(planId: PlanId) {
@@ -41,13 +45,18 @@ export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: 
       </p>
       <div className={styles.grid}>
         {recurring.map((p) => {
-          const d = PLAN_DISPLAY[p.id];
           const current = p.id === currentPlan;
+          const yearly = p.id === "annual";
           return (
-            <div key={p.id} className={`${styles.plan} ${current ? styles.current : ""}`}>
+            <div key={p.id} className={`${styles.plan} ${yearly ? styles.best : ""} ${current ? styles.current : ""}`}>
+              {yearly && <span className={styles.ribbon}>Best value · save {v.save}</span>}
               <b>{p.name}</b>
-              <span className={styles.price}>{fmtPrice(p.priceCents)} <small>{p.cadenceLabel}</small></span>
-              {d.perMonthCents && p.id !== "monthly" && <span className={styles.per}>{fmtPrice(d.perMonthCents)} a month</span>}
+              <span className={styles.price}>
+                {yearly && <s className={styles.anchor}>{v.monthlyYear}</s>} {fmtPrice(p.priceCents)} <small>{p.cadenceLabel}</small>
+              </span>
+              <span className={styles.per}>
+                {p.id === "monthly" ? <>That&apos;s {v.monthlyYear} a year</> : yearly ? <>You save {v.save} a year ({v.savePct}% off monthly)</> : <>No longer offered to new members. You can stay on it.</>}
+              </span>
               {current ? (
                 <span className={styles.badge}>Your plan</span>
               ) : (

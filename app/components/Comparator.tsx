@@ -43,7 +43,6 @@ import {
   scaleEstimate,
   normaliseProfile,
   panelsToKw,
-  type SolarAge,
   vdoBillForUsage,
   type HomeProfile,
 } from "@/lib/profileUsage";
@@ -90,6 +89,7 @@ import BillPagePrompt from "./BillPagePrompt";
 import { shouldAskForAnotherPage } from "@/lib/billExtraction";
 import { track } from "@/lib/track";
 import styles from "./Comparator.module.css";
+import SiteFooter from "./SiteFooter";
 
 const PLAN_COUNT = PLANS.length;
 
@@ -219,6 +219,8 @@ export default function Comparator() {
   const [stage, setStage] = useState<Stage>("input");
   const [inputStep, setInputStep] = useState<InputStep>(1);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  // "Not sure" how many solar panels: a typical home system is used.
+  const [solarGuess, setSolarGuess] = useState(false);
   // The plan list shows each retailer's cheapest plan unless they ask for all.
   const [allPlans, setAllPlans] = useState(false);
   // The plan list opens with the top 6, then 10 more, then all (1 Nov 2026).
@@ -974,6 +976,8 @@ export default function Comparator() {
   const billShown = billAt >= 0 || billAfterHidden || (billAt === -1 && shownRows.length > 0);
   const billMark = (
     <div id="your-bill-mark" className={r.billMark} role="note" tabIndex={-1}>
+      {/* Its rank among the plans listed (1 Nov 2026): #27 when 26 are cheaper. */}
+      <span className={r.billRank} title={`${beatBill} of ${listed.length} cheaper`}>#{beatBill + 1}</span>
       <span className={r.billPin}><Icon name="receipt" size={15} /> {haveBill ? youName : "The default offer"}</span>
       <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
       <span className={r.billMarkNote}>
@@ -987,6 +991,15 @@ export default function Comparator() {
   );
   // Scroll down to the marker, then make it pulse once it lands.
   const jumpToBill = () => {
+    // Below the rows on show (1 Nov 2026): open the list down to it first, so it sits in the list, not under it.
+    if (!locked && beatBill > shownRows.length) {
+      setRowCount(Math.min(listRows.length, beatBill));
+      window.setTimeout(flashBill, 60);
+      return;
+    }
+    flashBill();
+  };
+  const flashBill = () => {
     const el = typeof document !== "undefined" ? document.getElementById("your-bill-mark") : null;
     if (!el) return;
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -1163,7 +1176,7 @@ export default function Comparator() {
                     <>
                       <label className={s1.solarLabel} htmlFor="solarPanels">How many panels are on your roof?</label>
                       <div className={s1.stepper}>
-                        <button type="button" aria-label="One fewer panel" onClick={() => patchProfile({ solarPanels: Math.max(1, profile.solarPanels - 1) })}>−</button>
+                        <button type="button" aria-label="One fewer panel" onClick={() => { setSolarGuess(false); patchProfile({ solarPanels: Math.max(1, profile.solarPanels - 1) }); }}>−</button>
                         <input
                           id="solarPanels"
                           type="number"
@@ -1171,25 +1184,23 @@ export default function Comparator() {
                           min={1}
                           max={100}
                           value={profile.solarPanels || ""}
-                          onChange={(e) => patchProfile({ solarPanels: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
+                          onChange={(e) => { setSolarGuess(false); patchProfile({ solarPanels: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)) }); }}
                         />
-                        <button type="button" aria-label="One more panel" onClick={() => patchProfile({ solarPanels: Math.min(100, profile.solarPanels + 1) })}>+</button>
+                        <button type="button" aria-label="One more panel" onClick={() => { setSolarGuess(false); patchProfile({ solarPanels: Math.min(100, profile.solarPanels + 1) }); }}>+</button>
                         <span>panels</span>
+                        {/* Not sure (1 Nov 2026): a typical Victorian home system. "When were they put in" is no longer asked. */}
+                        <button
+                          type="button"
+                          className={`${s1.unsureBtn} ${solarGuess ? s1.unsureOn : ""}`}
+                          aria-pressed={solarGuess}
+                          onClick={() => { setSolarGuess(true); patchProfile({ solarPanels: DEFAULT_PROFILE.solarPanels, solarAge: "unsure" }); }}
+                        >
+                          Not sure
+                        </button>
                       </div>
                       <span className={s1.qHint}>Count them from the street or on Google Maps&apos; satellite view. Close enough is fine.</span>
-                      <span className={s1.solarLabel}>Roughly when were they put in?</span>
-                      <Choice
-                        value={profile.solarAge}
-                        onChange={(v: SolarAge) => patchProfile({ solarAge: v })}
-                        options={[
-                          { value: "pre2016", label: "Before 2016" },
-                          { value: "2016to2020", label: "2016 to 2020" },
-                          { value: "2021on", label: "2021 or later" },
-                          { value: "unsure", label: "Not sure" },
-                        ]}
-                      />
                       <p className={s1.solarSum}>
-                        {profile.solarPanels > 0 ? <>That&apos;s about <b>{profile.solarKw} kW</b> of solar.</> : <>Enter how many panels you have.</>}{" "}
+                        {solarGuess ? <>We&apos;ll use a typical home system, about <b>{profile.solarKw} kW</b>. Your bill&apos;s &ldquo;sent to the grid&rdquo; figure sharpens it.</> : profile.solarPanels > 0 ? <>That&apos;s about <b>{profile.solarKw} kW</b> of solar.</> : <>Enter how many panels you have.</>}{" "}
                         <button type="button" className={s1.linkBtn} onClick={() => patchProfile({ solarInput: "kw" })}>I know the system size</button>
                       </p>
                     </>
@@ -1812,6 +1823,22 @@ export default function Comparator() {
                     <EstimateStrip profile={profile} forecast={billForecast} />
                   </div>
                 )}
+                {usagePick !== "bill" && (
+                  <div className={uc.payBox}>
+                    <h3 className={w.qTitle}>Roughly what do you pay? <span className={w.opt}>(optional)</span></h3>
+                    <p className={w.qSub}>For one bill. Leave it blank and we&apos;ll compare against the default offer, the government&apos;s reference price.</p>
+                    <div className={w.money}>
+                      <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 425" value={currentBillRaw} onChange={(e) => setCurrentBillRaw(e.target.value)} aria-label="What you pay per bill" />
+                    </div>
+                    {!showRates ? (
+                      <button type="button" className={w.extraBtn} onClick={() => setShowRates(true)}>+ I know my rates (c/kWh)</button>
+                    ) : (
+                      <div style={{ marginTop: 14 }}>
+                        <YourRates form={ratesForm} onChange={patchRates} split={false} showCl={false} showSolar={profile.hasSolar} cost={ratesCost} billTotal={typedBill !== null && !Number.isNaN(typedBill) ? typedBill : null} />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               ) : qp === 3 ? (
                 <>
@@ -1929,34 +1956,37 @@ export default function Comparator() {
                   />
                 </section>
 
+                {/* On the one-page questions, "what you pay" is asked on page 2 with the usage (1 Nov 2026). */}
+                {!onePage && (
                 <section className={w.q}>
-                  <div className={w.qHead}>
-                    {!onePage && <span className={w.qNum}>{qn(4)}</span>}
-                    <div>
-                      {onePage && typedBillOk ? (
-                        <>
-                          <h3 className={w.qTitle}>What you pay</h3>
-                          <p className={w.qSub}>From your bill above. Change it here or there: it&apos;s the same number.</p>
-                        </>
-                      ) : (
-                        <>
-                          <h3 className={w.qTitle}>Roughly what do you pay? <span className={w.opt}>(optional)</span></h3>
-                          <p className={w.qSub}>For one bill. Leave it blank and we&apos;ll compare against the default offer, the government&apos;s reference price.</p>
-                        </>
-                      )}
+                    <div className={w.qHead}>
+                      {!onePage && <span className={w.qNum}>{qn(4)}</span>}
+                      <div>
+                        {onePage && typedBillOk ? (
+                          <>
+                            <h3 className={w.qTitle}>What you pay</h3>
+                            <p className={w.qSub}>From your bill above. Change it here or there: it&apos;s the same number.</p>
+                          </>
+                        ) : (
+                          <>
+                            <h3 className={w.qTitle}>Roughly what do you pay? <span className={w.opt}>(optional)</span></h3>
+                            <p className={w.qSub}>For one bill. Leave it blank and we&apos;ll compare against the default offer, the government&apos;s reference price.</p>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className={w.money}>
-                    <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 425" value={currentBillRaw} onChange={(e) => setCurrentBillRaw(e.target.value)} aria-label="What you pay per bill" />
-                  </div>
-                  {!showRates ? (
-                    <button type="button" className={w.extraBtn} onClick={() => setShowRates(true)}>+ I know my rates (c/kWh)</button>
-                  ) : (
-                    <div style={{ marginTop: 14 }}>
-                      <YourRates form={ratesForm} onChange={patchRates} split={false} showCl={false} showSolar={profile.hasSolar} cost={ratesCost} billTotal={typedBill !== null && !Number.isNaN(typedBill) ? typedBill : null} />
+                    <div className={w.money}>
+                      <input type="number" inputMode="decimal" min={0} step={0.01} placeholder="e.g. 425" value={currentBillRaw} onChange={(e) => setCurrentBillRaw(e.target.value)} aria-label="What you pay per bill" />
                     </div>
-                  )}
-                </section>
+                    {!showRates ? (
+                      <button type="button" className={w.extraBtn} onClick={() => setShowRates(true)}>+ I know my rates (c/kWh)</button>
+                    ) : (
+                      <div style={{ marginTop: 14 }}>
+                        <YourRates form={ratesForm} onChange={patchRates} split={false} showCl={false} showSolar={profile.hasSolar} cost={ratesCost} billTotal={typedBill !== null && !Number.isNaN(typedBill) ? typedBill : null} />
+                      </div>
+                    )}
+                  </section>
+                )}
               </>
             ) : usageSource === "average" ? (
               <section className={w.q}>
@@ -2485,7 +2515,7 @@ export default function Comparator() {
                             ? <><b>All {listed.length} {allPlans ? "plans" : "retailers"}</b> are cheaper than {haveBill ? "your bill" : "the default offer"}</>
                             : <><b>{beatBill} {allPlans ? (beatBill === 1 ? "plan" : "plans") : beatBill === 1 ? "retailer" : "retailers"}</b> {beatBill === 1 ? "is" : "are"} cheaper than {haveBill ? "your bill" : "the default offer"}</>}
                         </span>
-                        {billShown && <span className={r.youGo}>See where it sits <span className={r.youArrow} aria-hidden="true">↓</span></span>}
+                        {billShown && <span className={r.youGo}><span className={r.youRank}>#{beatBill + 1}</span> See where it sits <span className={r.youArrow} aria-hidden="true">↓</span></span>}
                       </button>
                       <InfoTip label="About your bill">
                         {useAvg ? "The average Victorian home" : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
@@ -2760,6 +2790,16 @@ export default function Comparator() {
                   </div>
                 );
               })()}
+
+              <div id="pricing" style={{ scrollMarginTop: 90 }} />
+              <PricingSection
+                email={email}
+                onEmailChange={setEmail}
+                yearlySaving={top && bench - top.total > 0 ? periodBreakdown(bench - top.total, days).annual : 0}
+                bestRetailer={top && !locked ? top.plan[0] : ""}
+                profile={subscribeProfile}
+              />
+              {/* The maths and the fine print sit below the Plus card (1 Nov 2026). */}
               <details className={styles.detailsBox}>
                 <summary>Every plan we compared, and the maths</summary>
                 <div className={styles.detailsInner}>
@@ -2822,31 +2862,13 @@ export default function Comparator() {
 
               <Disclosures priceDate={fmtUpdated()} />
 
-              <div id="pricing" style={{ scrollMarginTop: 90 }} />
-              <PricingSection
-                email={email}
-                onEmailChange={setEmail}
-                yearlySaving={top && bench - top.total > 0 ? periodBreakdown(bench - top.total, days).annual : 0}
-                bestRetailer={top && !locked ? top.plan[0] : ""}
-                profile={subscribeProfile}
-              />
-
             </>
           )}
 
           </>
         )}
 
-        <footer className={styles.footer}>
-          <div className={styles.fbrand}>Utilo</div>
-          <p>
-            Independent comparison for Victorian households — not affiliated with the Victorian Government or any
-            retailer. Rates come from retailers&apos; published data; estimates only, so confirm with the retailer
-            before switching.{" "}
-            <Link href="/default-offer">About the VDO</Link> · <Link href="/privacy">Privacy</Link> ·{" "}
-            <Link href="/cancellation-policy">Cancellation</Link>
-          </p>
-        </footer>
+        <SiteFooter />
       </div>
     </>
   );

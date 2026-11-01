@@ -7,9 +7,9 @@ import Icon from "../components/Icon";
 import InfoTip from "../components/InfoTip";
 import { PLUS_NAME, plusValue } from "@/lib/pricingPlans";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
-import styles from "../components/Comparator.module.css";
 import h from "../home3.module.css";
 import p from "./pricing.module.css";
+import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Utilo Plus: $7 a month or $39 a year", description: "The bill check is free, with every plan by name. Utilo Plus keeps watching: every plan re-priced against your bill each morning, a warning before your discount ends, and an email only when switching is worth it.", path: "/pricing" });
 
@@ -98,12 +98,7 @@ export default function PricingPage() {
           </div>
         </section>
 
-        <footer className={styles.footer}>
-          <div className={styles.fbrand}>Utilo</div>
-          <p>
-            <Link href="/faq">FAQ</Link> · <Link href="/privacy">Privacy</Link> · <Link href="/cancellation-policy">Cancellation</Link> · <Link href="/terms">Terms</Link>
-          </p>
-        </footer>
+        <SiteFooter />
       </main>
     </>
   );

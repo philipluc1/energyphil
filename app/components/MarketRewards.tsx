@@ -51,8 +51,9 @@ export function rewardItems(matches: Match[], you: number, perYear: number, fuel
  * The dashboard's side card: the best of each kind (biggest credit, most
  * points, a gift, the biggest % off) and a button to the full section.
  */
-export function RewardsSideCard({ items, locked, onOpen, wide = false }: { items: Item[]; locked: Set<unknown>; onOpen: () => void; /** In the main column (Savings tab): picks side by side. */ wide?: boolean }) {
+export function RewardsSideCard({ items, locked, onOpen, wide = false }: { items: Item[]; locked: Set<unknown>; onOpen: () => void; /** In the main column (Savings tab): bigger cards in a row that scrolls sideways. */ wide?: boolean }) {
   if (items.length === 0) return null;
+  if (wide) return <RewardsStrip items={items} locked={locked} onOpen={onOpen} />;
   const picks = KINDS.map((k) => items.find((i) => i.r.kind === k)).filter((i): i is Item => !!i).slice(0, wide ? 4 : 3);
   const retailers = new Set(items.map((i) => i.m.plan[0])).size;
   return (
@@ -210,6 +211,43 @@ export default function MarketRewards({
           {more ? "Show fewer" : `Show all ${shown.length}`}
         </button>
       )}
+    </section>
+  );
+}
+
+/**
+ * The Savings tab's rewards (1 Nov 2026): sign-up rewards live on their
+ * network right now, as bigger cards in a row that scrolls sideways (best of
+ * each kind first, then the rest by value).
+ */
+function RewardsStrip({ items, locked, onOpen }: { items: Item[]; locked: Set<unknown>; onOpen: () => void }) {
+  const firsts = KINDS.map((k) => items.find((i) => i.r.kind === k)).filter((i): i is Item => !!i);
+  const rest = items.filter((i) => !firsts.includes(i));
+  const cards = [...firsts, ...rest].slice(0, 12);
+  const retailers = new Set(items.map((i) => i.m.plan[0])).size;
+  return (
+    <section className={styles.strip} aria-labelledby="rewards-strip-title">
+      <div className={styles.stripHead}>
+        <span className={styles.liveTag}><span className={styles.liveDot} aria-hidden="true" /> Live now on your network</span>
+        <h3 id="rewards-strip-title" className={styles.stripTitle}>
+          <b>{items.length}</b> discounts and sign-up rewards
+        </h3>
+        <p className={styles.sideLine}>Credits, points, gifts and discounts from {retailers} retailers. Credits, points and gifts aren&apos;t in our prices, so they&apos;re on top of any saving.</p>
+      </div>
+      <ul className={styles.stripRow} data-noswipe="">
+        {cards.map(({ m, r }, i) => (
+          <li key={`${r.kind}|${r.headline}|${m.plan[0]}|${i}`} className={`${styles.stripCard} ${styles[r.kind]}`}>
+            <span className={styles.stripKind}><span className={styles.kindIcon}><KindIcon kind={r.kind} /></span> {REWARD_KIND_LABEL[r.kind]}</span>
+            <b className={styles.stripHeadline}>{r.headline}</b>
+            <span className={styles.stripBy}>
+              {locked.has(m) ? "Plus members see the retailer" : <><RetailerLogo name={m.plan[0]} size={22} /> {m.plan[0]}</>}
+            </span>
+          </li>
+        ))}
+        <li className={styles.stripMoreCard}>
+          <button type="button" onClick={onOpen}>See all {items.length} rewards →</button>
+        </li>
+      </ul>
     </section>
   );
 }

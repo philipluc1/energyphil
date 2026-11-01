@@ -102,12 +102,6 @@ export default function GasPlanTable({
           </div>
         )}
         {controls}
-        {pick && (
-          <div className={v.pickBox}>
-            <span className={v.pickLabel}>Our pick</span>
-            <span><b>{pick.plan[0]}</b> ({pick.plan[2]}), the cheapest for your home: about {whole(pickYear)} a year less than {youLabel.toLowerCase()}.</span>
-          </div>
-        )}
         <div className={v.tableWide}>
           <table>
             <thead>

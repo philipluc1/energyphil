@@ -95,3 +95,5 @@
 .tips > :nth-child(4n+4) { background: var(--surface); border-top: 4px solid #16a34a; }
 .steps li:nth-child(1) { border-top: 4px solid #0ea5a0; } .steps li:nth-child(2) { border-top: 4px solid #f5a623; } .steps li:nth-child(3) { border-top: 4px solid #7c6cf0; }
 .steps li:nth-child(2)::before { background: #f5a623; } .steps li:nth-child(3)::before { background: #7c6cf0; }
+
+.subHead { margin: 6px 0 2px; font: 900 24px/1.2 "Archivo", sans-serif; letter-spacing: -0.02em; }

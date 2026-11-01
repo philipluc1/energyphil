@@ -12,7 +12,8 @@ function BrandMark() {
 
 // "other" is for pages not represented by a nav tab (the policy/info pages
 // below) — none of the three tabs show as active there.
-export default function SiteHeader({ active }: { active: "home" | "check" | "pricing" | "learn" | "faq" | "account" | "other" }) {
+export default function SiteHeader({ active }: { active: "home" | "check" | "pricing" | "learn" | "faq" | "account" | "business" | "other" }) {
+  const biz = active === "business";
   return (
     <header className={styles.top}>
       <div className={styles.bar}>
@@ -26,6 +27,15 @@ export default function SiteHeader({ active }: { active: "home" | "check" | "pri
             </span>
           </span>
         </Link>
+        {/* Who it's for (1 Nov 2026): homes today, businesses coming. */}
+        <nav className={styles.audience} aria-label="Who it's for">
+          <Link href="/" className={biz ? styles.audBtn : styles.audOn} aria-current={biz ? undefined : "page"}>
+            <span className={styles.audLong}>Residential</span><span className={styles.audShort}>Home</span>
+          </Link>
+          <Link href="/business" className={biz ? styles.audOn : styles.audBtn} aria-current={biz ? "page" : undefined}>
+            Business <span className={styles.audSoon}>Soon</span>
+          </Link>
+        </nav>
         {/* No "Home" link: the logo goes home. */}
         <nav className={styles.navLinks} aria-label="Site">
           <Link href="/learn" className={active === "learn" ? styles.navLinkActive : styles.navLink}>

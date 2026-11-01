@@ -19,7 +19,8 @@ import BillCheckCard from "../components/BillCheckCard";
 import { cleanBillCheck, type BillCheck } from "@/lib/billCheck";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
-import UsageShape from "../components/UsageShape";
+import MovingCard from "../components/MovingCard";
+import UsageCard from "../components/UsageCard";
 import GasDashboard, { GasAside } from "../components/GasDashboard";
 import GasCards from "../components/GasCards";
 import { GAS_ZONES, bestGasPlan, type GasZone } from "@/lib/gasPlans";
@@ -1026,7 +1027,14 @@ export default function AccountPage() {
                       )}
                       {isMember ? (
                         <>
-                          <ProfilePanels d={{ ...sub!, source: sub!.nmi || sub!.current_plan_name ? "bill" : "answers" }} />
+                          <ProfilePanels d={{ ...sub!, source: sub!.nmi || sub!.current_plan_name ? "bill" : "answers" }} hideUsage={fuel === "elec" && !!myShape && !!cmpInput} />
+                          {fuel === "elec" && cmpInput && (
+                            <MovingCard
+                              input={cmpInput}
+                              member
+                              onMoved={(f) => setSub((cur) => (cur ? { ...cur, postcode: f.postcode, suburb: f.suburb, address: f.address, distributor: f.distributor, nmi: null, ...(f.gas_zone ? { gas_zone: f.gas_zone } : {}) } as typeof cur : cur))}
+                            />
+                          )}
                           <SolarCard
                             distributor={sub!.distributor}
                             billingDays={sub!.billing_days}
@@ -1038,7 +1046,10 @@ export default function AccountPage() {
                           />
                         </>
                       ) : localCheck ? (
-                        <ProfilePanels d={localCheck} />
+                        <>
+                          <ProfilePanels d={localCheck} />
+                          {fuel === "elec" && cmpInput && <MovingCard input={cmpInput} member={false} />}
+                        </>
                       ) : (
                         <div className={styles.panelCard}>
                           <div className={styles.panelTitle}>Your home</div>
@@ -1047,17 +1058,9 @@ export default function AccountPage() {
                         </div>
                       )}
 
-                                            {fuel === "elec" && myShape && (
-                        <div className={styles.shapeWrap}>
-                          <UsageShape
-                            shape={myShape.shape}
-                            dailyKwh={myShape.dailyKwh}
-                            exportKwhPerDay={myShape.exportPerDay}
-                            evOvernight={myShape.evOvernight}
-                            title="When your home uses power"
-                            note={`Modelled from ${myShape.fromAnswers ? "your answers" : "your bill's usage and the typical pattern for a home like yours"}, not your meter. It's the shape that decides whether a time-of-use plan beats a single rate for you: the dearer window is shaded.`}
-                          />
-                        </div>
+                                            {/* Your usage (1 Nov 2026): the numbers, the year ahead and the day, in one card. */}
+                      {fuel === "elec" && myShape && cmpInput && (
+                        <UsageCard input={cmpInput} profile={homeProfile} shape={myShape.shape} exportPerDay={myShape.exportPerDay} evOvernight={myShape.evOvernight} fromAnswers={myShape.fromAnswers} />
                       )}
 
                       <div className={styles.sideInTab}>{sideCardList(false)}</div>

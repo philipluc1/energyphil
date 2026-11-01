@@ -4,6 +4,7 @@ import { DISTRIBUTORS, PLAN_DATA_DATE, VDO } from "@/lib/plans";
 import SiteHeader from "../components/SiteHeader";
 import comparatorStyles from "../components/Comparator.module.css";
 import styles from "../components/StaticPage.module.css";
+import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "The Victorian Default Offer explained", description: "What the Victorian Default Offer is, who sets it, how it compares with retailers' own offers, and why the cheapest plan keeps changing.", path: "/default-offer" });
 
@@ -143,6 +144,7 @@ export default function DefaultOfferPage() {
           <Link href="/">Home</Link>
         </div>
       </div>
+      <SiteFooter />
     </>
   );
 }

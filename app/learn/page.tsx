@@ -2,7 +2,8 @@ import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { DISTRIBUTORS, VDO, PLANS, PLAN_DATA_DATE, rankPlans, topOpen, type Distributor } from "@/lib/plans";
 import { VIDEOS, VDO_HISTORY, PRICE_CYCLE, VDO_CHANGE_2026, SAVE_TIPS, nextCycleStage } from "@/lib/learnContent";
-import { DATA_FACTS, PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+import { DATA_FACTS, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
+import { marketActivity } from "@/lib/marketActivity";
 import PriceFlow from "../components/PriceFlow";
 import Icon from "../components/Icon";
 import MarketPulse from "../components/MarketPulse";
@@ -13,8 +14,9 @@ import VideoSlot from "../components/VideoSlot";
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 import learn from "./learn.module.css";
-import { StepsVisual, RolesVisual } from "./LearnVisuals";
+import { StepsVisual, RolesVisual, WhyUs } from "./LearnVisuals";
 import { NetworkGapChart, RetailerRankChart, VdoHistoryChart, type NetworkGap, type RetailerRow } from "./LearnCharts";
+import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "How Victorian electricity prices work", description: "Who's cheapest for a typical home, when prices change each year, the Victorian Default Offer, and how Utilo differs from Victorian Energy Compare.", path: "/learn" });
 
@@ -56,7 +58,7 @@ export default function LearnPage() {
           <h1>How it works</h1>
           <p className={styles.lede}>What we do, how prices change, and how to pay less.</p>
           <div className={learn.chips}>
-            <a href="#compare">Who does what</a>
+            <a href="#compare">Why Utilo</a>
             <a href="#videos">Videos</a>
             <a href="#charts">Price charts</a>
             <a href="#timeline">Timeline</a>
@@ -74,7 +76,10 @@ export default function LearnPage() {
         </section>
 
         <section id="compare" className={learn.block} data-motion="">
-          <h2 className={home.h2}>Who does what</h2>
+          <h2 className={home.h2}>Why Utilo?</h2>
+          <p className={home.sub}>A comparison site finds today&apos;s deal. We keep watching, so you don&apos;t have to.</p>
+          <WhyUs changes={(() => { const a = marketActivity({ days: 30 }); return a.ready ? a.newOffers + a.priceChanges : 0; })()} worth={WORTH_SWITCHING_PER_YEAR} />
+          <h3 className={learn.subHead}>Who does what</h3>
           <p className={home.sub}>Three different jobs. They work well together.</p>
           <RolesVisual planCount={PLANS.length} retailers={retailers} />
           <p className={learn.note}>
@@ -224,13 +229,7 @@ export default function LearnPage() {
         <section className={styles.sectionGap}>
           <Link href="/check" className={styles.heroCta}>Start my free check</Link>
         </section>
-        <footer className={styles.footer}>
-          <div className={styles.fbrand}>Utilo</div>
-          <p>
-            <Link href="/">Home</Link> · <Link href="/pricing">Pricing</Link> · <Link href="/ev">EV calculator</Link> · <Link href="/faq">FAQ</Link> ·{" "}
-            <Link href="/privacy">Privacy</Link> · <Link href="/cancellation-policy">Cancellation</Link> · <Link href="/terms">Terms</Link>
-          </p>
-        </footer>
+        <SiteFooter />
       </div>
     </>
   );

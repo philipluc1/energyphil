@@ -355,3 +355,5 @@
 li.rowPick { position: relative; outline: 2px solid #16a34a; outline-offset: -2px; background: #f0fdf4; border-radius: 12px; padding-top: 22px; }
 li.rowPick > .pickBubble { position: absolute; top: 6px; left: 42px; margin: 0; }
 .table td > .pickBubble { display: block; width: fit-content; }
+.noStringsLine { margin: 10px 0 2px; font-size: 13.5px; color: var(--grey); line-height: 1.5; }
+.noStringsLine b { color: var(--ink); }

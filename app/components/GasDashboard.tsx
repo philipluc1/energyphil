@@ -181,14 +181,28 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         zone={zone ?? ""}
         currentRetailer={member.gas_current_retailer ?? null}
         controls={
-          <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-label="What if my gas use changes?">
+          <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-labelledby="gas-use-title">
+            {/* 1 Nov 2026: same as electricity: says what it is and what it does. */}
+            <div className={ins.useHead}>
+              <span className={ins.useIcon} aria-hidden="true"><Icon name="flame" size={16} /></span>
+              <div>
+                <b id="gas-use-title">What if you use more or less gas?</b>
+                <span>Slide it, or tap a season. The chart and every price below re-rank for that usage.</span>
+              </div>
+            </div>
+            <p className={ins.useResult} aria-live="polite">
+              {whatIf ? <>What if: <b>{Math.round(mjW / days).toLocaleString("en-AU")} MJ a day</b> ({pctUse !== 100 ? `${pctUse}% of your bill` : "your bill"}{season !== "none" ? `, a ${season} bill` : ""}).</> : <>Now: <b>{Math.round(mjW / days).toLocaleString("en-AU")} MJ a day</b>, from your gas bill.</>}
+              {rankedW[0] ? <> Cheapest: <b className={ins.useBest}>{rankedW.find((m) => !m.restricted)?.plan[0] ?? rankedW[0].plan[0]}, ${Math.round((rankedW.find((m) => !m.restricted) ?? rankedW[0]).total * (365 / days)).toLocaleString("en-AU")} a year</b>.</> : null}
+            </p>
             <div className={ins.wiSlider}>
-              <label htmlFor="gas-use-range">
-                <span>{whatIf ? "What if: gas use" : "Your gas use"}</span>
-                <b>{Math.round(mjW / days).toLocaleString("en-AU")} MJ a day{pctUse !== 100 ? ` · ${pctUse}% of your bill` : ""}</b>
-              </label>
-              <input id="gas-use-range" type="range" min={50} max={200} step={5} value={pctUse} onChange={(e) => setPctUse(Number(e.target.value))} aria-describedby="gas-use-hint" />
-              <div className={ins.wiTicks} id="gas-use-hint"><span>Half</span><span>Your bill</span><span>Double</span></div>
+              <label htmlFor="gas-use-range" className={ins.srOnly}>Gas use, as a share of your bill</label>
+              <input id="gas-use-range" type="range" min={50} max={200} step={5} value={pctUse} onChange={(e) => setPctUse(Number(e.target.value))} aria-describedby="gas-use-hint" aria-valuetext={`${pctUse}% of your bill`} />
+              <div className={ins.useTicks} id="gas-use-hint">
+                <span style={{ left: "0%" }}>Half</span>
+                <span style={{ left: `${((100 - 50) / 150) * 100}%` }} className={ins.useTickBill}>Your bill</span>
+                <span style={{ left: `${((150 - 50) / 150) * 100}%` }}>1.5×</span>
+                <span style={{ left: "100%" }}>Double</span>
+              </div>
             </div>
             <div className={ins.wiChips}>
               <button type="button" aria-pressed={season === "winter"} className={`${ins.shift} ${season === "winter" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "winter" ? "none" : "winter")}>

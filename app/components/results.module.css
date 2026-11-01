@@ -257,3 +257,7 @@ button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; di
   .info .ratesLink { flex-basis: auto; font-size: 12px; }
   .picks { font-size: 13.5px; padding: 10px 12px; }
 }
+
+/* Your bill's rank in the list (1 Nov 2026). */
+.billRank { display: inline-grid; place-items: center; min-width: 34px; height: 26px; padding: 0 7px; border-radius: 8px; background: #c2410c; color: #fff; font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.youRank { display: inline-block; margin-right: 4px; padding: 1px 7px; border-radius: 6px; background: #c2410c; color: #fff; font-size: 12px; font-weight: 900; }

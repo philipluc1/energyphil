@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PLANS } from "@/lib/plans";
 import { ABOUT, hasFounderStory } from "@/lib/about";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
-import { PLUS_NAME, plusValue } from "@/lib/pricingPlans";
+import { PLUS_NAME } from "@/lib/pricingPlans";
 import { marketActivity } from "@/lib/marketActivity";
 import { savingsByNetwork, typicalHouseholdExample } from "@/lib/savings";
 import SiteHeader from "./components/SiteHeader";
@@ -16,10 +16,11 @@ import CountUp from "./components/CountUp";
 import InfoTip from "./components/InfoTip";
 import SourceBanner from "./components/SourceBanner";
 import PlanBand from "./components/PlanBand";
+import MemberGets from "./components/MemberGets";
 import JoinDirect from "./components/JoinDirect";
 import { StepsVisual } from "./learn/LearnVisuals";
-import styles from "./components/Comparator.module.css";
 import h from "./home3.module.css";
+import SiteFooter from "./components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Utilo: compare Victorian electricity plans against your own bill", description: "Bill keeps creeping up? Snap your Victorian electricity bill and see your savings: which plans would cost less for your home, priced on your own usage and rates. Free check, no sign-up.", path: "/", absoluteTitle: true });
 
@@ -56,7 +57,6 @@ export default function Home() {
   const best = Math.round(ex.annualBest);
   const market = marketActivity({ days: 30 });
   const changed = market.newOffers + market.priceChanges;
-  const v = plusValue();
   // "Up to" today's saving for the average home: the biggest of the five networks.
   const nets = savingsByNetwork();
   const topSave = nets[0] ?? null;
@@ -160,6 +160,9 @@ export default function Home() {
           <StepsVisual />
         </section>
 
+        {/* 3b. What members get (1 Nov 2026). */}
+        <MemberGets />
+
         {/* 4. Utilo Plus, front and centre, with direct checkout. */}
         <PlanBand
           id="plus"
@@ -213,20 +216,7 @@ export default function Home() {
           </section>
         )}
 
-        <footer className={styles.footer}>
-          <div className={styles.fbrand}>Utilo</div>
-          <p>
-            {ABOUT.businessName || ABOUT.abn || ABOUT.location ? (
-              <>{[ABOUT.businessName, ABOUT.abn ? `ABN ${ABOUT.abn}` : "", ABOUT.location].filter(Boolean).join(" · ")}. </>
-            ) : null}
-            Independent: not affiliated with the Victorian Government or any retailer. Estimates only: confirm the price with the retailer before you switch.
-          </p>
-          <p>
-            <Link href="/pricing">{PLUS_NAME}</Link> · <Link href="/learn">How it works</Link> · <Link href="/faq">FAQ</Link> ·{" "}
-            <Link href="/default-offer">About the default offer</Link> · <Link href="/privacy">Privacy</Link> ·{" "}
-            <Link href="/cancellation-policy">Cancellation</Link> · <Link href="/terms">Terms</Link>
-          </p>
-        </footer>
+        <SiteFooter />
       </main>
     </>
   );

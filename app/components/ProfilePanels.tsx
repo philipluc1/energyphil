@@ -66,7 +66,7 @@ function Row({ label, value, hint }: { label: string; value: string | null; hint
 
 /** "Your details" and "Usage & forecast" panels on the dashboard. Missing
  *  values show a nudge to upload a bill, which is where they come from. */
-export default function ProfilePanels({ d }: { d: ProfileData }) {
+export default function ProfilePanels({ d, hideUsage = false }: { d: ProfileData; /** The usage card below shows the consumption figures instead. */ hideUsage?: boolean }) {
   const days = d.billing_days ?? 0;
   const bands = (d.peak_kwh ?? 0) + (d.shoulder_kwh ?? 0) + (d.offpeak_kwh ?? 0);
   const total = bands + (d.anytime_kwh ?? 0) + (d.controlled_load_kwh ?? 0);
@@ -106,7 +106,7 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
         </p>
       </section>
 
-      <section className={`${styles.panel} ${styles.teal}`}>
+      {!hideUsage && <section className={`${styles.panel} ${styles.teal}`}>
         <h3>Your consumption</h3>
         <div className={styles.stats}>
           <div className={styles.stat}><b>{kwh(total) ?? "—"}</b><span>{d.source === "answers" ? "estimated" : "last bill"}{days ? ` (${days} days)` : ""}</span></div>
@@ -134,7 +134,7 @@ export default function ProfilePanels({ d }: { d: ProfileData }) {
             No usage on file yet. <a href="#read-bill">Upload a bill</a> or <Link href="/check">run the check</Link>.
           </p>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

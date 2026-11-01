@@ -5,6 +5,7 @@ import { ABOUT } from "@/lib/about";
 import SiteHeader from "../components/SiteHeader";
 import styles from "../components/StaticPage.module.css";
 import { PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
+import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Cancellation Policy", description: "How to cancel a Utilo membership, and what happens when you do.", path: "/cancellation-policy" });
 
@@ -112,6 +113,7 @@ export default function CancellationPolicyPage() {
           <Link href="/">Home</Link>
         </div>
       </div>
+      <SiteFooter />
     </>
   );
 }

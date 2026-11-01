@@ -144,3 +144,35 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
     </>
   );
 }
+
+/**
+ * Why Utilo (1 Nov 2026): what we do that a one-off comparison doesn't.
+ * We prompt; we never switch anyone without them.
+ */
+export function WhyUs({ changes, worth }: { changes: number; worth: number }) {
+  return (
+    <ul className={v.why}>
+      <li className={v.whyHero}>
+        <span className={v.whyIcon} aria-hidden="true"><Icon name="refresh" size={22} /></span>
+        <b className={v.whyBig}>365<small> days a year</small></b>
+        <span className={v.whyTitle}>We re-check every plan, every morning</span>
+        <span className={v.whySub}>Priced against your own bill, not a typical home. Weekends and holidays too.</span>
+      </li>
+      <li>
+        <span className={v.whyIcon} aria-hidden="true"><Icon name="bell" size={22} /></span>
+        <span className={v.whyTitle}>We tell you when to move</span>
+        <span className={v.whySub}>An email the day switching would save you ${worth}+ a year, and a month&apos;s warning before a discount ends. You decide; we never switch you.</span>
+      </li>
+      <li>
+        <span className={v.whyIcon} aria-hidden="true"><Icon name="camera" size={22} /></span>
+        <span className={v.whyTitle}>Built from your bill</span>
+        <span className={v.whySub}>Snap a photo. We read your usage and the rates you actually pay, so the answer is yours.</span>
+      </li>
+      <li>
+        <span className={v.whyIcon} aria-hidden="true"><Icon name="chart" size={22} /></span>
+        <span className={v.whyTitle}><span className={v.liveDot} aria-hidden="true" /> Live market data</span>
+        <span className={v.whySub}>Retailers&apos; published offers, pulled every day{changes > 0 ? `: ${changes} new or changed in the last 30 days` : ""}.</span>
+      </li>
+    </ul>
+  );
+}

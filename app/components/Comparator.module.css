@@ -1794,3 +1794,33 @@
 .liveDot { width: 8px; height: 8px; border-radius: 50%; background: #5eead4; animation: livePulseBand 1.8s ease-out infinite; }
 @keyframes livePulseBand { 0% { box-shadow: 0 0 0 0 rgba(94, 234, 212, 0.6); } 100% { box-shadow: 0 0 0 9px rgba(94, 234, 212, 0); } }
 @media (prefers-reduced-motion: reduce) { .liveDot { animation: none; } }
+
+/* Residential / Business switch beside the logo (1 Nov 2026). */
+.audience { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--soft, #f1f3f8); border: 1px solid var(--border); }
+.audBtn, .audOn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 800; text-decoration: none; color: #5b6475; white-space: nowrap; }
+.audBtn:hover { color: var(--ink); }
+.audOn { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.14); }
+.audSoon { padding: 1px 6px; border-radius: 6px; background: #fff3d6; color: #8a5300; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.03em; }
+.audShort { display: none; }
+@media (max-width: 640px) {
+  .audience { order: 2; margin-left: auto; }
+  .navCta { order: 2; }
+  .audBtn, .audOn { padding: 5px 9px; font-size: 12px; }
+}
+@media (max-width: 440px) {
+  .audLong { display: none; }
+  .audShort { display: inline; }
+  .audSoon { display: none; }
+  .audBtn, .audOn { padding: 5px 8px; }
+  .top .mark { font-size: 21px; }
+}
+/* Phones: logo, Home/Business and Free check on one row (1 Nov 2026). */
+@media (max-width: 440px) {
+  .top .bar { column-gap: 6px; }
+  .brandMark { width: 30px; height: 30px; border-radius: 9px; }
+  .brandMark svg { width: 17px; height: 17px; }
+  .top .mark { font-size: 20px; }
+  .audBtn, .audOn { padding: 5px 7px; font-size: 11.5px; }
+  .navCta { padding: 8px 10px; font-size: 13px; border-radius: 10px; white-space: nowrap; }
+  .navCta span { display: none; }
+}

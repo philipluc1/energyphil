@@ -35,3 +35,23 @@
   .gets span:last-child { font-size: 12px; }
   .badges { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
+
+/* Trust badges under the navy band (1 Nov 2026). */
+.badgesOut { margin: 14px auto 0; max-width: 900px; }
+.badgesOut li { background: var(--surface, #fff); border: 1px solid var(--border); box-shadow: 0 8px 22px -18px rgba(20, 24, 60, 0.5); color: var(--ink); padding: 14px 16px; }
+.badgesOut .badgeIcon { background: #e6f7f3; color: #0f766e; }
+.badgesOut b { color: var(--ink); }
+.badgesOut span:last-child { color: var(--grey); }
+
+/* Trust strip under the band (1 Nov 2026): soft panel, shield icons, small label over a bold line. */
+.trust { list-style: none; margin: 16px auto 0; padding: 22px 26px; max-width: 1000px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; border-radius: 22px; background: #eef2f6; }
+.trust li { display: flex; align-items: center; gap: 12px; text-align: left; }
+.trust li::before { display: none; }
+.trust li > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.trust small { font-size: 13.5px; color: #6b7a90; }
+.trust b { font: 900 16px/1.25 "Archivo", sans-serif; color: #12304a; }
+.shield { position: relative; flex: none; display: grid; place-items: center; width: 52px; height: 56px; border-radius: 14px 14px 50% 50% / 14px 14px 60% 60%; background: #cfe0ea; color: #12304a; overflow: hidden; }
+.shield::after { content: ""; position: absolute; right: 9px; bottom: 14px; width: 16px; height: 14px; border-radius: 50% 40% 55% 45%; background: #f6c445; opacity: 0.9; }
+.shield svg { position: relative; z-index: 1; }
+@media (max-width: 860px) { .trust { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .trust { grid-template-columns: 1fr; padding: 18px; gap: 14px; } }

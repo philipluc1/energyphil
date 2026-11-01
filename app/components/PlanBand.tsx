@@ -25,6 +25,7 @@ export default function PlanBand({
   id?: string;
 }) {
   return (
+    <>
     <section id={id} className={styles.band} data-motion="" data-stagger=":scope > div, :scope > ul > li, :scope > p">
       <div className={styles.head}>
         <span className={styles.eyebrow}><Icon name="bolt" size={14} /> {PLUS_NAME}</span>
@@ -40,11 +41,14 @@ export default function PlanBand({
       </ul>}
       {children && <div className={styles.step}>{children}</div>}
       <div className={styles.cards}>{cards}</div>
-      <ul className={styles.badges} aria-label="Why people trust Utilo">
-        <li><span className={styles.badgeIcon}><Icon name="scale" size={18} /></span><b>Independent</b><span>Not a cent from retailers</span></li>
-        <li><span className={styles.badgeIcon}><Icon name="check" size={18} /></span><b>No lock-in</b><span>Cancel any time, no fees</span></li>
-        <li><span className={styles.badgeIcon}><Icon name="lock" size={18} /></span><b>Private</b><span>We keep the numbers, not your bill</span></li>
-      </ul>
     </section>
+    {/* Trust badges sit under the band, on their own (1 Nov 2026). */}
+      <ul className={styles.trust} aria-label="Why people trust Utilo">
+        <li><span className={styles.shield} aria-hidden="true"><Icon name="scale" size={20} /></span><span><small>Independent</small><b>$0 from retailers</b></span></li>
+        <li><span className={styles.shield} aria-hidden="true"><Icon name="check" size={20} /></span><span><small>No lock-in</small><b>Cancel any time</b></span></li>
+        <li><span className={styles.shield} aria-hidden="true"><Icon name="lock" size={20} /></span><span><small>Private</small><b>Numbers, not your bill</b></span></li>
+        <li><span className={styles.shield} aria-hidden="true"><Icon name="home" size={20} /></span><span><small>Proudly Australian</small><b>Homes now, business soon</b></span></li>
+      </ul>
+    </>
   );
 }

@@ -4,6 +4,7 @@ import SiteHeader from "../components/SiteHeader";
 import { Fill, MailLink } from "../components/Fill";
 import { ABOUT, PRIVACY } from "@/lib/about";
 import styles from "../components/StaticPage.module.css";
+import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Privacy Policy", description: "How Utilo collects, uses and protects your details and the bills you share.", path: "/privacy" });
 
@@ -205,6 +206,7 @@ export default function PrivacyPolicyPage() {
           <Link href="/">Home</Link>
         </div>
       </div>
+      <SiteFooter />
     </>
   );
 }
