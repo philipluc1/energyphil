@@ -1,0 +1,10 @@
+.wrap { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 100%; }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 7px; border: 1px solid; border-radius: 999px; font: inherit; font-size: 11.5px; font-weight: 800; line-height: 1.5; cursor: pointer; background: none; }
+.badge i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.info { display: inline-grid; place-items: center; width: 13px; height: 13px; border: 1.2px solid currentColor; border-radius: 50%; font-size: 9px; font-style: italic; font-weight: 800; opacity: 0.7; }
+.low { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
+.average { color: #475569; background: #f8fafc; border-color: #e2e8f0; }
+.high { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+.pop { display: block; max-width: 340px; padding: 8px 10px; border-radius: 10px; background: var(--bg-soft, #f1f5f9); color: var(--grey, #475569); font-size: 12px; font-weight: 500; line-height: 1.45; }
+.pop b { color: var(--ink, #0f172a); }
+.pop a { color: var(--navy-accent-text, #1e3a8a); font-weight: 700; }

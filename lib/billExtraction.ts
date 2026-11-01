@@ -52,6 +52,10 @@ export interface ExtractedBill {
   paymentPlan: boolean;
   concessionApplied: boolean;
   bestOffer: { planName: string | null; savingPerYear: number | null; saysOnBest: boolean } | null;
+  /** 2 Nov 2026: this period's new charges (before balances carried forward), fees, and a lost discount. */
+  newCharges: number | null;
+  fees: { kind: "late_payment" | "paper_bill" | "payment_processing" | "reconnection" | "other"; amount: number }[];
+  discountLost: boolean;
   /** Looks like only part of a longer bill (e.g. "Page 1 of 2", or the summary page without usage and charges). */
   looksPartial: boolean;
   /** How many pages (photos) this read came from. */
@@ -67,6 +71,21 @@ export interface CurrentRates {
   offpeak: number | null;
   cl: number | null;
   solarFit: number | null;
+}
+
+const FEE_KINDS = ["late_payment", "paper_bill", "payment_processing", "reconnection", "other"] as const;
+/** Fees off the bill: known kinds only, positive amounts under $500, at most 6. */
+export function readFees(v: unknown): ExtractedBill["fees"] {
+  if (!Array.isArray(v)) return [];
+  const out: ExtractedBill["fees"] = [];
+  for (const f of v.slice(0, 6)) {
+    if (!f || typeof f !== "object") continue;
+    const o = f as Record<string, unknown>;
+    const kind = FEE_KINDS.find((k) => k === o.kind) ?? "other";
+    const amount = toFiniteNumber(o.amount_dollars ?? o.amount);
+    if (amount !== null && amount > 0 && amount < 500) out.push({ kind, amount: Math.round(amount * 100) / 100 });
+  }
+  return out;
 }
 
 /** Bill rates arrive in cents as printed; convert to GST-inclusive dollars
@@ -174,6 +193,9 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
             saysOnBest: r.best_offer_says_on_best === true,
           }
         : null,
+    newCharges: (() => { const n = toFiniteNumber(r.new_charges_total); return n !== null && n > 0 && n < 100000 ? n : null; })(),
+    fees: readFees(r.fees),
+    discountLost: r.discount_not_applied === true,
     looksPartial: r.looks_partial === true,
     warnings,
   };

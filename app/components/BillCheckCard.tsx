@@ -1,10 +1,11 @@
+import type { ReactNode } from "react";
 import type { BillCheck } from "@/lib/billCheck";
+import { billIssues, issueSummary, type BillIssue, type BillMoney } from "@/lib/billIssues";
+import { PLANS } from "@/lib/plans";
 import s from "./billcheck.module.css";
 
 /** The Victorian Government's own page on help paying energy bills. */
 const HELP_URL = "https://energy.vic.gov.au/households/help-paying-your-bills";
-
-const money = (n: number) => "$" + n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const whole = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
 
 export interface BillCheckFacts {
@@ -14,101 +15,88 @@ export interface BillCheckFacts {
   olderVersion: { planName: string; perMonth: number; perYear: number } | null;
   /** The bill's plan matches one on sale today at about the same price. */
   planIsCurrent: boolean;
-  /** The retailer's cheapest plan for this usage and the yearly saving against the bill. */
-  retailerBest: { planName: string; savingPerYear: number } | null;
+  /** The retailer's cheapest plan for this usage, the yearly saving against the bill, and its tariff type. */
+  retailerBest: { planName: string; savingPerYear: number; tariff?: "flat" | "tou" | null } | null;
   retailerCount: number;
   /** Below this a saving isn't worth acting on ($ a year). */
   worthPerYear: number;
+  /** The bill's usage and rates, for "charges that look off" and "dearer than anything on sale". */
+  money?: Omit<BillMoney, "total"> | null;
 }
 
-/** "We checked your bill": plan version, the retailer's own best offer
- *  message, estimated reads, concessions, and a warning about debt first. */
-export default function BillCheckCard({ check, retailer, facts, title = "We checked your bill" }: { check: BillCheck; retailer: string; facts: BillCheckFacts; title?: string }) {
-  const who = retailer || "your retailer";
+/**
+ * "We checked your bill" (reworked 2 Nov 2026): one card, ranked. Things to
+ * act on and things worth a look stay open; everything that checked out
+ * folds into one line, so a clean bill takes almost no room.
+ */
+export default function BillCheckCard({ check, retailer, facts, title = "We checked your bill", explain }: {
+  check: BillCheck;
+  retailer: string;
+  facts: BillCheckFacts;
+  title?: string;
+  /** The plain-English explainer, folded at the foot of the card (the dashboard). */
+  explain?: ReactNode;
+}) {
   // Only a payment plan or a real amount overdue (a small one is usually a payment that crossed with the bill).
   const behind = check.paymentPlan || (check.overdue ?? 0) >= 100;
-  const { billPlanName, olderVersion, planIsCurrent, retailerBest } = facts;
-  const bo = check.bestOffer;
+  const list = billIssues({
+    retailer,
+    readingType: check.readingType,
+    concession: check.concession,
+    behind,
+    paymentPlan: check.paymentPlan,
+    bestOffer: check.bestOffer,
+    fees: check.fees ?? [],
+    discountLost: check.discountLost === true,
+    billPlanName: facts.billPlanName,
+    olderVersion: facts.olderVersion,
+    planIsCurrent: facts.planIsCurrent,
+    retailerBest: facts.retailerBest,
+    retailerCount: facts.retailerCount,
+    worthPerYear: facts.worthPerYear,
+    money: facts.money ? { ...facts.money, total: check.newCharges ?? null } : null,
+    plans: PLANS,
+  });
+  const open = list.filter((i) => i.level !== "ok");
+  const ok = list.filter((i) => i.level === "ok");
+  const sum = issueSummary(list);
   const checkedOn = check.checkedAt ? new Date(check.checkedAt + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : null;
+
+  const item = (i: BillIssue) => (
+    <li key={i.id} className={i.level === "ok" ? s.ok : i.level === "info" ? s.info : i.level === "act" ? `${s.warn} ${s.act}` : s.warn}>
+      <b>{i.title}</b>
+      {i.perYear && i.perYear >= 1 && i.level === "act" ? <span className={s.worth}>about {whole(i.perYear)} a year</span> : null} {i.body}
+      {i.id === "behind" && (
+        <>
+          {" "}
+          <a href={HELP_URL} target="_blank" rel="noopener noreferrer">Where to get help ↗</a>
+        </>
+      )}
+    </li>
+  );
 
   return (
     <section className={s.card} aria-labelledby="bill-check-title">
-      <h3 id="bill-check-title" className={s.title}>
-        {title}
-        {checkedOn && <small> · bill read {checkedOn}</small>}
-      </h3>
-      <ul className={s.list}>
-        {behind && (
-          <li className={s.info}>
-            <b>{check.paymentPlan ? "Your bill mentions a payment plan." : "Your bill shows an amount overdue."}</b> If you&apos;re behind, talk to {who} before
-            you switch: retailers have to offer payment help, and switching can end a payment arrangement.{" "}
-            <a href={HELP_URL} target="_blank" rel="noopener noreferrer">
-              Where to get help ↗
-            </a>
-          </li>
-        )}
-        {olderVersion && (
-          <li className={s.warn}>
-            <b>Same plan name, older price.</b> Your bill says &ldquo;{billPlanName}&rdquo;. {who}&apos;s current &ldquo;{olderVersion.planName}&rdquo; costs about{" "}
-            {money(olderVersion.perMonth)} a month less for the same usage (about {whole(olderVersion.perYear)} a year). Ask {who} to move you to the current
-            version: same company, no switch.
-          </li>
-        )}
-        {!olderVersion && planIsCurrent && (
-          <li className={s.ok}>
-            <b>Your plan is current.</b> &ldquo;{billPlanName}&rdquo; matches {who}&apos;s plan on sale today.
-          </li>
-        )}
-        {bo && (
-          <li className={bo.saysOnBest && retailerBest && retailerBest.savingPerYear >= facts.worthPerYear ? s.warn : s.info}>
-            <b>Your retailer&apos;s message.</b>{" "}
-            {bo.saysOnBest ? (
-              <>Your bill says you&apos;re on {who}&apos;s best offer.</>
-            ) : (
-              <>
-                Your bill says you could save{bo.savingPerYear ? ` ${whole(bo.savingPerYear)} a year` : ""}
-                {bo.planName ? <> on &ldquo;{bo.planName}&rdquo;</> : null}.
-              </>
-            )}{" "}
-            {retailerBest &&
-              (retailerBest.savingPerYear >= facts.worthPerYear ? (
-                <>
-                  We priced {who}&apos;s plans on your usage: &ldquo;{retailerBest.planName}&rdquo; is about {whole(retailerBest.savingPerYear)} a year less than your
-                  bill.
-                </>
-              ) : (
-                <>We agree: nothing from {who} beats your bill by {whole(facts.worthPerYear)} a year or more.</>
-              ))}{" "}
-            Retailers only compare their own plans; we compare {facts.retailerCount} retailers.
-          </li>
-        )}
-        {check.readingType && (
-          <li className={check.readingType === "actual" ? s.ok : s.warn}>
-            {check.readingType === "actual" ? (
-              <>
-                <b>Actual meter read.</b> This bill uses a real reading, so the usage is reliable.
-              </>
-            ) : (
-              <>
-                <b>{check.readingType === "mixed" ? "Part" : "Estimated"} meter read.</b> The usage on this bill is a guess, so it may be too high or too low. Ask{" "}
-                {who} for an actual read, or send them a photo of your meter. Our comparison uses the same estimate.
-              </>
-            )}
-          </li>
-        )}
-        <li className={check.concession ? s.ok : s.info}>
-          {check.concession ? (
-            <>
-              <b>Concession applied.</b> Give your card details again if you change retailer; it doesn&apos;t move with you.
-            </>
-          ) : (
-            <>
-              <b>No concession on this bill.</b> If you have a pensioner, health care or DVA card, ask {who} to add the Victorian annual electricity concession. It
-              isn&apos;t automatic.
-            </>
-          )}
-        </li>
-      </ul>
+      <div className={s.head}>
+        <h3 id="bill-check-title" className={s.title}>
+          {title}
+          {checkedOn && <small> · bill read {checkedOn}</small>}
+        </h3>
+        <span className={sum.flagged ? s.chipWarn : s.chipOk}>{sum.flagged ? sum.text : `✓ ${sum.text}`}</span>
+      </div>
+      {open.length > 0 && <ul className={s.list}>{open.map(item)}</ul>}
+      {ok.length > 0 && (
+        <details className={s.fold} open={open.length === 0}>
+          <summary>✓ {ok.length} thing{ok.length === 1 ? "" : "s"} checked out</summary>
+          <ul className={s.list}>{ok.map(item)}</ul>
+        </details>
+      )}
+      {explain && (
+        <details className={s.fold}>
+          <summary className={s.explainSum}>Explain my bill ▾</summary>
+          {explain}
+        </details>
+      )}
     </section>
   );
 }

@@ -76,3 +76,6 @@
 .bar .val { z-index: 1; }
 .bar .valIn { color: #fff; }
 .titleGas svg { color: #e8590c; }
+/* 2 Nov 2026: why the latest bill changed, one line */
+.change { margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: var(--grey); }
+.change b { color: var(--ink); }

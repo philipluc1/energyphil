@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
       failed.push(table);
     }
   }
+  // Free bill-photo reads recorded against the email they gave for a result (2 Nov 2026).
+  const { error: readErr } = await supabaseAdmin.from("bill_reads").delete().in("lead_email", Array.from(new Set([email, user.email!])));
+  if (readErr && !/does not exist|schema cache|column/i.test(readErr.message)) failed.push("bill_reads");
   if (failed.length) {
     return NextResponse.json({ ok: false, message: "Some of your data couldn't be deleted just now. Please try again, or email us and we'll finish it." }, { status: 500 });
   }

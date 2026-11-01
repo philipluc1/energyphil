@@ -101,7 +101,7 @@ export default function PrivacyPolicyPage() {
             To save you typing everything again, the check saves your answers and last result in your browser (local storage) on the device you
             used. This stays on your device and isn&apos;t sent to us unless you ask for your result by email or join. To clear it, use{" "}
             <strong>Start fresh</strong> on the check page, or clear your browser&apos;s site data. If you sign in, your browser also keeps a sign-in
-            session. We don&apos;t use third-party advertising or analytics trackers: the anonymous counts above are our own.
+            session. We don&apos;t use advertising trackers. To count visits we use Vercel Web Analytics, which sets no cookies and doesn&apos;t identify you: it records the page you viewed (without anything after a ? or #, apart from ad campaign tags), the site that sent you, and your country and type of device.
           </p>
         </section>
 
@@ -132,7 +132,7 @@ export default function PrivacyPolicyPage() {
             </thead>
             <tbody>
               <tr><td>Supabase</td><td>Database and sign-in links</td><td><Fill value={PRIVACY.databaseRegion} label="database region" /></td></tr>
-              <tr><td>Vercel</td><td>Website hosting</td><td>United States and other regions</td></tr>
+              <tr><td>Vercel</td><td>Website hosting and anonymous visit counts</td><td>United States and other regions</td></tr>
               <tr><td>Anthropic</td><td>Reading the figures from bill photos and PDFs</td><td>United States</td></tr>
               <tr><td>Stripe</td><td>Payments and billing</td><td>United States and other regions</td></tr>
               <tr><td>Resend</td><td>Sending emails</td><td>United States</td></tr>

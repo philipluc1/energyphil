@@ -86,6 +86,8 @@ export default function PriceLine({
   // The two labels under the line need about 150px between them.
   const vdoClash = xVdo !== null && Math.abs(xVdo - xYou) < (150 / Math.max(width, 200)) * 100;
   const who = youLabel.toLowerCase();
+  // "Your bill" / "Your plan" is the customer; anything else (a typical plan) isn't.
+  const allBeat = who.startsWith("your") ? "You pay more than every plan shown." : `Every plan shown costs less than ${who}.`;
   const best = sorted.find((i) => i.cheapest) ?? sorted[0];
 
   return (
@@ -156,7 +158,7 @@ export default function PriceLine({
         <figcaption className={s.caption}>
           <span className={s.status}>
             {cheaper === items.length
-              ? <b className={s.bad}>You pay more than every plan shown.</b>
+              ? <b className={s.bad}>{allBeat}</b>
               : cheaper === 0
                 ? <b className={s.good}>Nothing shown beats {who}.</b>
                 : <b>{cheaper} of {items.length} plans shown cost less than {who}.</b>}{" "}
@@ -168,14 +170,14 @@ export default function PriceLine({
       <figcaption className={s.caption}>
         {compact ? (
           cheaper === items.length ? (
-            <><b className={s.bad}>You pay more than every plan shown.</b> Each dot is a plan at its price {per}, ★ the cheapest, the red pin {who}. Every plan is listed below.</>
+            <><b className={s.bad}>{allBeat}</b> Each dot is a plan at its price {per}, ★ the cheapest, the red pin {who}. Every plan is listed below.</>
           ) : cheaper === 0 ? (
             <><b className={s.good}>Nothing shown beats {who}.</b> Each dot is a plan at its price {per}.</>
           ) : (
             <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each dot is a plan at its price {per}, ★ the cheapest, the red pin {who}. Every plan is listed below.</>
           )
         ) : cheaper === items.length ? (
-          <><b className={s.bad}>You pay more than every plan shown.</b> Each bubble is a plan at its price {per}; the red pin is {who}; ★ marks the cheapest.</>
+          <><b className={s.bad}>{allBeat}</b> Each bubble is a plan at its price {per}; the red pin is {who}; ★ marks the cheapest.</>
         ) : cheaper === 0 ? (
           <><b className={s.good}>Nothing shown beats {who}.</b> Each bubble is a plan at its price {per}.</>
         ) : (

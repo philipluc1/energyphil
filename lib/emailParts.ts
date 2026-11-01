@@ -242,3 +242,135 @@ export function glanceRow(o: { dot: string; title: string; line: string; link?: 
   </td></tr>`;
 }
 export const glance = (rows: string[]) => `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 18px;border-bottom:1px solid #eceff5;">${rows.join("")}</table>`;
+
+/* ---------- More visuals (1 Nov 2026) ----------
+   Still tables and colour only: no images, no SVG. Symbols are plain text
+   characters that every mail app's fonts carry. */
+
+/** A navy panel with a pill, a headline, a line and an optional button: the top of an email. */
+export function heroPanel(o: { pill: string; headline: string; body: string; button?: { label: string; url: string } | null; small?: string | null }): string {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+    <tr><td style="padding:22px 22px 20px;border-radius:16px;${keepBg(C.navy)}">
+      <div style="display:inline-block;padding:3px 10px;border-radius:999px;background:${C.amber};color:${C.amberInk};font:800 11px ${F};letter-spacing:0.6px;text-transform:uppercase;">${o.pill}</div>
+      ${keepWhite(`<div style="margin:12px 0 6px;font:800 23px/1.22 ${F};color:#ffffff;">${o.headline}</div>
+      <div style="font:15px/1.55 ${F};color:#ffffff;opacity:0.82;">${o.body}</div>`)}
+      ${o.button ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:18px 0 0;"><tr><td style="border-radius:999px;background:${C.amber};"><a href="${o.button.url}" style="display:inline-block;padding:13px 24px;font:800 15px ${F};color:${C.amberInk};text-decoration:none;border-radius:999px;">${o.button.label} &rarr;</a></td></tr></table>` : ""}
+      ${o.small ? keepWhite(`<div style="margin-top:10px;font:12.5px/1.5 ${F};color:#ffffff;opacity:0.65;">${o.small}</div>`) : ""}
+    </td></tr>
+  </table>`;
+}
+
+/** The money, as the hero (2 Nov 2026): who to move to, and how much a year, big, on navy. */
+export function moneyHero(o: {
+  pill: string;
+  retailer: string;
+  planName: string;
+  amount: number;
+  after: string;
+  button?: { label: string; url: string } | null;
+  small?: string | null;
+}): string {
+  const amt = "$" + Math.round(o.amount).toLocaleString("en-AU");
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+    <tr><td style="padding:22px 22px 22px;border-radius:16px;${keepBg(C.navy)}">
+      <div style="display:inline-block;padding:3px 10px;border-radius:999px;background:${C.amber};color:${C.amberInk};font:800 11px ${F};letter-spacing:0.6px;text-transform:uppercase;">${o.pill}</div>
+      <div style="margin:14px 0 0;font:800 50px/1 ${F};color:${C.amber};letter-spacing:-1px;">${amt}</div>
+      ${keepWhite(`<div style="margin:4px 0 16px;font:700 16px/1.4 ${F};color:#ffffff;">${o.after}</div>`)}
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;"><tr><td style="padding:12px 14px;border-radius:12px;${keepBg("#232d72")}">
+        ${keepWhite(`<div style="font:700 11px ${F};letter-spacing:0.6px;text-transform:uppercase;color:#ffffff;opacity:0.7;">Switch to</div>
+        <div style="margin-top:3px;font:800 24px/1.2 ${F};color:#ffffff;">${o.retailer}</div>
+        <div style="margin-top:2px;font:14px/1.45 ${F};color:#ffffff;opacity:0.78;">${o.planName}</div>`)}
+      </td></tr></table>
+      ${o.button ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:18px 0 0;"><tr><td style="border-radius:999px;background:${C.amber};"><a href="${o.button.url}" style="display:inline-block;padding:13px 24px;font:800 15px ${F};color:${C.amberInk};text-decoration:none;border-radius:999px;">${o.button.label} &rarr;</a></td></tr></table>` : ""}
+      ${o.small ? keepWhite(`<div style="margin-top:12px;font:12.5px/1.5 ${F};color:#ffffff;opacity:0.65;">${o.small}</div>`) : ""}
+    </td></tr>
+  </table>`;
+}
+
+/** "Philip" from "PHILIP LUC" or "Mr P. Luc"; null when there's no usable first name. */
+export function firstNameOf(full: string | null | undefined): string | null {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  const first = parts.find((w) => !/^(mr|mrs|ms|miss|mx|dr)\.?$/i.test(w));
+  if (!first || first.replace(/\./g, "").length < 2 || first.length > 30 || !/^[A-Za-z][A-Za-z'-]+$/.test(first)) return null;
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
+const TILE_TINTS = {
+  teal: { bg: "#e6f6f5", fg: "#0d6f78" },
+  amber: { bg: "#fff3d6", fg: "#9a6400" },
+  green: { bg: "#ecfdf3", fg: "#15803d" },
+  navy: { bg: "#e8ebf8", fg: "#131c57" },
+} as const;
+
+/** Feature tiles, two to a row: a coloured square with a symbol, a bold title, a quiet line. */
+export function tiles(items: { sym: string; title: string; text: string; tint?: keyof typeof TILE_TINTS }[]): string {
+  const rows: string[] = [];
+  for (let r = 0; r < items.length; r += 2) {
+    const pair = items.slice(r, r + 2);
+    rows.push(`<tr>${pair
+      .map((it) => {
+        const t = TILE_TINTS[it.tint ?? "teal"];
+        return `<td valign="top" width="50%" style="padding:12px;background:${C.greyTint};border-radius:14px;font-family:${F};">
+          <div style="width:36px;height:36px;border-radius:10px;background:${t.bg};color:${t.fg};font:800 18px/36px ${F};text-align:center;">${it.sym}</div>
+          <div style="margin-top:10px;font:800 14.5px/1.3 ${F};color:${C.navy};">${it.title}</div>
+          <div style="margin-top:3px;font:13px/1.45 ${F};color:${C.grey};">${it.text}</div>
+        </td>`;
+      })
+      .join("")}${pair.length === 1 ? `<td width="50%"></td>` : ""}</tr>`);
+  }
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border-collapse:separate;border-spacing:8px;table-layout:fixed;">${rows.join("")}</table>`;
+}
+
+/** Before and after, a year: two bars to scale and the gap as a pill. */
+export function versus(o: { before: { label: string; value: number }; after: { label: string; value: number }; gapLabel?: string }): string {
+  const max = Math.max(o.before.value, o.after.value, 1);
+  const w = (v: number) => Math.max(8, Math.round((v / max) * 100));
+  const row = (label: string, value: number, color: string, strong: boolean) => `<tr>
+      <td style="padding:6px 0 2px;font:${strong ? "800" : "600"} 13px/1.3 ${F};color:${C.ink};">${label}</td>
+      <td align="right" style="padding:6px 0 2px;font:800 15px ${F};color:${strong ? C.green : C.ink};white-space:nowrap;">${money(value)}<span style="font:600 11px ${F};color:${C.grey};"> /yr</span></td>
+    </tr>
+    <tr><td colspan="2" style="padding:0 0 6px;"><table role="presentation" width="${w(value)}%" cellspacing="0" cellpadding="0"><tr><td height="16" bgcolor="${color}" style="height:16px;background:${color};border-radius:8px;font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`;
+  const gap = Math.max(0, o.before.value - o.after.value);
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border-collapse:separate;">
+    <tr><td style="padding:16px 18px 12px;border-radius:14px;background:${C.greyTint};">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        ${row(o.before.label, o.before.value, "#e8590c", false)}
+        ${row(o.after.label, o.after.value, C.green, true)}
+      </table>
+      ${gap >= 1 ? `<div style="margin-top:6px;"><span style="display:inline-block;padding:5px 12px;border-radius:999px;background:${C.greenTint};color:${C.green};font:800 13px ${F};">${o.gapLabel ?? "Difference"}: ${money(gap)} a year</span></div>` : ""}
+    </td></tr>
+  </table>`;
+}
+
+/** A big countdown: the number of days, and what happens then. */
+export function countdown(days: number, what: string, when: string): string {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border-collapse:separate;">
+    <tr>
+      <td width="112" valign="middle" align="center" style="padding:14px 8px;border-radius:14px 0 0 14px;background:${C.amber};font-family:${F};">
+        <div style="font:900 40px/1 ${F};color:${C.amberInk};">${days}</div>
+        <div style="margin-top:4px;font:800 11px ${F};letter-spacing:0.8px;text-transform:uppercase;color:${C.amberInk};">day${days === 1 ? "" : "s"} left</div>
+      </td>
+      <td valign="middle" style="padding:14px 18px;border-radius:0 14px 14px 0;background:${C.amberTint};font-family:${F};">
+        <div style="font:800 17px/1.3 ${F};color:${C.navy};">${what}</div>
+        <div style="margin-top:4px;font:14px/1.45 ${F};color:${C.grey};">${when}</div>
+      </td>
+    </tr>
+  </table>`;
+}
+
+/** One big figure on a tinted block, with a line under it: for credits, refunds and the like. */
+export function bigFigure(o: { figure: string; label: string; body: string; tone?: "green" | "amber" | "teal" }): string {
+  const t = o.tone === "amber" ? { bg: C.amberTint, fg: "#9a6400" } : o.tone === "teal" ? { bg: C.tealTint, fg: C.teal } : { bg: C.greenTint, fg: C.green };
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border-collapse:separate;">
+    <tr><td align="center" style="padding:22px 18px;border-radius:16px;background:${t.bg};font-family:${F};">
+      <div style="font:700 11px ${F};letter-spacing:1.2px;text-transform:uppercase;color:${t.fg};">${o.label}</div>
+      <div style="margin:8px 0 6px;font:900 44px/1 ${F};color:${t.fg};">${o.figure}</div>
+      <div style="font:14px/1.5 ${F};color:${C.grey};">${o.body}</div>
+    </td></tr>
+  </table>`;
+}
+
+/** A background colour that Gmail's dark mode leaves alone (it doesn't recolour background images). */
+export const keepBg = (c: string) => `background-color:${c};background-image:linear-gradient(${c},${c});`;
+/** White text that stays white in Gmail's dark mode, on a keepBg() panel. Harmless everywhere else. */
+export const keepWhite = (html: string) => `<div class="gm-s"><div class="gm-d">${html}</div></div>`;

@@ -75,13 +75,23 @@ export async function POST(req: NextRequest) {
               : "past_due";
         const periodEnd = getPeriodEnd(sub);
 
-        const { error } = await supabaseAdmin
-          .from("subscribers")
-          .update({
-            status,
-            current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-          })
-          .eq("stripe_subscription_id", sub.id);
+        const base = {
+          status,
+          current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        };
+        // For the owner dashboard's churn report (2 Nov 2026): when they
+        // cancelled, when it ends, and the reason they picked in Stripe's portal.
+        const iso = (t: number | null | undefined) => (t ? new Date(t * 1000).toISOString() : null);
+        const details = sub.cancellation_details;
+        const extra = {
+          canceled_at: iso(sub.canceled_at) ?? (status === "canceled" ? new Date().toISOString() : null),
+          cancel_at: sub.cancel_at_period_end ? iso(sub.cancel_at ?? periodEnd) : iso(sub.cancel_at),
+          cancel_reason: details?.feedback ?? (details?.comment ? "other" : null),
+          cancel_comment: details?.comment ? details.comment.slice(0, 500) : null,
+        };
+        let { error } = await supabaseAdmin.from("subscribers").update({ ...base, ...extra }).eq("stripe_subscription_id", sub.id);
+        // An older database without the new columns: keep the status right.
+        if (error && /column|schema cache/i.test(error.message)) ({ error } = await supabaseAdmin.from("subscribers").update(base).eq("stripe_subscription_id", sub.id));
         if (error) throw error;
         break;
       }

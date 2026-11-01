@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import RetailerLogo from "./RetailerLogo";
+import ComplaintBadge from "./ComplaintBadge";
 import PriceLine from "./PriceLine";
 import { OfferChips } from "./OfferTerms";
 import { GAS_RETAILER_COUNT, type GasPlanRow, type RankedGas } from "@/lib/gasPlans";
@@ -127,7 +128,7 @@ export default function GasPlanTable({
                       </td>
                       <td className={v.planName}>
                         {m.plan[2]}
-                        <span className={v.offerChips}><OfferChips o={gasOffer(m.plan)} /></span>
+                        <span className={v.offerChips}><OfferChips o={gasOffer(m.plan)} /><ComplaintBadge retailer={m.plan[0]} /></span>
                         <br />
                         <button type="button" className={v.ratesToggle} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
                           {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
@@ -169,7 +170,7 @@ export default function GasPlanTable({
                     {mine && <span className={v.tagMine}>Yours</span>}
                   </div>
                   <span className={v.pcPlan}>{m.plan[2]}</span>
-                  <span className={v.offerChips}><OfferChips o={gasOffer(m.plan)} /></span>
+                  <span className={v.offerChips}><OfferChips o={gasOffer(m.plan)} /><ComplaintBadge retailer={m.plan[0]} /></span>
                 </div>
                 <div className={v.pcNums}>
                   <b>{whole(m.total * k)}</b>

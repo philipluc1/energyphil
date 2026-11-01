@@ -78,6 +78,14 @@ export async function GET(req: NextRequest) {
     if (!rErr) for (const x of (rs ?? []) as { id: string; current_rates: unknown }[]) { const r = ratesFromJson(x.current_rates); if (r) ratesOf.set(x.id, r); }
   }
 
+  // 2 Nov 2026: name and current retailer, for "Hi Philip" and "than your last bill with Tango".
+  const who = new Map<string, { name: string | null; retailer: string | null }>();
+  {
+    const { data: ws, error: wErr } = await supabaseAdmin.from("subscribers").select("id, customer_name, current_retailer").eq("status", "active");
+    if (wErr) console.error("monthly-check: names", wErr.message);
+    for (const w of (ws ?? []) as { id: string; customer_name: string | null; current_retailer: string | null }[]) who.set(w.id, { name: w.customer_name, retailer: w.current_retailer });
+  }
+
   // Who has turned the monthly summary off (separate query, so an older database without the column still sends).
   const summaryOn = new Map<string, boolean>();
   {
@@ -176,6 +184,8 @@ export async function GET(req: NextRequest) {
           activity: act.ready ? activityWords(act) || null : null,
           activityCount: act.ready ? act.newOffers + act.priceChanges : null,
           facts,
+          customerName: who.get(sub.id)?.name ?? null,
+          currentRetailer: who.get(sub.id)?.retailer ?? null,
         });
         const ok = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
         if (ok) emailed++;

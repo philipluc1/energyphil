@@ -59,10 +59,19 @@ function useGasCtx(member: GasMember): GasCtx | null {
   }, [member.gas_zone, member.gas_billing_days, member.gas_mj, member.gas_reference_total, member.gas_current_retailer]);
 }
 
-export default function GasCards({ member, only, noRewards = false }: { member: GasMember; /** "rewardsCard": just the gas rewards card (the Savings tab). */ only?: "rewardsCard"; noRewards?: boolean }) {
+export default function GasCards({ member, only, noRewards = false }: {
+  member: GasMember;
+  /** "rewardsCard": just the gas rewards card (the Savings tab). "market" / "rewards": the full
+   * views for the phone's Market and Rewards tabs. "forecast": just the year-ahead card. */
+  only?: "rewardsCard" | "market" | "rewards" | "forecast";
+  noRewards?: boolean;
+}) {
   const c = useGasCtx(member);
   if (!c) return null;
   if (only === "rewardsCard") return <GasMarket c={c} rewardsOnly />;
+  if (only === "forecast") return <GasForecastCard c={c} />;
+  if (only === "market") return <GasMarket c={c} inline="market" />;
+  if (only === "rewards") return <MarketRewards fuel="G" matches={c.ranked} you={c.you} perYear={c.perYear} against={c.against} locked={new Set<unknown>()} whole={whole} />;
   return (
     <>
       <GasForecastCard c={c} />
@@ -170,7 +179,7 @@ function GasForecastPage({ f, c, onClose }: { f: GasForecast; c: GasCtx; onClose
 
 /* ---------- The gas market this month, and gas rewards ---------- */
 
-function GasMarket({ c, rewardsOnly = false, noRewards = false }: { c: GasCtx; rewardsOnly?: boolean; noRewards?: boolean }) {
+function GasMarket({ c, rewardsOnly = false, noRewards = false, inline }: { c: GasCtx; rewardsOnly?: boolean; noRewards?: boolean; /** Render the full market view in the page (the phone's Market tab). */ inline?: "market" }) {
   const [open, setOpen] = useState<false | "top" | "rewards">(false);
   const events = useMemo(() => marketEvents({ days: 30, keys: gasOfferKeys(c.zone) }), [c.zone]);
   const rewards = useMemo(() => rewardItems(c.ranked, c.you, c.perYear, "G"), [c]);
@@ -210,6 +219,7 @@ function GasMarket({ c, rewardsOnly = false, noRewards = false }: { c: GasCtx; r
     };
   }, [c, events]);
   const none = useMemo(() => new Set<unknown>(), []);
+  if (inline) return <GasMarketDetail c={c} personal={personal} events={events} startAt="top" onClose={() => {}} inline />;
   return (
     <>
       {!rewardsOnly && personal.checked > 0 && <MarketSideCard personal={personal} events={events.filter((e) => personal.vs(e)?.text !== "Not on your gas network")} onOpen={() => setOpen("top")} />}
@@ -219,7 +229,7 @@ function GasMarket({ c, rewardsOnly = false, noRewards = false }: { c: GasCtx; r
   );
 }
 
-function GasMarketDetail({ c, personal, events, onClose, startAt }: { c: GasCtx; personal: MarketPersonal; events: MarketEvent[]; onClose: () => void; startAt: "top" | "rewards" }) {
+function GasMarketDetail({ c, personal, events, onClose, startAt, inline = false }: { c: GasCtx; personal: MarketPersonal; events: MarketEvent[]; onClose: () => void; startAt: "top" | "rewards"; inline?: boolean }) {
   useEffect(() => {
     if (startAt !== "rewards") return;
     const t = window.setTimeout(() => {
@@ -232,12 +242,13 @@ function GasMarketDetail({ c, personal, events, onClose, startAt }: { c: GasCtx;
     return () => window.clearTimeout(t);
   }, [startAt]);
   useEffect(() => {
+    if (inline) return;
     const key = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", key);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", key); document.body.style.overflow = prev; };
-  }, [onClose]);
+  }, [onClose, inline]);
   const [allRet, setAllRet] = useState(false);
   const [allFeed, setAllFeed] = useState(false);
   const none = useMemo(() => new Set<unknown>(), []);
@@ -265,13 +276,8 @@ function GasMarketDetail({ c, personal, events, onClose, startAt }: { c: GasCtx;
   const retShown = allRet ? perRet : perRet.slice(0, RET_SHOWN);
   const feedShown = allFeed ? events : events.slice(0, FEED_SHOWN);
 
-  return createPortal(
-    <div className={styles.mdOverlay} role="dialog" aria-modal="true" aria-labelledby="gmd-title">
-      <div className={styles.mdBar}>
-        <button type="button" className={styles.mdBack} onClick={onClose}>← Back to my dashboard</button>
-        <span className={styles.mdNet}>{c.zone} gas · last 30 days</span>
-      </div>
-      <div className={styles.mdBody}>
+  const body = (
+      <div className={`${styles.mdBody} ${inline ? styles.mdInline : ""}`}>
         <h2 id="gmd-title" className={styles.mdTitle}>Your gas market this month</h2>
         <p className={styles.mdLede}>Every gas offer that changed on your network, priced for your home against {c.against}.</p>
 
@@ -327,7 +333,7 @@ function GasMarketDetail({ c, personal, events, onClose, startAt }: { c: GasCtx;
           )}
         </section>
 
-        <MarketRewards fuel="G" matches={c.ranked} you={c.you} perYear={c.perYear} against={c.against} locked={none} whole={whole} />
+        {!inline && <MarketRewards fuel="G" matches={c.ranked} you={c.you} perYear={c.perYear} against={c.against} locked={none} whole={whole} />}
 
         {events.length > 0 && (
           <section className={styles.mdCard} aria-labelledby="gmd-feed">
@@ -357,8 +363,17 @@ function GasMarketDetail({ c, personal, events, onClose, startAt }: { c: GasCtx;
             )}
           </section>
         )}
-        <button type="button" className={styles.mdBackBottom} onClick={onClose}>← Back to my dashboard</button>
+        {!inline && <button type="button" className={styles.mdBackBottom} onClick={onClose}>← Back to my dashboard</button>}
       </div>
+  );
+  if (inline) return body;
+  return createPortal(
+    <div className={styles.mdOverlay} role="dialog" aria-modal="true" aria-labelledby="gmd-title">
+      <div className={styles.mdBar}>
+        <button type="button" className={styles.mdBack} onClick={onClose}>← Back to my dashboard</button>
+        <span className={styles.mdNet}>{c.zone} gas · last 30 days</span>
+      </div>
+      {body}
     </div>,
     document.body,
   );

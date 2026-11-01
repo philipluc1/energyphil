@@ -161,3 +161,11 @@
 @media (max-width: 900px) { .why { grid-template-columns: 1fr 1fr; } .why .whyHero { grid-column: 1 / -1; } }
 @media (max-width: 520px) { .why { grid-template-columns: 1fr; } .whyBig { font-size: 42px; } }
 @media (prefers-reduced-motion: reduce) { .liveDot { animation: none; } }
+/* 2 Nov 2026: on tablets and phones the icon sits beside the heading (and
+   beside "365" on the hero card), so there's no empty row above each title. */
+@media (max-width: 900px) {
+  .why li { display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; row-gap: 6px; align-items: center; padding: 16px 18px; }
+  .whyIcon { margin-bottom: 0; }
+  .whySub, .whyHero .whyTitle { grid-column: 1 / -1; }
+  .whyHero .whyTitle { margin-top: 4px; }
+}

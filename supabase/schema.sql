@@ -356,3 +356,21 @@ create index if not exists bill_reads_lead_email_created on public.bill_reads (l
 -- 2 Nov 2026: the yearly recap two weeks before renewal. The renewal date it
 -- was last sent for, so it goes once per renewal.
 alter table public.subscribers add column if not exists recap_sent_for date;
+
+-- 2 Nov 2026: owner dashboard. Churn needs when a member cancelled, when it
+-- ends and why (Stripe's cancel reason); the admin log records changes made
+-- from the Members page. Only the server (secret key) reads or writes these.
+alter table public.subscribers add column if not exists canceled_at timestamptz;
+alter table public.subscribers add column if not exists cancel_at timestamptz;
+alter table public.subscribers add column if not exists cancel_reason text;
+alter table public.subscribers add column if not exists cancel_comment text;
+create table if not exists public.admin_actions (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  action text not null,     -- 'edit' | 'cancel_now' | 'cancel_at_period_end' | 'resume' | 'delete'
+  member text not null,     -- the member's email (masked for deletions)
+  detail jsonb not null default '{}'::jsonb
+);
+create index if not exists admin_actions_member on public.admin_actions (member, created_at desc);
+alter table public.admin_actions enable row level security;
+-- No policies: only the server touches this table.

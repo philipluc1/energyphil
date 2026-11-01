@@ -352,8 +352,51 @@
 .table table tr.rowPick { outline: 2px solid #16a34a; outline-offset: -2px; background: #f0fdf4; }
 .table table tr.rowPick td { position: relative; }
 .pickBubble { display: inline-block; margin-bottom: 6px; padding: 3px 9px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; box-shadow: 0 2px 6px -2px rgba(22, 163, 74, 0.6); }
-li.rowPick { position: relative; outline: 2px solid #16a34a; outline-offset: -2px; background: #f0fdf4; border-radius: 12px; padding-top: 22px; }
-li.rowPick > .pickBubble { position: absolute; top: 6px; left: 42px; margin: 0; }
+li.rowPick { position: relative; outline: 2px solid #16a34a; outline-offset: -2px; background: #f0fdf4; border-radius: 12px; margin-top: 12px; padding-top: 16px; }
+/* The bubble sits on the green border, so it never covers the logo (2 Nov 2026). */
+li.rowPick > .pickBubble { position: absolute; top: -10px; left: 40px; margin: 0; }
 .table td > .pickBubble { display: block; width: fit-content; }
 .noStringsLine { margin: 10px 0 2px; font-size: 13.5px; color: var(--grey); line-height: 1.5; }
 .noStringsLine b { color: var(--ink); }
+
+/* 2 Nov 2026: on phones, "Go to …" and "Remind me to switch" side by side. */
+@media (max-width: 560px) {
+  .verdictActions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
+  .verdictActions > * { min-width: 0; }
+  .verdictActions > .go, .verdictActions > button { display: flex; align-items: center; justify-content: center; text-align: center; padding: 11px 10px; font-size: 14px; line-height: 1.25; width: 100%; box-sizing: border-box; }
+  .verdictActions > .go:only-child, .verdictActions > .ghost, .verdictActions > div { grid-column: 1 / -1; }
+}
+
+/* Phones (2 Nov 2026): the price sits beside the retailer name, and "See rates"
+   shares a line with the default-offer note, so each plan takes fewer lines. */
+.pcVdoRow { display: none; }
+@media (max-width: 640px) {
+  .pc {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-areas: "rank main nums";
+    column-gap: 10px; row-gap: 0; align-items: start;
+  }
+  .pcRank { grid-area: rank; padding-top: 6px; }
+  .pcMain { grid-area: main; }
+  .pcNums { grid-area: nums; flex-direction: column; align-items: flex-end; flex-wrap: nowrap; gap: 1px; margin-top: 2px; padding-top: 0; border-top: 0; white-space: nowrap; }
+  .pcNums b { font-size: 17px; }
+  .pcNums span { font-weight: 700; }
+  /* "See rates" and the default-offer note share row 2 across both columns,
+     so the long note never widens the price column. */
+  .pcRates { grid-row: 2; grid-column: 2 / 4; justify-self: start; margin-top: 6px; }
+  .pcVdoRow { display: block; grid-row: 2; grid-column: 2 / 4; justify-self: end; align-self: center; margin-top: 6px; text-align: right; font-size: 11.5px; font-weight: 600; color: var(--grey); white-space: nowrap; }
+  .pcRatesDetail { grid-row: 3; grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  /* Logo and name stay on one line beside the price. */
+  .pcTop { gap: 4px 6px; }
+  .pcTop .retailerLink, .pcTop > b { font-size: 15px; line-height: 1.25; }
+  .pcTop > :first-child { flex: none; }
+  .pcPlan { font-size: 12.5px; }
+}
+@media (max-width: 640px) {
+  .pcMain .offerChips:empty { display: none; }
+}
+/* 2 Nov 2026: the "don't bother switching" line under a good verdict */
+.stayPut { margin: -4px 0 14px; font-size: 14.5px; line-height: 1.5; opacity: 0.92; }
+.stayPut b { font-weight: 900; }

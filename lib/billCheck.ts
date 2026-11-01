@@ -1,3 +1,6 @@
+import { readFees } from "./billExtraction";
+import type { BillFee } from "./billIssues";
+
 // What Utilo noticed on a customer's bill: an estimated read, money owed or a
 // payment plan, whether a concession is applied, and the retailer's own
 // "best offer" message. Read off the bill, kept with the check (browser) and
@@ -12,6 +15,10 @@ export interface BillCheck {
   bestOffer: { planName: string | null; savingPerYear: number | null; saysOnBest: boolean } | null;
   /** When the bill was read (ISO date). */
   checkedAt?: string | null;
+  /** 2 Nov 2026: fees, a lost discount and this period's new charges, for the error checks. */
+  fees?: BillFee[];
+  discountLost?: boolean;
+  newCharges?: number | null;
 }
 
 const num = (v: unknown, max: number): number | null => {
@@ -46,6 +53,9 @@ export function cleanBillCheck(x: unknown): BillCheck | null {
     concession: r.concession === true,
     bestOffer,
     checkedAt,
+    fees: readFees(Array.isArray(r.fees) ? r.fees.map((f) => (f && typeof f === "object" ? { kind: (f as Record<string, unknown>).kind, amount_dollars: (f as Record<string, unknown>).amount } : f)) : []),
+    discountLost: r.discountLost === true,
+    newCharges: num(r.newCharges, 100000),
   };
 }
 
@@ -56,6 +66,9 @@ export function billCheckFromBill(b: {
   paymentPlan?: boolean;
   concessionApplied?: boolean;
   bestOffer?: BillCheck["bestOffer"];
+  fees?: BillFee[];
+  discountLost?: boolean;
+  newCharges?: number | null;
 }): BillCheck {
   return {
     readingType: b.readingType ?? null,
@@ -63,6 +76,9 @@ export function billCheckFromBill(b: {
     paymentPlan: b.paymentPlan === true,
     concession: b.concessionApplied === true,
     bestOffer: b.bestOffer ?? null,
+    fees: b.fees ?? [],
+    discountLost: b.discountLost === true,
+    newCharges: b.newCharges ?? null,
     checkedAt: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD in local time
   };
 }

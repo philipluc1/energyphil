@@ -2256,9 +2256,11 @@ export default function Comparator() {
           </button>
           {matches.length > 0 && (
             <span className={styles.resultsSub}>
-              {matches.length} plan{matches.length === 1 ? "" : "s"} from the {retailersHere} retailers with plans for you on {distributor} (not every plan in the market) · {days}-day period ·{" "}
+              {matches.length} plans · {retailersHere} retailers{" "}
+              <InfoTip label="Which plans">The plans we track from retailers with plans for you on {distributor}: not every plan in the market.</InfoTip>
+              {" "}· {distributor} · {days} days ·{" "}
               <span className={PRICES_STALE ? styles.freshStale : styles.fresh} title={PRICES_STALE ? "These prices may be out of date" : "Retailers' published prices"}>
-                prices checked {fmtUpdated()}{PRICES_STALE ? " (may be out of date)" : ""}
+                prices {fmtUpdated()}{PRICES_STALE ? " (may be out of date)" : ""}
               </span>
             </span>
           )}
@@ -2311,13 +2313,10 @@ export default function Comparator() {
                         </p>
                       </>
                     ) : (
-                      <>
-                        <b>These figures are for the average Victorian home</b>
-                        <p>
-                          {AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year, the Essential Services Commission&apos;s benchmark. Your own costs could be quite
-                          different: a bill gives your real numbers.
-                        </p>
-                      </>
+                      <p className={styles.avgOneLine}>
+                        <b>Average Victorian home</b> · {AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year.{" "}
+                        <InfoTip label="About the average home">The Essential Services Commission&apos;s benchmark, used for the default offer. Your own costs could be quite different: a bill gives your real numbers.</InfoTip>
+                      </p>
                     )}
                   </div>
                 </div>
@@ -2371,7 +2370,7 @@ export default function Comparator() {
                     stripTitle="Get your exact answer in about a minute"
                     stripSub={
                       useAvg
-                        ? "These figures use the average Victorian home. A photo of your bill gives your real usage and rates."
+                        ? "A photo of your bill gives your real usage and rates."
                         : !haveBill
                           ? `We don't know what you pay now${currentRetailer ? ` or which ${currentRetailer} plan you're on` : ""}, so we've compared against the default offer, the government's reference price. A photo of your bill fixes that.`
                           : "Your usage is estimated from your answers. A photo of your bill makes it exact."
@@ -2739,10 +2738,15 @@ export default function Comparator() {
                     olderVersion: onOlderVersion && todaysVersion ? { planName: todaysVersion.plan[2], perMonth: perMonth(olderVersionGap), perYear: perYear(olderVersionGap) } : null,
                     planIsCurrent: !!todaysVersion && !onOlderVersion,
                     retailerBest: retailerBest
-                      ? { planName: isLockedPlan(retailerBest) ? "one of their plans (Plus members see which)" : retailerBest.plan[2], savingPerYear: perYear(bench - retailerBest.total) }
+                      ? {
+                          planName: isLockedPlan(retailerBest) ? "one of their plans (Plus members see which)" : retailerBest.plan[2],
+                          savingPerYear: perYear(bench - retailerBest.total),
+                          tariff: retailerBest.plan[5] !== null ? "flat" : retailerBest.plan[6] !== null ? "tou" : null,
+                        }
                       : null,
                     retailerCount: RETAILER_COUNT,
                     worthPerYear: WORTH_SWITCHING_PER_YEAR,
+                    money: usageSource === "bill" ? { rates: myRates, distributor, ...usage } : null,
                   }}
                 />
               )}

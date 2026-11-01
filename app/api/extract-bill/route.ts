@@ -156,6 +156,27 @@ const TOOL_SCHEMA = {
         description:
           "True if the bill shows a government concession for card holders (e.g. 'Annual Electricity Concession', 'Victorian Government concession', 'pensioner concession'). Do not count one-off rebates or bill relief credits. False otherwise.",
       },
+      new_charges_total: {
+        type: ["number", "null"],
+        description:
+          "This billing period's new charges including GST, in AUD, before any balance carried forward, payments received or overdue amounts are added (often 'New charges', 'Total new charges', 'This bill'). Discounts, concessions and credits for this period are already taken off. Null if the bill doesn't show it separately.",
+      },
+      fees: {
+        type: "array",
+        description: "Any fees charged on this bill, apart from the supply and usage charges: late-payment fees, paper-bill fees, card or payment-processing fees, disconnection or reconnection fees, and other one-off fees. Empty if none.",
+        items: {
+          type: "object",
+          properties: {
+            kind: { type: "string", enum: ["late_payment", "paper_bill", "payment_processing", "reconnection", "other"] },
+            amount_dollars: { type: "number", description: "The fee in dollars including GST." },
+          },
+          required: ["kind", "amount_dollars"],
+        },
+      },
+      discount_not_applied: {
+        type: "boolean",
+        description: "True if the bill says a pay-on-time, direct-debit or other conditional discount was NOT applied or was lost this period (for example 'You missed your pay-on-time discount'). False otherwise.",
+      },
       best_offer_plan: {
         type: ["string", "null"],
         description: "If the bill has the retailer's 'best offer', 'better offer' or 'could you save' message, the plan name it recommends. Null if there's no such message or no plan is named.",

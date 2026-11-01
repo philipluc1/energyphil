@@ -6,6 +6,7 @@ import BillPhotoUpload from "./BillPhotoUpload";
 import { supabase } from "@/lib/supabaseClient";
 import { monthBill, trackMonths, trackerTotals, type Fuel, type TrackedBill, type TrackedMonth } from "@/lib/billTracker";
 import { MONTH_NAMES } from "@/lib/profileUsage";
+import { billChange, latestPair } from "@/lib/billChange";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import s from "./billtracker.module.css";
 
@@ -48,6 +49,11 @@ export default function BillTracker({ initialFuel = "electricity", gasAccount = 
   const hasGas = gasAccount || initialFuel === "gas" || !!bills?.some((b) => b.fuel === "gas");
   const months = useMemo(() => trackMonths(bills ?? [], fuel, { minMonths: 6, maxMonths: 12 }), [bills, fuel]);
   const totals = useMemo(() => trackerTotals(months), [months]);
+  // "Why did my bill change?" (2 Nov 2026): the latest bill against the one before, in one line.
+  const change = useMemo(() => {
+    const pair = latestPair((bills ?? []).filter((b) => b.fuel === fuel), (b) => (fuel === "gas" ? b.mj : b.kwh));
+    return pair ? billChange(pair[0], pair[1], fuel === "gas" ? "gas" : "power") : null;
+  }, [bills, fuel]);
   const unit = fuel === "gas" ? "MJ" : "kWh";
   const val = (m: TrackedMonth) => (view === "amount" ? m.amount : m.usage);
   const max = Math.max(...months.map(val), 1);
@@ -66,6 +72,12 @@ export default function BillTracker({ initialFuel = "electricity", gasAccount = 
               ? fuel === "gas" ? "Every gas bill you upload lands here, month by month. Gas swings with the seasons, so a full year tells the real story." : "Every bill you upload lands here, month by month. Add older ones to see your year."
               : <>{whole(totals.amount)} over {totals.months} month{totals.months === 1 ? "" : "s"} · about <b>{whole(totals.avgAmount)}</b> a month{totals.missing > 0 ? <> · <span className={s.gapCount}>{totals.missing} month{totals.missing === 1 ? "" : "s"} missing</span></> : null}</>}
           </p>
+          {change && (
+            <p className={s.change}>
+              <b>Latest bill: {change.headline}.</b>
+              {change.reasons.length > 0 ? <> {change.reasons.slice(0, 2).join(", and ").replace(/^./, (c) => c.toUpperCase())}.</> : null}
+            </p>
+          )}
         </div>
         <div className={s.toggles}>
           {hasGas && (

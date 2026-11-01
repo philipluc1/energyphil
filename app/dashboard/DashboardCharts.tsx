@@ -1,6 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
+import AdminHeader from "./AdminHeader";
+import FilterBar from "./FilterBar";
+import type { DashFilters } from "@/lib/adminFilters";
 import {
   Area,
   AreaChart,
@@ -58,19 +61,17 @@ export default function DashboardCharts({
   stats,
   subscriberStats,
   funnel,
+  filters,
+  children,
 }: {
   stats: DashboardStats;
   subscriberStats?: SubscriberStats;
   funnel?: FunnelStats;
+  children?: ReactNode;
+  filters?: DashFilters;
 }) {
   const scheme = useColorScheme();
   const colors = PALETTE[scheme];
-  const router = useRouter();
-
-  async function onLogout() {
-    await fetch("/api/dashboard-logout", { method: "POST" });
-    router.push("/dashboard/login");
-  }
 
   const perDay = stats.perDay.map((d) => ({ ...d, label: fmtDateShort(d.date) }));
   const revenuePerDay = (subscriberStats?.revenuePerDay ?? []).map((d) => ({
@@ -89,18 +90,15 @@ export default function DashboardCharts({
 
   return (
     <div className={styles.wrap}>
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          Util<span className={styles.accent}>o</span>
-          <span className={styles.brandSub}>Dashboard</span>
-        </div>
-        <button type="button" className={styles.logoutBtn} onClick={onLogout}>
-          Log out
-        </button>
-      </header>
+      <AdminHeader />
+      {filters && <FilterBar filters={filters} />}
 
       {funnel && <LaunchFunnel funnel={funnel} />}
 
+      {/* Growth, retention and the "didn't join" list (2 Nov 2026), rendered on the server. */}
+      {children}
+
+      <div data-sec="business">
       {/* ---------------- Business performance ---------------- */}
       <div className={styles.sectionHeader}>
         <span className={styles.sectionTitle}>Business performance</span>
@@ -197,6 +195,8 @@ export default function DashboardCharts({
         </div>
       )}
 
+      </div>
+      <div data-sec="savings">
       {/* ---------------- Customer savings ---------------- */}
       <div className={styles.sectionHeader}>
         <span className={styles.sectionTitle}>Customer savings</span>
@@ -218,7 +218,7 @@ export default function DashboardCharts({
         </div>
         <div className={styles.statCard}>
           <div className={styles.statValue}>{fmtCurrency(stats.totalSavingsFound)}</div>
-          <div className={styles.statLabel}>Total $ found, all-time</div>
+          <div className={styles.statLabel}>Total $ found</div>
         </div>
       </div>
 
@@ -323,6 +323,8 @@ export default function DashboardCharts({
         )}
       </div>
 
+      </div>
+      <div data-sec="market">
       {/* ---------------- Market insights ---------------- */}
       <div className={styles.sectionHeader}>
         <span className={styles.sectionTitle}>Market insights</span>
@@ -386,6 +388,7 @@ export default function DashboardCharts({
           mostly reflects which networks tend to have cheaper underlying tariffs.
         </p>
       </div>
+      </div>
     </div>
   );
 }
@@ -394,7 +397,7 @@ export default function DashboardCharts({
 function LaunchFunnel({ funnel }: { funnel: FunnelStats }) {
   const fmtVal = (v: number, kind: "count" | "rate") => (kind === "rate" ? fmtPct(v) : v.toLocaleString("en-AU"));
   return (
-    <>
+    <div data-sec="launch">
       <div className={styles.sectionHeader}>
         <span className={styles.sectionTitle}>Launch checkpoints</span>
         <span className={styles.sectionNote}>Anonymous check counts against new members. Targets from the launch plan.</span>
@@ -476,6 +479,6 @@ function LaunchFunnel({ funnel }: { funnel: FunnelStats }) {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

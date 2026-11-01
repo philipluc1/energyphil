@@ -16,6 +16,7 @@ import { TipCarousel } from "../components/EnergyTips";
 import PlanAside, { type PlanAsideData } from "../components/PlanAside";
 import Disclosures from "../components/Disclosures";
 import BillCheckCard from "../components/BillCheckCard";
+import BillExplainer from "../components/BillExplainer";
 import { cleanBillCheck, type BillCheck } from "@/lib/billCheck";
 import SavingsChart from "../components/SavingsChart";
 import FunEquivalents from "../components/FunEquivalents";
@@ -23,7 +24,9 @@ import MovingCard from "../components/MovingCard";
 import UsageCard from "../components/UsageCard";
 import GasDashboard, { GasAside } from "../components/GasDashboard";
 import GasCards from "../components/GasCards";
-import { GAS_ZONES, bestGasPlan, type GasZone } from "@/lib/gasPlans";
+import { GAS_ZONES, TYPICAL_MJ_PER_DAY, bestGasPlan, gasDataReady, type GasZone } from "@/lib/gasPlans";
+import { guessGasZoneFromPostcode } from "@/lib/postcodeGas";
+import type { GasMember } from "../components/GasDashboard";
 import gd from "../components/gasdash.module.css";
 import { shapeForProfile } from "@/lib/usageShape";
 import DashTabs, { type TabDef } from "../components/DashTabs";
@@ -629,13 +632,28 @@ export default function AccountPage() {
     router.push("/check?start=type");
   }
 
-  // On gas the Compare tab isn't offered (gas has its own comparison above).
+  // Gas works like electricity (2 Nov 2026): the same tabs, with an average
+  // Victorian gas home standing in until a gas bill comes in.
+  const gasMember: GasMember = (() => {
+    const z = sub?.gas_zone && GAS_ZONES.includes(sub.gas_zone as GasZone) ? (sub.gas_zone as GasZone) : null;
+    if (sub && z && (sub.gas_billing_days ?? 0) > 0 && (sub.gas_mj ?? 0) > 0) return sub;
+    const guess = guessGasZoneFromPostcode(sub?.postcode ?? "");
+    return {
+      gas_zone: z ?? guess ?? "Australian Gas Networks",
+      gas_billing_days: 91,
+      gas_mj: TYPICAL_MJ_PER_DAY * 91,
+      gas_reference_total: null,
+      gas_current_plan_name: null,
+      gas_current_retailer: null,
+      gas_updated_at: null,
+      baseline_retailer: sub?.baseline_retailer ?? null,
+      estimate: true,
+      zone_guessed: !z,
+    };
+  })();
   // Market and Rewards are tabs only on narrow screens (wide ones show them as side cards).
-  const marketTabs = narrow && fuel === "elec" && !!cmpInput;
-  const shownTab: Tab =
-    fuel === "gas" && (tab === "compare" || tab === "market" || tab === "rewards") ? "home"
-      : !marketTabs && (tab === "market" || tab === "rewards") ? "compare"
-        : tab;
+  const marketTabs = narrow && (fuel === "elec" ? !!cmpInput : gasDataReady);
+  const shownTab: Tab = !marketTabs && (tab === "market" || tab === "rewards") ? "compare" : tab;
   const tabs: TabDef<Tab>[] = [
     { id: "compare", label: "Compare", icon: "scale", hint: "All plans, ranked" },
     ...(marketTabs
@@ -825,8 +843,8 @@ export default function AccountPage() {
 
   const sideCardList = (withPlan: boolean) => (
     <>
-      {fuel === "gas" && sub && <GasAside member={sub} />}
-      {fuel === "gas" && sub && <GasCards member={sub} noRewards={shownTab === "savings"} />}
+      {fuel === "gas" && <GasAside member={gasMember} />}
+      {fuel === "gas" && (marketTabs ? <GasCards member={gasMember} only="forecast" /> : <GasCards member={gasMember} noRewards={shownTab === "savings"} />)}
       {withPlan && fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
       {fuel === "elec" && cmpInput && myShape && <MiddayCard input={cmpInput} shape={myShape.shape} evOvernight={myShape.evOvernight} profile={homeProfile} member={isMember} />}
       {fuel === "elec" && cmpInput && <ForecastCard input={cmpInput} profile={homeProfile} member={isMember} />}
@@ -980,21 +998,21 @@ export default function AccountPage() {
                     <span className={`${gd.fuelIcon} ${gd.fuelElec}`}><Icon name="bolt" size={18} /></span>
                     <span className={gd.fuelText}>Electricity<span className={gd.fuelSub}>{cmpInput ? (cmpInput.currentRetailer ?? "your plan") : "no bill yet"}</span></span>
                   </button>
-                  <button type="button" role="tab" aria-selected={fuel === "gas"} className={fuel === "gas" ? gd.fuelOn : gd.fuelBtn} onClick={() => { setFuel("gas"); if (tab === "compare" || tab === "market" || tab === "rewards") setTab("home"); try { window.history.replaceState(null, "", "#gas"); } catch { /* ignore */ } }}>
+                  <button type="button" role="tab" aria-selected={fuel === "gas"} className={fuel === "gas" ? gd.fuelOn : gd.fuelBtn} onClick={() => { setFuel("gas"); try { window.history.replaceState(null, "", "#gas"); } catch { /* ignore */ } }}>
                     <span className={`${gd.fuelIcon} ${gd.fuelGas}`}><Icon name="flame" size={18} /></span>
                     <span className={gd.fuelText}>Gas<span className={gd.fuelSub}>{sub?.gas_zone && sub?.gas_mj ? (sub.gas_current_retailer ?? sub.gas_zone) : "no gas bill yet"}</span></span>
                   </button>
                 </div>
               )}
-              {!subLoading && fuel === "gas" && (
-                <GasDashboard member={sub ?? { gas_zone: null, gas_billing_days: null, gas_mj: null, gas_reference_total: null, gas_current_plan_name: null, gas_updated_at: null }} isMember={isMember} period={period} onPeriod={setPeriod} />
-              )}
               {/* Always on top: are you on the cheapest plan? */}
               {!subLoading && sub && <InstallBanner />}
 
               {!subLoading && (
-                <DashTabs tabs={fuel === "gas" ? tabs.filter((t) => t.id !== "compare") : tabs} active={shownTab} onChange={changeTab}>
-                  {shownTab === "compare" && (
+                <DashTabs tabs={tabs} active={shownTab} onChange={changeTab}>
+                  {shownTab === "compare" && fuel === "gas" && (
+                    <GasDashboard member={gasMember} isMember={isMember} period={period} onPeriod={setPeriod} />
+                  )}
+                  {shownTab === "compare" && fuel === "elec" && (
                     cmpInput ? (
                       <>
                         {/* The verdict sits under the tabs, at the top of Compare (1 Nov 2026). */}
@@ -1015,14 +1033,24 @@ export default function AccountPage() {
                     )
                   )}
 
-                  {shownTab === "market" && cmpInput && <MemberMarket input={cmpInput} member={isMember} only="market" />}
-                  {shownTab === "rewards" && cmpInput && <div className={styles.tabTop}><MemberMarket input={cmpInput} member={isMember} only="rewards" /></div>}
+                  {shownTab === "market" && fuel === "elec" && cmpInput && <MemberMarket input={cmpInput} member={isMember} only="market" />}
+                  {shownTab === "rewards" && fuel === "elec" && cmpInput && <div className={styles.tabTop}><MemberMarket input={cmpInput} member={isMember} only="rewards" /></div>}
+                  {shownTab === "market" && fuel === "gas" && <GasCards member={gasMember} only="market" />}
+                  {shownTab === "rewards" && fuel === "gas" && <div className={styles.tabTop}><GasCards member={gasMember} only="rewards" /></div>}
 
                   {shownTab === "home" && (
                     <>
                       {fuel === "elec" && dashCheck && dashCheckFacts && (
                         <div className={styles.billCheckWrap}>
-                          <BillCheckCard check={dashCheck} retailer={cmpInput?.currentRetailer ?? ""} facts={dashCheckFacts} title="We checked your latest bill" />
+                          <BillCheckCard
+                            check={dashCheck}
+                            retailer={cmpInput?.currentRetailer ?? ""}
+                            facts={dashCheckFacts}
+                            title="We checked your latest bill"
+                            explain={cmpInput && !cmpInput.billIsPriced ? (
+                              <BillExplainer f={{ retailer: cmpInput.currentRetailer, planName: cmpInput.currentPlanName, days: cmpInput.days, anytime: cmpInput.anytime, peak: cmpInput.peak, shoulder: cmpInput.shoulder, offpeak: cmpInput.offpeak, cl: cmpInput.cl, solarExportKwh: cmpInput.solarExportKwh, rates: cmpInput.currentRates ?? null, total: cmpInput.billTotal, distributor: cmpInput.distributor }} />
+                            ) : undefined}
+                          />
                         </div>
                       )}
                       {isMember ? (
@@ -1126,9 +1154,27 @@ export default function AccountPage() {
                             </>
                           )}
                         </section>
+                        {/* Bills and savings by month, straight under "Your next move" (2 Nov 2026). */}
+                        <BillTracker key={fuel} initialFuel={fuel === "gas" ? "gas" : "electricity"} gasAccount={!!sub?.gas_zone} />
+
+                        <section className={styles.panelCard}>
+                          <div className={styles.panelTitle}>Savings by month</div>
+                          {!episodesLoading && months.length === 0 ? (
+                            <p className={styles.panelText}>Your monthly savings will show here.</p>
+                          ) : (
+                            <div data-noswipe><SavingsChart months={months} palette={themeMode.savings} /></div>
+                          )}
+                          {months.some((m) => m.partial) && <div className={styles.chartNote}>Faded column = month in progress</div>}
+                          {months.length > 0 && (
+                            <div className={styles.chartNote}>
+                              {switchedAt ? "Months with a saved check use it. Others are estimates." : "Before you switch, these show what switching would have saved."}
+                            </div>
+                          )}
+                        </section>
+
                         {/* Discounts and rewards on their network (1 Nov 2026): money on the table, next to their saving. */}
                         {fuel === "elec" && cmpInput && <MemberMarket input={cmpInput} member={isMember} only="rewardsCard" />}
-                        {fuel === "gas" && sub && <GasCards member={sub} only="rewardsCard" />}
+                        {fuel === "gas" && <GasCards member={gasMember} only="rewardsCard" />}
 
 
                         <section className={styles.panelCard} id="deal-dates">
@@ -1201,22 +1247,6 @@ export default function AccountPage() {
                           )}
                         </section>
 
-                        <BillTracker key={fuel} initialFuel={fuel === "gas" ? "gas" : "electricity"} gasAccount={!!sub?.gas_zone} />
-
-                        <section className={styles.panelCard}>
-                          <div className={styles.panelTitle}>Savings by month</div>
-                          {!episodesLoading && months.length === 0 ? (
-                            <p className={styles.panelText}>Your monthly savings will show here.</p>
-                          ) : (
-                            <div data-noswipe><SavingsChart months={months} palette={themeMode.savings} /></div>
-                          )}
-                          {months.some((m) => m.partial) && <div className={styles.chartNote}>Faded column = month in progress</div>}
-                          {months.length > 0 && (
-                            <div className={styles.chartNote}>
-                              {switchedAt ? "Months with a saved check use it. Others are estimates." : "Before you switch, these show what switching would have saved."}
-                            </div>
-                          )}
-                        </section>
                       </>
                     ) : (
                       <div className={styles.panelCard}>
@@ -1264,7 +1294,7 @@ export default function AccountPage() {
                             </ul>
                           </section>
                           <MemberSettings />
-                          <UpgradePlans currentPlan={sub!.plan} onChanged={(planId, cents) => setSub((p) => (p ? { ...p, plan: planId, amount_cents: cents } : p))} />
+                          <UpgradePlans currentPlan={sub!.plan} currentAmount={sub!.amount_cents} onChanged={(planId, cents) => setSub((p) => (p ? { ...p, plan: planId, amount_cents: cents } : p))} />
                         </>
                       ) : (
                         <>

@@ -22,6 +22,7 @@ import PlanViewToggle from "./PlanViewToggle";
 import { cheapestPerRetailer } from "@/lib/onePerRetailer";
 import FunEquivalents from "./FunEquivalents";
 import RetailerLogo from "./RetailerLogo";
+import ComplaintBadge from "./ComplaintBadge";
 import DayChanges from "./DayChanges";
 import type { BillCheckFacts } from "./BillCheckCard";
 import { PLAN_VS_BILL_TAG, planVsBill, samePlanName } from "@/lib/planVersion";
@@ -157,9 +158,13 @@ export function billCheckFacts(input: ComparisonInput): BillCheckFacts | null {
     billPlanName,
     olderVersion: older && todays ? { planName: todays.plan[2], perMonth: (gap * (365 / 12)) / input.days, perYear: gap * c.perYear } : null,
     planIsCurrent: !!todays && !older,
-    retailerBest: rb ? { planName: rb.plan[2], savingPerYear: (c.you - rb.total) * c.perYear } : null,
+    retailerBest: rb ? { planName: rb.plan[2], savingPerYear: (c.you - rb.total) * c.perYear, tariff: rb.plan[5] !== null ? "flat" : rb.plan[6] !== null ? "tou" : null } : null,
     retailerCount: RETAILER_COUNT,
     worthPerYear: WORTH_SWITCHING_PER_YEAR,
+    // Only a real bill's rates can be checked (not a plan we priced after a switch).
+    money: input.billIsPriced
+      ? null
+      : { rates: input.currentRates ?? null, days: input.days, anytime: input.anytime, peak: input.peak, shoulder: input.shoulder, offpeak: input.offpeak, cl: input.cl, solarExportKwh: input.solarExportKwh, distributor: input.distributor },
   };
 }
 
@@ -220,6 +225,13 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             ? <>You could save <span className={styles.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>
             : <>Against the default offer, the cheapest plan saves up to <span className={styles.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>}
       </h2>
+      {/* "Don't bother switching" (2 Nov 2026): saying so plainly is the proof we're independent. */}
+      {verdict === "good" && (
+        <p className={styles.stayPut}>
+          <b>Stay put.</b> The best plan for you saves {savingYear >= 1 ? `about ${whole(savingYear)}` : "nothing"} a year, under the {whole(WORTH_SWITCHING_PER_YEAR)} we think is worth the hassle of switching.{" "}
+          {member ? "We'll tell you the day that changes." : "Prices move, so check again in a few months."}
+        </p>
+      )}
       {/* The small print that changes the number: one quiet strip, open on tap. */}
       {(c.mismatch || overVdo) && (
         <div className={styles.facts}>
@@ -631,7 +643,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                       {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                       {input.ev && isEvFriendly(m.plan) && <span className={styles.tagEv}><Icon name="bolt" size={12} /> EV charging</span>}
                     </td>
-                    <td className={styles.planName}>{m.plan[2]}<br /><OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly recentDays={7} /><span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /></span></td>
+                    <td className={styles.planName}>{m.plan[2]}<br /><OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly recentDays={7} /><span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /><ComplaintBadge retailer={m.plan[0]} /></span></td>
                     <td title={chargeHelp(m.plan)}>
                       {chargeLabel(m.plan) === "Same price all day" ? "One rate" : chargeLabel(m.plan)}
                       {planPriceType(m.plan[0], m.plan[2]) === "fixed" && <span className={styles.ptFixed}> · <Icon name="lock" size={12} /> Fixed</span>}
@@ -699,16 +711,16 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                   </div>
                   <span className={styles.pcPlan}>{m.plan[2]}{m.plan[5] === null ? " · Cheaper at night" : ""}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · Fixed price" : ""}</span>
                   <OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly recentDays={7} />
-                  <span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /></span>
+                  <span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /><ComplaintBadge retailer={m.plan[0]} /></span>
                 </div>
                 <div className={styles.pcNums}>
                   <b>{whole(m.total * k)}</b>
                   <span className={diff >= 0 ? styles.pos : styles.neg}>{diff >= 0 ? `save ${whole(diff)}` : `+${whole(-diff)}`}</span>
-                  <span className={styles.pcVdo}>{vdoWords(vsVdo(m.total))}</span>
                 </div>
                 <button type="button" className={`${styles.ratesToggle} ${styles.pcRates}`} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
                   {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
                 </button>
+                <span className={styles.pcVdoRow}>{vdoWords(vsVdo(m.total))}</span>
                 {openRates === key && (
                   <div className={`${styles.ratesDetail} ${styles.pcRatesDetail}`}>
                     <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
