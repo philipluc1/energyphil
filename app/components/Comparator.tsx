@@ -49,7 +49,7 @@ import {
 import type { ExtractedBill } from "@/lib/billExtraction";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { periodBreakdown } from "@/lib/savings";
-import BillPhotoUpload from "./BillPhotoUpload";
+import BillPhotoUpload, { FREE_EMAIL_KEY } from "./BillPhotoUpload";
 import PricingSection, { type SubscribeProfile } from "./PricingSection";
 import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
@@ -190,7 +190,7 @@ function IconGauge() {
 }
 
 type Mode = "simple" | "detailed";
-type LeadStatus = "idle" | "saving" | "saved" | "error";
+type LeadStatus = "idle" | "saving" | "saved" | "notSent" | "error";
 type Stage = "input" | "results";
 type InputStep = 1 | 2 | 3;
 // bill: their bill's numbers · estimate: from their answers about the home ·
@@ -278,6 +278,12 @@ export default function Comparator() {
   const [calFigure, setCalFigure] = useState<BillFigure>("kwh");
   const [calEndMonth, setCalEndMonth] = useState(() => (thisMonth() + 11) % 12);
   const [email, setEmail] = useState("");
+  // The email they gave for a free bill photo fills "Email me this result" (1 Nov 2026).
+  useEffect(() => {
+    let saved = "";
+    try { saved = window.localStorage.getItem(FREE_EMAIL_KEY) ?? ""; } catch { /* storage off */ }
+    if (saved) Promise.resolve().then(() => setEmail((cur) => cur || saved));
+  }, []);
   const [wantsAlerts, setWantsAlerts] = useState(false);
   const [leadStatus, setLeadStatus] = useState<LeadStatus>("idle");
   const [scanBanner, setScanBanner] = useState<{ retailer: string | null; warnings: string[] } | null>(null);
@@ -575,6 +581,8 @@ export default function Comparator() {
 
   function handleBillExtracted(bill: ExtractedBill, pages: Blob[] = []) {
     setLastBill(bill);
+    // An email given to unlock this photo also fills "Email me this result".
+    try { const em = window.localStorage.getItem(FREE_EMAIL_KEY); if (em) setEmail((cur) => cur || em); } catch { /* storage off */ }
     setBillPages(pages);
     // The current plan's rates and fixed/variable terms: shown in step 3 to check, and saved for the dashboard.
     setRatesForm(
@@ -894,7 +902,11 @@ export default function Comparator() {
         hasSolar: hasSolarEff, solarExportKwh: hasSolarEff ? solarExportKwh : 0, homeProfile: profile,
       }),
     }).catch(() => null);
-    setLeadStatus(res?.ok ? "saved" : "error");
+    const body = res ? await res.json().catch(() => null) : null;
+    // Saved but the email didn't go (the email service isn't working): say so, don't claim it was sent.
+    setLeadStatus(res?.ok ? (body?.emailed === false ? "notSent" : "saved") : "error");
+    // The same email unlocks the next free bill photo.
+    if (res?.ok) { try { window.localStorage.setItem(FREE_EMAIL_KEY, email.trim().toLowerCase()); } catch { /* storage off */ } }
   }
 
   // The cheapest plan this household can get (offers needing a membership,
@@ -2693,6 +2705,8 @@ export default function Comparator() {
                     <p>{top && worthSwitching ? <>{top.plan[0]}&apos;s plan and your saving, ready when you switch.</> : "Your result, so it's easy to find later."}</p>
                     {leadStatus === "saved" ? (
                       <p className={styles.leadOk}><Icon name="check" size={15} /> Sent. Check your inbox{wantsAlerts ? ", and we'll tell you if a cheaper plan turns up" : ""}.</p>
+                    ) : leadStatus === "notSent" ? (
+                      <p className={styles.leadErr}>We saved your result, but the email didn&apos;t go out just now. We&apos;ll try again, or take a screenshot of this page.</p>
                     ) : (
                       <form className={styles.leadForm} onSubmit={handleLeadSubmit}>
                         <input type="email" required aria-label="Your email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />

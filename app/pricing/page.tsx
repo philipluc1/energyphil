@@ -17,7 +17,7 @@ export const metadata = pageMeta({ title: "Utilo Plus: $7 a month or $39 a year"
 // "On your own": what it takes without Utilo (the free government and
 // retailer sites, by hand). Short words only: they sit in a narrow column on phones.
 const ROWS: { label: string; short: string; own: false | string; free: boolean | string; plus: boolean | string; tip?: string }[] = [
-  { label: "Your saving, from a photo of your bill", short: "Saving from a bill photo", own: "Type it in", free: true, plus: true },
+  { label: "Your saving, from a photo of your bill", short: "Saving from a bill photo", own: "Type it in", free: "1 a quarter", plus: "Unlimited", tip: "Your first photo is free, no sign-up. Then, with your email, one free electricity and one free gas photo every 3 months. Typing the numbers in is always free." },
   { label: "Every plan by name, with rates", short: "Every plan by name", own: "Search sites", free: true, plus: true },
   { label: "Your result by email", short: "Result by email", own: false, free: true, plus: true },
   { label: "Every plan re-checked every morning", short: "Re-checked every morning", own: "By hand", free: false, plus: true, tip: "Each day's new and updated offers, priced against the usage and rates on your bill. You don't lift a finger." },

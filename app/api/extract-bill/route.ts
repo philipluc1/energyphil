@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sanitizeExtractedBill } from "@/lib/billExtraction";
 import { requireActiveMember } from "@/lib/memberAccess";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { FREE_DEVICE_DAYS, FREE_EMAIL_DAYS, afterRead, beforeRead, nextFreeDate, type PriorRead, type ReadFuel } from "@/lib/freeReads";
 
 // Each read costs us an AI call. Members get 10 a day; everyone else gets a
 // couple a day per connection, enough to try it for real before joining.
@@ -227,10 +228,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Photo reading isn't available right now. Type the numbers in below." }, { status: 503 });
   }
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ ok: false, message: "Couldn't read that upload — please try again." }, { status: 400 });
+  }
+  // Visitors: a random ID from their browser, and the email they gave for more free reads (if any).
+  const rawDevice = String(form.get("device") ?? "");
+  const device = !member.ok && /^[A-Za-z0-9-]{8,64}$/.test(rawDevice) ? rawDevice : null;
+  const rawEmail = String(form.get("email") ?? "").trim().toLowerCase();
+  const leadEmail = !member.ok && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) && rawEmail.length <= 200 ? rawEmail : null;
+
   // Record first, then count (this read included), so a burst of parallel
   // uploads can't all slip under the limit. A read that never reaches the
   // bill reader (a bad file, a network error) is taken back off the count.
-  const { data: readRow } = await supabaseAdmin.from("bill_reads").insert({ email: key }).select("id").single();
+  // The allowance columns (device, lead_email, fuel) may not exist yet: then
+  // only the daily limit applies.
+  let allowance = !member.ok && !!device;
+  const first = await supabaseAdmin
+    .from("bill_reads")
+    .insert(allowance ? { email: key, device, lead_email: leadEmail } : { email: key })
+    .select("id")
+    .single();
+  let readRow = first.data;
+  const readErr = first.error;
+  if (readErr && allowance) {
+    console.warn("extract-bill: free-read allowance off (run supabase/schema.sql)", readErr.message);
+    allowance = false;
+    ({ data: readRow } = await supabaseAdmin.from("bill_reads").insert({ email: key }).select("id").single());
+  }
   const readId = (readRow as { id?: string } | null)?.id ?? null;
   const unCount = async () => { if (readId) await supabaseAdmin!.from("bill_reads").delete().eq("id", readId); };
   const { count } = await supabaseAdmin
@@ -263,6 +291,23 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // The free allowance, before spending an AI call.
+  let priors: PriorRead[] = [];
+  let sameSession = false;
+  if (allowance && readId) {
+    const sinceFor = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+    const q = supabaseAdmin.from("bill_reads").select("fuel, created_at").neq("id", readId).in("fuel", ["electricity", "gas", "dual"]);
+    const { data: rows } = await (leadEmail ? q.eq("lead_email", leadEmail).gte("created_at", sinceFor(FREE_EMAIL_DAYS)) : q.eq("device", device!).gte("created_at", sinceFor(FREE_DEVICE_DAYS)));
+    priors = (rows ?? []) as PriorRead[];
+    const { data: devRows } = await supabaseAdmin.from("bill_reads").select("fuel, created_at").neq("id", readId).eq("device", device!).in("fuel", ["electricity", "gas", "dual"]).gte("created_at", sinceFor(FREE_EMAIL_DAYS));
+    const pre = beforeRead({ priors, deviceReads: (devRows ?? []) as PriorRead[], hasEmail: !!leadEmail });
+    sameSession = pre.sameSession;
+    if (pre.block) {
+      await unCount();
+      return NextResponse.json(pre.block === "quota" ? quotaReply(priors) : needEmailReply(), { status: 429 });
+    }
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     await unCount();
@@ -270,14 +315,6 @@ export async function POST(req: NextRequest) {
       { ok: false, message: "Photo reading isn't switched on yet — enter your details manually below." },
       { status: 200 },
     );
-  }
-
-  let form: FormData;
-  try {
-    form = await req.formData();
-  } catch {
-    await unCount();
-    return NextResponse.json({ ok: false, message: "Couldn't read that upload — please try again." }, { status: 400 });
   }
 
   // One PDF, or up to MAX_PAGES photos of the same bill (page 1, page 2…).
@@ -407,5 +444,39 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (allowance && readId) {
+    const fuel: ReadFuel = extracted.fuel === "gas" || extracted.fuel === "dual" ? extracted.fuel : "electricity";
+    // Every fuel on this bill already had its free read: not this time.
+    const post = afterRead({ priors, fuel, sameSession, hasEmail: !!leadEmail });
+    if (post) {
+      await unCount();
+      return NextResponse.json(post === "quota" ? quotaReply(priors, fuel) : needEmailReply(fuel), { status: 429 });
+    }
+    // A page or retry in the same sitting isn't counted again.
+    await supabaseAdmin.from("bill_reads").update({ fuel: sameSession ? "retry" : fuel }).eq("id", readId);
+  }
+
   return NextResponse.json({ ok: true, extracted });
+}
+
+const fuelWord = (f?: ReadFuel) => (f === "gas" ? "gas" : f === "dual" ? "electricity and gas" : "electricity");
+
+/** No email yet and the device's free photo is used: ask for an email to unlock the next one. */
+function needEmailReply(fuel?: ReadFuel) {
+  return {
+    ok: false,
+    needEmail: true,
+    message: `Your free ${fuel ? fuelWord(fuel) + " " : ""}photo is used on this device. Add your email for another free read this quarter, or type the numbers in.`,
+  };
+}
+
+/** This email has had its free read(s) this quarter. */
+function quotaReply(priors: PriorRead[], fuel?: ReadFuel) {
+  const next = nextFreeDate(priors, fuel);
+  const when = next ? next.toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Melbourne" }) : null;
+  return {
+    ok: false,
+    quota: true,
+    message: `You've used your free ${fuel ? fuelWord(fuel) + " " : ""}photo for this quarter${when ? ` (the next one is free from ${when})` : ""}. Type the numbers in for free, or join Utilo Plus for unlimited photos.`,
+  };
 }

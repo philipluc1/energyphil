@@ -34,6 +34,8 @@ export const PRIVACY = {
   responseDays: 30,
   /** IP records used to limit free bill reads are deleted after this many days (see the daily job). */
   billReadRetentionDays: 30,
+  /** The free photo allowance (a random device ID, or the email given for more free reads, with the date and fuel) is kept this long. */
+  freeAllowanceDays: 400,
 };
 
 export const hasFounderStory = Boolean(ABOUT.founderName && ABOUT.story.length > 0);

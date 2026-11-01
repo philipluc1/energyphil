@@ -469,12 +469,20 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Privacy: free bill-read records (IP-based, for the daily limit) are only
-  // kept for PRIVACY.billReadRetentionDays (see the Privacy Policy).
-  const { error: purgeErr } = await supabaseAdmin
-    .from("bill_reads")
-    .delete()
-    .lt("created_at", new Date(Date.now() - PRIVACY.billReadRetentionDays * 86_400_000).toISOString());
+  // Privacy: the IP address on a free bill-read record (for the daily limit)
+  // is only kept for PRIVACY.billReadRetentionDays. Records that carry the
+  // free allowance (a device ID or an email) keep the date and fuel, without
+  // the IP, for PRIVACY.freeAllowanceDays; everything else goes (see the Privacy Policy).
+  const ipCutoff = new Date(Date.now() - PRIVACY.billReadRetentionDays * 86_400_000).toISOString();
+  const allowanceCutoff = new Date(Date.now() - PRIVACY.freeAllowanceDays * 86_400_000).toISOString();
+  let { error: purgeErr } = await supabaseAdmin.from("bill_reads").delete().lt("created_at", ipCutoff).is("device", null).is("lead_email", null);
+  if (purgeErr && /column|schema cache/i.test(purgeErr.message)) {
+    // Database without the allowance columns yet: the old rule.
+    ({ error: purgeErr } = await supabaseAdmin.from("bill_reads").delete().lt("created_at", ipCutoff));
+  } else if (!purgeErr) {
+    await supabaseAdmin.from("bill_reads").update({ email: "allowance" }).lt("created_at", ipCutoff).like("email", "ip:%");
+    await supabaseAdmin.from("bill_reads").delete().lt("created_at", allowanceCutoff);
+  }
   if (purgeErr) console.error("recheck-prices: bill_reads clean-up failed", purgeErr.message);
 
   await sendHealthEmail("daily recheck", {

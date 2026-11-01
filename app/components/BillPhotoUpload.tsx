@@ -36,7 +36,27 @@ async function resizeImage(file: File): Promise<Blob> {
   }
 }
 
-type Status = "idle" | "reading" | "error";
+type Status = "idle" | "reading" | "error" | "needEmail";
+
+// The free photo allowance (1 Nov 2026): a random ID for this browser, and the
+// email a visitor gave for more free reads. Both stay on this device.
+const DEVICE_KEY = "utilo.device";
+export const FREE_EMAIL_KEY = "utilo.freeEmail";
+function deviceId(): string {
+  try {
+    let id = window.localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `d-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+      window.localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    return "";
+  }
+}
+function savedEmail(): string {
+  try { return window.localStorage.getItem(FREE_EMAIL_KEY) ?? ""; } catch { return ""; }
+}
 type Access = "checking" | "member" | "locked";
 
 // Shown one after another while the bill is being read (it takes a few
@@ -76,6 +96,10 @@ export default function BillPhotoUpload({
   const [errorMsg, setErrorMsg] = useState("");
   const [access, setAccess] = useState<Access>("checking");
   const [readingStep, setReadingStep] = useState(0);
+  // Over the free allowance: the pages waiting to be read once they add an email, and whether to point at Plus.
+  const [pending, setPending] = useState<File[] | null>(null);
+  const [gateEmail, setGateEmail] = useState("");
+  const [quota, setQuota] = useState(false);
 
   useEffect(() => {
     if (status !== "reading") return;
@@ -104,10 +128,11 @@ export default function BillPhotoUpload({
     };
   }, []);
 
-  async function handleFiles(list: File[]) {
+  async function handleFiles(list: File[], emailOverride?: string) {
     setStatus("reading");
     setReadingStep(0);
     setErrorMsg("");
+    setQuota(false);
 
     try {
       // PDFs go to the server as-is (the browser's canvas-based resize only
@@ -135,6 +160,10 @@ export default function BillPhotoUpload({
       }
       const form = new FormData();
       pages.forEach((p, i) => form.append("photo", p, pdf ? "bill.pdf" : `page-${i + 1}.jpg`));
+      const dev = deviceId();
+      if (dev) form.append("device", dev);
+      const em = emailOverride ?? savedEmail();
+      if (em) form.append("email", em);
 
       const session = supabase ? (await supabase.auth.getSession()).data.session : null;
       const res = await fetch("/api/extract-bill", {
@@ -145,10 +174,19 @@ export default function BillPhotoUpload({
       const body = await res.json().catch(() => ({ ok: false, message: "Something went wrong reading that file." }));
 
       if (!body.ok) {
+        // Over the free allowance with no email yet: ask for one, then read these same pages.
+        if (body.needEmail) {
+          setPending(list);
+          setErrorMsg(body.message || "");
+          setStatus("needEmail");
+          return;
+        }
         setStatus("error");
+        setQuota(body.quota === true);
         setErrorMsg(body.message || "Couldn't read that file.");
         return;
       }
+      setPending(null);
 
       setStatus("idle");
       onApply(body.extracted as ExtractedBill, pdf ? [] : pages);
@@ -157,6 +195,33 @@ export default function BillPhotoUpload({
       setErrorMsg("Something went wrong reading that file — please try again, or enter your details manually below.");
     }
   }
+
+  function submitGate(e: React.FormEvent) {
+    e.preventDefault();
+    const em = gateEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em) || !pending) return;
+    try { window.localStorage.setItem(FREE_EMAIL_KEY, em); } catch { /* storage off: still sent with this read */ }
+    void handleFiles(pending, em);
+  }
+
+  // What shows under the buttons: an error, the email step, or the over-allowance note.
+  const note =
+    status === "needEmail" ? (
+      <form className={snap.gate} onSubmit={submitGate}>
+        <b>Your first photo was free.</b>
+        <span>Add your email for another free read this quarter. One electricity and one gas photo every 3 months.</span>
+        <div className={snap.gateRow}>
+          <input type="email" required placeholder="you@example.com" aria-label="Your email" value={gateEmail} onChange={(ev) => setGateEmail(ev.target.value)} />
+          <button type="submit">Read my bill</button>
+        </div>
+        <small>We use it to count your free photos, nothing else unless you ask us to email your result. Or <a href="/pricing">get unlimited photos with Utilo Plus</a>.</small>
+      </form>
+    ) : status === "error" ? (
+      <p className={snap.err}>
+        {errorMsg}
+        {quota && <> <a href="/pricing" className={snap.errLink}>See Utilo Plus →</a></>}
+      </p>
+    ) : null;
 
   function onInputChange(e: ChangeEvent<HTMLInputElement>) {
     const list = Array.from(e.target.files ?? []);
@@ -191,7 +256,7 @@ export default function BillPhotoUpload({
             </button>
           </div>
         )}
-        {status === "error" && <p className={snap.err}>{errorMsg}</p>}
+        {note}
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" aria-label="Take a photo of your bill" tabIndex={-1} className={styles.photoInputHidden} onChange={onInputChange} />
         <input ref={fileInputRef} type="file" accept="image/*" multiple aria-label="Upload photos of your bill" tabIndex={-1} className={styles.photoInputHidden} onChange={onInputChange} />
       </div>
@@ -216,7 +281,7 @@ export default function BillPhotoUpload({
             <button type="button" className={snap.stripSecondary} onClick={() => fileInputRef.current?.click()}>Upload</button>
           </div>
         )}
-        {status === "error" && <p className={snap.err}>{errorMsg}</p>}
+        {note}
         {inputs}
       </div>
     );
@@ -270,9 +335,9 @@ export default function BillPhotoUpload({
               </button>
             </div>
           )}
-          {status === "error" && <p className={snap.err}>{errorMsg}</p>}
+          {note}
           <p className={snap.fine}>
-            Free, no sign-up.{access === "member" ? "" : " Up to 5 free bill reads a day."} We only keep the numbers, not the picture.
+            {access === "member" ? "Unlimited bill photos with Utilo Plus." : "Your first photo is free, no sign-up. Then one free read a quarter with your email."} We only keep the numbers, not the picture.
           </p>
           {children && !reading && (
             <div className={snap.otherWays}>
@@ -294,7 +359,7 @@ export default function BillPhotoUpload({
       </div>
       <p className={styles.helper}>
         Snap a photo, upload the PDF, or screenshot your plan in your retailer&apos;s app. We read your usage <b>and the rates you actually pay</b>, so the answer is exact. You can check everything before we calculate.
-        {access === "member" ? "" : " Up to 5 free bill reads a day; Plus members get more, and keep every month's result."}
+        {access === "member" ? "" : " Your first photo is free; then one free read a quarter with your email. Plus members get unlimited photos, and keep every month's result."}
       </p>
 
       <div className={styles.photoActions}>
@@ -337,7 +402,7 @@ export default function BillPhotoUpload({
         onChange={onInputChange}
       />
 
-      {status === "error" && <p className={styles.leadErr}>{errorMsg}</p>}
+      {note}
     </div>
   );
 }

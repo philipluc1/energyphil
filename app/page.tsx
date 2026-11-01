@@ -176,7 +176,7 @@ export default function Home() {
           <div className={h.faq}>
             <details>
               <summary>Is the check really free?</summary>
-              <p>Yes, every time. You see how much you&apos;d save and every plan by name, and you can email yourself the result. {PLUS_NAME} keeps watching after that: every plan re-checked each morning, and a warning before your discount ends.</p>
+              <p>Yes, every time. You see how much you&apos;d save and every plan by name, and you can email yourself the result. Your first bill photo is free; after that, one free photo a quarter with your email (or type the numbers in, always free). {PLUS_NAME} keeps watching after that: every plan re-checked each morning, and a warning before your discount ends.</p>
             </details>
             <details>
               <summary>How do you make money?</summary>

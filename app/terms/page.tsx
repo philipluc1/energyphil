@@ -80,7 +80,7 @@ export default function TermsPage() {
             single payment and never renews. Cancelling stops future charges; you keep access to
             the end of the period you&apos;ve paid for. There&apos;s one membership per email address: if you&apos;re charged twice for
             the same email by mistake, we cancel the second membership and refund it in full. Refund rules are in the{" "}
-            <Link href="/cancellation-policy">Cancellation Policy</Link>. Bill reading is limited to a fair number of reads a day.
+            <Link href="/cancellation-policy">Cancellation Policy</Link>. Free bill photo reads are limited: the first is free, then one electricity and one gas read every 3 months with your email; members get a fair number a day.
           </p>
         </section>
 

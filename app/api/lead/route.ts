@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Couldn't save that. Please try again." }, { status: 500 });
   }
   // Send the result straight away (the follow-ups, if they opted in, come later).
+  let emailed = false;
   if (emailConfigured && inserted && top) {
     const origin = process.env.SITE_URL || req.nextUrl.origin;
     const yearly = save !== null ? (save * 365) / days : 0;
@@ -100,6 +101,8 @@ export async function POST(req: NextRequest) {
     });
     const sent = await sendEmail({ to: email, subject: e.subject, title: e.title, html: e.html }).catch(() => false);
     if (sent) await supabaseAdmin.from("leads").update({ drip_step: 1, drip_sent_at: new Date().toISOString() }).eq("id", inserted.id);
+    emailed = sent;
   }
-  return NextResponse.json({ ok: true });
+  // `emailed` lets the page say so when the email didn't go, instead of "Sent".
+  return NextResponse.json({ ok: true, emailed });
 }

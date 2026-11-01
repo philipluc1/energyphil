@@ -1,4 +1,5 @@
 import "server-only";
+import { cleanFromAddress } from "./fromAddress";
 
 // Thin wrapper around Resend's HTTP API — a plain fetch with a bearer token,
 // no SDK dependency needed. Sign up free at https://resend.com, create an API
@@ -11,7 +12,7 @@ import "server-only";
 // test sends will only actually land in the inbox of the email you signed up
 // to Resend with — that's a Resend sandbox restriction, not a bug here.
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || "Utilo <onboarding@resend.dev>";
+const FROM_ADDRESS = cleanFromAddress(process.env.RESEND_FROM_ADDRESS);
 
 export const emailConfigured = Boolean(RESEND_API_KEY);
 

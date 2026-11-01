@@ -341,3 +341,14 @@ create policy "member can view own bills"
   on public.bills for select to authenticated
   using ((select auth.email()) = email);
 -- Writes happen only on the server (secret key): /api/bills and /api/apply-bill.
+
+-- 1 Nov 2026: the free photo allowance. One free read per fuel on a device
+-- with no email; with an email, one per fuel every 3 months. `device` is a
+-- random ID made by the visitor's browser; `fuel` is set once a bill is read
+-- ('retry' for page 2 or another go in the same sitting, which don't count).
+alter table public.bill_reads
+  add column if not exists device text,
+  add column if not exists lead_email text,
+  add column if not exists fuel text;
+create index if not exists bill_reads_device_created on public.bill_reads (device, created_at desc);
+create index if not exists bill_reads_lead_email_created on public.bill_reads (lead_email, created_at desc);

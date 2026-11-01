@@ -390,3 +390,13 @@
 .otherBtn small { font-weight: 600; font-size: 13px; color: rgba(255, 255, 255, 0.7); }
 .otherOn { border-color: #5eead4; background: rgba(94, 234, 212, 0.12); }
 @media (min-width: 640px) { .otherBtns { grid-template-columns: 1fr 1fr; } .otherBtn { flex-direction: column; align-items: flex-start; gap: 2px; } .otherBtn svg { margin-bottom: 4px; } }
+
+/* The free photo allowance: the email step, and the link to Plus (1 Nov 2026). */
+.gate { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding: 14px 16px; border-radius: 14px; background: #fff; border: 1px solid #f3e2b8; color: #1f2937; text-align: left; font-size: 14px; line-height: 1.5; }
+.gate b { font-size: 15.5px; color: #111827; }
+.gateRow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.gateRow input { flex: 1; min-width: 180px; padding: 11px 12px; border-radius: 10px; border: 1px solid #d6dbe6; font: inherit; font-size: 15px; color: #111827; background: #fff; }
+.gateRow button { padding: 11px 16px; border: 0; border-radius: 10px; background: #f5a623; color: #111827; font: inherit; font-size: 15px; font-weight: 900; cursor: pointer; }
+.gate small { font-size: 12.5px; color: #5b6476; }
+.gate small a { color: #22306e; font-weight: 800; }
+.errLink { margin-left: 4px; font-weight: 900; color: inherit; text-decoration: underline; }

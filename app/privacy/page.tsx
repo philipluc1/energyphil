@@ -88,7 +88,9 @@ export default function PrivacyPolicyPage() {
             <li>
               <strong>Technical information:</strong> your IP address and browser details, logged by our hosting provider for security, and a record
               of free bill reads linked to your IP address, which we use to apply the daily free-read limit and delete after{" "}
-              {PRIVACY.billReadRetentionDays} days.
+              {PRIVACY.billReadRetentionDays} days. To apply the free photo allowance we also keep, for each free read, a random ID made by
+              your browser, the email you gave for more free reads (if any), the date and whether it was an electricity or gas bill, for{" "}
+              {PRIVACY.freeAllowanceDays} days. Never the picture.
             </li>
           </ul>
         </section>
