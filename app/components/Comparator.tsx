@@ -898,7 +898,7 @@ export default function Comparator() {
       body: JSON.stringify({
         email, distributor, days, usageMode: useEst || useAvg ? "detailed" : mode,
         peak: usage.peak, shoulder: usage.shoulder, offpeak: usage.offpeak, anytime: usage.anytime, cl: usage.cl,
-        currentBill, wantsAlerts, customerName, address, suburb, postcode,
+        currentBill, wantsAlerts, customerName, address, suburb, postcode, currentRetailer,
         hasSolar: hasSolarEff, solarExportKwh: hasSolarEff ? solarExportKwh : 0, homeProfile: profile,
       }),
     }).catch(() => null);

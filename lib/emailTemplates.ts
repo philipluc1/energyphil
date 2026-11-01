@@ -11,7 +11,7 @@ import { esc } from "./email";
 import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 import { RETAILER_LINKS } from "./retailerLinks";
 import { REFERRAL_CREDIT_CENTS, referralDollars } from "./referralOffer";
-import { button, chips, columns, dateBanner, glance, glanceRow, heading, iconRow, iconRows, miniBars, money, note, planCard, signOff, statusBox, step, steps, tip, unsubscribe } from "./emailParts";
+import { C, button, chips, columns, dateBanner, glance, glanceRow, hBars, heading, iconRow, iconRows, legend, miniBars, money, note, planCard, signOff, statRow, statusBox, step, steps, tip, unsubscribe } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -31,10 +31,20 @@ export function resultEmail(i: {
   vsBill: boolean;         // reference is their own bill (else the default offer)
   unsubscribeUrl: string;
   sentLater?: boolean;     // the day-after fallback copy
+  /** 1 Nov 2026: the fuller result. All optional, so older callers still work. */
+  name?: string | null;
+  nowYear?: number | null;     // what they pay a year (their bill, or the default offer)
+  bestYear?: number | null;    // the cheapest plan, a year
+  runnersUp?: { retailer: string; year: number }[];  // the next cheapest retailers
+  usageLine?: string | null;   // "1,012 kWh over 91 days (11.1 kWh a day)"
+  network?: string | null;
+  marketChanges?: number;      // offers new or changed on their network in 30 days
+  year?: { label: string; best: number; now: number }[];  // 12 months ahead, for the Plus preview
 }): Email {
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
   const subject = worth ? `Your result: about ${money(i.yearly)} a year` : "Your Utilo result";
   const title = worth ? (i.vsBill ? "You could pay less." : "Here's your result.") : "You're on a good deal.";
+  const nowWord = i.vsBill ? "Your bill" : "Default offer";
   const card = worth
     ? planCard({
         kicker: "Cheapest for you",
@@ -44,19 +54,62 @@ export function resultEmail(i: {
         link: FREE_SHOWS_NAMES ? retailerLink(i.retailer) : { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` },
       })
     : statusBox({ kicker: "Your result", headline: "Nothing beats it by enough to bother", body: `The cheapest plan we found saves less than ${money(WORTH_SWITCHING_PER_YEAR)} a year. Stay put.`, tone: "green" });
+
+  // The numbers at a glance: what you pay, the cheapest, the saving.
+  const stats = i.nowYear && i.bestYear
+    ? statRow([
+        { big: money(i.nowYear), small: `${nowWord}, a year`, tone: "navy" },
+        { big: money(i.bestYear), small: "Cheapest plan, a year", tone: "green" },
+        { big: money(Math.max(0, i.nowYear - i.bestYear)), small: "You'd save, a year", tone: "amber" },
+      ])
+    : "";
+
+  // How the cheapest few compare with what you pay.
+  const ranking = i.runnersUp && i.runnersUp.length && i.nowYear && FREE_SHOWS_NAMES
+    ? `${heading("How the cheapest compare")}${hBars([
+        ...i.runnersUp.slice(0, 4).map((r, n) => ({ label: `${n + 1}. ${esc(r.retailer)}`, value: r.year, color: n === 0 ? C.green : C.tealBright, text: money(r.year), strong: n === 0 })),
+        { label: nowWord, value: i.nowYear, color: "#e8590c", text: money(i.nowYear), strong: true },
+      ])}`
+    : "";
+
+  const facts = [
+    i.usageLine ? `Priced on <strong>${esc(i.usageLine)}</strong>${i.network ? ` on the ${esc(i.network)} network` : ""}, with today's prices.` : "",
+    i.marketChanges && i.marketChanges > 0 ? `Retailers made <strong>${i.marketChanges} new or changed offers</strong>${i.network ? ` on ${esc(i.network)}` : ""} in the last 30 days. Today's cheapest may not be next month's.` : "",
+  ].filter(Boolean);
+
+  // A taste of the dashboard: the year ahead, month by month, on the cheapest plan and on what they pay now.
+  const preview = i.year && i.year.length === 12
+    ? `${columns(i.year.map((m) => ({ parts: [{ value: m.best, color: C.green }, { value: Math.max(0, m.now - m.best), color: "#f4b183" }], label: m.label })), { height: 90 })}
+       ${legend([{ color: C.green, label: "On the cheapest plan" }, { color: "#f4b183", label: `Extra on ${i.vsBill ? "your plan" : "the default offer"}` }])}`
+    : "";
+
   const html = `
-    <p>${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : "Here's your result, so it's easy to find later."}</p>
+    <p>${i.name ? `Hi ${esc(i.name)},<br>` : ""}${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : "Here's your result on today's prices, so it's easy to find later."}</p>
+    ${stats}
     ${card}
     ${!i.vsBill && worth ? tip(`This is against the default offer. <strong>Snap your bill</strong> for your exact saving: <a href="${i.origin}/check">check again with a photo</a>.`) : ""}
     ${worth ? chips(SWITCH_FACTS) : ""}
-    ${heading("That's today's answer. We keep watching.")}
+    ${ranking}
+    ${facts.length ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${C.grey};">${facts.join("<br>")}</p>` : ""}
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:4px 0 22px;border-collapse:separate;">
+      <tr><td style="padding:22px 20px;border-radius:16px;background:${C.navy};">
+        <div style="display:inline-block;padding:3px 10px;border-radius:999px;background:${C.amber};color:${C.amberInk};font:800 11px Arial,Helvetica,sans-serif;letter-spacing:0.6px;text-transform:uppercase;">Utilo Plus</div>
+        <div style="margin:10px 0 4px;font:800 22px/1.25 Arial,Helvetica,sans-serif;color:#ffffff;">That's today's answer. We keep watching.</div>
+        <div style="font:14px/1.55 Arial,Helvetica,sans-serif;color:#c9d0e6;">Join and your dashboard sets itself up from this check: every plan re-priced against your bill each morning, and one email when switching is worth it.</div>
+      </td></tr>
+    </table>
+    ${preview ? `${heading("A preview of your dashboard: your year ahead")}${preview}` : ""}
     ${iconRows([
-      iconRow("&#128260;", "Every morning:", "every plan re-priced against your bill."),
-      iconRow("&#128276;", "30 days before:", "your new discount ends and the price jumps."),
+      iconRow("&#128260;", "Every morning:", "every plan re-priced against your bill, 365 days a year."),
       iconRow("&#9993;&#65039;", "One email:", `only when switching saves ${money(WORTH_SWITCHING_PER_YEAR)}+ a year.`),
+      iconRow("&#128276;", "30 days before:", "your discount or fixed price ends and the price jumps."),
+      iconRow("&#128200;", "Your dashboard:", "the year ahead month by month, your bills tracked, market changes and sign-up rewards."),
+      iconRow("&#128247;", "Unlimited photos:", "snap each new bill, power and gas, on the same membership."),
     ])}
-    ${button("Keep watching for me", `${i.origin}/pricing`)}
-    ${note(`${esc(PRICE_CHANGE_CLAUSE)} Utilo Plus is <a href="${i.origin}/pricing">$7 a month, or $39 a year</a>.`)}
+    ${statusBox({ kicker: "Utilo Plus", headline: "$7 a month, or $39 a year", body: "Yearly saves $45. No lock-in: cancel any time. Not a cent from retailers.", tone: "teal" })}
+    ${button("Start Utilo Plus", `${i.origin}/pricing`)}
+    ${note(`${esc(PRICE_CHANGE_CLAUSE)}`)}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you asked for your result by email.")}`;
   return { subject, title, html };
 }

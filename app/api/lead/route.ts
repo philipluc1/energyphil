@@ -1,7 +1,10 @@
 import { resultEmail } from "@/lib/emailTemplates";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { DISTRIBUTORS, bestPlan, type Distributor } from "@/lib/plans";
+import { DISTRIBUTORS, computeBill, rankPlans, topOpen, type Distributor } from "@/lib/plans";
+import { currentPricer, forecastYear } from "@/lib/homeInsights";
+import { marketActivity } from "@/lib/marketActivity";
+import { MONTH_NAMES, type HomeProfile } from "@/lib/profileUsage";
 import { usageOrAverage, vdoBillForUsage } from "@/lib/profileUsage";
 import { emailConfigured, sendEmail } from "@/lib/email";
 import { SRC_COOKIE, sourceValue } from "@/lib/attribution";
@@ -44,7 +47,10 @@ export async function POST(req: NextRequest) {
   });
   const profile = b?.homeProfile && typeof b.homeProfile === "object" ? b.homeProfile : null;
   const ev = (profile as { ev?: unknown } | null)?.ev === true;
-  const top = bestPlan(distributor, usage, { ev, hasSolar }) ?? null;
+  // Ranked the same way as the results page (their retailer counts for "existing customers" offers).
+  const currentRetailer = str(b?.currentRetailer, 80);
+  const ranked = rankPlans(distributor, usage, { ev, hasSolar, currentRetailer });
+  const top = topOpen(ranked) ?? null;
   const bill = num(b?.currentBill, 20000);
   const bench = bill > 0 && !average ? bill : vdoBillForUsage(distributor, usage);
   const save = top ? bench - top.total : null;
@@ -90,14 +96,42 @@ export async function POST(req: NextRequest) {
   let emailed = false;
   if (emailConfigured && inserted && top) {
     const origin = process.env.SITE_URL || req.nextUrl.origin;
-    const yearly = save !== null ? (save * 365) / days : 0;
+    const perYear = 365 / days;
+    const yearly = save !== null ? save * perYear : 0;
+    // The next cheapest retailers (one plan each), for the comparison bars.
+    const seen = new Set<string>();
+    const runnersUp = ranked
+      .filter((m) => !m.restricted && (seen.has(m.plan[0]) ? false : (seen.add(m.plan[0]), true)))
+      .slice(0, 4)
+      .map((m) => ({ retailer: m.plan[0], year: m.total * perYear }));
+    const kwh = usage.peak + usage.shoulder + usage.offpeak + usage.anytime + usage.cl;
+    const market = marketActivity({ network: distributor, days: 30 });
+    // The year ahead, for the dashboard preview. Never blocks the email.
+    let year: { label: string; best: number; now: number }[] | undefined;
+    try {
+      const f = forecastYear({
+        base: usage,
+        profile: profile as HomeProfile | null,
+        now: currentPricer({ rates: null, network: distributor, you: bench, base: usage }),
+        best: (u) => computeBill(top.plan, u) ?? 0,
+      });
+      year = f?.months.map((m) => ({ label: MONTH_NAMES[m.month].slice(0, 1), best: m.best, now: m.now }));
+    } catch { year = undefined; }
     const e = resultEmail({
       origin,
       retailer: top.plan[0],
       planName: top.plan[2],
       yearly,
-      vsBill: bill > 0,
+      vsBill: bill > 0 && !average,
       unsubscribeUrl: `${origin}/api/unsubscribe?type=lead&id=${inserted.id}`,
+      name: str(b?.customerName, 60)?.split(" ")[0] ?? null,
+      nowYear: bench * perYear,
+      bestYear: top.total * perYear,
+      runnersUp,
+      usageLine: average ? null : `${Math.round(kwh).toLocaleString("en-AU")} kWh over ${days} days (${(kwh / days).toFixed(1)} kWh a day)`,
+      network: distributor,
+      marketChanges: market.ready ? market.newOffers + market.priceChanges : 0,
+      year,
     });
     const sent = await sendEmail({ to: email, subject: e.subject, title: e.title, html: e.html }).catch(() => false);
     if (sent) await supabaseAdmin.from("leads").update({ drip_step: 1, drip_sent_at: new Date().toISOString() }).eq("id", inserted.id);
