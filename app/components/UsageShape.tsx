@@ -1,7 +1,14 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useState, useSyncExternalStore } from "react";
 import { USAGE_SHAPES, TOU_WINDOWS, usageCurve, type UsageShapeKey } from "@/lib/usageShape";
+import { applyClouds, melbourneHour } from "@/lib/weather";
+import { useTodayWeather } from "@/lib/useTodayWeather";
+
+// The minute, ticking (2 Nov 2026): for the "Now" line. Null on the server.
+const subscribeMinute = (cb: () => void) => { const t = window.setInterval(cb, 30_000); return () => window.clearInterval(t); };
+const minuteNow = () => Math.floor(Date.now() / 60_000);
+const noMinute = () => null;
 import s from "./usageshape.module.css";
 
 // A day of power use as a smooth area chart: grid import, solar feed-in, and
@@ -10,7 +17,7 @@ import s from "./usageshape.module.css";
 // (the dashboard).
 
 const HOURS = ["12am", "3am", "6am", "9am", "12pm", "3pm", "6pm", "9pm"];
-const W = 720, H = 260, PAD = { l: 40, r: 12, t: 16, b: 28 };
+const W = 720, H = 270, PAD = { l: 40, r: 12, t: 26, b: 28 };
 
 /** A smooth path through 24 hourly points (Catmull-Rom to Bezier). */
 function smooth(points: [number, number][]): string {
@@ -33,6 +40,8 @@ export default function UsageShape({
   pick = false,
   title,
   note,
+  live = false,
+  place = null,
 }: {
   /** The shape to show; with `pick`, the one selected first. */
   shape?: UsageShapeKey;
@@ -43,13 +52,27 @@ export default function UsageShape({
   pick?: boolean;
   title?: string;
   note?: string;
+  /** The dashboard (2 Nov 2026): a "Now" line, and today's weather shaping the solar. */
+  live?: boolean;
+  /** Their suburb, for the weather. */
+  place?: string | null;
 }) {
   const [chosen, setChosen] = useState<UsageShapeKey>(fixed ?? "evening");
   const key = pick ? chosen : (fixed ?? "evening");
-  const curve = useMemo(() => usageCurve(key, dailyKwh, { exportKwhPerDay, evOvernight }), [key, dailyKwh, exportKwhPerDay, evOvernight]);
+  const typical = useMemo(() => usageCurve(key, dailyKwh, { exportKwhPerDay, evOvernight }), [key, dailyKwh, exportKwhPerDay, evOvernight]);
+  const weather = useTodayWeather(place, live);
+  const minute = useSyncExternalStore(subscribeMinute, minuteNow, noMinute);
+  const nowH = live && minute !== null ? Math.min(23, melbourneHour(new Date(minute * 60_000))) : null;
+  // Today's clouds shape the solar (and the bit of extra grid power it costs).
+  const curve = useMemo(() => {
+    if (!weather || typical.feedInKwhPerDay <= 0) return { ...typical, share: 1 };
+    const w = applyClouds(typical, weather.cloud);
+    const sum = (a: number[]) => Math.round(a.reduce((x, y) => x + y, 0) * 10) / 10;
+    return { grid: w.grid, feedIn: w.feedIn, gridKwhPerDay: sum(w.grid), feedInKwhPerDay: sum(w.feedIn), share: w.share };
+  }, [typical, weather]);
   const id = useId();
 
-  const max = Math.max(0.5, ...curve.grid, ...curve.feedIn) * 1.15;
+  const max = Math.max(0.5, ...typical.grid, ...typical.feedIn, ...curve.grid) * 1.15;
   const x = (h: number) => PAD.l + (h / 23) * (W - PAD.l - PAD.r);
   const y = (kw: number) => H - PAD.b - (kw / max) * (H - PAD.t - PAD.b);
   const gridPts: [number, number][] = curve.grid.map((v, h) => [x(h), y(v)]);
@@ -77,9 +100,19 @@ export default function UsageShape({
         </div>
       )}
       <div className={s.chartCard}>
+        {live && weather && (
+          <p className={s.weather}>
+            <b>Today in {weather.place}: {weather.label}{weather.tempC !== null ? `, ${weather.tempC}°` : ""}.</b>
+            {typical.feedInKwhPerDay > 0 ? (
+              curve.share < 0.9
+                ? ` Your panels should make about ${Math.round(curve.share * 100)}% of a sunny day's output, so more of your power comes from the grid.`
+                : " A good solar day: your panels should run near full output."
+              ) : null}
+          </p>
+        )}
         <div className={s.legend}>
           <span><i className={s.swGrid} /> From the grid, kW</span>
-          {curve.feedInKwhPerDay > 0 && <span><i className={s.swFeed} /> Solar sent to the grid</span>}
+          {curve.feedInKwhPerDay > 0 && <span><i className={s.swFeed} /> Solar sent to the grid{weather ? ", today's weather" : ""}</span>}
           <span><i className={s.swPeak} /> Typical peak window, {pk0 - 12}pm to {pk1 - 12}pm</span>
         </div>
         <svg className={s.chart} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${shapeInfo.title}: power use through the day, peaking around ${peakH > 12 ? `${peakH - 12}pm` : `${peakH || 12}am`}. About ${curve.gridKwhPerDay} kWh a day from the grid${curve.feedInKwhPerDay > 0 ? ` and ${curve.feedInKwhPerDay} kWh sent back` : ""}.`}>
@@ -110,13 +143,27 @@ export default function UsageShape({
           <path key={`a-${key}`} d={area(gridPath, gridPts)} fill={`url(#${id}-g)`} className={s.areaIn} />
           <path key={`l-${key}`} d={gridPath} className={s.lineGrid} />
           <circle cx={x(peakH)} cy={y(curve.grid[peakH])} r={5} className={s.dot} />
+          {nowH !== null && (() => {
+            const h0 = Math.floor(nowH), h1 = Math.min(23, h0 + 1), t = nowH - h0;
+            const v = curve.grid[h0] * (1 - t) + curve.grid[h1] * t;
+            const hh = Math.floor(nowH) % 12 || 12, mm = String(Math.round((nowH % 1) * 60) % 60).padStart(2, "0");
+            const label = `Now ${hh}:${mm}${nowH >= 12 ? "pm" : "am"}`;
+            const nx = x(nowH);
+            return (
+              <g aria-hidden="true">
+                <line x1={nx} x2={nx} y1={PAD.t} y2={base} className={s.nowLine} />
+                <circle cx={nx} cy={y(v)} r={5} className={s.nowDot} />
+                <text x={nx} y={PAD.t - 4} className={s.nowText} textAnchor={nx > W - 80 ? "end" : nx < PAD.l + 40 ? "start" : "middle"}>{label}</text>
+              </g>
+            );
+          })()}
           {HOURS.map((lab, i) => (
             <text key={lab} x={x(i * 3)} y={H - 8} className={s.tick} textAnchor={i === 0 ? "start" : "middle"}>{lab}</text>
           ))}
         </svg>
         <div className={s.stats}>
-          <div><b>{curve.gridKwhPerDay.toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh</b><span>a day from the grid</span></div>
-          {curve.feedInKwhPerDay > 0 && <div><b>{curve.feedInKwhPerDay.toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh</b><span>a day sent to the grid</span></div>}
+          <div><b>{curve.gridKwhPerDay.toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh</b><span>{weather && typical.feedInKwhPerDay > 0 ? "from the grid today" : "a day from the grid"}</span></div>
+          {curve.feedInKwhPerDay > 0 && <div><b>{curve.feedInKwhPerDay.toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh</b><span>{weather ? "sent to the grid today" : "a day sent to the grid"}</span></div>}
           <div><b>{peakH > 12 ? `${peakH - 12}pm` : peakH === 12 ? "12pm" : peakH === 0 ? "12am" : `${peakH}am`}</b><span>busiest hour</span></div>
         </div>
         <p className={s.blurb}><b>{shapeInfo.title}.</b> {shapeInfo.blurb}</p>

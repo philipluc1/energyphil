@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FOUNDING_OFFER, PLANS_ON_SALE, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, type PlanId } from "@/lib/pricingPlans";
+import { FOUNDING_OFFER, PLANS_ON_SALE, SALE_BUBBLE, fmtPrice, plusValue, regularPrice, type PlanId } from "@/lib/pricingPlans";
 import styles from "./plancards.module.css";
 
 /**
@@ -35,7 +35,7 @@ export default function PlanCards({
     <div className={`${styles.stack} ${dark ? styles.dark : ""}`}>
       {annual && (
         <div className={`${styles.card} ${styles.featured} ${styles.hero}`}>
-          <span className={styles.ribbon}>{FOUNDING_OFFER ? `${SPECIAL_NAME} · until ${SPECIAL_ENDS_SHORT}` : `Best value · save ${v.save}`}</span>
+          <span className={styles.ribbon}>{FOUNDING_OFFER ? SALE_BUBBLE : `Best value · save ${v.save}`}</span>
           <div className={styles.name}>Yearly</div>
           <div className={styles.priceRow}>
             {/* Founding offer (2 Nov 2026): the regular price struck through; otherwise monthly × 12. */}
@@ -50,7 +50,16 @@ export default function PlanCards({
       )}
       {monthly && (
         <div className={styles.monthly}>
-          <span>Or {regularPrice("monthly") ? <s className={styles.monthlyWas}>{fmtPrice(regularPrice("monthly")!)}</s> : null} <b>{fmtPrice(monthly.priceCents)}</b> month to month <span className={styles.monthlyNote}>({v.monthlyYear} a year)</span></span>
+          {FOUNDING_OFFER && <span className={`${styles.ribbon} ${styles.saleBubble} ${styles.deskOnly}`}>{SALE_BUBBLE}</span>}
+          {/* Phones: one slim line under yearly. Wider screens: a card beside it (2 Nov 2026). */}
+          <span className={styles.phoneOnly}>{FOUNDING_OFFER && <span className={styles.salePill}>Sale</span>}Or {regularPrice("monthly") ? <s className={styles.monthlyWas}>{fmtPrice(regularPrice("monthly")!)}</s> : null} <b>{fmtPrice(monthly.priceCents)}</b> month to month <span className={styles.monthlyNote}>({v.monthlyYear} a year)</span></span>
+          <div className={`${styles.name} ${styles.deskOnly}`}>Monthly</div>
+          <div className={`${styles.priceRow} ${styles.deskOnly}`}>
+            {regularPrice("monthly") ? <span className={styles.anchor}>{fmtPrice(regularPrice("monthly")!)}</span> : null}
+            <span className={styles.mPrice}>{fmtPrice(monthly.priceCents)}</span>
+            <span className={styles.per}>/ month</span>
+          </div>
+          <div className={`${styles.small} ${styles.deskOnly}`}>{v.monthlyYear} a year · stop any time</div>
           {action(monthly.id, href ? "Monthly" : "Choose monthly", styles.btnSmall)}
         </div>
       )}

@@ -147,7 +147,7 @@ export function followUpWeek(i: { origin: string; retailer: string | null; planN
   // A year, not a week (1 Nov 2026): "$2 a week" undersold a $119 saving.
   const yearly = i.yearly && i.yearly >= WORTH_SWITCHING_PER_YEAR ? i.yearly : null;
   const html = `
-    <p>${FREE_SHOWS_NAMES && i.retailer ? `A week ago we found a cheaper plan for you with ${esc(i.retailer)}${i.planName ? ` (&ldquo;${esc(i.planName)}&rdquo;)` : ""}.` : "A week ago we found a cheaper plan for you."} Utilo Plus re-checks it every morning and warns you before your discount ends: <a href="${i.origin}/pricing">$7 a month, or $39 a year</a>.</p>
+    <p>${FREE_SHOWS_NAMES && i.retailer ? `A week ago we found a cheaper plan for you with ${esc(i.retailer)}${i.planName ? ` (&ldquo;${esc(i.planName)}&rdquo;)` : ""}.` : "A week ago we found a cheaper plan for you."} Utilo Plus re-checks it every morning and warns you before your discount ends: <a href="${i.origin}/pricing">${plusValue().monthly} a month, or ${plusValue().annual} a year</a>.</p>
     ${yearly && i.nowYear && i.bestYear
       ? versus({ before: { label: i.vsBill ? "Staying on your plan" : "The default offer", value: i.nowYear }, after: { label: FREE_SHOWS_NAMES && i.retailer ? `Switching to ${esc(i.retailer)}` : "Switching", value: i.bestYear }, gapLabel: "Staying put costs" })
       : yearly ? bigFigure({ figure: money(yearly), label: "Still on the old plan?", body: `What staying put costs you a year: about ${money(yearly / 12)} every month.`, tone: "amber" }) : ""}
@@ -157,6 +157,41 @@ export function followUpWeek(i: { origin: string; retailer: string | null; planN
   return {
     subject: yearly ? `Still on the old plan? That's about ${money(yearly)} a year` : "A week on: did you switch?",
     title: "A week on: did you switch?",
+    html,
+  };
+}
+
+/* ---------- Invite (owner-sent, 2 Nov 2026): one personal nudge to a lead who didn't join ---------- */
+export function leadInvite(i: {
+  origin: string;
+  retailer: string | null;
+  planName: string | null;
+  yearly: number | null;
+  unsubscribeUrl: string;
+  checkedOn: string;      // "31 October"
+  name?: string | null;
+}): Email {
+  const v = plusValue();
+  const yearly = i.yearly && i.yearly >= 1 ? i.yearly : null;
+  const tagged = (path: string) => `${i.origin}${path}${path.includes("?") ? "&" : "?"}utm_source=email&utm_medium=invite&utm_campaign=lead-invite`;
+  const ra = regularPrice("annual");
+  const html = `
+    <p>${i.name ? `Hi ${esc(i.name)}. ` : ""}On ${esc(i.checkedOn)} you checked your energy plan with Utilo${yearly ? ` and we found you could save about <strong>${money(yearly)} a year</strong>${FREE_SHOWS_NAMES && i.retailer ? ` with ${esc(i.retailer)}` : ""}` : ""}.</p>
+    ${heroPanel({
+      pill: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
+      headline: "We'll watch it for you, every morning.",
+      body: `Prices move and discounts end. Utilo Plus re-checks every plan against your own bill each day and emails you only when switching saves ${money(WORTH_SWITCHING_PER_YEAR)} or more a year. ${ra ? `<s>${fmtPrice(ra)}</s> ` : ""}${v.annual} a year (${v.perWeek} a week), or ${v.monthly} month to month.${FOUNDING_OFFER ? " Your price stays locked in while you stay." : ""}`,
+      button: { label: "Start Utilo Plus", url: tagged("/pricing") },
+    })}
+    ${tiles([
+      { sym: "!", title: "Never miss a price jump", text: "A month's warning before your discount or fixed price ends.", tint: "amber" },
+      { sym: "&#8635;", title: "Know the day it's cheaper", text: "Every plan re-checked against your bill, every morning.", tint: "teal" },
+    ])}
+    <p style="margin:0 0 8px;font-size:13px;color:#5f6b82;">Not ready? <a href="${tagged("/check")}">Check again with today's prices</a>, free. Cancel Plus any time. Not a cent from retailers.</p>
+    ${unsubscribe(i.unsubscribeUrl, "You're getting this one-off email because you checked your plan with Utilo and asked for your result.")}`;
+  return {
+    subject: yearly ? `Your ${money(yearly)} a year: want us to keep watching?` : "Want us to keep watching your energy plan?",
+    title: "Keep your saving coming.",
     html,
   };
 }

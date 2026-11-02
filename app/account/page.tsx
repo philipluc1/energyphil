@@ -1093,7 +1093,7 @@ export default function AccountPage() {
 
                                             {/* Your usage (1 Nov 2026): the numbers, the year ahead and the day, in one card. */}
                       {fuel === "elec" && myShape && cmpInput && (
-                        <UsageCard input={cmpInput} profile={homeProfile} shape={myShape.shape} exportPerDay={myShape.exportPerDay} evOvernight={myShape.evOvernight} fromAnswers={myShape.fromAnswers} />
+                        <UsageCard input={cmpInput} profile={homeProfile} shape={myShape.shape} exportPerDay={myShape.exportPerDay} evOvernight={myShape.evOvernight} fromAnswers={myShape.fromAnswers} place={sub?.suburb ?? null} />
                       )}
 
                       <div className={styles.sideInTab}>{sideCardList(false)}</div>

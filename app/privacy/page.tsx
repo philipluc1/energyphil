@@ -132,6 +132,7 @@ export default function PrivacyPolicyPage() {
             </thead>
             <tbody>
               <tr><td>Supabase</td><td>Database and sign-in links</td><td><Fill value={PRIVACY.databaseRegion} label="database region" /></td></tr>
+              <tr><td>Open-Meteo</td><td>Today&apos;s weather on your dashboard: your browser sends them your suburb name, nothing else</td><td>Switzerland and other regions</td></tr>
               <tr><td>Vercel</td><td>Website hosting and anonymous visit counts</td><td>United States and other regions</td></tr>
               <tr><td>Anthropic</td><td>Reading the figures from bill photos and PDFs</td><td>United States</td></tr>
               <tr><td>Stripe</td><td>Payments and billing</td><td>United States and other regions</td></tr>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import InviteButton from "./InviteButton";
 import { COHORT_OFFSETS, monthLabel, type AbandonedLead, type ChurnMonth, type CohortRow, type Revenue } from "@/lib/adminReports";
 import { findPlan } from "@/lib/pricingPlans";
 import styles from "./dashboard.module.css";
@@ -25,7 +26,7 @@ function heat(x: number | null): string | undefined {
 }
 
 export default function GrowthSections({
-  rev, churn, cohorts, reasons, abandoned, abandonedDays = 60, checkouts, checkoutDays = 30, checkoutsNote,
+  rev, churn, cohorts, reasons, abandoned, abandonedDays = 60, checkouts, checkoutDays = 30, checkoutsNote, leadState,
 }: {
   rev: Revenue;
   churn: ChurnMonth[];
@@ -36,6 +37,7 @@ export default function GrowthSections({
   checkouts: AbandonedCheckout[];
   checkoutDays?: number;
   checkoutsNote: string | null;
+  leadState?: Record<string, { member: boolean; unsubscribed: boolean; invitedAt: string | null }>;
 }) {
   const thisMonth = churn[churn.length - 1];
   const contactable = abandoned.filter((a) => !a.unsubscribed);
@@ -165,7 +167,7 @@ export default function GrowthSections({
           ) : (
             <div className={`${styles.tableScroll} ${styles.tallScroll}`}>
               <table className={styles.table}>
-                <thead><tr><th>Email</th><th>When</th><th>Could save</th><th>Network</th></tr></thead>
+                <thead><tr><th>Email</th><th>When</th><th>Could save</th><th>Network</th><th>Invite</th></tr></thead>
                 <tbody>
                   {abandoned.slice(0, 200).map((a) => (
                     <tr key={a.email} className={a.unsubscribed ? styles.rowMuted : undefined}>
@@ -173,6 +175,7 @@ export default function GrowthSections({
                       <td>{day(a.created_at)}</td>
                       <td>{a.saving !== null && a.saving > 0 ? `$${Math.round(a.saving).toLocaleString("en-AU")}/yr` : "–"}</td>
                       <td>{a.distributor ?? "–"}</td>
+                      <td><InviteButton email={a.email} sentAt={leadState?.[a.email]?.invitedAt ?? null} disabled={a.unsubscribed} why="Unsubscribed" /></td>
                     </tr>
                   ))}
                 </tbody>

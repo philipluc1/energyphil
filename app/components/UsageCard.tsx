@@ -22,6 +22,7 @@ export default function UsageCard({
   exportPerDay,
   evOvernight,
   fromAnswers,
+  place = null,
 }: {
   input: ComparisonInput;
   profile: HomeProfile | null;
@@ -29,6 +30,8 @@ export default function UsageCard({
   exportPerDay: number;
   evOvernight: boolean;
   fromAnswers: boolean;
+  /** Their suburb, for today's weather on the day chart. */
+  place?: string | null;
 }) {
   const [view, setView] = useState<"day" | "year">("year");
   const data = useMemo(() => {
@@ -84,6 +87,8 @@ export default function UsageCard({
           dailyKwh={data.perDay}
           exportKwhPerDay={exportPerDay}
           evOvernight={evOvernight}
+          live
+          place={place}
           note={`Modelled from ${fromAnswers ? "your answers" : "your bill's usage and the typical pattern for a home like yours"}, not your meter. It decides whether a time-of-use plan beats a single rate for you: the dearer window is shaded.`}
         />
       )}

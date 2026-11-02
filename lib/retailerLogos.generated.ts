@@ -13,6 +13,7 @@ export const RETAILER_LOGO_FILES: Record<string, { file: string; ratio: number }
   "dodo": { file: "/images/retailers/dodo.png", ratio: 2.87 },
   "energyaustralia": { file: "/images/retailers/energyaustralia.png", ratio: 5.45 },
   "engie": { file: "/images/retailers/engie.png", ratio: 2.81 },
+  "flow-power": { file: "/images/retailers/flow-power.png", ratio: 1.73 },
   "globird-energy": { file: "/images/retailers/globird-energy.png", ratio: 2.15 },
   "indigo-power": { file: "/images/retailers/indigo-power.png", ratio: 2.5 },
   "kogan-energy": { file: "/images/retailers/kogan-energy.png", ratio: 2.52 },

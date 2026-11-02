@@ -368,3 +368,12 @@
 :global(html[data-dash-hide~="market"]) [data-sec="market"] { display: none; }
 .fWrap { flex-wrap: wrap; overflow: visible; }
 .fSections { margin-left: 0; }
+
+/* Invites (2 Nov 2026) */
+.inviteWrap { display: inline-flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.inviteBtn { padding: 5px 11px; border-radius: 8px; border: 1.5px solid var(--navy, #1b2a4a); background: var(--surface); color: var(--navy-accent-text, #1b2a4a); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.inviteBtn:hover { background: var(--track); }
+.inviteBtn:disabled { opacity: 0.6; cursor: default; }
+.inviteSent { font-size: 12px; font-weight: 800; color: #15803d; white-space: nowrap; }
+.inviteNote { font-size: 12px; color: var(--grey-soft); white-space: nowrap; }
+.inviteErr { max-width: 220px; white-space: normal; font-size: 11.5px; font-weight: 700; color: #b91c1c; }

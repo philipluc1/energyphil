@@ -12,6 +12,8 @@ export type PlanId = "annual" | "monthly" | "quarterly" | "half_yearly" | "once_
 export const SPECIAL_NAME = "New Year special";
 export const SPECIAL_ENDS_LABEL = "1 February 2027";
 export const SPECIAL_ENDS_SHORT = "1 Feb";
+/** The bubble on the plan cards (Phil, 2 Nov 2026). */
+export const SALE_BUBBLE = "Sale · until 1 Feb 2027";
 const SPECIAL_ENDS_AT = Date.parse("2027-01-31T13:00:00Z"); // 1 Feb 2027 00:00 in Melbourne (AEDT)
 export function foundingOpenAt(t: number = Date.now()): boolean {
   return t < SPECIAL_ENDS_AT;

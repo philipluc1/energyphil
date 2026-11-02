@@ -87,8 +87,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { checkouts, note } = await unpaidCheckouts(allMembers, now, checkoutDays, f.plan);
   const months = monthsFor(f);
 
+  // Invite buttons (2 Nov 2026): who's a member, unsubscribed or already invited, for the leads on screen.
+  const shown = Array.from(new Set([...stats.recent.map((l) => l.email), ...abandoned.slice(0, 200).map((a) => a.email)].map((e) => e.trim().toLowerCase())));
+  const memberEmails = new Set(allMembers.map((m) => m.email.trim().toLowerCase()));
+  const leadState: Record<string, { member: boolean; unsubscribed: boolean; invitedAt: string | null }> = {};
+  for (const e of shown) leadState[e] = { member: memberEmails.has(e), unsubscribed: false, invitedAt: null };
+  if (shown.length) {
+    const q = await db.from("leads").select("email, unsubscribed, invite_sent_at").in("email", shown).limit(5000);
+    const rows = (q.error ? (await db.from("leads").select("email, unsubscribed").in("email", shown).limit(5000)).data : q.data) as { email: string; unsubscribed: boolean | null; invite_sent_at?: string | null }[] | null;
+    for (const r of rows ?? []) {
+      const s = leadState[r.email.trim().toLowerCase()];
+      if (!s) continue;
+      if (r.unsubscribed) s.unsubscribed = true;
+      if (r.invite_sent_at && (!s.invitedAt || r.invite_sent_at > s.invitedAt)) s.invitedAt = r.invite_sent_at;
+    }
+  }
+
   return (
-    <DashboardCharts stats={stats} subscriberStats={subscriberStats} funnel={funnel} filters={f}>
+    <DashboardCharts stats={stats} subscriberStats={subscriberStats} funnel={funnel} filters={f} leadState={leadState}>
       <GrowthSections
         rev={revenue(members, now)}
         churn={churnByMonth(members, now, months)}
@@ -99,6 +115,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         checkouts={checkouts}
         checkoutDays={checkoutDays}
         checkoutsNote={note}
+        leadState={leadState}
       />
     </DashboardCharts>
   );

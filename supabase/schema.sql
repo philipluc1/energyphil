@@ -374,3 +374,6 @@ create table if not exists public.admin_actions (
 create index if not exists admin_actions_member on public.admin_actions (member, created_at desc);
 alter table public.admin_actions enable row level security;
 -- No policies: only the server touches this table.
+
+-- 2 Nov 2026: owner-sent invites to leads (one every 30 days at most).
+alter table public.leads add column if not exists invite_sent_at timestamptz;

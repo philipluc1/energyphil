@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import AdminHeader from "./AdminHeader";
+import InviteButton from "./InviteButton";
 import FilterBar from "./FilterBar";
 import type { DashFilters } from "@/lib/adminFilters";
 import {
@@ -62,6 +63,7 @@ export default function DashboardCharts({
   subscriberStats,
   funnel,
   filters,
+  leadState,
   children,
 }: {
   stats: DashboardStats;
@@ -69,6 +71,8 @@ export default function DashboardCharts({
   funnel?: FunnelStats;
   children?: ReactNode;
   filters?: DashFilters;
+  /** Per lead email (lower case): already a member, unsubscribed, last invited. */
+  leadState?: Record<string, { member: boolean; unsubscribed: boolean; invitedAt: string | null }>;
 }) {
   const scheme = useColorScheme();
   const colors = PALETTE[scheme];
@@ -285,6 +289,7 @@ export default function DashboardCharts({
                   <th>Network</th>
                   <th>Best plan found</th>
                   <th>Est. saving</th>
+                  <th>Invite</th>
                 </tr>
               </thead>
               <tbody>
@@ -315,6 +320,7 @@ export default function DashboardCharts({
                         "—"
                       )}
                     </td>
+                    <td>{(() => { const m = leadState?.[lead.email.trim().toLowerCase()]; return <InviteButton email={lead.email} sentAt={m?.invitedAt ?? null} disabled={!!m && (m.member || m.unsubscribed)} why={m?.member ? "Member" : m?.unsubscribed ? "Unsubscribed" : undefined} />; })()}</td>
                   </tr>
                 ))}
               </tbody>
