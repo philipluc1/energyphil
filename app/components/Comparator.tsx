@@ -274,7 +274,7 @@ export default function Comparator() {
   const [savedKwhRaw, setSavedKwhRaw] = useState("");
   // The one-page questions shown one step at a time (1 Nov 2026): where you
   // live, how to work out usage, about your home, extras, your estimate.
-  const [qp, setQp] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [qp, setQp] = useState<1 | 2 | 3 | 4 | 5>(2); // 2 Nov 2026: the questions come first, the postcode last
   const [qDir, setQDir] = useState<"fwd" | "back">("fwd");
   // Can't find the kWh? They can give the bill's dollar total instead (stored in currentBillRaw).
   const [calFigure, setCalFigure] = useState<BillFigure>("kwh");
@@ -326,7 +326,7 @@ export default function Comparator() {
     // /check?start=questions or ?start=type skips the photo panel.
     const start = new URLSearchParams(window.location.search).get("start");
     if (start === "questions" || start === "type") {
-      setTimeout(() => { setEntry("wizard"); if (start === "questions") { setQuestionsPage(true); setUsageSource("average"); setQp(1); } else setUsageSource("bill"); }, 0);
+      setTimeout(() => { setEntry("wizard"); if (start === "questions") { setQuestionsPage(true); setUsageSource("average"); setQp(2); } else setUsageSource("bill"); }, 0);
     }
     if (!raw) {
       const t0 = setTimeout(() => setHydrated(true), 0);
@@ -505,7 +505,8 @@ export default function Comparator() {
   // Which of the three usage options is open on the one-page questions.
   const usagePick: "average" | "home" | "bill" = usageSource === "average" ? "average" : billRowOpen ? "bill" : "home";
   // The average home needs no questions about the home: straight to the estimate.
-  const qPages: (1 | 2 | 3 | 4 | 5)[] = usagePick === "average" ? [1, 2, 5] : [1, 2, 3, 4, 5];
+  // Questions first, postcode last (Phil, 2 Nov 2026): page 1 (home or business, postcode) comes just before the estimate.
+  const qPages: (1 | 2 | 3 | 4 | 5)[] = usagePick === "average" ? [2, 1, 5] : [2, 3, 4, 1, 5];
   const qIdx = Math.max(0, qPages.indexOf(qp));
   const Q_TITLES: Record<number, string> = { 1: "Where you live", 2: "Your usage", 3: "About your home", 4: "Anything else", 5: "Your estimate" };
   function goQ(to: 1 | 2 | 3 | 4 | 5, dir: "fwd" | "back") {
@@ -1350,7 +1351,7 @@ export default function Comparator() {
                 <button type="button" onClick={startFresh}>Start fresh</button>
               </div>
             )}
-        {entry !== "snap" && (!onePage || qp === 1) && (
+        {entry !== "snap" && (!onePage || qp === qPages[0]) && (
         <section className={styles.hero}>
           <span className={styles.residentialTag}>Victorian homes · NSW, SA, QLD coming</span>
           <h1>{entry === "read" ? "Here's what we read" : "Check your plan"}</h1>
@@ -1474,7 +1475,7 @@ export default function Comparator() {
 
         {entry === "wizard" && (
           <>
-        {!scanBanner && (!onePage || qp === 1) && <BillPhotoUpload variant="strip" onApply={handleBillExtracted} />}
+        {!scanBanner && (!onePage || qp === qPages[0]) && <BillPhotoUpload variant="strip" onApply={handleBillExtracted} />}
         {scanBanner && (
           <div className={styles.scanBanner}>
             <div className={styles.scanBannerHead}>
@@ -1538,7 +1539,7 @@ export default function Comparator() {
               </div>
               <div className={styles.stepHeadText}>
                 <div className={styles.stepLabel}>
-                  <span className={styles.stepNum}>1</span> Where do you live?
+                  <span className={styles.stepNum}>{onePage ? qIdx + 1 : 1}</span> {onePage ? "Last thing: where do you live?" : "Where do you live?"}
                 </div>
                 <span className={styles.stepSub}>Your postcode tells us your power network, which decides the prices you can get.</span>
               </div>
@@ -2179,7 +2180,7 @@ export default function Comparator() {
           )}
           <span className={uc.navRight}>
             {usagePick === "bill" && (qp === 3 || qp === 4) && (
-              <button type="button" className={uc.skip} onClick={() => goQ(5, "fwd")}>Skip: use my bill&apos;s kWh</button>
+              <button type="button" className={uc.skip} onClick={() => goQ(postcode.length < 4 || !networkKnown ? 1 : 5, "fwd")}>Skip: use my bill&apos;s kWh</button>
             )}
             {qp !== 5 ? (
               <button type="button" className={styles.heroCta} disabled={qp === 1 && !!blockReason} onClick={qNext}>Next →</button>

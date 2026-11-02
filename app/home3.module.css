@@ -146,3 +146,74 @@
 .fuelGo { margin-left: auto; font-size: 18px; font-weight: 900; color: var(--grey); }
 @media (max-width: 560px) { .fuelCard { padding: 12px; gap: 10px; } .fuelCardText b { font-size: 16px; } .fuelCardText small { font-size: 12px; } .fuelGo { display: none; } }
 @media (prefers-reduced-motion: reduce) { .fuelCard { transition: none; } }
+
+/* 2 Nov 2026 (Phil): "precise and technical". White and deep navy, hairline
+   rules, one amber accent (the button), a monospace voice for labels and data,
+   and a bill being read as the hero picture. Overrides the rules above. */
+.heroTech { position: relative; isolation: isolate; }
+.techLabel { display: inline-flex; align-items: center; gap: 8px; padding: 0 0 0 0; font: 600 12.5px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-accent-text); }
+.techDot { width: 8px; height: 8px; border-radius: 2px; background: var(--navy); }
+.heroTech .h1 { margin-top: 20px; color: var(--navy); letter-spacing: -0.05em; }
+.heroTech .h1Accent { color: var(--ink); }
+.heroTech .lede { color: var(--grey); font-weight: 500; }
+.heroTech .ctas { margin-top: 30px; }
+.heroTech .primary { border-radius: 10px; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08), 0 10px 24px -14px rgba(245, 166, 35, 0.9); }
+.heroTech .ghost { padding: 16px 18px; border-radius: 10px; border: 1.5px solid #cfd5e6; color: var(--navy); background: #fff; }
+.heroTech .ghost:hover { text-decoration: none; border-color: var(--navy); }
+.heroTech .savePill { margin-top: 22px; padding: 0; background: none; border: 0; border-radius: 0; font: 500 14px/1.4 "IBM Plex Mono", ui-monospace, monospace; color: var(--grey); }
+.heroTech .savePill b { font-weight: 600; color: var(--good); }
+.heroTech .savePill + .fuelsHero, .heroTech .ctas + .fuelsHero { margin-top: 26px; }
+.heroTech .fuelCard { border-radius: 10px; border: 1px solid #dfe3ee; box-shadow: none; padding: 12px 14px; }
+.heroTech .fuelCard:hover { transform: none; box-shadow: none; border-color: var(--navy); }
+.heroTech .fuelCard .fElec, .heroTech .fuelCard .fGas { width: 34px; height: 34px; border-radius: 8px; background: #eef1f8; color: var(--navy); }
+.heroTech .fuelCardText small { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; letter-spacing: 0.02em; }
+
+/* The bill being read */
+.readCard { position: relative; overflow: hidden; width: 100%; max-width: 400px; border-radius: 14px; background: #fff; border: 1px solid #d9deea; box-shadow: 0 1px 0 rgba(17, 24, 39, 0.04), 0 24px 48px -30px rgba(19, 28, 87, 0.45); animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both 0.1s; }
+.readHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; background: var(--navy); color: #fff; }
+.readTitle { display: inline-flex; align-items: center; gap: 7px; font: 600 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+.readTag { padding: 3px 7px; border-radius: 5px; background: rgba(255, 255, 255, 0.14); font: 600 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.04em; }
+.readScan { position: absolute; left: 0; right: 0; top: 44px; height: 46px; background: linear-gradient(180deg, rgba(245, 166, 35, 0) 0%, rgba(245, 166, 35, 0.16) 60%, rgba(245, 166, 35, 0.55) 100%); border-bottom: 1.5px solid var(--amber); animation: scan 3.2s cubic-bezier(0.45, 0, 0.55, 1) 0.4s 2 both; pointer-events: none; }
+@keyframes scan { 0% { transform: translateY(0); opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(250px); opacity: 0; } }
+.readRows { margin: 0; padding: 14px 16px 4px; display: grid; gap: 0; }
+.readRows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed #e3e7f0; animation: rowIn 0.4s ease-out both; }
+.readRows > div:nth-child(1) { animation-delay: 0.5s; } .readRows > div:nth-child(2) { animation-delay: 0.75s; } .readRows > div:nth-child(3) { animation-delay: 1s; }
+.readRows > div:nth-child(5) { animation-delay: 1.35s; } .readRows > div:nth-child(6) { animation-delay: 1.6s; }
+@keyframes rowIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+.readRows dt { font: 500 12.5px/1.2 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.03em; text-transform: uppercase; color: var(--grey); }
+.readRows dd { margin: 0; font: 800 17px/1.2 "Archivo", sans-serif; color: var(--ink); font-variant-numeric: tabular-nums; }
+.readRows .readRule { padding: 0; height: 0; border-bottom: 1.5px solid var(--navy); margin: 6px 0 2px; }
+.readBest dd { color: var(--good); }
+.readSave { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 10px 16px 0; padding: 12px 14px; border-radius: 10px; background: #ecfdf3; border: 1px solid #c9f0d8; animation: rowIn 0.4s ease-out both 1.9s; }
+.readSave span { font: 600 12.5px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.06em; text-transform: uppercase; color: #166534; }
+.readSave b { font: 900 24px/1 "Archivo", sans-serif; letter-spacing: -0.02em; color: var(--good); font-variant-numeric: tabular-nums; }
+.readFoot { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 16px 14px; font: 500 12px/1.3 "IBM Plex Mono", ui-monospace, monospace; color: var(--navy-accent-text); }
+@media (prefers-reduced-motion: reduce) { .readScan { display: none; } .readRows > div, .readSave, .readCard { animation: none; } }
+
+/* Numbers strip: hairlines and monospace labels, no coloured tiles. */
+.stats { border-radius: 12px; border-color: #dfe3ee; box-shadow: none; }
+.stats .siPlans, .stats .siRetailers, .stats .siDaily, .stats .siMarket { background: #eef1f8; color: var(--navy); }
+.statIcon { border-radius: 9px; }
+.stats .statLabel { font: 500 12.5px/1.3 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.02em; }
+.stats .statNum, .stats .statNum span { color: var(--navy); }
+
+/* Section headings and answers: crisper edges. */
+.h2 { color: var(--navy); letter-spacing: -0.035em; }
+.faq details { border-radius: 10px; border-color: #dfe3ee; }
+.faq summary::after { border-radius: 6px; background: #eef1f8; color: var(--navy); }
+
+@media (max-width: 860px) { .readCard { max-width: none; } }
+@media (max-width: 520px) {
+  /* Phones get a short version of the bill being read, under the buttons. */
+  .heroTech .heroArt { display: flex; }
+  .heroTech .ghost { width: 100%; text-align: center; padding: 14px 16px; }
+  .readRows > div:nth-child(1), .readRows > div:nth-child(2), .readRows > div:nth-child(3), .readRows .readRule, .readFoot { display: none; }
+  .readRows { padding-top: 8px; }
+  .readScan { display: none; }
+  .readSave { margin-bottom: 14px; }
+  .techLabel { font-size: 11px; }
+}
+@media (max-width: 520px) {
+  .heroTech .fuelCardText small { font-family: inherit; font-size: 12.5px; letter-spacing: 0; }
+  .heroTech .savePill { font-size: 13px; }
+}

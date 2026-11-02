@@ -68,21 +68,27 @@ export default function Home() {
       <main className={h.page}>
         <SourceBanner />
 
-        {/* 1. The hook: one line, one button. */}
-        <section className={h.hero}>
+        {/* 1. The hook (2 Nov 2026, "precise and technical"): few words, one amber button, and a bill being read. */}
+        <section className={`${h.hero} ${h.heroTech}`}>
           <div className={h.heroText}>
-            <span className={h.kicker}><Icon name="bolt" size={14} /> Victorian homes · electricity and gas</span>
+            <span className={h.techLabel}><span className={h.techDot} aria-hidden="true" /> Bill check · Victoria · electricity and gas</span>
             <h1 className={h.h1}>
               Stop overpaying.
               <br />
               <span className={h.h1Accent}>Start saving.</span>
             </h1>
-            <p className={h.lede}>Snap your bill. See your savings.</p>
+            <p className={h.lede}>Snap your bill. We price it against every plan.</p>
+            <div className={h.ctas}>
+              <Link href="/check" className={h.primary}>
+                <Icon name="camera" size={20} /> Snap my bill, free
+              </Link>
+              <Link href="/check?start=questions" className={h.ghost}>No bill? Use the average home</Link>
+            </div>
             {topSave && topSave.save >= 1 && (
               <div className={h.savePill}>
                 <span className={h.saveDot} aria-hidden="true" />
                 <span>
-                  Savings on today&apos;s prices: <b>up to $<CountUp value={Math.round(topSave.save)} /> a year</b>
+                  Today&apos;s prices: <b>save up to $<CountUp value={Math.round(topSave.save)} /> a year</b>
                 </span>
                 <InfoTip label="About these savings">
                   For the average Victorian home (4,000 kWh a year), the cheapest plan against the default offer, on each network today:{" "}
@@ -90,24 +96,18 @@ export default function Home() {
                 </InfoTip>
               </div>
             )}
-            <div className={h.ctas}>
-              <Link href="/check" className={h.primary}>
-                <Icon name="camera" size={20} /> Snap my bill, free
-              </Link>
-              <Link href="/check?start=questions" className={h.ghost}>No bill? Use the average home</Link>
-            </div>
             {/* Internet ("Soon") is hidden for now: electricity and gas are the offer. */}
             <ul className={h.fuelsHero} aria-label="Bills we check">
               <li>
                 <Link href="/check" className={`${h.fuelCard} ${h.fuelCardElec}`}>
-                  <span className={h.fElec}><Icon name="bolt" size={20} /></span>
+                  <span className={h.fElec}><Icon name="bolt" size={18} /></span>
                   <span className={h.fuelCardText}><b>Electricity</b><small>Check my power bill</small></span>
                   <span className={h.fuelGo} aria-hidden="true">→</span>
                 </Link>
               </li>
               <li>
                 <Link href="/gas" className={`${h.fuelCard} ${h.fuelCardGas}`}>
-                  <span className={h.fGas}><Icon name="flame" size={20} /></span>
+                  <span className={h.fGas}><Icon name="flame" size={18} /></span>
                   <span className={h.fuelCardText}><b>Gas</b><small>Check my gas bill</small></span>
                   <span className={h.fuelGo} aria-hidden="true">→</span>
                 </Link>
@@ -115,16 +115,27 @@ export default function Home() {
             </ul>
           </div>
 
-          <div className={h.heroArt} aria-label="Example result for a typical Victorian home">
-            <div className={h.resultCard}>
-              <span className={h.rcTag}>Example result</span>
-              <div className={h.rcRow}><span>Default offer</span><b>{money(bench)}<small>/yr</small></b></div>
-              <div className={h.rcRow}><span>Cheapest plan</span><b className={h.rcGood}>{money(best)}<small>/yr</small></b></div>
-              <div className={h.rcSave}>Save {money(Math.max(0, bench - best))} a year</div>
-              <div className={h.rcWatch}><Icon name="refresh" size={15} /> Re-checked every morning with {PLUS_NAME}</div>
+          {/* A bill being read, line by line: what the check does, as a picture. Example figures, labelled. */}
+          <div className={h.heroArt} aria-label="Example: a typical Victorian home's quarterly bill, checked">
+            <div className={h.readCard}>
+              <div className={h.readHead}>
+                <span className={h.readTitle}><Icon name="camera" size={14} /> Reading your bill</span>
+                <span className={h.readTag}>Example</span>
+              </div>
+              <div className={h.readScan} aria-hidden="true" />
+              <dl className={h.readRows}>
+                <div><dt>Period</dt><dd>91 days</dd></div>
+                <div><dt>Usage</dt><dd>{Math.round(ex.annualUsageKwh * 91 / 365).toLocaleString("en-AU")} kWh</dd></div>
+                <div><dt>Retailers compared</dt><dd>{RETAILER_COUNT}</dd></div>
+                <div className={h.readRule} />
+                <div><dt>Your bill</dt><dd>{money(bench * 91 / 365)}</dd></div>
+                <div className={h.readBest}><dt>Cheapest plan</dt><dd>{money(best * 91 / 365)} <span aria-hidden="true">✓</span></dd></div>
+              </dl>
+              <div className={h.readSave}><span>You save</span><b>{money(Math.max(0, bench - best))} a year</b></div>
+              <div className={h.readFoot}><Icon name="refresh" size={14} /> Re-checked every morning with {PLUS_NAME}</div>
             </div>
             <span className={h.rcFoot}>
-              Typical home, 4,000 kWh a year
+              Typical home, 4,000 kWh a year, on the default offer
               <InfoTip label="About this example">Averaged across Victoria&apos;s five networks on today&apos;s prices, single-rate plans, pay-on-time discounts included. Your bill gives your own number.</InfoTip>
             </span>
           </div>
