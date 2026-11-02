@@ -36,3 +36,22 @@ assert.deepEqual(billGaps(sanitizeExtractedBill({ is_electricity_bill: false, fu
 assert.equal(listWords(["a"]), "a");
 assert.equal(listWords(["a", "b", "c"]), "a, b and c");
 console.log("bill gaps ok");
+
+import { test } from "node:test";
+import { periodCharges, sanitizeExtractedBill as readBill } from "./billExtraction";
+test("an overdue balance carried forward isn't this bill's cost (Tango bill, 2 Nov 2026)", () => {
+  // Amount due $310.34 = $214.71 overdue + $95.63 new charges.
+  assert.deepEqual(periodCharges(310.34, 95.63, 214.71), { currentBill: 95.63, amountDue: 310.34 });
+  // No new-charges line: take the overdue amount off.
+  assert.deepEqual(periodCharges(310.34, null, 214.71), { currentBill: 95.63, amountDue: 310.34 });
+  // An ordinary bill: nothing to explain.
+  assert.deepEqual(periodCharges(95.63, 95.63, null), { currentBill: 95.63, amountDue: null });
+  assert.deepEqual(periodCharges(412.1, null, null), { currentBill: 412.1, amountDue: null });
+});
+
+test("a feed-in printed as a credit still counts", () => {
+  const b = readBill({ is_electricity_bill: true, current_bill_total: 310.34, new_charges_total: 95.63, solar_fit_cents: -0.04, supply_charge_cents_per_day: 128, anytime_rate_cents: 31.702 });
+  assert.equal(b.currentBill, 95.63);
+  assert.equal(b.amountDue, 310.34);
+  assert.equal(b.currentRates?.solarFit, 0.0004);
+});

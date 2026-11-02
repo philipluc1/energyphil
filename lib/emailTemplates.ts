@@ -13,7 +13,7 @@ import { RETAILER_LINKS } from "./retailerLinks";
 import { namesList } from "./stickyPick";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, alertPreview, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
+import { C, alertPreview, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -486,6 +486,8 @@ export function renewalRecap(i: {
   priceLabel: string;           // "$39 a year"
   founding?: boolean;
   unsubscribeUrl: string;
+  /** Our tracked Google review link, when one is set up. */
+  reviewLink?: string | null;
 }): Email {
   const saved = i.switched && i.savedSoFar >= 1;
   const html = `
@@ -509,10 +511,55 @@ export function renewalRecap(i: {
     ])}
     ${statusBox({ kicker: "Your renewal", headline: `${esc(i.priceLabel)} on ${esc(i.renewsOn)}`, body: `${i.founding ? `Your ${SPECIAL_NAME} price stays the same. ` : ""}Nothing to do to keep going. To change or cancel, it's on your dashboard under Plus, any time before then.`, tone: "teal" })}
     ${button("Open my dashboard", `${i.origin}/account#membership`)}
+    ${i.reviewLink ? `${stars().replace("24px", "16px").replace("margin:0 0 6px", "margin:8px 0 4px")}<p style="margin:0 0 8px;font-size:14px;">A year in: how are we doing? <a href="${i.reviewLink}">Leave us a Google review</a>. It takes a minute and helps other Victorians decide.</p>` : ""}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because your Utilo Plus membership renews soon.")}`;
   return {
     subject: saved ? `Your year with Utilo: ${money(i.savedSoFar)} saved` : `Your year with Utilo: renewing ${i.renewsOn}`,
     title: saved ? `${money(i.savedSoFar)} saved this year.` : "Your year with Utilo Plus.",
+    html,
+  };
+}
+
+/* ---------- Google review request (2 Nov 2026) ----------
+   Same ask for everyone at the same point (no gating), nothing offered for it.
+   "switched": 3 weeks after they switched; "member": 45 days in, not switched;
+   "reminder": once, a week later, if they didn't click. */
+export function reviewAsk(i: {
+  origin: string;
+  name?: string | null;
+  kind: "switched" | "member" | "reminder";
+  /** Our tracked link (lib/reviews.ts), which goes on to Google. */
+  url: string;
+  switchedTo?: string | null;
+  daysWatched?: number | null;
+  unsubscribeUrl: string;
+}): Email {
+  const lead = i.kind === "switched"
+    ? `It's been a few weeks since you switched${i.switchedTo ? ` to ${esc(i.switchedTo)}` : ""}. We hope the new plan is treating you well.`
+    : i.kind === "member"
+      ? `You've had Utilo Plus watching your plan for ${i.daysWatched && i.daysWatched > 0 ? `${i.daysWatched} days` : "a while now"}.`
+      : "Just a quick follow-up to last week's note.";
+  const html = `
+    ${greet(i.name)}
+    <p>${lead} Could you tell other Victorians what Utilo is like? A Google review takes about a minute.</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+      <tr><td align="center" style="padding:24px 20px;border-radius:16px;background:${C.amberTint};">
+        ${stars()}
+        <div style="font:800 21px/1.3 Arial,Helvetica,sans-serif;color:${C.navy};margin:6px 0 4px;">How did we do?</div>
+        <div style="font:14.5px/1.5 Arial,Helvetica,sans-serif;color:${C.ink};margin:0 0 16px;">Good, bad or somewhere in between, an honest review helps people decide, and tells us what to fix.</div>
+        <table role="presentation" cellspacing="0" cellpadding="0" align="center"><tr><td style="border-radius:999px;background:${C.amber};"><a href="${i.url}" style="display:inline-block;padding:13px 26px;font:800 15px Arial,Helvetica,sans-serif;color:${C.amberInk};text-decoration:none;border-radius:999px;">Leave a Google review &rarr;</a></td></tr></table>
+      </td></tr>
+    </table>
+    ${i.kind !== "reminder" ? steps([
+      step(1, "Tap the button", "It opens Utilo's page on Google, signed in with your Google account."),
+      step(2, "Pick your stars", "One to five, whatever feels right."),
+      step(3, "Add a line or two (optional)", "What did Utilo do for you? What could be better?"),
+    ]) : ""}
+    <p style="margin:0 0 8px;font-size:13px;color:#5f6b82;">${i.kind === "reminder" ? "This is the last time we'll ask." : "We'll ask once more at most."} Thanks for being a member.</p>
+    ${unsubscribe(i.unsubscribeUrl, "You're getting this as a Utilo member. This won't cancel Utilo Plus.")}`;
+  return {
+    subject: i.kind === "reminder" ? "One minute for a quick review?" : i.kind === "switched" ? `${firstNameOf(i.name) ? `${firstNameOf(i.name)}, how` : "How"} did the switch go?` : `${firstNameOf(i.name) ? `${firstNameOf(i.name)}, how` : "How"} are we doing?`,
+    title: i.kind === "switched" ? "How did the switch go?" : "How are we doing?",
     html,
   };
 }

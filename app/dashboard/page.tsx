@@ -7,6 +7,8 @@ import { abandonedLeads, cancelReasons, churnByMonth, churnDate, cohorts, revenu
 import { PERIODS, fromSource, inPeriod, monthsFor, onPlan, parseFilters, periodDays, periodStart } from "@/lib/adminFilters";
 import { LIVE_WINDOW_MS, liveNow, visitReport, type ViewRow } from "@/lib/visits";
 import VisitorsSection from "./VisitorsSection";
+import ReviewsSection from "./ReviewsSection";
+import { reviewUrl } from "@/lib/reviews";
 import { stripe } from "@/lib/stripeClient";
 import styles from "./dashboard.module.css";
 import { cookies } from "next/headers";
@@ -116,6 +118,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const checkSids = new Set(((await ckQ).data ?? []).map((r: { sid: string }) => r.sid));
   const lv = await db.from("live_sessions").select("sid, path, last_seen").gte("last_seen", new Date(now.getTime() - LIVE_WINDOW_MS).toISOString()).limit(5000);
   const live = lv.error ? { ok: false, message: "Run the latest SQL to turn this on." } : { ok: true, ...liveNow(lv.data ?? [], now.getTime()) };
+  // Google reviews (2 Nov 2026).
+  const rvm = await db.from("subscribers").select("review_asks, review_clicked_at").or("review_asks.gt.0,review_clicked_at.not.is.null").limit(10000);
+  let rcQ = db.from("review_clicks").select("source").limit(50000);
+  if (since) rcQ = rcQ.gte("created_at", new Date(since).toISOString());
+  const rc = await rcQ;
+  const reviewMissing = !!(rvm.error || rc.error);
+  const srcCount = new Map<string, number>();
+  for (const r of (rc.data ?? []) as { source: string }[]) srcCount.set(r.source, (srcCount.get(r.source) ?? 0) + 1);
+  const rvRows = (rvm.data ?? []) as { review_asks: number | null; review_clicked_at: string | null }[];
+  const reviews = {
+    asked: rvRows.filter((r) => (r.review_asks ?? 0) > 0).length,
+    clicked: rvRows.filter((r) => r.review_clicked_at).length,
+    clickedAfterAsk: rvRows.filter((r) => (r.review_asks ?? 0) > 0 && r.review_clicked_at).length,
+    bySource: Array.from(srcCount.entries()).map(([source, n]) => ({ source, n })).sort((a, b) => b.n - a.n),
+  };
   const periodLabel = f.period === "all" ? "all time" : `last ${PERIODS.find((p) => p.id === f.period)?.label ?? ""}`;
 
   return (
@@ -133,6 +150,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         checkoutsNote={note}
         leadState={leadState}
       />
+      <ReviewsSection {...reviews} ready={!!reviewUrl()} missing={reviewMissing} />
     </DashboardCharts>
   );
 }

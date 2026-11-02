@@ -83,7 +83,7 @@ const TOOL_SCHEMA = {
       },
       current_bill_total: {
         type: ["number", "null"],
-        description: "Total amount payable including GST, in AUD.",
+        description: "Total amount payable including GST, in AUD, as printed (it may include an overdue balance; new_charges_total is this period alone).",
       },
       usage_mode: {
         type: ["string", "null"],
@@ -218,7 +218,7 @@ const TOOL_SCHEMA = {
       shoulder_rate_cents: { type: ["number", "null"], description: "Shoulder usage rate in cents per kWh as printed, if shown." },
       offpeak_rate_cents: { type: ["number", "null"], description: "Off-peak usage rate in cents per kWh as printed, if shown." },
       controlled_load_rate_cents: { type: ["number", "null"], description: "Controlled load / dedicated circuit rate in cents per kWh as printed, if shown." },
-      solar_fit_cents: { type: ["number", "null"], description: "Solar feed-in tariff in cents per kWh as printed, if shown." },
+      solar_fit_cents: { type: ["number", "null"], description: "Solar feed-in tariff in cents per kWh, as a positive number even if the bill prints it as a credit (e.g. '-0.040 c/kWh' is 0.04). Read it from the solar/feed-in line's rate column; if only the credit and kWh are shown, divide the credit by the kWh. Null if not shown." },
       looks_partial: {
         type: "boolean",
         description:

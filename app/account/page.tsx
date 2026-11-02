@@ -54,6 +54,7 @@ import BillTracker from "../components/BillTracker";
 import BillReview from "../components/BillReview";
 import type { CurrentRates, ExtractedBill } from "@/lib/billExtraction";
 import SwitchReminder from "../components/SwitchReminder";
+import ReviewCard from "../components/ReviewCard";
 import { DeleteDataCard, MemberSettings } from "../components/MemberSettings";
 import { activityWords, marketActivity } from "@/lib/marketActivity";
 import styles from "./account.module.css";
@@ -1159,6 +1160,8 @@ export default function AccountPage() {
                             </>
                           )}
                         </section>
+                        {/* Google review ask, once they've switched (2 Nov 2026). */}
+                        <ReviewCard switched={!!switchedAt} />
                         {/* Bills and savings by month, straight under "Your next move" (2 Nov 2026). */}
                         <BillTracker key={fuel} initialFuel={fuel === "gas" ? "gas" : "electricity"} gasAccount={!!sub?.gas_zone} />
 

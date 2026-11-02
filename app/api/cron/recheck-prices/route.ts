@@ -5,7 +5,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 import { topOpen } from "@/lib/planExtras";
-import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, renewalRecap, resultEmail } from "@/lib/emailTemplates";
+import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, renewalRecap, resultEmail, reviewAsk } from "@/lib/emailTemplates";
+import { reviewAskDue, reviewUrl, trackedReviewLink } from "@/lib/reviews";
 import { daysWatched, recapDue, savedSince, RECAP_PLANS, type Episode } from "@/lib/renewalRecap";
 import { marketActivity } from "@/lib/marketActivity";
 import { FOUNDING_OFFER, findPlan, fmtPrice } from "@/lib/pricingPlans";
@@ -534,17 +535,22 @@ export async function GET(req: NextRequest) {
 
   // --- Yearly recap, two weeks before a membership renews (2 Nov 2026) ---
   let recaps = 0;
+  const recapped = new Set<string>();
   {
     const soon = new Date(Date.now() + 15 * 86_400_000).toISOString();
-    const { data: due, error: dueErr } = await supabaseAdmin
+    const RECAP_COLS = "id, email, status, plan, amount_cents, created_at, current_period_end, recap_sent_for, distributor, billing_days, reference_total, baseline_total, baseline_retailer, switched_at, customer_name";
+    const recapQuery = (cols: string) => supabaseAdmin!
       .from("subscribers")
-      .select("id, email, status, plan, amount_cents, created_at, current_period_end, recap_sent_for, distributor, billing_days, reference_total, baseline_total, baseline_retailer, switched_at, customer_name")
+      .select(cols)
       .eq("status", "active")
       .in("plan", [...RECAP_PLANS])
       .lte("current_period_end", soon)
       .gte("current_period_end", new Date().toISOString());
+    // With the review column when the database has it (2 Nov 2026), without it otherwise.
+    let { data: due, error: dueErr } = await recapQuery(`${RECAP_COLS}, review_clicked_at`);
+    if (dueErr && /column|schema cache/i.test(dueErr.message)) ({ data: due, error: dueErr } = await recapQuery(RECAP_COLS));
     if (dueErr) console.warn("recheck-prices: renewal recaps off (run supabase/schema.sql)", dueErr.message);
-    for (const sub of (due ?? []) as RecapRow[]) {
+    for (const sub of (due ?? []) as unknown as RecapRow[]) {
       if (skip(sub.id)) continue;
       try {
         if (!recapDue({ plan: sub.plan, status: sub.status, periodEnd: sub.current_period_end, sentFor: sub.recap_sent_for })) continue;
@@ -574,10 +580,12 @@ export async function GET(req: NextRequest) {
           // Founding members: on a price below today's list price, or joined while the founding offer is open.
           founding: plan ? price < plan.priceCents || (FOUNDING_OFFER && price === plan.priceCents) : false,
           unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
+          reviewLink: reviewUrl() && !sub.review_clicked_at ? trackedReviewLink(origin, sub.id, "recap") : null,
         });
         const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
         if (sent) {
           recaps++;
+          recapped.add(sub.id);
           await supabaseAdmin.from("subscribers").update({ recap_sent_for: sub.current_period_end!.slice(0, 10) }).eq("id", sub.id);
         }
       } catch (err) {
@@ -587,7 +595,47 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // --- Google review requests (2 Nov 2026): lib/reviews.ts says who and when ---
+  let reviewAsks = 0;
+  if (reviewUrl()) {
+    const { data: rv, error: rvErr } = await supabaseAdmin
+      .from("subscribers")
+      .select("id, email, status, created_at, switched_at, switched_to, cancel_at, unsubscribed, review_asks, review_asked_at, review_clicked_at, last_notified_at, customer_name")
+      .eq("status", "active")
+      .eq("unsubscribed", false)
+      .lt("review_asks", 2)
+      .is("review_clicked_at", null);
+    if (rvErr) console.warn("recheck-prices: review requests off (run supabase/schema.sql)", rvErr.message);
+    const now = Date.now();
+    for (const sub of (rv ?? []) as ReviewRow[]) {
+      if (skip(sub.id) || recapped.has(sub.id)) continue;
+      // Never on the same day as another email from us.
+      if (sub.last_notified_at && now - Date.parse(sub.last_notified_at) < 86_400_000) continue;
+      const kind = reviewAskDue({ status: sub.status, cancelAt: sub.cancel_at, unsubscribed: sub.unsubscribed, createdAt: sub.created_at, switchedAt: sub.switched_at, asks: sub.review_asks ?? 0, askedAt: sub.review_asked_at, clickedAt: sub.review_clicked_at, now });
+      if (!kind) continue;
+      try {
+        const e = reviewAsk({
+          origin,
+          name: sub.customer_name,
+          kind,
+          url: trackedReviewLink(origin, sub.id, kind),
+          switchedTo: sub.switched_to,
+          daysWatched: Math.round((now - Date.parse(sub.created_at)) / 86_400_000),
+          unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
+        });
+        if (await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html })) {
+          reviewAsks++;
+          await supabaseAdmin.from("subscribers").update({ review_asks: (sub.review_asks ?? 0) + 1, review_asked_at: new Date().toISOString() }).eq("id", sub.id);
+        }
+      } catch (err) {
+        console.error("recheck-prices: review request failed", sub.id, err);
+        errors++;
+      }
+    }
+  }
+
   await sendHealthEmail("daily recheck", {
+    "review requests": reviewAsks,
     "renewal recaps": recaps,
     "members checked": (subsData ?? []).length,
     "members alerted": subscribersNotified,
@@ -597,7 +645,7 @@ export async function GET(req: NextRequest) {
     "gas alerts": gasAlerts,
     errors,
   });
-  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, recaps, errors });
+  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, recaps, reviewAsks, errors });
 }
 
 /** Warn this many days before a discount or fixed price ends. */
@@ -640,7 +688,24 @@ interface DripLeadRow {
   current_bill?: number | null;
 }
 
+interface ReviewRow {
+  id: string;
+  email: string;
+  status: string;
+  created_at: string;
+  switched_at: string | null;
+  switched_to: string | null;
+  cancel_at: string | null;
+  unsubscribed: boolean;
+  review_asks: number | null;
+  review_asked_at: string | null;
+  review_clicked_at: string | null;
+  last_notified_at: string | null;
+  customer_name: string | null;
+}
+
 interface RecapRow {
+  review_clicked_at?: string | null;
   id: string;
   email: string;
   status: string;

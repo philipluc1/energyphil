@@ -264,6 +264,8 @@ export default function Comparator() {
   // Max demand in kW off a demand-tariff bill; null for everyone else.
   const [demandKw, setDemandKw] = useState<number | null>(null);
   const [currentBillRaw, setCurrentBillRaw] = useState("");
+  // The amount due as printed, when it isn't this bill's own charges (an earlier balance carried over). Shown, never saved.
+  const [billDue, setBillDue] = useState<number | null>(null);
   // No-bill path: a bill's kWh (and the month it ended) to forecast the year from.
   const [calKwhRaw, setCalKwhRaw] = useState("");
   // One-page questions (/check?start=questions): which option is open, and a kWh set aside.
@@ -300,7 +302,8 @@ export default function Comparator() {
   const [keepUsageFor, setKeepUsageFor] = useState<string | null>(null);
   const patchRates = (patch: Partial<RatesForm>) => setRatesForm((f) => ({ ...f, ...patch }));
   // Which period the result numbers and charts are shown for.
-  const [period, setPeriod] = useState<"month" | "quarter" | "year">("month");
+  // "bill" (2 Nov 2026, Phil): the bill's own period, so every figure lines up with the bill in their hand.
+  const [periodChoice, setPeriod] = useState<"bill" | "month" | "quarter" | "year">("month");
   const [restored, setRestored] = useState(false);
   // The saved check got as far as a result last time: "continue" goes back to it.
   const [hadResult, setHadResult] = useState(false);
@@ -640,8 +643,8 @@ export default function Comparator() {
     setBillFlag(flag);
     if (bill.billingDays !== null) {
       setDays(bill.billingDays);
-      // Show figures for the bill's own period, so "Your bill" matches the total printed on it.
-      setPeriod(Math.abs(bill.billingDays - 365 / 4) <= 3 ? "quarter" : "month");
+      // Show figures for the bill's own period (34 days, 56 days...), so "Your bill" matches the total printed on it.
+      setPeriod("bill");
     }
     // A home on a demand tariff: its max kW lets demand plans be priced for it.
     setDemandKw(bill.demandCharge && bill.demandKw !== null ? bill.demandKw : null);
@@ -658,6 +661,7 @@ export default function Comparator() {
       setShowCl(true);
     }
     if (bill.currentBill !== null) setCurrentBillRaw(String(bill.currentBill));
+    setBillDue(bill.amountDue ?? null);
     if (bill.customerName) setCustomerName(bill.customerName);
     if (bill.address) setAddress(bill.address);
     if (bill.suburb) setSuburb(bill.suburb);
@@ -832,8 +836,13 @@ export default function Comparator() {
   // priced at THIS household's usage (not the generic typical-household figure).
   const bench = haveBill ? (currentBill as number) : vdoBillForUsage(distributor, usage);
   const PERIOD_LABEL = { month: "a month", quarter: "a quarter", year: "a year" } as const;
+  // "Your bill" needs a bill; without one, a month.
+  const period = periodChoice === "bill" && !(haveBill && days > 0) ? "month" : periodChoice;
+  const perLabel = period === "bill" ? `for ${days} days` : PERIOD_LABEL[period];
+  // The bill's own period first, then a quarter (or a month, if the bill is already about a quarter) and a year, both scaled from it.
+  const periodOptions: ("bill" | "month" | "quarter" | "year")[] = haveBill && days > 0 ? ["bill", Math.abs(days - 365 / 4) <= 3 ? "month" : "quarter", "year"] : ["month", "quarter", "year"];
   // Scale from the entered billing period to the chosen display period.
-  const k = periodScale(period, days);
+  const k = period === "bill" ? 1 : periodScale(period, days);
 
   // The phone's Back gesture on the result goes back to the answers (not off
   // the site), and a refresh in the same tab keeps the result on screen.
@@ -991,7 +1000,7 @@ export default function Comparator() {
       {/* Its rank among the plans listed (1 Nov 2026): #27 when 26 are cheaper. */}
       <span className={r.billRank} title={`${beatBill} of ${listed.length} cheaper`}>#{beatBill + 1}</span>
       <span className={r.billPin}><Icon name="receipt" size={15} /> {haveBill ? youName : "The default offer"}</span>
-      <b>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
+      <b>{fmtCurrency(bench * k)} <small>{perLabel}</small></b>
       <span className={r.billMarkNote}>
         {billAt === 0
           ? haveBill ? "Every plan below costs more than you pay now" : "Every plan below costs more than the default offer"
@@ -1416,7 +1425,19 @@ export default function Comparator() {
                 <dt>Electricity used</dt>
                 <dd>{Math.round(usageAnytime + usagePeak + usageShoulder + usageOffpeak).toLocaleString("en-AU")} kWh{mode === "detailed" ? " (by time of day)" : ""}</dd>
               </div>
-              <div className={snap.fact}><dt>Bill total</dt><dd>{typedBill !== null && !Number.isNaN(typedBill) ? fmtCurrency(typedBill) : "Not found"}</dd></div>
+              <div className={snap.fact}>
+                <dt>{billDue !== null ? "This bill's charges" : "Bill total"}</dt>
+                <dd>
+                  {typedBill !== null && !Number.isNaN(typedBill) ? fmtCurrency(typedBill) : "Not found"}
+                  {billDue !== null && typedBill !== null && !Number.isNaN(typedBill) && (
+                    <span className={snap.factNote}>
+                      {billDue > typedBill
+                        ? `The amount due is ${fmtCurrency(billDue)}: it includes ${fmtCurrency(billDue - typedBill)} from an earlier bill, which we leave out.`
+                        : `The amount due is ${fmtCurrency(billDue)} after a payment or credit. We use this bill's charges.`}
+                    </span>
+                  )}
+                </dd>
+              </div>
               {clKwh > 0 && <div className={snap.fact}><dt>Hot-water meter</dt><dd>{Math.round(clKwh).toLocaleString("en-AU")} kWh</dd></div>}
               {solarExportKwh > 0 && <div className={snap.fact}><dt>Solar sent to grid</dt><dd>{Math.round(solarExportKwh).toLocaleString("en-AU")} kWh</dd></div>}
               <div className={`${snap.fact} ${snap.factWide}`}>
@@ -1428,6 +1449,7 @@ export default function Comparator() {
                         myRates.peak !== null ? "peak " + fmtRateCents(myRates.peak) : null,
                         myRates.offpeak !== null ? "off-peak " + fmtRateCents(myRates.offpeak) : null,
                         myRates.supply !== null ? fmtRatePerDay(myRates.supply) + " supply" : null,
+                        myRates.solarFit !== null ? fmtRateCents(myRates.solarFit) + " solar feed-in" : null,
                       ].filter(Boolean).join(" · ")
                     : "Not found, so we'll use your bill total"}
                   {myRates && ratesForm.planName ? <span className={snap.factNote}>{ratesForm.planName}{ratesForm.priceType !== "unsure" ? ` · ${ratesForm.priceType}` : ""}</span> : null}
@@ -2397,19 +2419,19 @@ export default function Comparator() {
                     <div className={r.tile}>
                       <span className={r.tileLabel}>{haveBill ? `${youName} now` : "The default offer"}</span>
                       <b>{fmtCurrency(bench * k)}</b>
-                      <small>{PERIOD_LABEL[period]}{haveBill && k !== 1 ? ` · your ${days}-day bill was ${fmtCurrency(bench)}` : ""}</small>
+                      <small>{perLabel}{haveBill && k !== 1 ? ` · your ${days}-day bill was ${fmtCurrency(bench)}` : ""}</small>
                     </div>
                     <span className={r.op} aria-hidden="true">→</span>
                     <div className={r.tile}>
                       <span className={r.tileLabel}>{locked ? "With the cheapest plan" : `With ${top.plan[0]}`}</span>
                       <b>{fmtCurrency(top.total * k)}</b>
-                      <small>{PERIOD_LABEL[period]}</small>
+                      <small>{perLabel}</small>
                     </div>
                     <span className={r.op} aria-hidden="true">=</span>
                     <div className={`${r.tile} ${r.tileSave}`}>
                       <span className={r.tileLabel}>You save</span>
                       <b>{fmtCurrency((bench - top.total) * k)}</b>
-                      <small>{PERIOD_LABEL[period]}</small>
+                      <small>{perLabel}</small>
                     </div>
                   </div>
                   <p className={r.heroNote}>
@@ -2428,7 +2450,7 @@ export default function Comparator() {
                   )}
                   <span className={r.fine}>
                     <InfoTip tone="dark" text="How we worked this out" label="How we worked this out">
-                      Averages a month from your {days}-day {haveBill ? "bill" : "period"}. Includes each plan&apos;s discounts, assuming you pay on time; leaves out
+                      {period === "bill" ? <>Priced for your {days}-day bill, the same period as the bill itself. Quarterly and yearly figures are scaled from it.</> : <>Shown {perLabel}, scaled from your {days}-day {haveBill ? "bill" : "period"}.</>} Includes each plan&apos;s discounts, assuming you pay on time; leaves out
                       sign-up credits, fees and concessions. Confirm with the retailer. {PRICE_CHANGE_CLAUSE}
                     </InfoTip>
                   </span>
@@ -2452,12 +2474,12 @@ export default function Comparator() {
                     <div className={r.tile}>
                       <span className={r.tileLabel}>{youName} now</span>
                       <b>{fmtCurrency(bench * k)}</b>
-                      <small>{PERIOD_LABEL[period]}{haveBill && k !== 1 ? ` · your ${days}-day bill was ${fmtCurrency(bench)}` : ""}</small>
+                      <small>{perLabel}{haveBill && k !== 1 ? ` · your ${days}-day bill was ${fmtCurrency(bench)}` : ""}</small>
                     </div>
                     <div className={r.tile}>
                       <span className={r.tileLabel}>Cheapest we found</span>
                       <b>{fmtCurrency(top.total * k)}</b>
-                      <small>{PERIOD_LABEL[period]}</small>
+                      <small>{perLabel}</small>
                     </div>
                   </div>
                   <div className={styles.resultHeroSub}>
@@ -2470,9 +2492,9 @@ export default function Comparator() {
                       <div className={r.listTitleRow}>
                         <b>{allPlans ? "All plans, cheapest first" : "Cheapest plan from each retailer"}</b>
                         <div className={r.periodSeg} role="tablist" aria-label="Show prices per">
-                          {(["month", "quarter", "year"] as const).map((pp) => (
+                          {periodOptions.map((pp) => (
                             <button key={pp} type="button" role="tab" aria-selected={period === pp} className={period === pp ? r.periodSegOn : undefined} onClick={() => setPeriod(pp)}>
-                              {pp === "month" ? "Monthly" : pp === "quarter" ? "Quarterly" : "Yearly"}
+                              {pp === "bill" ? `Your bill · ${days} days` : pp === "month" ? "Monthly" : pp === "quarter" ? "Quarterly" : "Yearly"}
                             </button>
                           ))}
                         </div>
@@ -2500,7 +2522,7 @@ export default function Comparator() {
                       </div>
                       {member === true && !FREE_SHOWS_NAMES && <span className={r.memberView}><Icon name="check" size={13} /> Member view: you see every plan by name. Free checks see the 2 cheapest locked.</span>}
                       <span className={r.legendLine}>
-                        Prices {PERIOD_LABEL[period]}, discounts included. Green = your saving.
+                        Prices {perLabel}, discounts included. Green = your saving.
                         <InfoTip label="What the labels mean">
                           The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}. Use the filters to show <b>market offers</b> (a retailer&apos;s own deal) or <b>standing offers</b> (the regulated default price, usually dearer), and single-rate or time-of-use plans. Prices assume you pay on time. Green ✓ labels are in the price; blue ones (credits, other conditions) aren&apos;t; amber ! ones are limits or fees to know about.
                         </InfoTip>
@@ -2511,7 +2533,7 @@ export default function Comparator() {
                     <div className={`${r.youLine} ${haveBill ? r.youLineBill : ""}`}>
                       <button type="button" className={r.youJump} onClick={jumpToBill} disabled={!billShown} aria-controls="your-bill-mark">
                         <span className={r.youPin}><Icon name="receipt" size={14} /> {haveBill ? youName : "Default offer"}</span>
-                        <b className={r.youAmt}>{fmtCurrency(bench * k)} <small>{PERIOD_LABEL[period]}</small></b>
+                        <b className={r.youAmt}>{fmtCurrency(bench * k)} <small>{perLabel}</small></b>
                         {/* Every listed plan as a tick, cheapest first; the pin is where the bill falls. */}
                         <span className={r.youTrack} aria-hidden="true">
                           {listed.slice(0, 48).map((m, i) => (
@@ -2530,23 +2552,23 @@ export default function Comparator() {
                       </button>
                       <InfoTip label="About your bill">
                         {useAvg ? "The average Victorian home" : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? "From your bill" : "For your usage"}: about{" "}
-                        <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day)
+                        <b>{Math.round(kwhInPeriod * k).toLocaleString("en-AU")} kWh {perLabel}</b> ({days > 0 ? (kwhInPeriod / days).toFixed(1) : "0"} kWh a day)
                         {/* Only say how they're charged when it came from their bill: an estimate doesn't know. */}
                         {useEst || useAvg ? null : <>, charged {usagePeak + usageShoulder + usageOffpeak > 0 ? "by time of day" : "at one price all day"}{clKwh > 0 ? ", plus a separate hot-water meter" : ""}</>}
                         {haveBill && currentRetailer ? <> with {currentRetailer}</> : null}.
                         {haveBill && top && (
                           Math.abs(vsVdo(bench)) < 0.02 ? (
                             <>
-                              {" "}That&apos;s about the same as the default offer ({fmtCurrency(vdoForUsage * k)} {PERIOD_LABEL[period]}), the government&apos;s reference price.
-                              {bench - top.total > 0.005 ? <> {locked ? "The cheapest plan" : top.plan[0]} would cost <b className={r.good}>{fmtCurrency((bench - top.total) * k)} {PERIOD_LABEL[period]} less</b>.</> : null}
+                              {" "}That&apos;s about the same as the default offer ({fmtCurrency(vdoForUsage * k)} {perLabel}), the government&apos;s reference price.
+                              {bench - top.total > 0.005 ? <> {locked ? "The cheapest plan" : top.plan[0]} would cost <b className={r.good}>{fmtCurrency((bench - top.total) * k)} {perLabel} less</b>.</> : null}
                             </>
                           ) : vsVdo(bench) > 0 ? (
                             <>
-                              {" "}That&apos;s <b className={r.bad}>{pctVdo(vsVdo(bench)).replace(/^\+/, "")} more</b> than the default offer ({fmtCurrency(vdoForUsage * k)} {PERIOD_LABEL[period]}), the government&apos;s reference price.
+                              {" "}That&apos;s <b className={r.bad}>{pctVdo(vsVdo(bench)).replace(/^\+/, "")} more</b> than the default offer ({fmtCurrency(vdoForUsage * k)} {perLabel}), the government&apos;s reference price.
                             </>
                           ) : bench - top.total > 0.005 ? (
                             <>
-                              {" "}You&apos;re under the default offer, but {locked ? "the cheapest plan" : top.plan[0]} would still cost <b className={r.good}>{fmtCurrency((bench - top.total) * k)} {PERIOD_LABEL[period]} less</b>.
+                              {" "}You&apos;re under the default offer, but {locked ? "the cheapest plan" : top.plan[0]} would still cost <b className={r.good}>{fmtCurrency((bench - top.total) * k)} {perLabel} less</b>.
                             </>
                           ) : (
                             <> You&apos;re under the default offer and nothing we found is cheaper.</>
@@ -2561,7 +2583,7 @@ export default function Comparator() {
                         <span className={r.picksLabel}>Our pick</span>
                         <span>
                           <b>{top.plan[0]}</b>, the cheapest for your home{haveBill ? `: about $${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")} a year less than your bill` : ""}.
-                          {noStrings ? <> Rather no conditions? <b>{noStrings.plan[0]}</b> is the cheapest without pay-on-time or direct-debit discounts, {fmtCurrency((noStrings.total - top.total) * k)} {PERIOD_LABEL[period]} more.</> : null}
+                          {noStrings ? <> Rather no conditions? <b>{noStrings.plan[0]}</b> is the cheapest without pay-on-time or direct-debit discounts, {fmtCurrency((noStrings.total - top.total) * k)} {perLabel} more.</> : null}
                         </span>
                       </div>
                     )}
@@ -2581,7 +2603,7 @@ export default function Comparator() {
                               </span>
                               <span className={r.priceCol}>
                                 <span className={r.price}>{fmtCurrency(m.total * k)}</span>
-                                <span className={r.per}>{PERIOD_LABEL[period]}</span>
+                                <span className={r.per}>{perLabel}</span>
                                 {diff >= 0.005 && <span className={r.save}>Save {fmtCurrency(diff * k)}</span>}
                               </span>
                             </div>
@@ -2631,7 +2653,7 @@ export default function Comparator() {
                               </span>
                               <span className={r.priceCol}>
                                 <span className={r.price}>{fmtCurrency(m.total * k)}</span>
-                                <span className={r.per}>{PERIOD_LABEL[period]}</span>
+                                <span className={r.per}>{perLabel}</span>
                                 <span className={diff >= 0.005 ? r.save : diff <= -0.005 ? r.more : r.same}>
                                   {diff >= 0.005 ? `Save ${fmtCurrency(diff * k)}` : diff <= -0.005 ? `${fmtCurrency(-diff * k)} more` : "Same as now"}
                                 </span>
@@ -2650,7 +2672,7 @@ export default function Comparator() {
                                   o={offer}
                                   retailer={m.plan[0]}
                                   compact
-                                  payLateCost={(() => { const d = billDetail(m.plan, usage); return d && d.conditionalDiscount * k >= 0.5 ? `${fmtCurrency(d.conditionalDiscount * k)} ${PERIOD_LABEL[period]}` : null; })()}
+                                  payLateCost={(() => { const d = billDetail(m.plan, usage); return d && d.conditionalDiscount * k >= 0.5 ? `${fmtCurrency(d.conditionalDiscount * k)} ${perLabel}` : null; })()}
                                 />
                                 {RETAILER_LINKS[m.plan[0]] && (
                                   <a href={RETAILER_LINKS[m.plan[0]]} data-plan={m.plan[2]} data-network={distributor} target="_blank" rel="noopener noreferrer" className={styles.rowSwitchLink}>
@@ -2686,7 +2708,7 @@ export default function Comparator() {
                         body={
                           <>
                             From {fmtCurrency(Math.min(...hiddenRows.map((x) => x.total)) * k)} to {fmtCurrency(Math.max(...hiddenRows.map((x) => x.total)) * k)}{" "}
-                            {PERIOD_LABEL[period]}. Plus members see every plan with its rates, and get an email when a cheaper one turns up.
+                            {perLabel}. Plus members see every plan with its rates, and get an email when a cheaper one turns up.
                           </>
                         }
                         cta={`See all ${matches.length} plans`}
@@ -2755,7 +2777,7 @@ export default function Comparator() {
                 <div className={styles.stayCard}>
                   <div>
                     <b>Staying with {currentRetailer}?</b> One of the {lockedTop.length} cheapest plans is theirs, at about{" "}
-                    {fmtCurrency(perMonth(retailerBest.total))} a month{haveBill && bench - retailerBest.total > 0.005 ? <> ({fmtCurrency(perMonth(bench - retailerBest.total))} a month less than your bill)</> : null}.
+                    {fmtCurrency(retailerBest.total * k)} {perLabel}{haveBill && bench - retailerBest.total > 0.005 ? <> ({fmtCurrency((bench - retailerBest.total) * k)} less than your bill)</> : null}.
                     Plus members see which one, so you can ask {currentRetailer} to move you without changing company.
                   </div>
                 </div>
@@ -2777,8 +2799,8 @@ export default function Comparator() {
                       <>
                         <b className={r.stayHead}>You can save without changing company</b>
                         <div>
-                          Ask {currentRetailer} to move you to &ldquo;{retailerBest.plan[2]}&rdquo;. It works out at <b>{fmtCurrency(perMonth(retailerBest.total))} a month</b>,
-                          against {fmtCurrency(perMonth(bench))} on your bill: <b>{fmtCurrency(perMonth(bench - retailerBest.total))} a month less</b> (about $
+                          Ask {currentRetailer} to move you to &ldquo;{retailerBest.plan[2]}&rdquo;. It works out at <b>{fmtCurrency(retailerBest.total * k)} {perLabel}</b>,
+                          against {fmtCurrency(bench * k)} on your bill: <b>{fmtCurrency((bench - retailerBest.total) * k)} less</b> (about $
                           {Math.round(stayYear).toLocaleString("en-AU")} a year). Changing plans with your own retailer is usually a quick call or a few taps in their app.
                         </div>
                       </>
@@ -2788,12 +2810,12 @@ export default function Comparator() {
                       </div>
                     ) : haveBill ? (
                       <div>
-                        <b>Staying with {currentRetailer}?</b> Their cheapest plan for you, &ldquo;{retailerBest.plan[2]}&rdquo;, is {fmtCurrency(perMonth(retailerBest.total))} a month,
+                        <b>Staying with {currentRetailer}?</b> Their cheapest plan for you, &ldquo;{retailerBest.plan[2]}&rdquo;, is {fmtCurrency(retailerBest.total * k)} {perLabel},
                         about the same as your bill.
                       </div>
                     ) : (
                       <div>
-                        <b>Staying with {currentRetailer}?</b> Their cheapest plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at {fmtCurrency(perMonth(retailerBest.total))} a month.
+                        <b>Staying with {currentRetailer}?</b> Their cheapest plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at {fmtCurrency(retailerBest.total * k)} {perLabel}.
                         If you&apos;re on an older {currentRetailer} plan, ask them to move you to it. No need to change company.
                       </div>
                     )}

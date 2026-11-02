@@ -10,6 +10,7 @@ export const SECTIONS = [
   { id: "launch", label: "Launch" },
   { id: "revenue", label: "Revenue and retention" },
   { id: "didnt", label: "Didn't join" },
+  { id: "reviews", label: "Google reviews" },
   { id: "business", label: "Business" },
   { id: "savings", label: "Customer savings" },
   { id: "market", label: "Market" },

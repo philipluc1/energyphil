@@ -54,11 +54,16 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
     else if (tou) usageCost = (r.peak ?? 0) * f.peak + (r.shoulder ?? r.peak ?? 0) * f.shoulder + (r.offpeak ?? 0) * f.offpeak + (f.anytime > 0 ? (r.peak ?? 0) * f.anytime : 0);
     if (usageCost !== null && f.cl > 0) usageCost += (r.cl ?? 0) * f.cl;
   }
-  const supplyCost = r && r.supply !== null ? r.supply * f.days : null;
-  const solarCredit = r && r.solarFit !== null && f.solarExportKwh > 0 ? r.solarFit * f.solarExportKwh : f.solarExportKwh > 0 ? 0 : null;
-  const parts = usageCost !== null && supplyCost !== null ? usageCost + supplyCost - (solarCredit ?? 0) : null;
-  // Discounts, concessions, fees or rounding: whatever the rates don't explain.
-  const other = f.total !== null && parts !== null && Math.abs(f.total - parts) >= Math.max(1, f.total * 0.03) ? f.total - parts : 0;
+  // Every line rounded to the cent, so what's shown adds up to the bill exactly (2 Nov 2026).
+  const c2 = (n: number) => Math.round(n * 100) / 100;
+  if (usageCost !== null) usageCost = c2(usageCost);
+  const supplyCost = r && r.supply !== null ? c2(r.supply * f.days) : null;
+  const solarCredit = r && r.solarFit !== null && f.solarExportKwh > 0 ? c2(r.solarFit * f.solarExportKwh) : f.solarExportKwh > 0 ? 0 : null;
+  const parts = usageCost !== null && supplyCost !== null ? c2(usageCost + supplyCost - (solarCredit ?? 0)) : null;
+  // Whatever the rates don't explain: discounts, concessions, fees, or just the
+  // retailer's rounding. Always shown, so the lines add up to the bill.
+  const other = f.total !== null && parts !== null ? c2(f.total - parts) : 0;
+  const small = Math.abs(other) < Math.max(1, (f.total ?? 0) * 0.03);
   const total = f.total ?? parts;
   const perMonth = total !== null ? (total / f.days) * (365 / 12) : null;
   const best = bestFit(f.distributor);
@@ -69,7 +74,7 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
       ? [
           { key: "use", label: "Power you used", v: usageCost, cls: s.segUse },
           { key: "supply", label: "Being connected", v: supplyCost, cls: s.segSupply },
-          ...(other > 0 ? [{ key: "other", label: "Fees and other charges", v: other, cls: s.segOther }] : []),
+          ...(other >= 0.01 ? [{ key: "other", label: small ? "Rounding and small differences" : "Fees and other charges", v: other, cls: s.segOther }] : []),
         ]
       : [];
   const segTotal = segs.reduce((a, x) => a + x.v, 0);
@@ -151,14 +156,14 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
               <li key={x.key}><i className={x.cls} /> {x.label} <b>{money(x.v)}</b></li>
             ))}
             {solarCredit !== null && solarCredit > 0.005 && <li><i className={s.segSolar} /> Solar credit <b>−{money(solarCredit)}</b></li>}
-            {other < 0 && <li><i className={s.segCredit} /> Discounts, credits and other differences <b>−{money(-other)}</b></li>}
+            {other <= -0.01 && <li><i className={s.segCredit} /> {small ? "Rounding and small differences" : "Discounts, credits and other differences"} <b>−{money(-other)}</b></li>}
           </ul>
         </div>
       )}
 
       {total !== null && (
         <p className={s.total}>
-          <span>This bill: <b>{money(total)}</b></span>
+          <span>{f.total !== null && segs.length > 0 ? "Adds up to this bill" : "This bill"}: <b>{money(total)}</b></span>
           {perMonth !== null && <span>About <b>{money(perMonth)} a month</b></span>}
         </p>
       )}

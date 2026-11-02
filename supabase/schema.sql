@@ -405,3 +405,18 @@ alter table public.live_sessions enable row level security;
 
 -- 2 Nov 2026: the cancellation email is sent once per cancellation.
 alter table public.subscribers add column if not exists cancel_email_for text;
+
+-- 2 Nov 2026: Google review requests. Who we've asked (at most twice), and
+-- who clicked through. Google doesn't tell us who actually left a review.
+alter table public.subscribers add column if not exists review_asks integer not null default 0;
+alter table public.subscribers add column if not exists review_asked_at timestamptz;
+alter table public.subscribers add column if not exists review_clicked_at timestamptz;
+create table if not exists public.review_clicks (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  subscriber_id uuid,
+  source text not null                 -- 'switched' | 'member' | 'reminder' | 'recap' | 'dashboard'
+);
+create index if not exists review_clicks_created on public.review_clicks (created_at desc);
+alter table public.review_clicks enable row level security;
+-- No policies: only the server (secret key) writes and reads these.

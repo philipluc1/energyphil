@@ -16,7 +16,11 @@ export interface ExtractedBill {
   billingDays: number | null;
   /** Last day of the billing period, YYYY-MM-DD, when the bill shows it. */
   periodEnd: string | null;
+  /** This bill's own charges (2 Nov 2026): the new charges when the bill shows them, so a balance
+   *  carried over from an earlier bill (or a payment taken off) never counts as this period's cost. */
   currentBill: number | null;
+  /** The total amount due as printed, when it differs from this bill's charges. Shown, never stored. */
+  amountDue?: number | null;
   usageMode: "simple" | "detailed" | null;
   anytimeKwh: number | null;
   peakKwh: number | null;
@@ -93,7 +97,9 @@ export function readFees(v: unknown): ExtractedBill["fees"] {
 function readRates(r: Record<string, unknown>): CurrentRates | null {
   const gst = r.rates_include_gst === false ? 1.1 : 1;
   const cents = (k: string, max: number, withGst = true, allowZero = false) => {
-    const n = toFiniteNumber(r[k]);
+    // Bills often print the feed-in as a credit ("-0.040 c/kWh"): the rate is what matters, not the sign.
+    const raw = k === "solar_fit_cents" && typeof r[k] === "number" ? Math.abs(r[k] as number) : r[k];
+    const n = toFiniteNumber(raw);
     if (n === null || (n === 0 && !allowZero) || n > max) return null;
     return Math.round((n / 100) * (withGst ? gst : 1) * 1e5) / 1e5;
   };
@@ -107,6 +113,19 @@ function readRates(r: Record<string, unknown>): CurrentRates | null {
     solarFit: cents("solar_fit_cents", 60, false),
   };
   return Object.values(rates).some((v) => v !== null) ? rates : null;
+}
+
+/**
+ * What this bill period cost. The amount due can include an overdue balance
+ * from an earlier bill (or have a payment taken off it), so: the new charges
+ * when shown; otherwise the amount due less any overdue balance; otherwise the amount due.
+ */
+export function periodCharges(amountDue: number | null, newCharges: number | null, overdue: number | null): { currentBill: number | null; amountDue: number | null } {
+  const due = amountDue !== null && amountDue > 0 && amountDue < 100000 ? amountDue : null;
+  const fresh = newCharges !== null && newCharges > 0 && newCharges < 100000 ? newCharges : null;
+  const owed = overdue !== null && overdue > 0 ? overdue : null;
+  const bill = fresh ?? (due !== null && owed !== null && due - owed > 5 ? Math.round((due - owed) * 100) / 100 : due);
+  return { currentBill: bill, amountDue: due !== null && bill !== null && Math.abs(due - bill) >= 1 ? due : null };
 }
 
 function toFiniteNumber(v: unknown): number | null {
@@ -160,7 +179,7 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     planName: typeof r.plan_name === "string" ? r.plan_name.slice(0, 120) : null,
     tariffType: typeof r.tariff_type === "string" ? r.tariff_type.slice(0, 20) : null,
     billingDays,
-    currentBill: toFiniteNumber(r.current_bill_total),
+    ...periodCharges(toFiniteNumber(r.current_bill_total), toFiniteNumber(r.new_charges_total), toFiniteNumber(r.overdue_amount)),
     usageMode,
     anytimeKwh: toFiniteNumber(r.anytime_kwh),
     peakKwh: toFiniteNumber(r.peak_kwh),
