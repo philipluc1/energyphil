@@ -5,7 +5,7 @@ import PlanBand from "../components/PlanBand";
 import SiteHeader from "../components/SiteHeader";
 import Icon from "../components/Icon";
 import InfoTip from "../components/InfoTip";
-import { PLUS_NAME, plusValue, FOUNDING_OFFER, SPECIAL_NAME, foundingLine, regularPrice, fmtPrice } from "@/lib/pricingPlans";
+import { PLUS_NAME, plusValue, FOUNDING_OFFER, SPECIAL_NAME, foundingLine, regularPrice, fmtPrice, perWeekWords } from "@/lib/pricingPlans";
 
 // Re-built every hour, so the New Year special ends on time without a deploy.
 export const revalidate = 3600;
@@ -14,7 +14,7 @@ import h from "../home3.module.css";
 import p from "./pricing.module.css";
 import SiteFooter from "../components/SiteFooter";
 
-export const metadata = pageMeta({ title: "Utilo Plus: $7 a month or $39 a year", description: "The bill check is free, with every plan by name. Utilo Plus keeps watching: every plan re-priced against your bill each morning, a warning before your discount ends, and an email only when switching is worth it.", path: "/pricing" });
+export const metadata = pageMeta({ title: `Utilo Plus: ${plusValue().monthly} a month or ${plusValue().annual} a year`, description: "The bill check is free, with every plan by name. Utilo Plus keeps watching: every plan re-priced against your bill each morning, a warning before your discount ends, and an email only when switching is worth it.", path: "/pricing" });
 
 // Free check vs Plus, one line each. Detail lives in the (i) pop-ups.
 // "On your own": what it takes without Utilo (the free government and
@@ -79,7 +79,7 @@ export default function PricingPage() {
           <p className={p.cFoot}>On your own: the free government and retailer sites, done by hand whenever you remember to.</p>
         </section>
 
-        <PlanBand gets={false} title="One membership, every bill we watch" intro={<>Power and gas now, more to come. Under $1 a week, paid yearly.</>} cards={<JoinDirect />} />
+        <PlanBand gets={false} title="One membership, every bill we watch" intro={<>Power and gas now, more to come. {perWeekWords().replace(/^u/, "U")}, paid yearly.</>} cards={<JoinDirect />} />
 
         <section className={h.section} data-motion="" data-stagger="details">
           <div className={h.faq}>

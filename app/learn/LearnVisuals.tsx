@@ -1,4 +1,5 @@
 import { BROAD_COVERAGE } from "@/lib/dataPolicy";
+import { plusValue } from "@/lib/pricingPlans";
 import { typicalHouseholdExample } from "@/lib/savings";
 import { PLANS } from "@/lib/plans";
 import { GAS_PLANS } from "@/lib/gasPlans";
@@ -139,7 +140,7 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
         ))}
       </div>
       <p className={v.gNote}>
-        Utilo prices {planCount} plans from {retailers} retailers, not every plan in the market. Utilo Plus is $7 a month ($84 a year), or $39 a year.
+        Utilo prices {planCount} plans from {retailers} retailers, not every plan in the market. Utilo Plus is {plusValue().monthly} a month ({plusValue().monthlyYear} a year), or {plusValue().annual} a year.
       </p>
     </>
   );

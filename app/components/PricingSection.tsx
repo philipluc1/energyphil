@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { track } from "@/lib/track";
 import { parseSource, readSourceCookie } from "@/lib/attribution";
 import { REFERRAL_FRIEND_CENTS, referralDollars } from "@/lib/referralOffer";
-import { type PlanId, timesPrice } from "@/lib/pricingPlans";
+import { type PlanId, timesPrice, perWeekWords } from "@/lib/pricingPlans";
 import { marketActivity } from "@/lib/marketActivity";
 import PlanCards from "./PlanCards";
 import PlanBand from "./PlanBand";
@@ -118,7 +118,7 @@ export default function PricingSection({
           </span>
           {yearlySaving >= 20 && profile.referenceTotal !== null
             ? <>The market can save you <b>${Math.round(yearlySaving).toLocaleString("en-AU")} a year</b> today{timesPrice(yearlySaving) ? <>: <b>{timesPrice(yearlySaving)} times</b> the yearly price</> : null}. We watch it for you as it moves.</>
-            : <>We watch the market for you as it moves, for under $1 a week.</>}
+            : <>We watch the market for you as it moves, for {perWeekWords()}.</>}
         </>
       }
       cards={<PlanCards onChoose={handleChoose} loadingPlan={loadingPlan} dark />}

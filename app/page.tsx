@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PLANS } from "@/lib/plans";
 import { ABOUT, hasFounderStory } from "@/lib/about";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
-import { PLUS_NAME } from "@/lib/pricingPlans";
+import { PLUS_NAME, perWeekWords } from "@/lib/pricingPlans";
 import { marketActivity } from "@/lib/marketActivity";
 import { savingsByNetwork, typicalHouseholdExample } from "@/lib/savings";
 import SiteHeader from "./components/SiteHeader";
@@ -167,7 +167,7 @@ export default function Home() {
         <PlanBand
           id="plus"
           title="Stop paying the loyalty tax."
-          intro={<>We watch your power and gas every day, from your own bill, for under $1 a week.</>}
+          intro={<>We watch your power and gas every day, from your own bill, for {perWeekWords()}.</>}
           cards={<JoinDirect cancelPath="/" />}
         />
 

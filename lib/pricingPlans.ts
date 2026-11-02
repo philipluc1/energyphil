@@ -4,9 +4,10 @@
 export type PlanId = "annual" | "monthly" | "quarterly" | "half_yearly" | "once_off";
 
 /**
- * The New Year special (Phil, 2 Nov 2026): $39 a year or $7 a month for anyone
- * who joins before 1 February 2027 (midnight in Melbourne), kept for as long as
- * they stay. From then, new members pay the regular $45 / $9 automatically:
+ * The New Year special (Phil, 2 Nov 2026; yearly changed to $55 → $45 the same
+ * evening): $45 a year or $7 a month for anyone who joins before 1 February 2027
+ * (midnight in Melbourne), kept for as long as they stay. From then, new members
+ * pay the regular $55 / $9 automatically:
  * the prices below, the checkout and the wording all switch on their own.
  */
 export const SPECIAL_NAME = "New Year special";
@@ -45,7 +46,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: "annual",
     name: "Yearly",
     cadenceLabel: "per year",
-    priceCents: OPEN_NOW ? 3900 : 4500,
+    priceCents: OPEN_NOW ? 4500 : 5500,
     currency: "aud",
     mode: "subscription",
     interval: "month",
@@ -189,9 +190,9 @@ export function plusValue() {
     annual: fmtPrice(annual.priceCents),
     save: fmtPrice(save),
     savePct: Math.round((save / monthlyYear) * 100),
-    /** "$7 a month is $84 a year. Pay yearly: $39, you save $45." */
+    /** "$7 a month is $84 a year. Pay yearly: $45, you save $39." */
     line: `${fmtPrice(monthly.priceCents)} a month is ${fmtPrice(monthlyYear)} a year. Pay yearly: ${fmtPrice(annual.priceCents)}, you save ${fmtPrice(save)}.`,
-    /** The yearly price a week: "75c". */
+    /** The yearly price a week: "87c". */
     perWeek: annual.priceCents / 52 < 100 ? `${Math.round(annual.priceCents / 52)}c` : fmtPrice(Math.round(annual.priceCents / 52)),
   };
 }
@@ -205,13 +206,13 @@ export function plusValue() {
 export const FOUNDING_OFFER = OPEN_NOW;
 
 /**
- * The regular prices (Phil, 2 Nov 2026): $45 a year, $9 a month. While the
+ * The regular prices (Phil, 2 Nov 2026): $55 a year, $9 a month. While the
  * founding offer runs, new members pay the founding prices below and these show
  * struck through beside them. When the offer closes: set each plan's
  * priceCents above to its regular price and FOUNDING_OFFER to false. Only show
  * these as "regular" if they really become the price for new members.
  */
-export const REGULAR_PRICES: Partial<Record<PlanId, number>> = { annual: 4500, monthly: 900 };
+export const REGULAR_PRICES: Partial<Record<PlanId, number>> = { annual: 5500, monthly: 900 };
 
 /** The regular price to show struck through, or null (no founding offer, or not higher than today's price). */
 export function regularPrice(id: PlanId): number | null {
@@ -221,12 +222,15 @@ export function regularPrice(id: PlanId): number | null {
 }
 
 /** The launch (founding) prices. Keep these as they are when list prices go up: founders switching plans get these. */
-export const FOUNDING_PRICES: Partial<Record<PlanId, number>> = { annual: 3900, monthly: 700 };
+export const FOUNDING_PRICES: Partial<Record<PlanId, number>> = { annual: 4500, monthly: 700 };
+/** Anyone who joined at $39 a year (the special's first price, 2 Nov 2026) keeps that too. */
+const EARLIER_FOUNDING: Partial<Record<PlanId, number[]>> = { annual: [3900] };
 
-/** Is this member on a founding price? (Their plan's charge equals its founding price.) */
+/** Is this member on a founding price? (Their plan's charge equals a founding price.) */
 export function isFoundingAmount(planId: string, amountCents: number | null | undefined): boolean {
   const f = FOUNDING_PRICES[planId as PlanId];
-  return f !== undefined && amountCents === f;
+  if (amountCents == null) return false;
+  return (f !== undefined && amountCents === f) || (EARLIER_FOUNDING[planId as PlanId] ?? []).includes(amountCents);
 }
 
 /** What a new member pays right now (checked at the moment of checkout, not when the server started). */
@@ -241,6 +245,12 @@ export function priceFor(planId: PlanId, founding: boolean): number {
   const list = listPriceNow(planId);
   const f = FOUNDING_PRICES[planId];
   return founding && f !== undefined ? Math.min(f, list) : list;
+}
+
+/** "under $1 a week" while the yearly price allows it, otherwise "about $1.06 a week". */
+export function perWeekWords(): string {
+  const c = findPlan("annual")!.priceCents / 52;
+  return c < 100 ? "under $1 a week" : `about $${(c / 100).toFixed(2)} a week`;
 }
 export const foundingLine = () => {
   const ra = regularPrice("annual"), rm = regularPrice("monthly");
