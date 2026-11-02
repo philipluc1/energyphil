@@ -62,5 +62,5 @@
 }
 /* 2 Nov 2026: "Sale · until 1 Feb 2027" bubbles */
 .monthly { position: relative; }
-.saleBubble { top: -12px; }
-.salePill { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: var(--amber); color: #111827; font-size: 11.5px; font-weight: 900; vertical-align: 1px; }
+.saleBubble { top: -12px; background: #dc2626; color: #fff; }
+.salePill { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11.5px; font-weight: 900; vertical-align: 1px; }

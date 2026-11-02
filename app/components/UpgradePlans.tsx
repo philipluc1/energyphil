@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PRICING_PLANS, fmtPrice, isFoundingAmount, plusValue, priceFor, type PlanId } from "@/lib/pricingPlans";
+import { FOUNDING_OFFER, PRICING_PLANS, SALE_BUBBLE, fmtPrice, isFoundingAmount, plusValue, priceFor, regularPrice, type PlanId } from "@/lib/pricingPlans";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./upgradeplans.module.css";
 
@@ -13,7 +13,10 @@ export default function UpgradePlans({ currentPlan, currentAmount = null, onChan
   // Same order and framing as the home and pricing pages (1 Nov 2026): Monthly, then Yearly
   // ("Best value · save $45"), then any older plan they're still on, marked as no longer offered.
   const rank = (p: (typeof PRICING_PLANS)[number]) => (p.id === "monthly" ? 0 : p.id === "annual" ? 1 : 2);
-  const recurring = PRICING_PLANS.filter((p) => p.mode === "subscription" && (p.onSale || p.id === currentPlan)).sort((a, b) => rank(a) - rank(b));
+  // 2 Nov 2026 (Phil): only the plans on sale get a card. Someone still on a
+  // retired plan (quarterly, from early testing) gets one line saying so.
+  const recurring = PRICING_PLANS.filter((p) => p.mode === "subscription" && p.onSale).sort((a, b) => rank(a) - rank(b));
+  const retired = PRICING_PLANS.find((p) => p.id === currentPlan && p.mode === "subscription" && !p.onSale);
   const v = plusValue();
   const founding = isFoundingAmount(currentPlan, currentAmount);
   const isOnceOff = currentPlan === "once_off";
@@ -41,16 +44,25 @@ export default function UpgradePlans({ currentPlan, currentAmount = null, onChan
           ? "You're on the once-off plan, which never renews. To move to a yearly or monthly plan, email us and we'll sort it."
           : `Same checking either way. ${plusValue().line} Changes are prorated on your next invoice.`}
       </p>
+      {retired && (
+        <p className={styles.retired}>
+          You&apos;re on an older {retired.name.toLowerCase()} plan ({fmtPrice(currentAmount ?? retired.priceCents)} {retired.cadenceLabel}) we no longer offer. It keeps working; switch to monthly or yearly any time.
+        </p>
+      )}
       <div className={styles.grid}>
         {recurring.map((p) => {
           const current = p.id === currentPlan;
           const yearly = p.id === "annual";
           return (
             <div key={p.id} className={`${styles.plan} ${yearly ? styles.best : ""} ${current ? styles.current : ""}`}>
-              {yearly && <span className={styles.ribbon}>Best value · save {v.save}</span>}
+              {FOUNDING_OFFER && !current ? (
+                <span className={`${styles.ribbon} ${styles.sale}`}>{SALE_BUBBLE}</span>
+              ) : yearly ? (
+                <span className={styles.ribbon}>Best value · save {v.save}</span>
+              ) : null}
               <b>{p.name}</b>
               <span className={styles.price}>
-                {yearly && <s className={styles.anchor}>{v.monthlyYear}</s>} {fmtPrice(current && currentAmount ? currentAmount : priceFor(p.id, founding))} <small>{p.cadenceLabel}</small>
+                {!current && regularPrice(p.id) ? <s className={styles.anchor}>{fmtPrice(regularPrice(p.id)!)}</s> : null} {fmtPrice(current && currentAmount ? currentAmount : priceFor(p.id, founding))} <small>{p.cadenceLabel}</small>
               </span>
               <span className={styles.per}>
                 {p.id === "monthly" ? <>That&apos;s {v.monthlyYear} a year</> : yearly ? <>You save {v.save} a year ({v.savePct}% off monthly)</> : <>No longer offered to new members. You can stay on it.</>}

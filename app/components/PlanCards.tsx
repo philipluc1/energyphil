@@ -35,7 +35,7 @@ export default function PlanCards({
     <div className={`${styles.stack} ${dark ? styles.dark : ""}`}>
       {annual && (
         <div className={`${styles.card} ${styles.featured} ${styles.hero}`}>
-          <span className={styles.ribbon}>{FOUNDING_OFFER ? SALE_BUBBLE : `Best value · save ${v.save}`}</span>
+          <span className={`${styles.ribbon} ${FOUNDING_OFFER ? styles.saleBubble : ""}`}>{FOUNDING_OFFER ? SALE_BUBBLE : `Best value · save ${v.save}`}</span>
           <div className={styles.name}>Yearly</div>
           <div className={styles.priceRow}>
             {/* Founding offer (2 Nov 2026): the regular price struck through; otherwise monthly × 12. */}
