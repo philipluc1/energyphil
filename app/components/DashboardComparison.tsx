@@ -259,7 +259,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         <div className={styles.facts}>
           {overVdo && (
             <details className={`${styles.fact} ${styles.factBad}`}>
-              <summary><Icon name="alert" size={14} /> <b>{Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b><span className={styles.factMore}>why it matters</span></summary>
+              <summary><Icon name="alert" size={14} /> <b>Yours is {Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b><span className={styles.factMore}>why it matters</span></summary>
               <p>
                 The default offer is the government&apos;s reference price: {money(c.vdo * k)} {perLabel} for your usage. Most people can do better than
                 the default, so a plan that costs more than it is one worth moving off.
