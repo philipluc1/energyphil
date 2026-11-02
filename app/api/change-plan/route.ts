@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripeClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireActiveMember } from "@/lib/memberAccess";
-import { findPlan, type PlanId } from "@/lib/pricingPlans";
+import { findPlan, isFoundingAmount, priceFor, type PlanId } from "@/lib/pricingPlans";
 
 export const maxDuration = 30;
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   const { data: sub } = await supabaseAdmin
     .from("subscribers")
-    .select("id, plan, stripe_subscription_id")
+    .select("id, plan, amount_cents, stripe_subscription_id")
     .eq("email", member.email)
     .eq("status", "active")
     .order("created_at", { ascending: false })
@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
   }
   if (sub.plan === plan.id) return NextResponse.json({ ok: true, message: "You're already on that plan." });
 
+  // Founding members keep founding prices when they switch between plans (2 Nov 2026).
+  const founding = isFoundingAmount(sub.plan, sub.amount_cents);
+  const amount = priceFor(plan.id, founding);
   try {
     const current = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
     const item = current.items.data[0];
@@ -40,7 +43,7 @@ export async function POST(req: NextRequest) {
           id: item.id,
           price_data: {
             currency: plan.currency,
-            unit_amount: plan.priceCents,
+            unit_amount: amount,
             product: typeof item.price.product === "string" ? item.price.product : item.price.product.id,
             recurring: { interval: plan.interval!, interval_count: plan.intervalCount! },
           },
@@ -54,11 +57,11 @@ export async function POST(req: NextRequest) {
       .from("subscribers")
       .update({
         plan: plan.id,
-        amount_cents: plan.priceCents,
+        amount_cents: amount,
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       })
       .eq("id", sub.id);
-    return NextResponse.json({ ok: true, message: `Switched to ${plan.name}. The difference is prorated on your next invoice.` });
+    return NextResponse.json({ ok: true, amountCents: amount, message: `Switched to ${plan.name}${founding ? " at your New Year special price" : ""}. The difference is prorated on your next invoice.` });
   } catch (err) {
     console.error("change-plan failed", err);
     return NextResponse.json({ ok: false, message: "Couldn't change the plan. Try again, or use Manage billing." });

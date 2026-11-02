@@ -32,18 +32,23 @@ export function renderEmail(opts: { title: string; bodyHtml: string; cta?: { lab
          <a href="${opts.cta.url}" style="display:inline-block;padding:13px 26px;font:700 15px Arial,Helvetica,sans-serif;color:#171305;text-decoration:none;border-radius:999px;">${opts.cta.label} &rarr;</a>
        </td></tr></table>`
     : "";
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${opts.title}</title>
-<style>p{margin:0 0 14px;line-height:1.55} a{color:#0d6f78} ol,ul{margin:0 0 14px;padding-left:20px;line-height:1.6}</style></head>
-<body style="margin:0;padding:0;background:#eef0f8;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;">
+  // Dark mode (2 Nov 2026): Apple Mail and Outlook are asked to show the light
+  // design as is. Gmail's apps recolour everything themselves, so the header is
+  // an image (images are never recoloured), navy panels keep their colour with a
+  // background-image, and their white text is kept white with the blend-mode
+  // trick (the .gm-s / .gm-d wrappers, which only apply inside Gmail).
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"><title>${opts.title}</title>
+<style>:root{color-scheme:light only;supported-color-schemes:light only}
+p{margin:0 0 14px;line-height:1.55} a{color:#0d6f78} ol,ul{margin:0 0 14px;padding-left:20px;line-height:1.6}
+u + .body .gm-s{background:#000;mix-blend-mode:screen;display:block}
+u + .body .gm-d{background:#000;mix-blend-mode:difference;display:block}</style></head>
+<body class="body" style="margin:0;padding:0;background:#eef0f8;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;">
 ${opts.preheader ? `<div style="display:none;max-height:0;overflow:hidden;color:#eef0f8;">${opts.preheader}</div>` : ""}
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef0f8;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;">
-  <tr><td style="background:#131c57;border-radius:18px 18px 0 0;padding:22px 28px;">
-    <table role="presentation" cellspacing="0" cellpadding="0"><tr>
-      
-      <td style="font:900 26px Arial,Helvetica,sans-serif;color:#fff;letter-spacing:-0.5px;">Util<span style="color:#f5a623;">o</span>
-        </td>
-    </tr></table>
+  <tr><td style="background-color:#131c57;background-image:linear-gradient(#131c57,#131c57);border-radius:18px 18px 0 0;padding:0;line-height:0;">
+    <a href="${site}" style="display:block;text-decoration:none;"><img src="${site}/email/header.png" width="560" height="76" alt="Utilo" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:18px 18px 0 0;font:900 26px Arial,Helvetica,sans-serif;color:#ffffff;line-height:76px;padding-left:0;"></a>
   </td></tr>
   <tr><td style="background:#ffffff;padding:28px 28px 22px;font-size:15px;">
     <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;letter-spacing:-0.3px;">${opts.title}</h1>

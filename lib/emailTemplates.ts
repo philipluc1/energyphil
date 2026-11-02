@@ -12,7 +12,7 @@ import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from 
 import { RETAILER_LINKS } from "./retailerLinks";
 import { namesList } from "./stickyPick";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
-import { FOUNDING_OFFER, plusValue, timesPrice } from "./pricingPlans";
+import { FOUNDING_OFFER, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
 import { C, bigFigure, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
@@ -110,9 +110,9 @@ export function resultEmail(i: {
       { sym: "&#9638;", title: "One membership, every bill", text: "Power and gas now, more to come. Your dashboard tracks it all.", tint: "navy" },
     ])}
     ${statusBox({
-      kicker: FOUNDING_OFFER ? "Founding member price" : "Utilo Plus",
-      headline: `${v.annual} a year: ${v.perWeek} a week`,
-      body: `${worth && timesPrice(i.yearly) ? `Your saving is <strong>${timesPrice(i.yearly)} times</strong> the yearly price. ` : ""}${FOUNDING_OFFER ? "Locked in while you stay. " : ""}Or ${v.monthly} month to month. Cancel any time. Not a cent from retailers.`,
+      kicker: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
+      headline: `${regularPrice("annual") ? `<s style="opacity:0.55;font-weight:700;">${fmtPrice(regularPrice("annual")!)}</s> ` : ""}${v.annual} a year: ${v.perWeek} a week`,
+      body: `${worth && timesPrice(i.yearly) ? `Your saving is <strong>${timesPrice(i.yearly)} times</strong> the yearly price. ` : ""}${FOUNDING_OFFER ? "Locked in while you stay. " : ""}Or ${v.monthly} month to month${regularPrice("monthly") ? ` (regular ${fmtPrice(regularPrice("monthly")!)})` : ""}. Cancel any time. Not a cent from retailers.`,
       tone: "teal",
     })}
     ${button("Start Utilo Plus", `${i.origin}/pricing`)}
@@ -132,7 +132,7 @@ export function followUpMembership(i: { origin: string; unsubscribeUrl: string }
       { sym: "&#9638;", title: "1 July re-check", text: "When retailers change their prices, we re-run everything.", tint: "navy" },
     ])}
     ${statRow([
-      { big: plusValue().annual, small: FOUNDING_OFFER ? "a year, founding price" : "a year", tone: "green" },
+      { big: plusValue().annual, small: FOUNDING_OFFER ? `a year, ${SPECIAL_NAME}${regularPrice("annual") ? ` (regular ${fmtPrice(regularPrice("annual")!)})` : ""}` : "a year", tone: "green" },
       { big: plusValue().perWeek, small: "a week", tone: "navy" },
       { big: plusValue().monthly, small: "or month to month", tone: "amber" },
     ])}
@@ -435,7 +435,7 @@ export function renewalRecap(i: {
       { sym: "&#9993;", title: "Only emails that pay", text: `One email when switching saves ${money(WORTH_SWITCHING_PER_YEAR)}+ a year.`, tint: "green" },
       { sym: "&#9638;", title: "Your bills in one place", text: "Snap each bill, power and gas, and see your year build up.", tint: "navy" },
     ])}
-    ${statusBox({ kicker: "Your renewal", headline: `${esc(i.priceLabel)} on ${esc(i.renewsOn)}`, body: `${i.founding ? "Your founding member price stays the same. " : ""}Nothing to do to keep going. To change or cancel, it's on your dashboard under Plus, any time before then.`, tone: "teal" })}
+    ${statusBox({ kicker: "Your renewal", headline: `${esc(i.priceLabel)} on ${esc(i.renewsOn)}`, body: `${i.founding ? `Your ${SPECIAL_NAME} price stays the same. ` : ""}Nothing to do to keep going. To change or cancel, it's on your dashboard under Plus, any time before then.`, tone: "teal" })}
     ${button("Open my dashboard", `${i.origin}/account#membership`)}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because your Utilo Plus membership renews soon.")}`;
   return {

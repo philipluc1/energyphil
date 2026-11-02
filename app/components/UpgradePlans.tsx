@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { PRICING_PLANS, fmtPrice, plusValue, type PlanId } from "@/lib/pricingPlans";
+import { PRICING_PLANS, fmtPrice, isFoundingAmount, plusValue, priceFor, type PlanId } from "@/lib/pricingPlans";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./upgradeplans.module.css";
 
 /** Switch between the recurring plans from the dashboard. */
-export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: string; onChanged: (planId: PlanId, amountCents: number) => void }) {
+export default function UpgradePlans({ currentPlan, currentAmount = null, onChanged }: { currentPlan: string; /** What they pay now, in cents: founders see founding prices. */ currentAmount?: number | null; onChanged: (planId: PlanId, amountCents: number) => void }) {
   const [busy, setBusy] = useState<PlanId | null>(null);
   const [msg, setMsg] = useState("");
   // Plans on sale, plus whatever they are on now (older plans keep working).
@@ -15,6 +15,7 @@ export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: 
   const rank = (p: (typeof PRICING_PLANS)[number]) => (p.id === "monthly" ? 0 : p.id === "annual" ? 1 : 2);
   const recurring = PRICING_PLANS.filter((p) => p.mode === "subscription" && (p.onSale || p.id === currentPlan)).sort((a, b) => rank(a) - rank(b));
   const v = plusValue();
+  const founding = isFoundingAmount(currentPlan, currentAmount);
   const isOnceOff = currentPlan === "once_off";
 
   async function change(planId: PlanId) {
@@ -29,10 +30,7 @@ export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: 
     const body = await res?.json().catch(() => null);
     setBusy(null);
     setMsg(body?.message ?? "Something went wrong.");
-    if (body?.ok) {
-      const plan = PRICING_PLANS.find((p) => p.id === planId);
-      if (plan) onChanged(planId, plan.priceCents);
-    }
+    if (body?.ok) onChanged(planId, typeof body.amountCents === "number" ? body.amountCents : priceFor(planId, founding));
   }
 
   return (
@@ -52,7 +50,7 @@ export default function UpgradePlans({ currentPlan, onChanged }: { currentPlan: 
               {yearly && <span className={styles.ribbon}>Best value · save {v.save}</span>}
               <b>{p.name}</b>
               <span className={styles.price}>
-                {yearly && <s className={styles.anchor}>{v.monthlyYear}</s>} {fmtPrice(p.priceCents)} <small>{p.cadenceLabel}</small>
+                {yearly && <s className={styles.anchor}>{v.monthlyYear}</s>} {fmtPrice(current && currentAmount ? currentAmount : priceFor(p.id, founding))} <small>{p.cadenceLabel}</small>
               </span>
               <span className={styles.per}>
                 {p.id === "monthly" ? <>That&apos;s {v.monthlyYear} a year</> : yearly ? <>You save {v.save} a year ({v.savePct}% off monthly)</> : <>No longer offered to new members. You can stay on it.</>}

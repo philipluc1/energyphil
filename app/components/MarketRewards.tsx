@@ -62,7 +62,7 @@ export function RewardsSideCard({ items, locked, onOpen, wide = false }: { items
       aria-labelledby="rewards-side-title"
       onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a")) onOpen(); }}
     >
-      <span className={styles.sideTag}><Icon name="gift" size={13} /> On your network today</span>
+      <span className={styles.sideTag}><Icon name="gift" size={13} /> From retailers today</span>
       <h3 id="rewards-side-title" className={styles.sideTitle}>
         <b>{items.length}</b> discounts and rewards
       </h3>
@@ -121,7 +121,7 @@ export default function MarketRewards({
           Sign-up credits, points and gifts are <b>not</b> in our prices: we rank plans on what you&apos;d pay over a year. Most are for new customers, and many need you to stay a set time (often 90 days) before they&apos;re paid. % discounts marked &quot;in the price&quot; are already counted.
         </InfoTip>
       </div>
-      <p className={styles.sub}>Credits, points and perks on offer on your network today, with what each plan costs you a year against {against}.</p>
+      <p className={styles.sub}>Credits, points and perks retailers are offering today, with what each plan costs you a year against {against}.</p>
 
       {(topCredit || topPoints) && (
         <div className={styles.highlights}>
@@ -228,7 +228,7 @@ function RewardsStrip({ items, locked, onOpen }: { items: Item[]; locked: Set<un
   return (
     <section className={styles.strip} aria-labelledby="rewards-strip-title">
       <div className={styles.stripHead}>
-        <span className={styles.liveTag}><span className={styles.liveDot} aria-hidden="true" /> Live now on your network</span>
+        <span className={styles.liveTag}><span className={styles.liveDot} aria-hidden="true" /> Live now from retailers</span>
         <h3 id="rewards-strip-title" className={styles.stripTitle}>
           <b>{items.length}</b> discounts and sign-up rewards
         </h3>

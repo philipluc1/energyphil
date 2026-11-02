@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FOUNDING_OFFER, PLANS_ON_SALE, fmtPrice, plusValue, type PlanId } from "@/lib/pricingPlans";
+import { FOUNDING_OFFER, PLANS_ON_SALE, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, type PlanId } from "@/lib/pricingPlans";
 import styles from "./plancards.module.css";
 
 /**
@@ -35,10 +35,11 @@ export default function PlanCards({
     <div className={`${styles.stack} ${dark ? styles.dark : ""}`}>
       {annual && (
         <div className={`${styles.card} ${styles.featured} ${styles.hero}`}>
-          <span className={styles.ribbon}>{FOUNDING_OFFER ? "Founding member price" : `Best value · save ${v.save}`}</span>
+          <span className={styles.ribbon}>{FOUNDING_OFFER ? `${SPECIAL_NAME} · until ${SPECIAL_ENDS_SHORT}` : `Best value · save ${v.save}`}</span>
           <div className={styles.name}>Yearly</div>
           <div className={styles.priceRow}>
-            <span className={styles.anchor}>{v.monthlyYear}</span>
+            {/* Founding offer (2 Nov 2026): the regular price struck through; otherwise monthly × 12. */}
+            <span className={styles.anchor}>{regularPrice("annual") ? fmtPrice(regularPrice("annual")!) : v.monthlyYear}</span>
             <span className={styles.price}>{fmtPrice(annual.priceCents)}</span>
             <span className={styles.per}>/ year</span>
           </div>
@@ -49,7 +50,7 @@ export default function PlanCards({
       )}
       {monthly && (
         <div className={styles.monthly}>
-          <span>Or <b>{fmtPrice(monthly.priceCents)}</b> month to month <span className={styles.monthlyNote}>({v.monthlyYear} a year)</span></span>
+          <span>Or {regularPrice("monthly") ? <s className={styles.monthlyWas}>{fmtPrice(regularPrice("monthly")!)}</s> : null} <b>{fmtPrice(monthly.priceCents)}</b> month to month <span className={styles.monthlyNote}>({v.monthlyYear} a year)</span></span>
           {action(monthly.id, href ? "Monthly" : "Choose monthly", styles.btnSmall)}
         </div>
       )}

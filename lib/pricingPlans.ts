@@ -3,6 +3,21 @@
 // if these ever need updating later.
 export type PlanId = "annual" | "monthly" | "quarterly" | "half_yearly" | "once_off";
 
+/**
+ * The New Year special (Phil, 2 Nov 2026): $39 a year or $7 a month for anyone
+ * who joins before 1 February 2027 (midnight in Melbourne), kept for as long as
+ * they stay. From then, new members pay the regular $45 / $9 automatically:
+ * the prices below, the checkout and the wording all switch on their own.
+ */
+export const SPECIAL_NAME = "New Year special";
+export const SPECIAL_ENDS_LABEL = "1 February 2027";
+export const SPECIAL_ENDS_SHORT = "1 Feb";
+const SPECIAL_ENDS_AT = Date.parse("2027-01-31T13:00:00Z"); // 1 Feb 2027 00:00 in Melbourne (AEDT)
+export function foundingOpenAt(t: number = Date.now()): boolean {
+  return t < SPECIAL_ENDS_AT;
+}
+const OPEN_NOW = foundingOpenAt();
+
 export interface PricingPlan {
   id: PlanId;
   name: string;
@@ -28,7 +43,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: "annual",
     name: "Yearly",
     cadenceLabel: "per year",
-    priceCents: 3900,
+    priceCents: OPEN_NOW ? 3900 : 4500,
     currency: "aud",
     mode: "subscription",
     interval: "month",
@@ -40,7 +55,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: "monthly",
     name: "Monthly",
     cadenceLabel: "per month",
-    priceCents: 700,
+    priceCents: OPEN_NOW ? 700 : 900,
     currency: "aud",
     mode: "subscription",
     interval: "month",
@@ -185,8 +200,50 @@ export function plusValue() {
  * with, so a later price rise only reaches new members. Turn the wording off
  * here when the founding offer closes.
  */
-export const FOUNDING_OFFER = true;
-export const foundingLine = () => `Founding member price: ${fmtPrice(findPlan("annual")!.priceCents)} a year, locked in while you stay.`;
+export const FOUNDING_OFFER = OPEN_NOW;
+
+/**
+ * The regular prices (Phil, 2 Nov 2026): $45 a year, $9 a month. While the
+ * founding offer runs, new members pay the founding prices below and these show
+ * struck through beside them. When the offer closes: set each plan's
+ * priceCents above to its regular price and FOUNDING_OFFER to false. Only show
+ * these as "regular" if they really become the price for new members.
+ */
+export const REGULAR_PRICES: Partial<Record<PlanId, number>> = { annual: 4500, monthly: 900 };
+
+/** The regular price to show struck through, or null (no founding offer, or not higher than today's price). */
+export function regularPrice(id: PlanId): number | null {
+  const r = REGULAR_PRICES[id];
+  const now = findPlan(id)?.priceCents ?? 0;
+  return FOUNDING_OFFER && r !== undefined && r > now ? r : null;
+}
+
+/** The launch (founding) prices. Keep these as they are when list prices go up: founders switching plans get these. */
+export const FOUNDING_PRICES: Partial<Record<PlanId, number>> = { annual: 3900, monthly: 700 };
+
+/** Is this member on a founding price? (Their plan's charge equals its founding price.) */
+export function isFoundingAmount(planId: string, amountCents: number | null | undefined): boolean {
+  const f = FOUNDING_PRICES[planId as PlanId];
+  return f !== undefined && amountCents === f;
+}
+
+/** What a new member pays right now (checked at the moment of checkout, not when the server started). */
+export function listPriceNow(planId: PlanId, t: number = Date.now()): number {
+  const base = findPlan(planId)?.priceCents ?? 0;
+  if (foundingOpenAt(t)) return FOUNDING_PRICES[planId] ?? base;
+  return REGULAR_PRICES[planId] ?? base;
+}
+
+/** What a plan costs this member: the founding price for founders, otherwise today's list price. */
+export function priceFor(planId: PlanId, founding: boolean): number {
+  const list = listPriceNow(planId);
+  const f = FOUNDING_PRICES[planId];
+  return founding && f !== undefined ? Math.min(f, list) : list;
+}
+export const foundingLine = () => {
+  const ra = regularPrice("annual"), rm = regularPrice("monthly");
+  return `${SPECIAL_NAME}: ${fmtPrice(findPlan("annual")!.priceCents)} a year${ra ? ` (regular ${fmtPrice(ra)})` : ""} or ${fmtPrice(findPlan("monthly")!.priceCents)} a month${rm ? ` (regular ${fmtPrice(rm)})` : ""} when you join before ${SPECIAL_ENDS_LABEL}. Your price stays locked in while you stay.`;
+};
 
 /** How many times over a yearly saving pays for the yearly price (1 decimal under 10), or null if under 2×. */
 export function timesPrice(yearlySaving: number): string | null {

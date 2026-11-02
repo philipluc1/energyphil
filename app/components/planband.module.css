@@ -55,3 +55,7 @@
 .shield svg { position: relative; z-index: 1; }
 @media (max-width: 860px) { .trust { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 460px) { .trust { grid-template-columns: 1fr; padding: 18px; gap: 14px; } }
+
+/* Band headline (2 Nov 2026): one sentence per line, evenly wrapped. */
+.head h2 { text-wrap: balance; }
+.titleLine { display: block; }

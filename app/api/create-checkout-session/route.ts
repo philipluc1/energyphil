@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanBillCheck } from "@/lib/billCheck";
 import { stripe } from "@/lib/stripeClient";
-import { findPlan } from "@/lib/pricingPlans";
+import { findPlan, listPriceNow } from "@/lib/pricingPlans";
 import { SRC_COOKIE, parseSource, sourceValue } from "@/lib/attribution";
 import { ensureFriendCoupon, referrerFor } from "@/lib/referrals";
 import { checkoutGuard } from "@/lib/membershipGuard";
@@ -134,7 +134,8 @@ export async function POST(req: NextRequest) {
           quantity: 1,
           price_data: {
             currency: plan.currency,
-            unit_amount: plan.priceCents,
+            // New Year special until 1 Feb 2027, then the regular price (checked now, per checkout).
+            unit_amount: listPriceNow(plan.id),
             product_data: {
               name: `Utilo Plus — ${plan.name}`,
               description:

@@ -45,3 +45,5 @@
 .btnSmall:disabled { opacity: 0.6; cursor: default; }
 .dark .monthly { background: rgba(255, 255, 255, 0.95); border-color: transparent; }
 @media (max-width: 460px) { .hero .price { font-size: 52px; } .monthly { justify-content: center; text-align: center; } }
+/* 2 Nov 2026: the regular monthly price, struck through, during the founding offer */
+.monthlyWas { margin-right: 2px; opacity: 0.6; font-weight: 700; }

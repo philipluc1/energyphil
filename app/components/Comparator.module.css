@@ -1824,3 +1824,9 @@
   .navCta { padding: 8px 10px; font-size: 13px; border-radius: 10px; white-space: nowrap; }
   .navCta span { display: none; }
 }
+
+/* 2 Nov 2026: the average-home note on one line. */
+.avgOneLine { margin: 0; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 14.5px; line-height: 1.45; }
+.avgNote:has(.avgOneLine) { align-items: center; padding-block: 10px; }
+.avgOneLine b { display: inline; }
+.resultsSub .fresh, .resultsSub .freshStale { white-space: nowrap; }

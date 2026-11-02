@@ -5,7 +5,10 @@ import PlanBand from "../components/PlanBand";
 import SiteHeader from "../components/SiteHeader";
 import Icon from "../components/Icon";
 import InfoTip from "../components/InfoTip";
-import { PLUS_NAME, plusValue, FOUNDING_OFFER, foundingLine } from "@/lib/pricingPlans";
+import { PLUS_NAME, plusValue, FOUNDING_OFFER, SPECIAL_NAME, foundingLine, regularPrice, fmtPrice } from "@/lib/pricingPlans";
+
+// Re-built every hour, so the New Year special ends on time without a deploy.
+export const revalidate = 3600;
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import h from "../home3.module.css";
 import p from "./pricing.module.css";
@@ -45,11 +48,11 @@ export default function PricingPage() {
           <h1 className={p.h1}>Stop paying the loyalty tax.</h1>
           <p className={h.lede}>Discounts quietly end. Prices change every 1 July. People who stay put often pay more. {PLUS_NAME} watches your power and gas every day, from your own bill, and tells you when to move, and when not to bother.</p>
           <div className={p.value}>
-            <div className={`${p.vBox} ${p.vBest}`}><b>{v.annual}</b><span>a year{FOUNDING_OFFER ? ", founding price" : ""}</span></div>
+            <div className={`${p.vBox} ${p.vBest}`}><b>{regularPrice("annual") ? <s className={p.was}>{fmtPrice(regularPrice("annual")!)}</s> : null}{v.annual}</b><span>a year{FOUNDING_OFFER ? `, ${SPECIAL_NAME}` : ""}</span></div>
             <span className={p.vEq}>=</span>
             <div className={p.vBox}><b>{v.perWeek}</b><span>a week</span></div>
             <span className={p.vOr}>or</span>
-            <div className={p.vBox}><b>{v.monthly}</b><span>month to month</span></div>
+            <div className={p.vBox}><b>{regularPrice("monthly") ? <s className={p.was}>{fmtPrice(regularPrice("monthly")!)}</s> : null}{v.monthly}</b><span>month to month</span></div>
           </div>
           {FOUNDING_OFFER && <p className={p.founding}>{foundingLine()} Cancel any time from your dashboard.</p>}
         </section>

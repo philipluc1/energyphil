@@ -29,7 +29,8 @@ export default function PlanBand({
     <section id={id} className={styles.band} data-motion="" data-stagger=":scope > div, :scope > ul > li, :scope > p">
       <div className={styles.head}>
         <span className={styles.eyebrow}><Icon name="bolt" size={14} /> {PLUS_NAME}</span>
-        <h2>{title}</h2>
+        {/* Each sentence on its own line ("We keep checking." / "Every day."), so a short one never dangles. */}
+        <h2>{title.split(/(?<=\.)\s+(?=\S)/).map((part, i) => <span key={i} className={styles.titleLine}>{part}</span>)}</h2>
         {intro && <p>{intro}</p>}
       </div>
       {/* What you get: the hero of the band. */}

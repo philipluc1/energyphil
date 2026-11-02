@@ -1,3 +1,4 @@
+import { activeRowsToEmail } from "@/lib/oneMemberPerEmail";
 import { NextRequest, NextResponse } from "next/server";
 import { BIG_SAVING_PER_YEAR, QUIET_DAYS_AFTER_SWITCH } from "@/lib/dataPolicy";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -147,7 +148,11 @@ export async function GET(req: NextRequest) {
     if (!rErr) for (const x of (rs ?? []) as { id: string; current_rates: unknown }[]) { const r = ratesFromJson(x.current_rates); if (r) ratesOf.set(x.id, r); }
   }
 
+  // One email per address, from the newest active membership (2 Nov 2026).
+  const keep = await activeRowsToEmail(supabaseAdmin);
+  const skip = (id: string) => !!keep && !keep.has(id);
   for (const sub of (subsData ?? []) as SubscriberWatchRow[]) {
+    if (skip(sub.id)) continue;
     try {
       const profile = {
         distributor: sub.distributor as Distributor,
@@ -172,6 +177,15 @@ export async function GET(req: NextRequest) {
       const pickToday = priceOfPlan(profile, pickRetailer, pickPlan);
       const previousBest = pickToday ?? sub.last_notified_total ?? sub.baseline_total;
       const days = sub.billing_days ?? 91;
+      // 2 Nov 2026: when the last pick can't be re-priced today, the stored figure may be
+      // for different usage (a newer bill since). A "saving" of over a third is that, not
+      // the market: don't email it. Today's cheapest quietly becomes the new pick instead.
+      if (pickToday === null && previousBest !== null && previousBest > best.bestTotal * 1.5) {
+        console.log("recheck-prices: skipped an implausible alert", sub.id);
+        // Quietly make today's cheapest the new pick, so tomorrow compares like with like.
+        await supabaseAdmin.from("subscribers").update({ last_notified_total: best.bestTotal, last_notified_retailer: best.bestRetailer, last_notified_plan_name: best.bestPlanName }).eq("id", sub.id);
+        continue;
+      }
       if (!isMeaningfullyCheaper(best.bestTotal, previousBest, days, alertMin.get(sub.id))) continue;
       // Just switched? Leave them alone for a while unless the saving is big.
       if (sub.switched_at) {
@@ -319,6 +333,7 @@ export async function GET(req: NextRequest) {
     .or("discount_ends_at.not.is.null,current_price_fixed_until.not.is.null");
   if (dealErr) console.error("recheck-prices: deal dates not loaded (run supabase/schema.sql?)", dealErr.message);
   for (const sub of (dealSubs ?? []) as DealRow[]) {
+    if (skip(sub.id)) continue;
     try {
       const due = [
         { date: sub.discount_ends_at, what: "discount (or benefit period)" },
@@ -451,6 +466,7 @@ export async function GET(req: NextRequest) {
     .not("gas_mj", "is", null);
   if (gasErr) console.error("recheck-prices: gas members not loaded", gasErr.message);
   for (const sub of (gasSubs ?? []) as GasRow[]) {
+    if (skip(sub.id)) continue;
     try {
       if (!GAS_ZONES.includes(sub.gas_zone as GasZone) || !sub.gas_mj) continue;
       const gDays = sub.gas_billing_days ?? 91;
@@ -516,6 +532,7 @@ export async function GET(req: NextRequest) {
       .gte("current_period_end", new Date().toISOString());
     if (dueErr) console.warn("recheck-prices: renewal recaps off (run supabase/schema.sql)", dueErr.message);
     for (const sub of (due ?? []) as RecapRow[]) {
+      if (skip(sub.id)) continue;
       try {
         if (!recapDue({ plan: sub.plan, status: sub.status, periodEnd: sub.current_period_end, sentFor: sub.recap_sent_for })) continue;
         const { data: eps } = await supabaseAdmin.from("savings_episodes").select("started_at, ended_at, daily_rate").eq("subscriber_id", sub.id);
