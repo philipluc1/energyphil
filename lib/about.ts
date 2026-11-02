@@ -16,13 +16,13 @@ export const ABOUT = {
   businessName: "",         // registered business or company name, e.g. "Utilo Pty Ltd"
   abn: "",                  // e.g. "12 345 678 901"
   location: "",             // e.g. "Melbourne, Victoria"
-  contactEmail: "",         // general contact, e.g. "hello@utiloaustralia.com.au"
+  contactEmail: "",         // general contact, e.g. "hello@utilo.com.au"
   postalAddress: "",        // optional, for written privacy requests
 };
 
 /** Privacy-policy specifics. */
 export const PRIVACY = {
-  /** Where privacy requests and complaints go, e.g. "privacy@utiloaustralia.com.au". */
+  /** Where privacy requests and complaints go, e.g. "privacy@utilo.com.au". */
   email: "",
   /** Last date the policy text was changed. Update when you edit app/privacy/page.tsx. */
   lastUpdated: "18 October 2026",

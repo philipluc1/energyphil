@@ -28,6 +28,7 @@ import { sendPush } from "@/lib/push";
 export const maxDuration = 60;
 
 interface SubscriberWatchRow {
+  customer_name?: string | null;
   home_profile?: unknown;
   id: string;
   email: string;
@@ -52,6 +53,7 @@ interface SubscriberWatchRow {
 }
 
 interface LeadWatchRow {
+  customer_name?: string | null;
   home_profile?: unknown;
   solar_export_kwh?: number | null;
   id: string;
@@ -73,6 +75,7 @@ function siteOrigin(req: NextRequest): string {
 }
 
 interface GasRow {
+  customer_name?: string | null;
   id: string;
   email: string;
   gas_zone: string | null;
@@ -122,7 +125,7 @@ export async function GET(req: NextRequest) {
   const { data: subsData, error: subsErr } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, baseline_total, reference_total, last_notified_total, last_notified_retailer, last_notified_plan_name, baseline_retailer, baseline_plan_name, switched_at, home_profile",
+      "id, email, status, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, baseline_total, reference_total, last_notified_total, last_notified_retailer, last_notified_plan_name, baseline_retailer, baseline_plan_name, switched_at, home_profile, customer_name",
     )
     .eq("status", "active")
     .eq("unsubscribed", false)
@@ -204,6 +207,7 @@ export async function GET(req: NextRequest) {
         prevYear: (previousBest! * 365) / days,
         newYear: (best.bestTotal * 365) / days,
         prevRetailer: sub.last_notified_retailer ?? sub.baseline_retailer ?? null,
+        name: sub.customer_name,
       });
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
 
@@ -261,7 +265,7 @@ export async function GET(req: NextRequest) {
   const { data: leadsData, error: leadsErr } = await supabaseAdmin
     .from("leads")
     .select(
-      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, best_retailer, best_total, last_notified_total, home_profile",
+      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, best_retailer, best_total, last_notified_total, home_profile, customer_name",
     )
     .eq("wants_price_alerts", true)
     .eq("unsubscribed", false)
@@ -298,6 +302,7 @@ export async function GET(req: NextRequest) {
         planName: best.bestPlanName,
         yearly: ((previousBest! - best.bestTotal) * 365) / (lead.billing_days ?? 91),
         unsubscribeUrl: unsubUrl(origin, "lead", lead.id),
+        name: lead.customer_name,
         prevYear: (previousBest! * 365) / (lead.billing_days ?? 91),
         newYear: (best.bestTotal * 365) / (lead.billing_days ?? 91),
       });
@@ -327,7 +332,7 @@ export async function GET(req: NextRequest) {
   let dealAlerts = 0;
   const { data: dealSubs, error: dealErr } = await supabaseAdmin
     .from("subscribers")
-    .select("id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, home_profile, discount_ends_at, current_price_fixed_until, deal_alert_sent_for, switched_at, switched_to")
+    .select("id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, home_profile, discount_ends_at, current_price_fixed_until, deal_alert_sent_for, switched_at, switched_to, customer_name")
     .eq("status", "active")
     .eq("unsubscribed", false)
     .or("discount_ends_at.not.is.null,current_price_fixed_until.not.is.null");
@@ -376,6 +381,7 @@ export async function GET(req: NextRequest) {
         unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
         nowYear: best && ref?.vsBill && !best.average ? (ref.total * 365) / days : null,
         bestYear: best && ref?.vsBill && !best.average ? (best.bestTotal * 365) / days : null,
+        name: sub.customer_name,
       });
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
@@ -395,7 +401,7 @@ export async function GET(req: NextRequest) {
   let dripSent = 0;
   const { data: dripLeads, error: dripErr } = await supabaseAdmin
     .from("leads")
-    .select("id, email, created_at, drip_step, best_retailer, best_plan_name, estimated_saving, billing_days, wants_price_alerts, best_total, current_bill")
+    .select("id, email, created_at, drip_step, best_retailer, best_plan_name, estimated_saving, billing_days, wants_price_alerts, best_total, current_bill, customer_name")
     // Everyone who asked gets their result (step 0). Follow-ups (steps 1-2)
     // only go to people who ticked the box (Spam Act consent).
     .or("wants_price_alerts.eq.true,drip_step.eq.0")
@@ -433,15 +439,21 @@ export async function GET(req: NextRequest) {
       const unsub = unsubUrl(origin, "lead", lead.id);
       const e =
         step === 0
-          ? resultEmail({ origin, retailer: lead.best_retailer ?? "the cheapest plan", planName: lead.best_plan_name, yearly: yearly ?? 0, vsBill: false, unsubscribeUrl: unsub, sentLater: true })
+          ? resultEmail({ origin, retailer: lead.best_retailer ?? "the cheapest plan", planName: lead.best_plan_name, yearly: yearly ?? 0, vsBill: false, unsubscribeUrl: unsub, sentLater: true, name: lead.customer_name })
           : step === 1
-            ? followUpMembership({ origin, unsubscribeUrl: unsub })
+            ? followUpMembership({
+                origin, unsubscribeUrl: unsub, name: lead.customer_name, retailer: lead.best_retailer,
+                nowYear: lead.best_total != null && lead.estimated_saving != null && lead.billing_days ? ((lead.best_total + lead.estimated_saving) * 365) / lead.billing_days : null,
+                bestYear: lead.best_total != null && lead.billing_days ? (lead.best_total * 365) / lead.billing_days : null,
+                vsBill: lead.current_bill != null,
+              })
             : followUpWeek({
                 origin, retailer: lead.best_retailer, planName: lead.best_plan_name, yearly, unsubscribeUrl: unsub,
                 // Both a year, from what the result showed: what they pay (or the default offer) and the cheapest.
                 nowYear: lead.best_total != null && lead.estimated_saving != null && lead.billing_days ? ((lead.best_total + lead.estimated_saving) * 365) / lead.billing_days : null,
                 bestYear: lead.best_total != null && lead.billing_days ? (lead.best_total * 365) / lead.billing_days : null,
                 vsBill: lead.current_bill != null,
+                name: lead.customer_name,
               });
       const sent = await sendEmail({ to: lead.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
@@ -459,7 +471,7 @@ export async function GET(req: NextRequest) {
   let gasAlerts = 0;
   const { data: gasSubs, error: gasErr } = await supabaseAdmin
     .from("subscribers")
-    .select("id, email, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_best_total, gas_best_retailer, gas_best_plan_name")
+    .select("id, email, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_best_total, gas_best_retailer, gas_best_plan_name, customer_name")
     .eq("status", "active")
     .eq("unsubscribed", false)
     .not("gas_zone", "is", null)
@@ -486,6 +498,7 @@ export async function GET(req: NextRequest) {
         unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
         prevYear: (previous! * 365) / gDays,
         newYear: (top.total * 365) / gDays,
+        name: sub.customer_name,
       });
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
       if (sent) {
@@ -591,6 +604,7 @@ export async function GET(req: NextRequest) {
 const DEAL_WARNING_DAYS = 30;
 
 interface DealRow {
+  customer_name?: string | null;
   id: string;
   email: string;
   distributor: string | null;
@@ -612,6 +626,7 @@ interface DealRow {
 }
 
 interface DripLeadRow {
+  customer_name?: string | null;
   wants_price_alerts?: boolean;
   id: string;
   email: string;

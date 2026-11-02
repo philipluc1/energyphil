@@ -1,10 +1,10 @@
 // The site's public address, for canonical links, the sitemap and share
 // previews. Set SITE_URL in Vercel once the domain is live (e.g.
-// https://www.utiloaustralia.com.au). Until then Vercel's own production
+// https://www.utilo.com.au). Until then Vercel's own production
 // address is used, so search engines are never pointed at a domain that
 // doesn't answer yet.
 const fromEnv = process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "");
-export const SITE_URL = (fromEnv || "https://www.utiloaustralia.com.au").replace(/\/+$/, "");
+export const SITE_URL = (fromEnv || "https://www.utilo.com.au").replace(/\/+$/, "");
 
 export const SITE_NAME = "Utilo";
 

@@ -5,6 +5,7 @@ import { SourceCapture } from "./components/SourceBanner";
 import ScrollMotion from "./components/ScrollMotion";
 import PwaRegister from "./components/PwaRegister";
 import SiteAnalytics from "./components/SiteAnalytics";
+import PageTracker from "./components/PageTracker";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 const DESCRIPTION =
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ScrollMotion />
         <PwaRegister />
         <SiteAnalytics />
+        <PageTracker />
       </body>
     </html>
   );

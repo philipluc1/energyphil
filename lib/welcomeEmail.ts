@@ -7,7 +7,7 @@ import { esc } from "./email";
 import { RETAILER_LINKS } from "./retailerLinks";
 import { WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
-import { keepBg, keepWhite } from "./emailParts";
+import { greet, keepBg, keepWhite } from "./emailParts";
 
 export interface WelcomeEmailInput {
   origin: string;
@@ -73,7 +73,7 @@ export function welcomeEmail(i: WelcomeEmailInput): { subject: string; title: st
   const subject = worth
     ? `Welcome to Utilo Plus${name ? `, ${name}` : ""}. Let's get that ${money(i.yearlySaving as number)} a year`
     : `Welcome to Utilo Plus${name ? `, ${name}` : ""}. We're watching your plan now`;
-  const title = name ? `Welcome aboard, ${esc(name)}.` : "Welcome aboard.";
+  const title = "Welcome aboard."; // the "Hi Sam," line right under it carries the name
 
   // The hero: what just happened, and the one thing to do now.
   const hero = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
@@ -102,6 +102,7 @@ export function welcomeEmail(i: WelcomeEmailInput): { subject: string; title: st
     : "";
 
   const html = `
+    ${greet(i.customerName)}
     ${hero}
     ${matchBox}
     <p style="font:800 17px ${F};color:${NAVY};margin:4px 0 14px;">Your first weeks</p>

@@ -288,6 +288,12 @@ export function moneyHero(o: {
 }
 
 /** "Philip" from "PHILIP LUC" or "Mr P. Luc"; null when there's no usable first name. */
+/** Every email opens with this (2 Nov 2026): "Hi Sam," or, without a usable name, "Hi there,". */
+export function greet(name: string | null | undefined): string {
+  const first = firstNameOf(name);
+  return `<p style="margin:0 0 14px;font-size:16px;line-height:1.5;">Hi ${first ? esc(first) : "there"},</p>`;
+}
+
 export function firstNameOf(full: string | null | undefined): string | null {
   const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
   const first = parts.find((w) => !/^(mr|mrs|ms|miss|mx|dr)\.?$/i.test(w));
@@ -374,3 +380,68 @@ export function bigFigure(o: { figure: string; label: string; body: string; tone
 export const keepBg = (c: string) => `background-color:${c};background-image:linear-gradient(${c},${c});`;
 /** White text that stays white in Gmail's dark mode, on a keepBg() panel. Harmless everywhere else. */
 export const keepWhite = (html: string) => `<div class="gm-s"><div class="gm-d">${html}</div></div>`;
+
+const MONTH_INITIALS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+/** "Your year with Utilo Plus" (2 Nov 2026): the next 12 months as a strip, every
+ *  month checked daily, July marked for the 1 July price changes. */
+export function yearStrip(startMonth: number): string {
+  const cells = Array.from({ length: 12 }, (_, k) => (startMonth + k) % 12);
+  const cell = (m: number, k: number) => {
+    const july = m === 6;
+    const bg = july ? C.amber : k === 0 ? C.navy : C.tealTint;
+    const fg = july ? C.amberInk : k === 0 ? "#ffffff" : C.teal;
+    return `<td width="8.33%" align="center" style="padding:0 2px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" height="46" bgcolor="${bg}" style="height:46px;${k === 0 ? keepBg(C.navy) : `background:${bg};`}border-radius:8px;font:800 13px ${F};color:${fg};">${k === 0 ? keepWhite(`Now<br><span style="font:700 11px ${F};">&#10003;</span>`) : `${MONTH_INITIALS[m]}<br><span style="font:700 11px ${F};">&#10003;</span>`}</td></tr></table>
+    </td>`;
+  };
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 10px;table-layout:fixed;"><tr>${cells.map(cell).join("")}</tr></table>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;">
+    <tr><td valign="top" style="width:16px;padding:4px 8px 6px 0;"><div style="width:10px;height:10px;border-radius:3px;background:${C.tealBright};"></div></td><td style="padding:0 0 6px;font:13.5px/1.45 ${F};color:${C.ink};"><strong>Every morning</strong>: every plan on your network re-priced against your own bill.</td></tr>
+    <tr><td valign="top" style="width:16px;padding:4px 8px 6px 0;"><div style="width:10px;height:10px;border-radius:3px;background:${C.amber};"></div></td><td style="padding:0 0 6px;font:13.5px/1.45 ${F};color:${C.ink};"><strong>1 July</strong>: retailers reset their prices. We re-run everything for you.</td></tr>
+    <tr><td valign="top" style="width:16px;padding:4px 8px 6px 0;"><div style="width:10px;height:10px;border-radius:3px;background:${C.green};"></div></td><td style="padding:0 0 6px;font:13.5px/1.45 ${F};color:${C.ink};"><strong>Cheaper by ${money(50)}+ a year, or your discount about to end?</strong> One email, a month ahead where we can.</td></tr>
+  </table>`;
+}
+
+/** A phone-style alert, to show what a Utilo alert looks like. Always labelled as an example. */
+export function alertPreview(o: { title: string; body: string; label?: string }): string {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+    <tr><td style="padding:18px;border-radius:18px;background:${C.greyTint};">
+      <div style="font:800 11px ${F};letter-spacing:0.6px;text-transform:uppercase;color:${C.grey};margin:0 0 10px;">${o.label ?? "What an alert looks like (example)"}</div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;background:#ffffff;border:1px solid #e3e7f0;border-radius:16px;box-shadow:0 6px 18px rgba(19,28,87,0.08);">
+        <tr>
+          <td valign="top" style="width:44px;padding:14px 0 14px 14px;">
+            <table role="presentation" cellspacing="0" cellpadding="0"><tr><td width="36" height="36" align="center" bgcolor="${C.amber}" style="width:36px;height:36px;border-radius:9px;background:${C.amber};font:900 18px ${F};color:${C.amberInk};">U</td></tr></table>
+          </td>
+          <td style="padding:14px 14px 14px 10px;font-family:${F};">
+            <div style="font:700 11.5px ${F};color:${C.grey};">UTILO &middot; now</div>
+            <div style="font:800 15px/1.3 ${F};color:${C.ink};margin-top:2px;">${o.title}</div>
+            <div style="font:14px/1.45 ${F};color:${C.ink};margin-top:2px;">${o.body}</div>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>`;
+}
+
+/** Cancellation (2 Nov 2026): today, then the day it ends, on one line. */
+export function endTimeline(o: { leftTitle: string; leftSmall: string; rightTitle: string; rightSmall: string }): string {
+  const dot = (bg: string) => `<table role="presentation" cellspacing="0" cellpadding="0"><tr><td width="16" height="16" bgcolor="${bg}" style="width:16px;height:16px;border-radius:8px;background:${bg};font-size:0;line-height:0;">&nbsp;</td></tr></table>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+    <tr><td style="padding:18px 18px 16px;border-radius:14px;background:${C.greyTint};">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="width:16px;">${dot(C.green)}</td>
+          <td style="padding:0 6px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td height="4" bgcolor="${C.tealBright}" style="height:4px;background:${C.tealBright};border-radius:2px;font-size:0;line-height:0;">&nbsp;</td></tr></table></td>
+          <td style="width:16px;">${dot(C.navy)}</td>
+        </tr>
+      </table>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:8px;">
+        <tr>
+          <td valign="top" style="font-family:${F};"><div style="font:800 14px ${F};color:${C.ink};">${o.leftTitle}</div><div style="font:12.5px/1.4 ${F};color:${C.grey};">${o.leftSmall}</div></td>
+          <td valign="top" align="right" style="font-family:${F};"><div style="font:800 14px ${F};color:${C.ink};">${o.rightTitle}</div><div style="font:12.5px/1.4 ${F};color:${C.grey};">${o.rightSmall}</div></td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>`;
+}

@@ -1091,7 +1091,7 @@ export default function AccountPage() {
                         </div>
                       )}
 
-                                            {/* Your usage (1 Nov 2026): the numbers, the year ahead and the day, in one card. */}
+                                            {/* Usage (2 Nov 2026): "Through a day" card on top, "Year ahead" card below. */}
                       {fuel === "elec" && myShape && cmpInput && (
                         <UsageCard input={cmpInput} profile={homeProfile} shape={myShape.shape} exportPerDay={myShape.exportPerDay} evOvernight={myShape.evOvernight} fromAnswers={myShape.fromAnswers} place={sub?.suburb ?? null} />
                       )}

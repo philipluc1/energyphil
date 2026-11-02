@@ -10,7 +10,7 @@ export const CHECK_EVENTS: CheckEvent[] = ["check_started", "check_completed", "
 
 const SID_KEY = "utilo.sid";
 
-function sessionId(): string {
+export function sessionId(): string {
   try {
     let sid = window.sessionStorage.getItem(SID_KEY);
     if (!sid || !/^[a-z0-9]{12,40}$/.test(sid)) {

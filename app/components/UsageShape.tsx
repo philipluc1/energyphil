@@ -42,6 +42,7 @@ export default function UsageShape({
   note,
   live = false,
   place = null,
+  bare = false,
 }: {
   /** The shape to show; with `pick`, the one selected first. */
   shape?: UsageShapeKey;
@@ -54,6 +55,8 @@ export default function UsageShape({
   note?: string;
   /** The dashboard (2 Nov 2026): a "Now" line, and today's weather shaping the solar. */
   live?: boolean;
+  /** Drop the chart's own border and padding when it already sits in a card. */
+  bare?: boolean;
   /** Their suburb, for the weather. */
   place?: string | null;
 }) {
@@ -102,7 +105,7 @@ export default function UsageShape({
           ))}
         </div>
       )}
-      <div className={s.chartCard}>
+      <div className={bare ? s.chartBare : s.chartCard}>
         <div className={s.legend}>
           <span><i className={s.swGrid} /> From the grid, kW</span>
           {curve.feedInKwhPerDay > 0 && <span><i className={s.swFeed} /> Solar sent to the grid{weather ? ", today's weather" : ""}</span>}

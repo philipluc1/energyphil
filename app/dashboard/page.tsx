@@ -4,7 +4,9 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import DashboardCharts from "./DashboardCharts";
 import GrowthSections, { type AbandonedCheckout } from "./GrowthSections";
 import { abandonedLeads, cancelReasons, churnByMonth, churnDate, cohorts, revenue, type LeadLite, type MemberRow } from "@/lib/adminReports";
-import { fromSource, inPeriod, monthsFor, onPlan, parseFilters, periodDays, periodStart } from "@/lib/adminFilters";
+import { PERIODS, fromSource, inPeriod, monthsFor, onPlan, parseFilters, periodDays, periodStart } from "@/lib/adminFilters";
+import { LIVE_WINDOW_MS, liveNow, visitReport, type ViewRow } from "@/lib/visits";
+import VisitorsSection from "./VisitorsSection";
 import { stripe } from "@/lib/stripeClient";
 import styles from "./dashboard.module.css";
 import { cookies } from "next/headers";
@@ -103,8 +105,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }
   }
 
+  // Visitors (2 Nov 2026): page views in the period, and who's on the site now.
+  let pvQ = db.from("page_views").select("created_at, sid, path, ref, device, first, source").order("created_at", { ascending: false }).limit(50000);
+  if (since) pvQ = pvQ.gte("created_at", new Date(since).toISOString());
+  const pv = await pvQ;
+  const visitsMissing = !!pv.error && /does not exist|schema cache/i.test(pv.error.message);
+  const views = fromSource((pv.data ?? []) as ViewRow[], f);
+  let ckQ = db.from("check_events").select("sid").eq("event", "check_started").limit(50000);
+  if (since) ckQ = ckQ.gte("created_at", new Date(since).toISOString());
+  const checkSids = new Set(((await ckQ).data ?? []).map((r: { sid: string }) => r.sid));
+  const lv = await db.from("live_sessions").select("sid, path, last_seen").gte("last_seen", new Date(now.getTime() - LIVE_WINDOW_MS).toISOString()).limit(5000);
+  const live = lv.error ? { ok: false, message: "Run the latest SQL to turn this on." } : { ok: true, ...liveNow(lv.data ?? [], now.getTime()) };
+  const periodLabel = f.period === "all" ? "all time" : `last ${PERIODS.find((p) => p.id === f.period)?.label ?? ""}`;
+
   return (
-    <DashboardCharts stats={stats} subscriberStats={subscriberStats} funnel={funnel} filters={f} leadState={leadState}>
+    <DashboardCharts stats={stats} subscriberStats={subscriberStats} funnel={funnel} filters={f} leadState={leadState}
+      top={<VisitorsSection report={pv.error ? null : visitReport(views, checkSids)} live={live} periodLabel={periodLabel} missing={visitsMissing} />}>
       <GrowthSections
         rev={revenue(members, now)}
         churn={churnByMonth(members, now, months)}

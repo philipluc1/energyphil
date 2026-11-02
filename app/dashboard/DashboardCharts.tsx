@@ -65,11 +65,14 @@ export default function DashboardCharts({
   filters,
   leadState,
   children,
+  top,
 }: {
   stats: DashboardStats;
   subscriberStats?: SubscriberStats;
   funnel?: FunnelStats;
   children?: ReactNode;
+  /** Shown first, under the filters (the Visitors section). */
+  top?: ReactNode;
   filters?: DashFilters;
   /** Per lead email (lower case): already a member, unsubscribed, last invited. */
   leadState?: Record<string, { member: boolean; unsubscribed: boolean; invitedAt: string | null }>;
@@ -96,6 +99,8 @@ export default function DashboardCharts({
     <div className={styles.wrap}>
       <AdminHeader />
       {filters && <FilterBar filters={filters} />}
+
+      {top}
 
       {funnel && <LaunchFunnel funnel={funnel} />}
 

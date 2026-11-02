@@ -377,3 +377,31 @@ alter table public.admin_actions enable row level security;
 
 -- 2 Nov 2026: owner-sent invites to leads (one every 30 days at most).
 alter table public.leads add column if not exists invite_sent_at timestamptz;
+
+-- 2 Nov 2026: page views and "on the site now" for the owner dashboard.
+-- Anonymous: a random id per browser tab, the page path (no ? or #), the site
+-- that sent them, phone/tablet/desktop. No name, email or IP address.
+create table if not exists public.page_views (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  sid text not null,
+  path text not null,
+  ref text,                            -- e.g. 'google.com', first page of a visit only
+  device text,                         -- 'phone' | 'tablet' | 'desktop'
+  first boolean not null default false, -- the page they landed on
+  source text                          -- same as check_events.source
+);
+create index if not exists page_views_created on public.page_views (created_at desc);
+create index if not exists page_views_sid on public.page_views (sid);
+alter table public.page_views enable row level security;
+create table if not exists public.live_sessions (
+  sid text primary key,
+  path text,
+  last_seen timestamptz not null default now()
+);
+create index if not exists live_sessions_seen on public.live_sessions (last_seen desc);
+alter table public.live_sessions enable row level security;
+-- No policies: only the server (secret key) writes and reads these.
+
+-- 2 Nov 2026: the cancellation email is sent once per cancellation.
+alter table public.subscribers add column if not exists cancel_email_for text;

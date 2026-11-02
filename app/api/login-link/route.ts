@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const redirectTo = `${origin}/account`;
   try {
     // A member? (active or past-due; a lapsed member still gets in to see their history and re-join)
-    const { data: member } = await supabaseAdmin.from("subscribers").select("id").eq("email", email).limit(1).maybeSingle();
+    const { data: member } = await supabaseAdmin.from("subscribers").select("id, customer_name").eq("email", email).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (!member) return NextResponse.json({ ok: true, sent: true }); // same answer, nothing sent
 
     let { data, error } = await supabaseAdmin.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo } });
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const link = data?.properties?.action_link;
     if (error || !link) throw error ?? new Error("No link");
 
-    const e = signInEmail({ origin, url: link });
+    const e = signInEmail({ origin, url: link, name: (member as { customer_name?: string | null }).customer_name ?? null });
     const sent = await sendEmail({ to: email, subject: e.subject, title: e.title, html: e.html });
     if (!sent) throw new Error("send failed");
     return NextResponse.json({ ok: true, sent: true });

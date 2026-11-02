@@ -92,7 +92,7 @@ export async function refundDuplicate(session: Stripe.Checkout.Session, email: s
     const already = await stripe.refunds.list({ payment_intent: pi, limit: 1 });
     if (already.data.length) return true;
     await stripe.refunds.create({ payment_intent: pi, reason: "duplicate" }, { idempotencyKey: `utilo-duplicate-${session.id}` });
-    const e = duplicatePaymentEmail({ origin });
+    const e = duplicatePaymentEmail({ origin, name: session.customer_details?.name ?? null });
     await sendEmail({ to: email, subject: e.subject, title: e.title, html: e.html }).catch((err) => console.error("duplicate email failed", err));
     return true;
   } catch (err) {

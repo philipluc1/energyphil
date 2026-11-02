@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       yearly,
       vsBill: bill > 0 && !average,
       unsubscribeUrl: `${origin}/api/unsubscribe?type=lead&id=${inserted.id}`,
-      name: str(b?.customerName, 60)?.split(" ")[0] ?? null,
+      name: str(b?.customerName, 60) ?? null,
       nowYear: bench * perYear,
       bestYear: top.total * perYear,
       runnersUp,

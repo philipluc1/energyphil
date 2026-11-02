@@ -12,8 +12,8 @@ import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from 
 import { RETAILER_LINKS } from "./retailerLinks";
 import { namesList } from "./stickyPick";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
-import { FOUNDING_OFFER, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, bigFigure, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus } from "./emailParts";
+import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
+import { C, alertPreview, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -87,7 +87,8 @@ export function resultEmail(i: {
     : "";
 
   const html = `
-    <p>${i.name ? `Hi ${esc(i.name)},<br>` : ""}${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : `Here's your result on prices as at ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Melbourne" })}, so it's easy to find later.`} Prices change, so a later check can name a different plan: Plus members get one pick, kept up to date every morning.</p>
+    ${greet(i.name)}
+    <p>${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : `Here's your result on prices as at ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Melbourne" })}, so it's easy to find later.`} Prices change, so a later check can name a different plan: Plus members get one pick, kept up to date every morning.</p>
     ${stats}
     ${card}
     ${!i.vsBill && worth ? tip(`This is against the default offer. <strong>Snap your bill</strong> for your exact saving: <a href="${i.origin}/check">check again with a photo</a>.`) : ""}
@@ -121,32 +122,59 @@ export function resultEmail(i: {
   return { subject, title, html };
 }
 
-/* ---------- 2. Follow-up, day 3: what members get ---------- */
-export function followUpMembership(i: { origin: string; unsubscribeUrl: string }): Email {
+/* ---------- 2. Follow-up, day 3: what members get ----------
+   2 Nov 2026 (Phil: "more visual"): their own check as bars, the year ahead as
+   a strip (checked daily, 1 July marked), and what an alert looks like. */
+export function followUpMembership(i: {
+  origin: string;
+  unsubscribeUrl: string;
+  name?: string | null;
+  /** From their check, all optional. */
+  retailer?: string | null;
+  nowYear?: number | null;
+  bestYear?: number | null;
+  vsBill?: boolean;
+}): Email {
+  const v = plusValue();
+  const ra = regularPrice("annual");
+  const gap = i.nowYear && i.bestYear ? i.nowYear - i.bestYear : 0;
+  const theirCheck = i.nowYear && i.bestYear && gap >= 1
+    ? `${heading("Your check, 3 days ago")}${versus({
+        before: { label: i.vsBill ? "Your plan now" : "The default offer", value: i.nowYear },
+        after: { label: FREE_SHOWS_NAMES && i.retailer ? `Cheapest today: ${esc(i.retailer)}` : "Cheapest today", value: i.bestYear },
+        gapLabel: "There to save",
+      })}`
+    : "";
+  const melbMonth = Number(new Date().toLocaleString("en-AU", { month: "numeric", timeZone: "Australia/Melbourne" })) - 1;
   const html = `
+    ${greet(i.name)}
+    <p>A few days ago you checked your energy plan with Utilo. Here's what happens next, and how we'd keep watching it for you.</p>
+    ${theirCheck}
     ${heroPanel({ pill: "Utilo Plus", headline: "Cheapest today isn't cheapest forever.", body: "Retailers change their plans through the year, and most discounts end after the first year. We watch, so you don't have to." })}
-    ${tiles([
-      { sym: "!", title: "Never miss a price jump", text: "A month's warning before your discount or fixed price ends.", tint: "amber" },
-      { sym: "&#8635;", title: "Know the day it's cheaper", text: "Every plan re-checked against your bill, every morning.", tint: "teal" },
-      { sym: "&#9993;", title: "Only emails that pay", text: `One email, when switching saves ${money(WORTH_SWITCHING_PER_YEAR)}+ a year.`, tint: "green" },
-      { sym: "&#9638;", title: "1 July re-check", text: "When retailers change their prices, we re-run everything.", tint: "navy" },
-    ])}
+    ${heading("Your next 12 months with Utilo Plus")}
+    ${yearStrip(melbMonth)}
+    ${alertPreview({ title: "A cheaper plan for you", body: `A plan on your network now beats your pick by about ${money(120)} a year. Tap to see it.` })}
     ${statRow([
-      { big: plusValue().annual, small: FOUNDING_OFFER ? `a year, ${SPECIAL_NAME}${regularPrice("annual") ? ` (regular ${fmtPrice(regularPrice("annual")!)})` : ""}` : "a year", tone: "green" },
-      { big: plusValue().perWeek, small: "a week", tone: "navy" },
-      { big: plusValue().monthly, small: "or month to month", tone: "amber" },
+      { big: v.annual, small: FOUNDING_OFFER ? `a year, ${SPECIAL_NAME}${ra ? ` (regular ${fmtPrice(ra)})` : ""}` : "a year", tone: "green" },
+      { big: v.perWeek, small: "a week", tone: "navy" },
+      { big: v.monthly, small: "or month to month", tone: "amber" },
     ])}
     ${button("See Utilo Plus", `${i.origin}/pricing`)}
     <p style="margin:0 0 8px;font-size:13px;color:#5f6b82;">No lock-in: cancel any time. Not a cent from retailers.</p>
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you checked your plan with Utilo and asked for updates.")}`;
-  return { subject: "Prices move. We can keep watching for you", title: "We watch, so you don't have to.", html };
+  return {
+    subject: gap >= WORTH_SWITCHING_PER_YEAR ? `${money(gap)} a year today. Will it still be cheapest in July?` : "Prices move. We can keep watching for you",
+    title: "We watch, so you don't have to.",
+    html,
+  };
 }
 
 /* ---------- 3. Follow-up, day 7: did you switch? ---------- */
-export function followUpWeek(i: { origin: string; retailer: string | null; planName: string | null; yearly: number | null; unsubscribeUrl: string; nowYear?: number | null; bestYear?: number | null; vsBill?: boolean }): Email {
+export function followUpWeek(i: { origin: string; retailer: string | null; planName: string | null; yearly: number | null; unsubscribeUrl: string; nowYear?: number | null; bestYear?: number | null; vsBill?: boolean; name?: string | null }): Email {
   // A year, not a week (1 Nov 2026): "$2 a week" undersold a $119 saving.
   const yearly = i.yearly && i.yearly >= WORTH_SWITCHING_PER_YEAR ? i.yearly : null;
   const html = `
+    ${greet(i.name)}
     <p>${FREE_SHOWS_NAMES && i.retailer ? `A week ago we found a cheaper plan for you with ${esc(i.retailer)}${i.planName ? ` (&ldquo;${esc(i.planName)}&rdquo;)` : ""}.` : "A week ago we found a cheaper plan for you."} Utilo Plus re-checks it every morning and warns you before your discount ends: <a href="${i.origin}/pricing">${plusValue().monthly} a month, or ${plusValue().annual} a year</a>.</p>
     ${yearly && i.nowYear && i.bestYear
       ? versus({ before: { label: i.vsBill ? "Staying on your plan" : "The default offer", value: i.nowYear }, after: { label: FREE_SHOWS_NAMES && i.retailer ? `Switching to ${esc(i.retailer)}` : "Switching", value: i.bestYear }, gapLabel: "Staying put costs" })
@@ -176,7 +204,8 @@ export function leadInvite(i: {
   const tagged = (path: string) => `${i.origin}${path}${path.includes("?") ? "&" : "?"}utm_source=email&utm_medium=invite&utm_campaign=lead-invite`;
   const ra = regularPrice("annual");
   const html = `
-    <p>${i.name ? `Hi ${esc(i.name)}. ` : ""}On ${esc(i.checkedOn)} you checked your energy plan with Utilo${yearly ? ` and we found you could save about <strong>${money(yearly)} a year</strong>${FREE_SHOWS_NAMES && i.retailer ? ` with ${esc(i.retailer)}` : ""}` : ""}.</p>
+    ${greet(i.name)}
+    <p>On ${esc(i.checkedOn)} you checked your energy plan with Utilo${yearly ? ` and we found you could save about <strong>${money(yearly)} a year</strong>${FREE_SHOWS_NAMES && i.retailer ? ` with ${esc(i.retailer)}` : ""}` : ""}.</p>
     ${heroPanel({
       pill: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
       headline: "We'll watch it for you, every morning.",
@@ -197,8 +226,9 @@ export function leadInvite(i: {
 }
 
 /* ---------- 4. Cheaper plan found (member) ---------- */
-export function cheaperForMember(i: { origin: string; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null; prevYear?: number | null; newYear?: number | null; prevRetailer?: string | null }): Email {
+export function cheaperForMember(i: { origin: string; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null; prevYear?: number | null; newYear?: number | null; prevRetailer?: string | null; name?: string | null }): Email {
   const html = `
+    ${greet(i.name)}
     ${heroPanel({ pill: "Cheaper plan found", headline: `About ${money(i.yearly)} a year less`, body: `Watching the market for you this morning, we found a plan that beats our last pick.${i.offerNote ? ` ${esc(i.offerNote)}` : ""}` })}
     ${i.prevYear && i.newYear ? versus({ before: { label: i.prevRetailer ? `Our last pick (${esc(i.prevRetailer)})` : "Our last pick", value: i.prevYear }, after: { label: esc(i.retailer), value: i.newYear }, gapLabel: "You'd save" }) : ""}
     ${planCard({ kicker: "New cheapest for you", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: "a year cheaper than our last pick." }, link: retailerLink(i.retailer), tone: "green" })}
@@ -210,8 +240,9 @@ export function cheaperForMember(i: { origin: string; retailer: string; planName
 }
 
 /* ---------- 4b. Cheaper gas plan found (member) ---------- */
-export function cheaperGasForMember(i: { origin: string; retailer: string; planName: string; yearly: number; vsBill: boolean; unsubscribeUrl: string; prevYear?: number | null; newYear?: number | null }): Email {
+export function cheaperGasForMember(i: { origin: string; retailer: string; planName: string; yearly: number; vsBill: boolean; unsubscribeUrl: string; prevYear?: number | null; newYear?: number | null; name?: string | null }): Email {
   const html = `
+    ${greet(i.name)}
     ${heroPanel({ pill: "Gas", headline: `A cheaper gas plan: about ${money(i.yearly)} a year less`, body: "Watching gas prices for you this morning, we found a gas plan that beats our last pick." })}
     ${i.prevYear && i.newYear ? versus({ before: { label: "Our last gas pick", value: i.prevYear }, after: { label: esc(i.retailer), value: i.newYear }, gapLabel: "You'd save" }) : ""}
     ${planCard({ kicker: "New cheapest gas plan for you", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: i.vsBill ? "a year less than our last pick, based on your gas bill." : "a year less than our last pick." }, link: retailerLink(i.retailer), tone: "amber" })}
@@ -223,13 +254,14 @@ export function cheaperGasForMember(i: { origin: string; retailer: string; planN
 }
 
 /* ---------- 5. Cheaper plan found (free user who opted in) ---------- */
-export function cheaperForLead(i: { origin: string; previousRetailer: string | null; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null; prevYear?: number | null; newYear?: number | null }): Email {
+export function cheaperForLead(i: { origin: string; previousRetailer: string | null; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null; prevYear?: number | null; newYear?: number | null; name?: string | null }): Email {
   const html = `
+    ${greet(i.name)}
     ${heroPanel({ pill: "Prices moved", headline: `Something cheaper: about ${money(i.yearly)} a year less`, body: "Prices have moved since you checked your plan, and there's now a cheaper one for a home like yours." })}
     ${i.prevYear && i.newYear && FREE_SHOWS_NAMES ? versus({ before: { label: i.previousRetailer ? `Your earlier best (${esc(i.previousRetailer)})` : "Your earlier best", value: i.prevYear }, after: { label: esc(i.retailer), value: i.newYear }, gapLabel: "Now cheaper by" }) : ""}
     ${planCard({ kicker: "New cheapest in your area", retailer: FREE_SHOWS_NAMES ? i.retailer : "Utilo Plus shows which retailer", planName: FREE_SHOWS_NAMES ? i.planName : "The plan, its rates and sign-up conditions are on your dashboard.", figure: { amount: i.yearly, after: "a year cheaper than your earlier best match." }, link: FREE_SHOWS_NAMES ? retailerLink(i.retailer) : { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` }, tone: "amber" })}
     ${button("Check it with my bill", `${i.origin}/check`)}
-    ${tip(`This is priced on the usage from your earlier check. Utilo Plus watches your own bill every morning and warns you before your discount ends: <a href="${i.origin}/pricing">$7 a month, or $39 a year</a>.`)}
+    ${tip(`This is priced on the usage from your earlier check. Utilo Plus watches your own bill every morning and warns you before your discount ends: <a href="${i.origin}/pricing">${plusValue().monthly} a month, or ${plusValue().annual} a year</a>.`)}
     ${note(esc(PRICE_CHANGE_CLAUSE))}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you asked to be told about cheaper plans.")}`;
   return { subject: "A cheaper electricity plan just showed up in your area", title: "Prices moved in your favour.", html };
@@ -247,9 +279,11 @@ export function dealEnding(i: {
   /** Their plan now and the cheapest, a year, when we know both. */
   nowYear?: number | null;
   bestYear?: number | null;
+  name?: string | null;
 }): Email {
   const short = i.what.startsWith("discount") ? "discount" : "fixed price";
   const html = `
+    ${greet(i.name)}
     ${countdown(i.daysLeft, `Your ${esc(short)} ends ${esc(i.when)}`, "Prices often go up when that happens. Here's where you stand today.")}
     ${i.nowYear && i.bestYear && i.best && i.nowYear - i.bestYear >= WORTH_SWITCHING_PER_YEAR ? versus({ before: { label: "Your plan now", value: i.nowYear }, after: { label: esc(i.best.retailer), value: i.bestYear }, gapLabel: "You could save" }) : ""}
     ${i.best ? planCard({ kicker: "Cheapest for you today", retailer: i.best.retailer, planName: i.best.planName, figure: i.yearly !== null && i.yearly >= WORTH_SWITCHING_PER_YEAR ? { amount: i.yearly, after: "a year less than your last bill." } : null, link: retailerLink(i.best.retailer) }) : ""}
@@ -314,7 +348,8 @@ export function monthlyCheck(i: {
   const f = i.facts ?? null;
   const html = f
     ? `
-    <p>${name ? `Hi ${esc(name)}. ` : ""}${i.isJuly ? "Retailers changed their prices on 1 July, so we've re-checked your plan against the new ones." : "Your month in 30 seconds. We re-checked your plan against today's prices"}${i.activityCount && !i.isJuly ? `, including ${i.activityCount} offers that changed on your network.` : i.isJuly ? "" : "."}</p>
+    ${greet(i.customerName)}
+    <p>${i.isJuly ? "Retailers changed their prices on 1 July, so we've re-checked your plan against the new ones." : "Your month in 30 seconds. We re-checked your plan against today's prices"}${i.activityCount && !i.isJuly ? `, including ${i.activityCount} offers that changed on your network.` : i.isJuly ? "" : "."}</p>
     ${i.gas ? heading("Electricity") : ""}
     ${card}
     ${i.gas ? heading("Gas") + gasBlock : ""}
@@ -324,7 +359,8 @@ export function monthlyCheck(i: {
     ${note(`Switched recently? <a href="${i.origin}/account">Add the date on your dashboard</a> so your savings count from the right day. New bill? Snap it there and every figure updates. All figures are estimates from your bill and today's prices.`)}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this monthly summary as a Utilo member. You can also turn it off on the Plus tab. This won't cancel Utilo Plus.")}`
     : `
-    <p>${name ? `Hi ${esc(name)}. ` : ""}${lead}${i.activity ? ` This month retailers made ${esc(i.activity)} on your network, and we checked every one against your home.` : ""}</p>
+    ${greet(i.customerName)}
+    <p>${lead}${i.activity ? ` This month retailers made ${esc(i.activity)} on your network, and we checked every one against your home.` : ""}</p>
     ${i.gas ? heading("Electricity") : ""}
     ${card}
     ${i.gas ? heading("Gas") + gasBlock : ""}
@@ -453,7 +489,8 @@ export function renewalRecap(i: {
 }): Email {
   const saved = i.switched && i.savedSoFar >= 1;
   const html = `
-    <p>${i.name ? `Hi ${esc(i.name)},<br>` : ""}Your membership renews soon, so here's what Utilo did for you this year.</p>
+    ${greet(i.name)}
+    <p>Your membership renews soon, so here's what Utilo did for you this year.</p>
     ${heroPanel({ pill: "Your year with Utilo Plus", headline: `We checked your plan every morning for ${i.daysWatched.toLocaleString("en-AU")} days.`, body: `Every plan${i.network ? ` on the ${esc(i.network)} network` : ""} re-priced against your own bill, so you didn't have to keep an eye on the market.` })}
     ${statRow([
       { big: i.daysWatched.toLocaleString("en-AU"), small: "days watched", tone: "navy" },
@@ -480,11 +517,58 @@ export function renewalRecap(i: {
   };
 }
 
+/* ---------- Cancelled (2 Nov 2026) ----------
+   Sent once when a member cancels. "scheduled": it runs to the end of what
+   they've paid for. "ended": it stopped straight away (cancelled now, or
+   payments failed). No guilt trip: the date, no more charges, what stops,
+   and the price they'd come back at. */
+export function membershipCancelled(i: {
+  origin: string;
+  name?: string | null;
+  kind: "scheduled" | "ended";
+  /** "16 November 2026" — the last day, for "scheduled". */
+  endsOn?: string | null;
+  /** Their locked price, e.g. "$39 a year", when they're on the New Year special price. */
+  lockedPrice?: string | null;
+  /** The regular price they'd rejoin at, e.g. "$45 a year". */
+  regularPrice?: string | null;
+}): Email {
+  const scheduled = i.kind === "scheduled" && !!i.endsOn;
+  const today = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "Australia/Melbourne" });
+  const priceNote = i.lockedPrice && i.regularPrice
+    ? tip(`<strong>About your price.</strong> Your ${esc(i.lockedPrice)} ${SPECIAL_NAME} price stays only while you're a member. ${FOUNDING_OFFER ? `Rejoin before ${SPECIAL_ENDS_LABEL} and you'll get it again; after that it's ${esc(i.regularPrice)}.` : `If you rejoin later, it's ${esc(i.regularPrice)}.`}`)
+    : "";
+  const html = `
+    ${greet(i.name)}
+    <p>${scheduled ? "We've cancelled your Utilo Plus membership, as you asked. You won't be charged again." : "Your Utilo Plus membership has ended, and you won't be charged again."}</p>
+    ${scheduled
+      ? endTimeline({ leftTitle: "Today", leftSmall: `Cancelled ${esc(today)}`, rightTitle: esc(i.endsOn!), rightSmall: "Last day of Plus. No more charges." })
+      : bigFigure({ figure: "&#10003; Ended", label: "Utilo Plus", body: "No more charges. Your free checks are still there whenever you want one.", tone: "teal" })}
+    ${heading(scheduled ? `Until ${esc(i.endsOn!)}, everything keeps working` : "What stops now")}
+    ${tiles([
+      { sym: "&#8635;", title: "Daily re-checks", text: "Every plan re-priced against your bill each morning.", tint: "teal" },
+      { sym: "!", title: "Price-jump warnings", text: "A month's notice before a discount or fixed price ends.", tint: "amber" },
+      { sym: "&#9993;", title: "Cheaper-plan alerts", text: `One email when switching saves ${money(WORTH_SWITCHING_PER_YEAR)}+ a year.`, tint: "green" },
+      { sym: "&#9638;", title: "Your dashboard", text: "Your bills, savings and year ahead in one place.", tint: "navy" },
+    ])}
+    ${priceNote}
+    ${scheduled
+      ? `${heading("Changed your mind?")}<p style="margin:0 0 12px;">You can keep your membership any time before ${esc(i.endsOn!)}: open your dashboard, go to Plus and tap <strong>Manage billing</strong>, then <strong>Renew</strong>. Nothing changes and your price stays the same.</p>${button("Keep my membership", `${i.origin}/account#membership`)}`
+      : `${button("Rejoin Utilo Plus", `${i.origin}/pricing`)}<p style="margin:0 0 12px;">Or <a href="${i.origin}/check">run a free check</a> any time.</p>`}
+    ${note(`Want your details gone? Sign in and use <strong>Privacy and your data</strong> at the bottom of your dashboard to delete them. Thanks for trying Utilo.`)}`;
+  return {
+    subject: scheduled ? `Your Utilo Plus ends on ${i.endsOn}` : "Your Utilo Plus membership has ended",
+    title: scheduled ? "Your membership is cancelled." : "Your membership has ended.",
+    html,
+  };
+}
+
 /* ---------- Referral: a friend joined with the member's link ----------
    No friend's name or email: just that someone joined and the credit. */
-export function referralCreditEmail(i: { origin: string }): Email {
+export function referralCreditEmail(i: { origin: string; name?: string | null }): Email {
   const credit = referralDollars(REFERRAL_CREDIT_CENTS);
   const html = `
+    ${greet(i.name)}
     <p>Someone joined Utilo with your link. Thank you for passing it on.</p>
     ${bigFigure({ figure: `${credit} off`, label: "Your credit", body: "On your account now. It comes off your next membership payment automatically.", tone: "green" })}
     ${heading("Share it again")}
@@ -499,8 +583,9 @@ export function referralCreditEmail(i: { origin: string }): Email {
 
 /* ---------- A second payment by mistake (already a member) ----------
    Sent once, when the duplicate is cancelled and refunded. */
-export function duplicatePaymentEmail(i: { origin: string }): Email {
+export function duplicatePaymentEmail(i: { origin: string; name?: string | null }): Email {
   const html = `
+    ${greet(i.name)}
     <p>You were already a Utilo member under this email, so we've cancelled the second membership and refunded that payment in full. Your original membership carries on as normal.</p>
     ${bigFigure({ figure: "&#10003; Refunded", label: "Second payment", body: "On its way back to your card. Refunds usually show within 5 to 10 business days, depending on your bank.", tone: "green" })}
     ${button("Open my dashboard", `${i.origin}/account#membership`)}`;
@@ -509,8 +594,9 @@ export function duplicatePaymentEmail(i: { origin: string }): Email {
 
 /* ---------- Member login: the sign-in link ----------
    One button. Works once, for about an hour. */
-export function signInEmail(i: { origin: string; url: string }): Email {
+export function signInEmail(i: { origin: string; url: string; name?: string | null }): Email {
   const html = `
+    ${greet(i.name)}
     ${heroPanel({ pill: "Sign in", headline: "Your dashboard is one tap away", body: "No password needed. This link works once, for about an hour, on the device you open it on.", button: { label: "Sign in to Utilo", url: i.url } })}
     ${note("Didn't ask for this? You can ignore it; nobody can sign in without this email. Need a fresh link later? Go to Log in and enter this address again.")}
     <p style="margin:16px 0 0;font-size:13px;color:#5f6b82;">Sent from Utilo, ${esc(i.origin.replace(/^https?:\/\//, ""))}.</p>`;

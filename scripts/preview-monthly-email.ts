@@ -30,13 +30,13 @@ const facts = summaryFacts({
 });
 const act = marketActivity({ network: watch.distributor, days: 31 });
 const e = monthlyCheck({
-  origin: "https://www.utiloaustralia.com.au",
+  origin: "https://www.utilo.com.au",
   monthName: "November",
   isJuly: false,
   retailer: best.bestRetailer,
   planName: best.bestPlanName,
   yearly: ((reference - best.bestTotal) * 365) / 91,
-  unsubscribeUrl: "https://www.utiloaustralia.com.au/api/unsubscribe?type=subscriber&id=sample",
+  unsubscribeUrl: "https://www.utilo.com.au/api/unsubscribe?type=subscriber&id=sample",
   activity: act.ready ? activityWords(act) || "8 new offers and 12 price changes" : "8 new offers and 12 price changes",
   activityCount: act.ready ? act.newOffers + act.priceChanges : 20,
   facts,

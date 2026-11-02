@@ -101,7 +101,7 @@ export default function PrivacyPolicyPage() {
             To save you typing everything again, the check saves your answers and last result in your browser (local storage) on the device you
             used. This stays on your device and isn&apos;t sent to us unless you ask for your result by email or join. To clear it, use{" "}
             <strong>Start fresh</strong> on the check page, or clear your browser&apos;s site data. If you sign in, your browser also keeps a sign-in
-            session. We don&apos;t use advertising trackers. To count visits we use Vercel Web Analytics, which sets no cookies and doesn&apos;t identify you: it records the page you viewed (without anything after a ? or #, apart from ad campaign tags), the site that sent you, and your country and type of device.
+            session. We don&apos;t use advertising trackers. To count visits we use Vercel Web Analytics, which sets no cookies and doesn&apos;t identify you: it records the page you viewed (without anything after a ? or #, apart from ad campaign tags), the site that sent you, and your country and type of device. We also keep our own count, on our database: a random number for your browser tab (kept only until you close the tab), the pages you viewed (without anything after a ? or #), the site that sent you, and whether you&apos;re on a phone, tablet or computer. It has no name, email or IP address, and it lets us see how many people are on the site and which pages they land on.
           </p>
         </section>
 

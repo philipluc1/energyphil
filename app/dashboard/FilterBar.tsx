@@ -6,6 +6,7 @@ import { PERIODS, PLANS, SOURCES, describeFilters, isFiltered, type DashFilters 
 import styles from "./dashboard.module.css";
 
 export const SECTIONS = [
+  { id: "visitors", label: "Visitors" },
   { id: "launch", label: "Launch" },
   { id: "revenue", label: "Revenue and retention" },
   { id: "didnt", label: "Didn't join" },

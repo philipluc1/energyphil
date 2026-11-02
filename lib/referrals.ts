@@ -20,12 +20,12 @@ export function newReferralCode(): string {
 }
 
 /** The active member who owns a referral code, or null. */
-export async function referrerFor(code: string | null | undefined): Promise<{ id: string; email: string; stripe_customer_id: string | null } | null> {
+export async function referrerFor(code: string | null | undefined): Promise<{ id: string; email: string; stripe_customer_id: string | null; customer_name?: string | null } | null> {
   const c = cleanReferralCode(code);
   if (!c || !supabaseAdmin) return null;
   const { data, error } = await supabaseAdmin
     .from("subscribers")
-    .select("id, email, stripe_customer_id")
+    .select("id, email, stripe_customer_id, customer_name")
     .eq("referral_code", c)
     .eq("status", "active")
     .limit(1)
@@ -77,7 +77,7 @@ export async function creditReferrer(o: { code: string; checkoutSessionId: strin
     return false;
   }
   await supabaseAdmin.from("subscribers").update({ referral_credited: true }).eq("stripe_checkout_session_id", o.checkoutSessionId);
-  const e = referralCreditEmail({ origin: o.origin });
+  const e = referralCreditEmail({ origin: o.origin, name: ref.customer_name ?? null });
   await sendEmail({ to: ref.email, subject: e.subject, title: e.title, html: e.html }).catch((err) => console.error("referral email failed", err));
   return true;
 }
