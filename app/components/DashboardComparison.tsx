@@ -16,7 +16,7 @@ import type { ResultsChartPalette } from "@/lib/dashThemes";
 import { AVERAGE_ANNUAL_KWH, usageOrAverage, vdoBillForUsage } from "@/lib/profileUsage";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { FREE_SHOWS_NAMES, WORTH_SWITCHING_PER_YEAR, OVERPRICED_PER_YEAR, OVERPRICED_SHARE } from "@/lib/dataPolicy";
-import { NEAR_TIE_PER_YEAR, namesList, stickyPick } from "@/lib/stickyPick";
+import { stickyPick } from "@/lib/stickyPick";
 import { useCountUp } from "@/lib/useCountUp";
 import PriceLine from "./PriceLine";
 import PlanViewToggle from "./PlanViewToggle";
@@ -259,7 +259,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         <div className={styles.facts}>
           {overVdo && (
             <details className={`${styles.fact} ${styles.factBad}`}>
-              <summary><Icon name="alert" size={14} /> <b>You pay {Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b><span className={styles.factMore}>why it matters</span></summary>
+              <summary><Icon name="alert" size={14} /> <b>{Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b><span className={styles.factMore}>why it matters</span></summary>
               <p>
                 The default offer is the government&apos;s reference price: {money(c.vdo * k)} {perLabel} for your usage. Most people can do better than
                 the default, so a plan that costs more than it is one worth moving off.
@@ -313,26 +313,6 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         )}
       </div>
       {verdict !== "good" && savingYear > 0 && <FunEquivalents dollars={savingYear} />}
-      {/* One pick, everywhere (2 Nov 2026): near-equal plans named, not swapped in. */}
-      {names && (() => {
-        const moreCheap = c.top !== c.cheapestPlan ? c.cheapestPlan : null;
-        const ties = c.nearTies.filter((m) => m !== moreCheap).map((m) => m.plan[0]);
-        if (!moreCheap && ties.length === 0) return null;
-        return (
-          <p className={styles.ties}>
-            {moreCheap && (
-              <>
-                {moreCheap.plan[0]} is {whole((c.top.total - moreCheap.total) * c.perYear)} a year cheaper today. That&apos;s under the {whole(WORTH_SWITCHING_PER_YEAR)} we think matters, so our pick stays {c.top.plan[0]}.{" "}
-              </>
-            )}
-            {ties.length > 0 && (
-              <>
-                Within {whole(NEAR_TIE_PER_YEAR)} a year of {c.top.plan[0]}: {namesList(ties)}. Any of these is a good choice; compare their terms in the list.
-              </>
-            )}
-          </p>
-        );
-      })()}
       <div className={styles.verdictActions}>
         {!names && (
           <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> See which retailer →</a>
@@ -345,18 +325,6 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         )}
         {!haveBill && <a href={member ? "#savings" : "/check"} className={styles.ghost}>Upload your bill for your real numbers</a>}
       </div>
-      {/* Same retailer, different plan (2 Nov 2026): folded away, open on tap (Phil, 2 Nov). */}
-      {samePlace && (
-        <details className={`${styles.fact} ${styles.factSame}`}>
-          <summary><Icon name="check" size={14} /> <b>No need to change retailer</b><span className={styles.factMore}>how</span></summary>
-          <p>
-            {sameName
-              ? <>{top.plan[0]} sells &ldquo;{top.plan[2]}&rdquo; to new customers at lower rates than your bill. Just ask them to move you onto today&apos;s rates</>
-              : <>{top.plan[0]} is who you&apos;re with now. Just ask them to move you to &ldquo;{top.plan[2]}&rdquo;</>}
-            {verdict !== "good" && savingYear >= 1 ? <> and save about <b>{whole(savingYear)} a year</b></> : null}. Same company, same account: usually a quick call or a few taps in their app.
-          </p>
-        </details>
-      )}
       <p className={styles.fine}>
         {c.average
           ? `Priced today for the average Victorian home (${AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year), because we don't have enough of your usage yet. Upload a full bill for your own numbers.`
