@@ -569,3 +569,16 @@ details[open] > .panelSummary::after { content: " ▴"; }
 .stateAct .btnGhost:hover, .stateSevere .btnGhost:hover, .stateGood .btnGhost:hover { background: rgba(255, 255, 255, 0.1); }
 .stateAct .linkBtn, .stateSevere .linkBtn, .stateGood .linkBtn { color: #fff; }
 .stateAct .switchRow, .stateSevere .switchRow, .stateGood .switchRow { color: #fff; }
+
+/* Same retailer, different plan (2 Nov 2026). */
+.sameBubble { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #bbf7d0; color: #14532d; font-size: 10.5px; font-weight: 900; letter-spacing: 0.03em; vertical-align: 1px; white-space: nowrap; }
+.sameLine { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(187, 247, 208, 0.16); border: 1px solid rgba(187, 247, 208, 0.5); font-size: 14px; line-height: 1.5; }
+.sameLine b { font-weight: 900; }
+.sameFold { border-radius: 12px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(187, 247, 208, 0.45); font-size: 14px; line-height: 1.5; }
+.sameFold summary { list-style: none; display: flex; gap: 8px; align-items: center; padding: 8px 12px; cursor: pointer; font-weight: 800; }
+.sameFold summary::-webkit-details-marker { display: none; }
+.sameFold summary::before { content: "✓"; color: #bbf7d0; font-weight: 900; }
+.sameFold summary span { margin-left: auto; font-size: 12px; font-weight: 700; opacity: 0.8; }
+.sameFold summary span::after { content: " ▾"; }
+.sameFold[open] summary span::after { content: " ▴"; }
+.sameFold p { margin: 0; padding: 0 12px 10px 30px; opacity: 0.92; }

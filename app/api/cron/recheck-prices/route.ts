@@ -5,7 +5,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 import { topOpen } from "@/lib/planExtras";
-import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, renewalRecap, resultEmail, reviewAsk } from "@/lib/emailTemplates";
+import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, renewalRecap, resultEmail, reviewAsk, switchReminderEmail } from "@/lib/emailTemplates";
+import { cleanNote, melbourneDay } from "@/lib/switchReminder";
 import { reviewAskDue, reviewUrl, trackedReviewLink } from "@/lib/reviews";
 import { daysWatched, recapDue, savedSince, RECAP_PLANS, type Episode } from "@/lib/renewalRecap";
 import { marketActivity } from "@/lib/marketActivity";
@@ -152,6 +153,17 @@ export async function GET(req: NextRequest) {
     if (!rErr) for (const x of (rs ?? []) as { id: string; current_rates: unknown }[]) { const r = ratesFromJson(x.current_rates); if (r) ratesOf.set(x.id, r); }
   }
 
+  // Who each member is with now, for "same retailer, different plan" (2 Nov 2026). Loaded separately too.
+  const withNow = new Map<string, string>();
+  {
+    const { data: cs, error: cErr } = await supabaseAdmin.from("subscribers").select("id, current_retailer, switched_to, switched_at").eq("status", "active");
+    if (!cErr)
+      for (const x of (cs ?? []) as { id: string; current_retailer: string | null; switched_to: string | null; switched_at: string | null }[]) {
+        const r = (x.switched_at && x.switched_to) || x.current_retailer;
+        if (r) withNow.set(x.id, r);
+      }
+  }
+
   // One email per address, from the newest active membership (2 Nov 2026).
   const keep = await activeRowsToEmail(supabaseAdmin);
   const skip = (id: string) => !!keep && !keep.has(id);
@@ -209,6 +221,7 @@ export async function GET(req: NextRequest) {
         newYear: (best.bestTotal * 365) / days,
         prevRetailer: sub.last_notified_retailer ?? sub.baseline_retailer ?? null,
         name: sub.customer_name,
+        currentRetailer: withNow.get(sub.id) ?? null,
       });
       const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
 
@@ -595,6 +608,32 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // --- "Remind me" by email (2 Nov 2026): the member picked today. Sent once, then cleared. ---
+  let reminders = 0;
+  {
+    const { data: rm, error: rmErr } = await supabaseAdmin
+      .from("subscribers")
+      .select("id, email, customer_name, nmi, switch_remind_on, switch_remind_note")
+      .eq("status", "active")
+      .not("switch_remind_on", "is", null)
+      .lte("switch_remind_on", melbourneDay());
+    if (rmErr && !/column|schema cache/i.test(rmErr.message ?? "")) console.warn("recheck-prices: reminders", rmErr.message);
+    for (const row of (rm ?? []) as { id: string; email: string; customer_name: string | null; nmi: string | null; switch_remind_note: unknown }[]) {
+      try {
+        const n = cleanNote(row.switch_remind_note);
+        if (n) {
+          const e = switchReminderEmail({ origin, name: row.customer_name, retailer: n.retailer, planName: n.plan, savingYear: n.savingYear, same: n.same, nmi: row.nmi });
+          if (!(await sendEmail({ to: row.email, subject: e.subject, title: e.title, html: e.html }))) continue; // try again tomorrow
+          reminders++;
+        }
+        await supabaseAdmin.from("subscribers").update({ switch_remind_on: null, switch_remind_note: null }).eq("id", row.id);
+      } catch (err) {
+        console.error("recheck-prices: reminder failed", row.id, err);
+        errors++;
+      }
+    }
+  }
+
   // --- Google review requests (2 Nov 2026): lib/reviews.ts says who and when ---
   let reviewAsks = 0;
   if (reviewUrl()) {
@@ -636,6 +675,7 @@ export async function GET(req: NextRequest) {
 
   await sendHealthEmail("daily recheck", {
     "review requests": reviewAsks,
+    "switch reminders": reminders,
     "renewal recaps": recaps,
     "members checked": (subsData ?? []).length,
     "members alerted": subscribersNotified,
@@ -645,7 +685,7 @@ export async function GET(req: NextRequest) {
     "gas alerts": gasAlerts,
     errors,
   });
-  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, recaps, reviewAsks, errors });
+  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, recaps, reviewAsks, reminders, errors });
 }
 
 /** Warn this many days before a discount or fixed price ends. */

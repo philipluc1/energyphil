@@ -1,20 +1,11 @@
 import type { CurrentRates } from "@/lib/billExtraction";
 import type { PlanRow } from "@/lib/plans";
+import { rateRows } from "@/lib/rateRows";
 import s from "./ratescompare.module.css";
 
 // Your rates (read off your bill) beside the cheapest plan's published rates.
 // Everything in cents and GST inclusive, like a bill. Lower is better for
 // charges; higher is better for the solar feed-in credit.
-
-type Key = "supply" | "anytime" | "peak" | "shoulder" | "offpeak" | "cl" | "solarFit";
-const ROWS: { key: Key; label: string; unit: string; idx: number }[] = [
-  { key: "supply", label: "Supply charge", unit: "c a day", idx: 4 },
-  { key: "anytime", label: "Usage, anytime", unit: "c per kWh", idx: 5 },
-  { key: "peak", label: "Usage, peak", unit: "c per kWh", idx: 6 },
-  { key: "shoulder", label: "Usage, shoulder", unit: "c per kWh", idx: 7 },
-  { key: "offpeak", label: "Usage, off-peak", unit: "c per kWh", idx: 8 },
-  { key: "cl", label: "Controlled load", unit: "c per kWh", idx: 9 },
-];
 
 const c = (dollars: number) => `${(dollars * 100).toFixed(2)}c`;
 
@@ -24,6 +15,7 @@ export default function RatesCompare({
   planLabel,
   dark = false,
   compact = false,
+  showCl,
 }: {
   /** Rates read from the customer's bill, or null if we don't have them. */
   current: CurrentRates | null;
@@ -34,10 +26,14 @@ export default function RatesCompare({
   dark?: boolean;
   /** Narrow layout for the dashboard side column. */
   compact?: boolean;
+  /** The home has a controlled-load (hot water) meter; otherwise that row only shows when the bill has a rate for it. */
+  showCl?: boolean;
 }) {
-  const rows = ROWS.filter((r) => (current?.[r.key] ?? null) !== null || plan[r.idx] !== null);
+  // One "Usage" row for one price all day; peak / off-peak only for time of use (2 Nov 2026).
+  const all = rateRows(current, plan, { cl: showCl, solar: true });
+  const rows = all.filter((r) => r.key !== "solarFit");
   const planFit = plan[10];
-  const curFit = current?.solarFit ?? null;
+  const curFit = all.find((r) => r.key === "solarFit")?.you ?? null;
   const better = (mine: number | null, theirs: number | null, higherIsBetter = false) => {
     if (mine === null || theirs === null || Math.abs(mine - theirs) < 1e-6) return [false, false];
     const mineBetter = higherIsBetter ? mine > theirs : mine < theirs;
@@ -56,13 +52,13 @@ export default function RatesCompare({
         </thead>
         <tbody>
           {rows.map((r) => {
-            const mine = current?.[r.key] ?? null;
-            const theirs = plan[r.idx] as number | null;
+            const mine = r.you;
+            const theirs = r.plan;
             const [a, b] = better(mine, theirs);
             return (
               <tr key={r.key}>
                 <th scope="row">
-                  {r.label}
+                  {r.key === "supply" ? "Supply charge" : r.label}
                   <small>{r.unit}</small>
                 </th>
                 <td className={a ? s.win : undefined}>{mine !== null ? c(mine) : "—"}</td>

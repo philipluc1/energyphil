@@ -269,6 +269,8 @@ export function moneyHero(o: {
   after: string;
   button?: { label: string; url: string } | null;
   small?: string | null;
+  /** The label over the retailer: "Switch to" unless said otherwise (e.g. "Ask them for", same retailer). */
+  toLabel?: string;
 }): string {
   const amt = "$" + Math.round(o.amount).toLocaleString("en-AU");
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
@@ -277,7 +279,7 @@ export function moneyHero(o: {
       <div style="margin:14px 0 0;font:800 50px/1 ${F};color:${C.amber};letter-spacing:-1px;">${amt}</div>
       ${keepWhite(`<div style="margin:4px 0 16px;font:700 16px/1.4 ${F};color:#ffffff;">${o.after}</div>`)}
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;"><tr><td style="padding:12px 14px;border-radius:12px;${keepBg("#232d72")}">
-        ${keepWhite(`<div style="font:700 11px ${F};letter-spacing:0.6px;text-transform:uppercase;color:#ffffff;opacity:0.7;">Switch to</div>
+        ${keepWhite(`<div style="font:700 11px ${F};letter-spacing:0.6px;text-transform:uppercase;color:#ffffff;opacity:0.7;">${o.toLabel ?? "Switch to"}</div>
         <div style="margin-top:3px;font:800 24px/1.2 ${F};color:#ffffff;">${o.retailer}</div>
         <div style="margin-top:2px;font:14px/1.45 ${F};color:#ffffff;opacity:0.78;">${o.planName}</div>`)}
       </td></tr></table>
@@ -449,4 +451,18 @@ export function endTimeline(o: { leftTitle: string; leftSmall: string; rightTitl
 /** Five gold stars, decoration only (not links: every review goes to the same Google page). */
 export function stars(): string {
   return `<div style="margin:0 0 6px;font:24px/1 ${F};letter-spacing:4px;color:${C.amber};">&#9733;&#9733;&#9733;&#9733;&#9733;</div>`;
+}
+
+/** "Bonus: you don't need to change retailer" (2 Nov 2026). The cheapest plan is
+ *  with the company they already pay, so it's a plan change, not a switch.
+ *  Takes plain text (escaped here). */
+export function sameRetailerBonus(o: { retailer: string; planName: string; amount?: number | null }): string {
+  const save = o.amount && o.amount >= 1 ? ` and save about <strong>${money(o.amount)} a year</strong>` : "";
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+    <tr><td style="padding:18px 18px 16px;border-radius:14px;background:${C.greenTint};border:1.5px solid #86efac;">
+      <div style="display:inline-block;padding:3px 10px;border-radius:999px;background:${C.green};color:#ffffff;font:800 11px ${F};letter-spacing:0.6px;text-transform:uppercase;">Bonus</div>
+      <div style="margin:10px 0 6px;font:800 19px/1.3 ${F};color:${C.ink};">You don&rsquo;t need to change retailer</div>
+      <div style="font:15px/1.55 ${F};color:${C.ink};">Just ask ${esc(o.retailer)} to move you to <strong>${esc(o.planName)}</strong>${save}. It&rsquo;s the best offer we found for you, and it&rsquo;s with the company you&rsquo;re already with: same account, no switching. Usually a quick call or a few taps in their app.</div>
+    </td></tr>
+  </table>`;
 }

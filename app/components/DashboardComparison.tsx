@@ -29,6 +29,8 @@ import type { BillCheckFacts } from "./BillCheckCard";
 import { PLAN_VS_BILL_TAG, planVsBill, samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { showLabel, showOptions, showPeriod, showScale, showTab, type ShowPeriod } from "@/lib/periods";
+import { rateRows } from "@/lib/rateRows";
+import { sameRetailer } from "@/lib/sameRetailer";
 import { marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
@@ -103,6 +105,10 @@ export interface ComparisonSummary {
   savingYear: number;
   bestRetailer: string;
   bestPlan: string;
+  /** The best plan is with the retailer they're already with. */
+  sameRetailer?: boolean;
+  /** …and the same plan name as their bill: they're on older rates. */
+  samePlanName?: boolean;
 }
 
 /** Shared maths for the verdict, the table and the Savings tab, so every
@@ -179,7 +185,8 @@ export function billCheckFacts(input: ComparisonInput): BillCheckFacts | null {
 export function summariseComparison(input: ComparisonInput): ComparisonSummary | null {
   const c = compute(input);
   if (!c) return null;
-  return { verdict: c.verdict, severe: c.severe, haveBill: c.haveBill, savingYear: c.savingYear, bestRetailer: c.top.plan[0], bestPlan: c.top.plan[2] };
+  return { verdict: c.verdict, severe: c.severe, haveBill: c.haveBill, savingYear: c.savingYear, bestRetailer: c.top.plan[0], bestPlan: c.top.plan[2], sameRetailer: c.haveBill && sameRetailer(input.currentRetailer, c.top.plan[0]),
+    samePlanName: c.haveBill && sameRetailer(input.currentRetailer, c.top.plan[0]) && !!input.currentPlanName && samePlanName(input.currentPlanName, c.top.plan[2], c.top.plan[0]) };
 }
 
 interface Props {
@@ -205,6 +212,10 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
   const { top, haveBill, you, savingYear, verdict, severe } = c;
   const { distributor, days, currentRetailer, currentPlanName, source } = input;
   const bestTerms = planPriceType(top.plan[0], top.plan[2]);
+  // The cheapest plan is with the retailer they already pay (2 Nov 2026).
+  const samePlace = names && haveBill && sameRetailer(currentRetailer, top.plan[0]);
+  // Same plan name as the bill: they're on older rates; the retailer offers new customers today's.
+  const sameName = samePlace && !!currentPlanName && samePlanName(currentPlanName, top.plan[2], top.plan[0]);
 
   // Paying more than the government reference price is flagged in red (any amount from 1%).
   const overVdo = haveBill && c.vdo > 0 && Math.round(((you - c.vdo) / c.vdo) * 100) >= 1;
@@ -270,7 +281,10 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         </div>
         <div className={styles.arrow} aria-hidden="true">→</div>
         <div className={`${styles.side} ${styles.sideBest}`} style={{ "--n": 1 } as CSSProperties}>
-          <span className={styles.sideLabel}>{c.top === c.cheapestPlan ? "Cheapest we found" : "Our pick"}</span>
+          <span className={styles.sideLabel}>
+            {c.top === c.cheapestPlan ? "Cheapest we found" : "Our pick"}
+            {samePlace && <span className={styles.sameBubble}>{sameName ? "Your retailer · today's rates" : "Your retailer · new plan"}</span>}
+          </span>
           {names ? (
             <>
               <b>{top.plan[0]}</b>
@@ -291,8 +305,8 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             <div className={styles.arrow} aria-hidden="true">=</div>
             <div className={`${styles.side} ${styles.sideSave}`} style={{ "--n": 2 } as CSSProperties}>
               <span className={styles.sideLabel}>You save</span>
-              <b>By switching</b>
-              <span className={styles.sidePlan}>{perLabel}, to {names ? top.plan[0] : "the cheapest plan"}</span>
+              <b>{samePlace ? "By changing plan" : "By switching"}</b>
+              <span className={styles.sidePlan}>{perLabel}, {samePlace ? `staying with ${top.plan[0]}` : `to ${names ? top.plan[0] : "the cheapest plan"}`}</span>
               <span key={per} className={styles.sideCost}>{money((you - top.total) * k)}</span>
             </div>
           </>
@@ -324,13 +338,25 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
           <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> See which retailer →</a>
         )}
         {names && verdict !== "good" && RETAILER_LINKS[top.plan[0]] && (
-          <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={input.distributor} target="_blank" rel="noopener noreferrer" className={styles.go}>Go to {top.plan[0]} →</a>
+          <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={input.distributor} target="_blank" rel="noopener noreferrer" className={styles.go}>{samePlace ? `Change plan with ${top.plan[0]} →` : `Go to ${top.plan[0]} →`}</a>
         )}
         {member && verdict !== "good" && savingYear > 0 && (
-          <SwitchReminder retailer={top.plan[0]} plan={top.plan[2]} savingYear={savingYear} link={RETAILER_LINKS[top.plan[0]]} nmi={input.nmi} dark />
+          <SwitchReminder retailer={top.plan[0]} plan={top.plan[2]} savingYear={savingYear} link={RETAILER_LINKS[top.plan[0]]} nmi={input.nmi} dark same={samePlace} />
         )}
         {!haveBill && <a href={member ? "#savings" : "/check"} className={styles.ghost}>Upload your bill for your real numbers</a>}
       </div>
+      {/* Same retailer, different plan (2 Nov 2026): folded away, open on tap (Phil, 2 Nov). */}
+      {samePlace && (
+        <details className={`${styles.fact} ${styles.factSame}`}>
+          <summary><Icon name="check" size={14} /> <b>No need to change retailer</b><span className={styles.factMore}>how</span></summary>
+          <p>
+            {sameName
+              ? <>{top.plan[0]} sells &ldquo;{top.plan[2]}&rdquo; to new customers at lower rates than your bill. Just ask them to move you onto today&apos;s rates</>
+              : <>{top.plan[0]} is who you&apos;re with now. Just ask them to move you to &ldquo;{top.plan[2]}&rdquo;</>}
+            {verdict !== "good" && savingYear >= 1 ? <> and save about <b>{whole(savingYear)} a year</b></> : null}. Same company, same account: usually a quick call or a few taps in their app.
+          </p>
+        </details>
+      )}
       <p className={styles.fine}>
         {c.average
           ? `Priced today for the average Victorian home (${AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year), because we don't have enough of your usage yet. Upload a full bill for your own numbers.`
@@ -850,18 +876,9 @@ function CurrentPricing({ input, usage, best, bestTotal, you, haveBill, hideName
   const touYou = r ? r.anytime === null && (r.peak !== null || r.offpeak !== null) : touBest;
 
   type Row = { label: string; you: number | null; best: number | null; perDay?: boolean; lowerIsBetter?: boolean };
-  const rows: Row[] = [{ label: "Daily supply", you: r?.supply ?? null, best: bSupply, perDay: true }];
-  if (!touYou || !touBest) rows.push({ label: "Usage (flat rate)", you: r?.anytime ?? null, best: bAny });
-  if (touYou || touBest) {
-    rows.push({ label: "Peak", you: r?.peak ?? null, best: bPeak });
-    // Two-rate plans charge shoulder hours at the off-peak rate.
-    const bestShoulder = bShoulder ?? (bPeak !== null ? bOff : null);
-    if ((r?.shoulder ?? null) !== null || bShoulder !== null) rows.push({ label: "Shoulder", you: r?.shoulder ?? null, best: bestShoulder });
-    rows.push({ label: "Off-peak", you: r?.offpeak ?? null, best: bOff });
-  }
-  if (input.cl > 0 || (r?.cl ?? null) !== null) rows.push({ label: "Controlled load", you: r?.cl ?? null, best: bCl });
-  if (input.solarExportKwh > 0 || (r?.solarFit ?? null) !== null) rows.push({ label: "Solar feed-in", you: r?.solarFit ?? null, best: bFit ?? null, lowerIsBetter: false });
-
+  // One "Usage" row for one price all day; peak / off-peak only for time of use (2 Nov 2026).
+  const rows: Row[] = rateRows(r, best, { cl: input.cl > 0 || (r?.cl ?? null) !== null, solar: input.solarExportKwh > 0 || (r?.solarFit ?? null) !== null })
+    .map((x) => ({ label: x.label, you: x.you, best: x.plan, perDay: x.perDay, lowerIsBetter: x.higherIsBetter ? false : undefined }));
   // A zero usage rate is a free window; a zero feed-in is just nothing paid.
   const fmt = (v: number | null, perDay?: boolean, paidToYou?: boolean) =>
     v === null ? "–" : perDay ? fmtRatePerDay(v) : v === 0 ? (paidToYou ? "0c/kWh" : "Free (set hours)") : fmtRateCents(v);

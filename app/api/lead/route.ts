@@ -132,6 +132,7 @@ export async function POST(req: NextRequest) {
       network: distributor,
       marketChanges: market.ready ? market.newOffers + market.priceChanges : 0,
       year,
+      currentRetailer,
     });
     const sent = await sendEmail({ to: email, subject: e.subject, title: e.title, html: e.html }).catch(() => false);
     if (sent) await supabaseAdmin.from("leads").update({ drip_step: 1, drip_sent_at: new Date().toISOString() }).eq("id", inserted.id);

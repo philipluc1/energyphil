@@ -2,6 +2,7 @@
 
 import Icon from "./Icon";
 import { useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import styles from "./reminder.module.css";
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -58,9 +59,9 @@ function fold(line: string): string {
   return parts.join("\r\n ");
 }
 
-/** "Remind me to switch": puts a 15-minute reminder in the person's own
- *  calendar (Google, Outlook, or Apple/anything via an .ics file). Nothing is
- *  stored by us; the event lives in their calendar. */
+/** "Remind me" (2 Nov 2026): either a 15-minute reminder in the person's own
+ *  calendar (Google, Outlook, or Apple/anything via an .ics file; nothing stored
+ *  by us), or an email from us that morning (one reminder, cleared once sent). */
 export default function SwitchReminder({
   retailer,
   plan,
@@ -68,6 +69,7 @@ export default function SwitchReminder({
   link,
   nmi,
   dark = false,
+  same = false,
 }: {
   retailer: string;
   plan: string;
@@ -75,23 +77,30 @@ export default function SwitchReminder({
   link?: string;
   nmi?: string | null;
   dark?: boolean;
+  /** The plan is with the retailer they're already with: a plan change, not a switch. */
+  same?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(() => addDays(1));
   const [time, setTime] = useState("09:00");
   const [done, setDone] = useState("");
+  const [mail, setMail] = useState<{ state: "idle" | "busy" | "set" | "err"; msg: string; on?: string }>({ state: "idle", msg: "" });
 
   const start = new Date(`${date}T${time || "09:00"}:00`);
   const end = new Date(start.getTime() + 15 * 60 * 1000);
-  const title = `Switch electricity to ${retailer}`;
+  const title = same ? `Ask ${retailer} to move me to ${plan}` : `Switch electricity to ${retailer}`;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const details = [
-    `Utilo found you could save about $${Math.round(savingYear).toLocaleString("en-AU")} a year on ${retailer} (${plan}).`,
+    same
+      ? `Utilo found you could save about $${Math.round(savingYear).toLocaleString("en-AU")} a year by moving to ${plan}. It's with ${retailer}, who you're already with: no need to switch, just ask them.`
+      : `Utilo found you could save about $${Math.round(savingYear).toLocaleString("en-AU")} a year on ${retailer} (${plan}).`,
     "",
-    "Before you switch:",
+    same ? "Before you call:" : "Before you switch:",
     `1. Check it's still the cheapest (prices change): ${origin}/account#compare`,
     `2. Have your latest bill${nmi ? ` and NMI (${nmi})` : " and NMI"} handy.`,
-    link ? `3. Sign up here: ${link}` : `3. Search "${retailer} ${plan}" on the retailer's site.`,
+    same
+      ? `3. Call ${retailer} or open their app and ask to move to "${plan}".`
+      : link ? `3. Sign up here: ${link}` : `3. Search "${retailer} ${plan}" on the retailer's site.`,
   ].join("\n");
 
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Australia/Melbourne";
@@ -121,13 +130,33 @@ export default function SwitchReminder({
     setDone("Calendar file downloaded. Open it to add the reminder.");
   }
 
+  async function emailMe() {
+    if (!supabase || mail.state === "busy") return;
+    setMail({ state: "busy", msg: "" });
+    const { data } = await supabase.auth.getSession();
+    const res = await fetch("/api/switch-reminder", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ date, retailer, plan, savingYear }),
+    }).catch(() => null);
+    const body = (await res?.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+    setMail({ state: body?.ok ? "set" : "err", msg: body?.message ?? "Couldn't save that just now. Try again in a minute.", on: date });
+  }
+  async function cancelEmail() {
+    if (!supabase) return;
+    const { data } = await supabase.auth.getSession();
+    await fetch("/api/switch-reminder", { method: "DELETE", headers: { authorization: `Bearer ${data.session?.access_token ?? ""}` } }).catch(() => null);
+    setMail({ state: "idle", msg: "" });
+    setDone("Email reminder cancelled.");
+  }
+
   const when = start.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
   const chips: [string, string][] = [["Tomorrow", addDays(1)], ["Saturday", nextSaturday()], ["In a week", addDays(7)]];
 
   if (!open) {
     return (
       <button type="button" className={dark ? styles.triggerDark : styles.trigger} onClick={() => setOpen(true)}>
-        <Icon name="calendar" /> Remind me to switch
+        <Icon name="bell" /> Remind me
       </button>
     );
   }
@@ -135,7 +164,7 @@ export default function SwitchReminder({
   return (
     <div className={`${styles.box} ${dark ? styles.boxDark : ""}`} data-noswipe>
       <div className={styles.head}>
-        <b>Remind me to switch to {retailer}</b>
+        <b>{same ? `Remind me to ask ${retailer} for ${plan}` : `Remind me to switch to ${retailer}`}</b>
         <button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label="Close">×</button>
       </div>
       <div className={styles.chips}>
@@ -151,13 +180,33 @@ export default function SwitchReminder({
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </label>
       </div>
-      <p className={styles.sum}>{when} at {start.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" })}, with your link, NMI and a reminder to recheck prices.</p>
-      <div className={styles.cals}>
-        <a href={google} target="_blank" rel="noopener noreferrer" className={styles.cal} onClick={() => setDone("Opened Google Calendar. Hit Save there.")}>Google Calendar</a>
-        <a href={outlook} target="_blank" rel="noopener noreferrer" className={styles.cal} onClick={() => setDone("Opened Outlook. Hit Save there.")}>Outlook</a>
-        <button type="button" className={styles.cal} onClick={downloadIcs}>Apple / other (.ics)</button>
+      <p className={styles.sum}>{when}, with the plan, your NMI, the retailer&apos;s link and a reminder to recheck prices.</p>
+      <div className={styles.ways}>
+        <div className={styles.way}>
+          <span className={styles.wayLabel}><Icon name="calendar" size={14} /> Add to my calendar <small>at {start.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" })}</small></span>
+          <div className={styles.cals}>
+            <a href={google} target="_blank" rel="noopener noreferrer" className={styles.cal} onClick={() => setDone("Opened Google Calendar. Hit Save there.")}>Google</a>
+            <a href={outlook} target="_blank" rel="noopener noreferrer" className={styles.cal} onClick={() => setDone("Opened Outlook. Hit Save there.")}>Outlook</a>
+            <button type="button" className={styles.cal} onClick={downloadIcs}>Apple / other</button>
+          </div>
+        </div>
+        <div className={styles.way}>
+          <span className={styles.wayLabel}><Icon name="mail" size={14} /> Or email me <small>that morning</small></span>
+          <div className={styles.cals}>
+            <button type="button" className={styles.mailBtn} onClick={emailMe} disabled={mail.state === "busy"}>
+              {mail.state === "busy" ? "Saving…" : mail.state === "set" ? (mail.on === date ? `✓ Set for ${when}` : `Change to ${when}`) : `Email me on ${when}`}
+            </button>
+          </div>
+        </div>
       </div>
-      {done && <p className={styles.done}>✓ {done}</p>}
+      {mail.state === "set" && (
+        <p className={styles.done}>
+          ✓ {mail.msg}{" "}
+          <button type="button" className={styles.undo} onClick={cancelEmail}>Cancel</button>
+        </p>
+      )}
+      {mail.state === "err" && <p className={styles.err}>{mail.msg}</p>}
+      {done && mail.state !== "set" && <p className={styles.done}>✓ {done}</p>}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import OfferDate from "./OfferDate";
 import Icon from "./Icon";
+import { sameRetailer } from "@/lib/sameRetailer";
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import {
@@ -975,6 +976,8 @@ export default function Comparator() {
   // Same plan name, older price? Price the bill's own rates on this usage and
   // compare with today's version of the plan from the same retailer.
   const billPlanName = ratesForm.planName.trim();
+  // The cheapest plan has the same name as the plan on their bill: older rates vs today's (2 Nov 2026).
+  const currentPlanSame = (m: { plan: readonly unknown[] }) => !!billPlanName && samePlanName(billPlanName, m.plan[2] as string, m.plan[0] as string);
   const sameNamePlans = currentRetailer && billPlanName
     ? matches.filter((m) => m.plan[0] === currentRetailer && m.plan[3] === "MARKET" && samePlanName(billPlanName, m.plan[2], currentRetailer))
     : [];
@@ -2446,7 +2449,7 @@ export default function Comparator() {
                     </div>
                     <span className={r.op} aria-hidden="true">→</span>
                     <div className={r.tile}>
-                      <span className={r.tileLabel}>{locked ? "With the cheapest plan" : `With ${top.plan[0]}`}</span>
+                      <span className={r.tileLabel}>{locked ? "With the cheapest plan" : haveBill && sameRetailer(currentRetailer, top.plan[0]) ? `${top.plan[0]}, ${currentPlanSame(top) ? "today's rates" : "new plan"}` : `With ${top.plan[0]}`}</span>
                       <b>{fmtCurrency(top.total * k)}</b>
                       <small>{perLabel}</small>
                     </div>
@@ -2461,6 +2464,17 @@ export default function Comparator() {
                     Cheapest of {matches.length} plans from {retailersHere} retailers{RETAILER_COUNT >= BROAD_COVERAGE ? "" : ", not every retailer in Victoria"}.
                     {!haveBill && " Add your bill to compare against what you really pay."}
                   </p>
+                  {/* Same retailer, different plan (2 Nov 2026): folded away, open on tap. */}
+                  {!locked && haveBill && sameRetailer(currentRetailer, top.plan[0]) && (
+                    <details className={r.sameFold}>
+                      <summary>No need to change retailer <span>how</span></summary>
+                      <p>
+                        {currentPlanSame(top)
+                          ? <>{top.plan[0]} sells &ldquo;{tidyPlanName(top.plan)}&rdquo; to new customers for less than your bill. Ask them to move you onto today&apos;s rates: same company, same account.</>
+                          : <>Just ask {top.plan[0]} to move you to &ldquo;{tidyPlanName(top.plan)}&rdquo;: same company, same account.</>}
+                      </p>
+                    </details>
+                  )}
                   {locked ? (
                     <button type="button" className={r.heroBtn} onClick={joinScroll}>
                       <Icon name="lock" size={16} /> See which retailer →
@@ -2662,7 +2676,7 @@ export default function Comparator() {
                                   <b className={r.retailer}>{m.plan[0]}</b>
                                   {isTop && <span className={r.cheapest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
                                   {m === noStrings && <span className={r.noStrings}>No strings</span>}
-                                  {retailerBest && m === retailerBest && currentRetailer && <span className={r.yours}>Your retailer</span>}
+                                  {retailerBest && m === retailerBest && currentRetailer && <span className={r.yours}>{isTop && haveBill ? "Your retailer · new plan" : "Your retailer"}</span>}
                                 </span>
                                 <span className={r.planName} title={m.plan[2]}>{tidyPlanName(m.plan)}</span>
                                 <span className={r.chips}>

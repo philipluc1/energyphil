@@ -11,9 +11,10 @@ import { esc } from "./email";
 import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 import { RETAILER_LINKS } from "./retailerLinks";
 import { namesList } from "./stickyPick";
+import { sameRetailer } from "./sameRetailer";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, alertPreview, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
+import { C, alertPreview, sameRetailerBonus, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -42,15 +43,17 @@ export function resultEmail(i: {
   network?: string | null;
   marketChanges?: number;      // offers new or changed on their network in 30 days
   year?: { label: string; best: number; now: number }[];  // 12 months ahead, for the Plus preview
+  currentRetailer?: string | null;  // who they're with now, if they said or the bill showed
 }): Email {
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
+  const same = worth && FREE_SHOWS_NAMES && i.vsBill && sameRetailer(i.currentRetailer, i.retailer);
   const v = plusValue();
   const subject = worth ? `Your result: about ${money(i.yearly)} a year` : "Your Utilo result";
   const title = worth ? (i.vsBill ? "You could pay less." : "Here's your result.") : "You're on a good deal.";
   const nowWord = i.vsBill ? "Your bill" : "Default offer";
   const card = worth
     ? planCard({
-        kicker: "Cheapest for you",
+        kicker: same ? "Cheapest for you · same retailer" : "Cheapest for you",
         retailer: FREE_SHOWS_NAMES ? i.retailer : "Utilo Plus shows which retailer",
         planName: FREE_SHOWS_NAMES ? i.planName : "The plan name, rates and sign-up conditions are on your dashboard.",
         figure: { amount: i.yearly, after: i.vsBill ? "a year less than your bill." : "a year less than the default offer." },
@@ -91,6 +94,7 @@ export function resultEmail(i: {
     <p>${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : `Here's your result on prices as at ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Melbourne" })}, so it's easy to find later.`} Prices change, so a later check can name a different plan: Plus members get one pick, kept up to date every morning.</p>
     ${stats}
     ${card}
+    ${same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName ?? "their cheapest plan for you", amount: i.yearly }) : ""}
     ${!i.vsBill && worth ? tip(`This is against the default offer. <strong>Snap your bill</strong> for your exact saving: <a href="${i.origin}/check">check again with a photo</a>.`) : ""}
     ${worth ? chips(SWITCH_FACTS) : ""}
     ${ranking}
@@ -226,10 +230,12 @@ export function leadInvite(i: {
 }
 
 /* ---------- 4. Cheaper plan found (member) ---------- */
-export function cheaperForMember(i: { origin: string; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null; prevYear?: number | null; newYear?: number | null; prevRetailer?: string | null; name?: string | null }): Email {
+export function cheaperForMember(i: { origin: string; retailer: string; planName: string; yearly: number; unsubscribeUrl: string; offerNote?: string | null; prevYear?: number | null; newYear?: number | null; prevRetailer?: string | null; name?: string | null; currentRetailer?: string | null }): Email {
+  const same = sameRetailer(i.currentRetailer, i.retailer);
   const html = `
     ${greet(i.name)}
-    ${heroPanel({ pill: "Cheaper plan found", headline: `About ${money(i.yearly)} a year less`, body: `Watching the market for you this morning, we found a plan that beats our last pick.${i.offerNote ? ` ${esc(i.offerNote)}` : ""}` })}
+    ${heroPanel({ pill: same ? "Same retailer, better plan" : "Cheaper plan found", headline: `About ${money(i.yearly)} a year less`, body: `Watching the market for you this morning, we found a plan that beats our last pick.${i.offerNote ? ` ${esc(i.offerNote)}` : ""}` })}
+    ${same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName }) : ""}
     ${i.prevYear && i.newYear ? versus({ before: { label: i.prevRetailer ? `Our last pick (${esc(i.prevRetailer)})` : "Our last pick", value: i.prevYear }, after: { label: esc(i.retailer), value: i.newYear }, gapLabel: "You'd save" }) : ""}
     ${planCard({ kicker: "New cheapest for you", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: "a year cheaper than our last pick." }, link: retailerLink(i.retailer), tone: "green" })}
     ${button("See it on my dashboard", `${i.origin}/account#compare`)}
@@ -334,14 +340,17 @@ export function monthlyCheck(i: {
     : "We re-checked your plan against today's prices.";
   // The saving is the hero: the amount, big, and the retailer to move to (2 Nov 2026).
   const link = retailerLink(i.retailer);
+  // Same retailer, different plan (2 Nov 2026): a plan change, not a switch.
+  const same = sameRetailer(i.currentRetailer, i.retailer);
   const card = worth
     ? moneyHero({
-        pill: "You could pay less",
+        pill: same ? "Same retailer, better plan" : "You could pay less",
         amount: i.yearly,
-        after: `a year less than your last bill${i.currentRetailer && i.currentRetailer !== i.retailer ? ` with ${esc(i.currentRetailer)}` : ""}`,
+        after: same ? `a year less, staying with ${esc(i.retailer)}` : `a year less than your last bill${i.currentRetailer && i.currentRetailer !== i.retailer ? ` with ${esc(i.currentRetailer)}` : ""}`,
         retailer: esc(i.retailer),
         planName: esc(i.planName),
-        button: link,
+        toLabel: same ? "Ask them to move you to" : undefined,
+        button: link && same ? { ...link, label: `Change plan with ${esc(i.retailer)}` } : link,
         small: `${i.nearTies && i.nearTies.length ? `Within $20 a year: ${esc(namesList(i.nearTies))}. Any of these is a good choice. ` : ""}On today's prices for the usage on your last bill. We never switch you; you decide.`,
       })
     : statusBox({ kicker: `Your ${esc(i.monthName)} check`, headline: "You're on a good deal", body: `Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more. We'll keep watching.`, tone: "green" });
@@ -352,6 +361,7 @@ export function monthlyCheck(i: {
     <p>${i.isJuly ? "Retailers changed their prices on 1 July, so we've re-checked your plan against the new ones." : "Your month in 30 seconds. We re-checked your plan against today's prices"}${i.activityCount && !i.isJuly ? `, including ${i.activityCount} offers that changed on your network.` : i.isJuly ? "" : "."}</p>
     ${i.gas ? heading("Electricity") : ""}
     ${card}
+    ${worth && same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName, amount: i.yearly }) : ""}
     ${i.gas ? heading("Gas") + gasBlock : ""}
     ${summaryGlance(i, f)}
     ${tip(`<strong>Tip: ${esc(f.tip.title)}.</strong> ${esc(f.tip.body)}`)}
@@ -363,6 +373,7 @@ export function monthlyCheck(i: {
     <p>${lead}${i.activity ? ` This month retailers made ${esc(i.activity)} on your network, and we checked every one against your home.` : ""}</p>
     ${i.gas ? heading("Electricity") : ""}
     ${card}
+    ${worth && same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName, amount: i.yearly }) : ""}
     ${i.gas ? heading("Gas") + gasBlock : ""}
     ${button("Open my dashboard", `${i.origin}/account#compare`)}
     ${tip(`Switched recently? <a href="${i.origin}/account">Add the date on your dashboard</a> so your savings count from the right day. New bill? Snap it there too.`)}
@@ -651,3 +662,45 @@ export function signInEmail(i: { origin: string; url: string; name?: string | nu
 }
 
 export { signOff };
+
+/* ---------- Switch reminder (member asked for it on the dashboard) ----------
+   2 Nov 2026: "Remind me" by email. A one-off they set themselves: sent the
+   morning of the day they picked, then forgotten. */
+export function switchReminderEmail(i: {
+  origin: string;
+  name?: string | null;
+  retailer: string;
+  planName: string;
+  savingYear: number;
+  same: boolean;
+  nmi?: string | null;
+}): Email {
+  const link = RETAILER_LINKS[i.retailer];
+  const r = esc(i.retailer);
+  const html = `
+    ${greet(i.name)}
+    <p>You asked us to remind you today${i.same ? ` to change your plan with ${r}` : ` to switch to ${r}`}. Here's everything you need, in one place.</p>
+    ${moneyHero({
+      pill: i.same ? "Same retailer, better plan" : "Your reminder",
+      amount: i.savingYear,
+      after: i.same ? `a year less, staying with ${r}` : "a year less (what we found when you set this)",
+      retailer: r,
+      planName: esc(i.planName),
+      toLabel: i.same ? "Ask them to move you to" : "Switch to",
+      button: link ? { label: i.same ? `Change plan with ${r}` : `Go to ${r}`, url: link } : null,
+    })}
+    ${i.same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName }) : ""}
+    ${heading("Before you start")}
+    ${steps([
+      step(1, "Check it's still the cheapest", `Prices change. Your dashboard re-checks every morning: <a href="${i.origin}/account#compare">see today's pick</a>.`),
+      step(2, "Have these handy", `Your latest bill${i.nmi ? ` and your NMI: <strong>${esc(i.nmi)}</strong>` : " and your NMI (on the bill)"}.`),
+      step(3, i.same ? `Ask ${r} for the plan` : `Sign up with ${r}`, i.same ? `Call them or open their app and ask to move to <strong>${esc(i.planName)}</strong>. Same account, no switching.` : `Search for <strong>${esc(i.planName)}</strong> on ${r}'s site. Your power stays on and there's a 10-day cooling-off period.`),
+      step(4, "Tell us when it's done", `<a href="${i.origin}/account#savings">Add the date on your dashboard</a> so your savings count from the right day.`),
+    ])}
+    ${note(`You set this one-off reminder on your dashboard. We won't send it again. ${esc(PRICE_CHANGE_CLAUSE)}`)}`;
+  return {
+    subject: i.same ? `Reminder: ask ${i.retailer} for ${i.planName} today` : `Reminder: switch to ${i.retailer} today`,
+    title: i.same ? "Today's the day: change your plan." : "Today's the day to switch.",
+    html,
+  };
+}

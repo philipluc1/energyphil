@@ -1133,9 +1133,16 @@ export default function AccountPage() {
                             </>
                           ) : summary && summary.verdict !== "good" && summary.savingYear > 0 ? (
                             <>
-                              <span className={styles.stateLabel}>Your next move</span>
+                              <span className={styles.stateLabel}>
+                                Your next move
+                                {summary.sameRetailer && <span className={styles.sameBubble}>{summary.samePlanName ? "Same retailer · today's rates" : "Same retailer · new plan"}</span>}
+                              </span>
                               <h2 className={styles.stateHead}>
-                                Switch to {summary.bestRetailer} and save about <span className={styles.stateAmt}>{fmtWhole(summary.savingYear)}</span> a year
+                                {summary.sameRetailer ? (
+                                  <>Ask {summary.bestRetailer} {summary.samePlanName ? `for today's ${summary.bestPlan} rates` : `to move you to ${summary.bestPlan}`} and save about <span className={styles.stateAmt}>{fmtWhole(summary.savingYear)}</span> a year</>
+                                ) : (
+                                  <>Switch to {summary.bestRetailer} and save about <span className={styles.stateAmt}>{fmtWhole(summary.savingYear)}</span> a year</>
+                                )}
                               </h2>
                               <p className={styles.stateSub}>
                                 Same figure as the top of your dashboard: {summary.bestPlan}, priced against {summary.haveBill ? "your last bill" : "the default offer"}.
@@ -1145,12 +1152,12 @@ export default function AccountPage() {
                               </p>
                               <div className={styles.stateActions}>
                                 {RETAILER_LINKS[summary.bestRetailer] && (
-                                  <a href={RETAILER_LINKS[summary.bestRetailer]} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>Go to {summary.bestRetailer} →</a>
+                                  <a href={RETAILER_LINKS[summary.bestRetailer]} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>{summary.sameRetailer ? `Change plan with ${summary.bestRetailer} →` : `Go to ${summary.bestRetailer} →`}</a>
                                 )}
                                 {!showSwitchForm && (
-                                  <button type="button" className={styles.btnGhost} onClick={() => setShowSwitchForm(true)}>I&apos;ve switched</button>
+                                  <button type="button" className={styles.btnGhost} onClick={() => setShowSwitchForm(true)}>{summary.sameRetailer ? "I've changed plan" : "I've switched"}</button>
                                 )}
-                                <SwitchReminder retailer={summary.bestRetailer} plan={summary.bestPlan} savingYear={summary.savingYear} link={RETAILER_LINKS[summary.bestRetailer]} nmi={sub!.nmi} dark />
+                                <SwitchReminder retailer={summary.bestRetailer} plan={summary.bestPlan} savingYear={summary.savingYear} link={RETAILER_LINKS[summary.bestRetailer]} nmi={sub!.nmi} dark same={!!summary.sameRetailer} />
                               </div>
                               {showSwitchForm && (
                                 <div className={styles.switchRow}>
@@ -1163,6 +1170,12 @@ export default function AccountPage() {
                                   </button>
                                   <button type="button" className={styles.linkBtn} onClick={() => setShowSwitchForm(false)}>Cancel</button>
                                 </div>
+                              )}
+                              {summary.sameRetailer && (
+                                <details className={styles.sameFold}>
+                                  <summary>No need to change retailer <span>how</span></summary>
+                                  <p>You&apos;re already with {summary.bestRetailer}, so it&apos;s the same company and the same account. Ask them to move you{summary.samePlanName ? " onto today's rates" : ` to ${summary.bestPlan}`}: usually a quick call or a few taps in their app.</p>
+                                </details>
                               )}
                               <p className={styles.stateFine}>We only count savings from the day you actually switch.</p>
                             </>

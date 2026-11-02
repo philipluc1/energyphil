@@ -439,3 +439,8 @@ update public.subscribers
    and coalesce(jsonb_typeof(current_rates->'anytime'), 'null') = 'null'
    and coalesce(jsonb_typeof(current_rates->'offpeak'), 'null') = 'null'
    and coalesce(jsonb_typeof(current_rates->'shoulder'), 'null') = 'null';
+
+-- 2 Nov 2026: "Remind me" by email. One reminder per member: the day to send it,
+-- and what they were looking at (retailer, plan, saving). Cleared once sent.
+alter table public.subscribers add column if not exists switch_remind_on date;
+alter table public.subscribers add column if not exists switch_remind_note jsonb;
