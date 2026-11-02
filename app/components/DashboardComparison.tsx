@@ -601,20 +601,20 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                 <span style={{ left: "100%" }}>Double</span>
               </div>
             </div>
-            <div className={ins.wiChips}>
+            <div className={`${ins.wiChips} ${ins.wiChipsRow}`}>
               {seasons && (
                 <>
                   <button type="button" aria-pressed={season === "winter"} className={`${ins.shift} ${season === "winter" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "winter" ? "none" : "winter")}>
-                    <Icon name="snow" size={15} /> Winter <small>{seasons.winter >= 1 ? "+" : ""}{Math.round((seasons.winter - 1) * 100)}%</small>
+                    <span className={ins.shiftTop}><Icon name="snow" size={15} /> Winter</span> <small>{seasons.winter >= 1 ? "+" : ""}{Math.round((seasons.winter - 1) * 100)}%</small>
                   </button>
                   <button type="button" aria-pressed={season === "summer"} className={`${ins.shift} ${season === "summer" ? ins.shiftOn : ""}`} onClick={() => setSeason(season === "summer" ? "none" : "summer")}>
-                    <Icon name="sun" size={15} /> Summer <small>{seasons.summer >= 1 ? "+" : ""}{Math.round((seasons.summer - 1) * 100)}%</small>
+                    <span className={ins.shiftTop}><Icon name="sun" size={15} /> Summer</span> <small>{seasons.summer >= 1 ? "+" : ""}{Math.round((seasons.summer - 1) * 100)}%</small>
                   </button>
                 </>
               )}
               {billInput.ev !== true && (
                 <button type="button" aria-pressed={evWhatIf} className={`${ins.shift} ${evWhatIf ? ins.shiftOn : ""}`} onClick={() => setEvWhatIf(!evWhatIf)}>
-                  <Icon name="car" size={15} /> Add an EV <small>+{WHATIF_EV_KWH_PER_DAY} kWh a day</small>
+                  <span className={ins.shiftTop}><Icon name="car" size={15} /> <span><span className={ins.evLong}>Add an </span>EV</span></span> <small>+{WHATIF_EV_KWH_PER_DAY} kWh a day</small>
                 </button>
               )}
               {whatIf && <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button>}

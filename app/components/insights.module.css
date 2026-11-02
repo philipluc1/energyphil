@@ -196,3 +196,13 @@
 .useTicks span:last-child { transform: translateX(-100%); }
 .useTicks .useTickBill { font-weight: 800; color: #22306e; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 2 Nov 2026: Winter, Summer and EV on one line on phones. */
+.shiftTop { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+@media (max-width: 560px) {
+  .wiChipsRow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .wiChipsRow .shift { flex-direction: column; justify-content: center; gap: 2px; padding: 8px 4px; font-size: 13px; min-width: 0; }
+  .wiChipsRow .shift small { font-size: 11px; white-space: nowrap; }
+  .wiChipsRow .evLong { display: none; }
+  .wiChipsRow .wiReset { grid-column: 1 / -1; justify-self: start; margin-top: 2px; }
+}
