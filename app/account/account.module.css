@@ -552,3 +552,20 @@ details[open] > .panelSummary::after { content: " ▴"; }
 .planCardPlus .perks li::before { content: "✓"; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #16a34a; color: #fff; font-size: 12px; margin-right: 10px; }
 .plusIconBlue { background: #dbeafe; color: #1d4ed8; }
 .alertCard { border-left: 5px solid #3b82f6; }
+
+/* 2 Nov 2026: "Your next move" in the same colours as the verdict at the top of the dashboard. */
+.stateCard.stateAct, .stateCard.stateSevere, .stateCard.stateGood { color: #fff; border-color: transparent; border-radius: 22px; }
+.stateCard.stateAct { background: var(--v-mild, #155e75); }
+.stateCard.stateSevere { background: var(--v-severe, #0f766e); }
+.stateCard.stateGood { background: var(--v-good, #13795b); }
+.stateAct::before, .stateSevere::before, .stateGood::before { display: none; }
+.stateAct .stateLabel, .stateSevere .stateLabel, .stateGood .stateLabel { color: rgba(255, 255, 255, 0.78); }
+.stateAct .stateSub, .stateSevere .stateSub, .stateGood .stateSub,
+.stateAct .stateFine, .stateSevere .stateFine, .stateGood .stateFine { color: rgba(255, 255, 255, 0.85); }
+.stateAct .stateAmt, .stateSevere .stateAmt { color: #fde047; }
+.stateGood .stateBig { color: #bbf7d0; }
+.stateAct .btnPrimary, .stateSevere .btnPrimary, .stateGood .btnPrimary { background: var(--go-bg, #ffc845); color: var(--go-fg, #1c1403); border-color: transparent; }
+.stateAct .btnGhost, .stateSevere .btnGhost, .stateGood .btnGhost { background: transparent; border: 1.5px solid rgba(255, 255, 255, 0.5); color: #fff; }
+.stateAct .btnGhost:hover, .stateSevere .btnGhost:hover, .stateGood .btnGhost:hover { background: rgba(255, 255, 255, 0.1); }
+.stateAct .linkBtn, .stateSevere .linkBtn, .stateGood .linkBtn { color: #fff; }
+.stateAct .switchRow, .stateSevere .switchRow, .stateGood .switchRow { color: #fff; }

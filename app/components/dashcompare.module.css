@@ -400,3 +400,5 @@ li.rowPick > .pickBubble { position: absolute; top: -10px; left: 40px; margin: 0
 /* 2 Nov 2026: the "don't bother switching" line under a good verdict */
 .stayPut { margin: -4px 0 14px; font-size: 14.5px; line-height: 1.5; opacity: 0.92; }
 .stayPut b { font-weight: 900; }
+/* 2 Nov 2026: near-ties under the verdict */
+.ties { margin: 2px 0 14px; font-size: 13.5px; line-height: 1.5; opacity: 0.88; }

@@ -10,6 +10,7 @@
 import { esc } from "./email";
 import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 import { RETAILER_LINKS } from "./retailerLinks";
+import { namesList } from "./stickyPick";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, plusValue, timesPrice } from "./pricingPlans";
 import { C, bigFigure, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus } from "./emailParts";
@@ -86,7 +87,7 @@ export function resultEmail(i: {
     : "";
 
   const html = `
-    <p>${i.name ? `Hi ${esc(i.name)},<br>` : ""}${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : "Here's your result on today's prices, so it's easy to find later."}</p>
+    <p>${i.name ? `Hi ${esc(i.name)},<br>` : ""}${i.sentLater ? "Here's your result from yesterday's check, so it's easy to find." : `Here's your result on prices as at ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Melbourne" })}, so it's easy to find later.`} Prices change, so a later check can name a different plan: Plus members get one pick, kept up to date every morning.</p>
     ${stats}
     ${card}
     ${!i.vsBill && worth ? tip(`This is against the default offer. <strong>Snap your bill</strong> for your exact saving: <a href="${i.origin}/check">check again with a photo</a>.`) : ""}
@@ -248,6 +249,8 @@ export function monthlyCheck(i: {
   /** 2 Nov 2026: the member's name off their bill, and who they're with now. */
   customerName?: string | null;
   currentRetailer?: string | null;
+  /** Other retailers within $20 a year of the pick (lib/stickyPick.ts). */
+  nearTies?: string[];
 }): Email {
   const name = firstNameOf(i.customerName);
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
@@ -270,7 +273,7 @@ export function monthlyCheck(i: {
         retailer: esc(i.retailer),
         planName: esc(i.planName),
         button: link,
-        small: "On today's prices for the usage on your last bill. We never switch you; you decide.",
+        small: `${i.nearTies && i.nearTies.length ? `Within $20 a year: ${esc(namesList(i.nearTies))}. Any of these is a good choice. ` : ""}On today's prices for the usage on your last bill. We never switch you; you decide.`,
       })
     : statusBox({ kicker: `Your ${esc(i.monthName)} check`, headline: "You're on a good deal", body: `Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more. We'll keep watching.`, tone: "green" });
   const f = i.facts ?? null;
@@ -315,8 +318,9 @@ function summaryGlance(i: MonthlyInput, f: SummaryFacts): string {
   if (y.vsBill) {
     rows.push(glanceRow({
       dot: INK.you,
-      title: `Your year: ${money(y.you)} now, ${money(y.best)} on the cheapest`,
-      line: `The default offer would be ${money(y.vdo)}.`,
+      // A bill cheaper than every plan on sale (an old deal, a concession): say so, don't imply the "cheapest" costs more.
+      title: y.best >= y.you ? `Your year: about ${money(y.you)}. No plan on sale beats it` : `Your year: ${money(y.you)} now, ${money(y.best)} on the cheapest`,
+      line: y.best >= y.you ? `The cheapest plan on sale would be about ${money(y.best)}, the default offer ${money(y.vdo)}. Hold on to your deal while it lasts.` : `The default offer would be ${money(y.vdo)}.`,
       link: { label: "Compare every retailer", url: `${i.origin}/account#compare` },
       chart: miniBars([{ value: y.you, color: INK.you }, { value: y.best, color: INK.best }, { value: y.vdo, color: INK.vdo }]),
     }));

@@ -3,6 +3,7 @@ import { Distributor, rankPlans, topOpen, type UsageInput } from "@/lib/plans";
 import { usageOrAverage, vdoBillForUsage } from "@/lib/profileUsage";
 import { reconcileBill } from "@/lib/billReconcile";
 import type { CurrentRates } from "@/lib/billExtraction";
+import { stickyPick, type PickReason } from "@/lib/stickyPick";
 
 // Shared by app/api/cron/recheck-prices — kept separate from that route so
 // the actual "what's the cheapest plan for this profile right now" logic is
@@ -66,6 +67,23 @@ export function computeBest(profile: WatchProfile): WatchResult | null {
   const top = topOpen(rankPlans(profile.distributor, usage, { ev: profile.ev === true }));
   if (!top) return null;
   return { bestTotal: top.total, bestRetailer: top.plan[0], bestPlanName: top.plan[2], average };
+}
+
+/** The member's pick (2 Nov 2026): the stored pick while it's within the switching
+ *  threshold of today's cheapest, else the cheapest. Plus near-equal retailers. */
+export function computePick(profile: WatchProfile, stored: { retailer: string | null; plan: string | null } | null): (WatchResult & { reason: PickReason; nearTies: string[]; cheapestRetailer: string }) | null {
+  const { usage, average } = watchUsage(profile);
+  const sp = stickyPick(rankPlans(profile.distributor, usage, { ev: profile.ev === true }), stored, profile.billingDays > 0 ? profile.billingDays : 91);
+  if (!sp) return null;
+  return {
+    bestTotal: sp.pick.total,
+    bestRetailer: sp.pick.plan[0],
+    bestPlanName: sp.pick.plan[2],
+    average,
+    reason: sp.reason,
+    nearTies: sp.nearTies.map((m) => m.plan[0]),
+    cheapestRetailer: sp.cheapest.plan[0],
+  };
 }
 
 /** Today's price of one named plan for this profile, or null if it's no longer

@@ -1367,16 +1367,16 @@ export default function Comparator() {
                   Continue your last check <small>saved on this device</small>
                 </button>
               ))}
-              <button type="button" className={snap.otherBtn} onClick={() => { setUsageSource("estimate"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
-                <Icon name="home" size={18} /> No bill handy? <small>Estimate from a few questions</small>
-              </button>
-              <button type="button" className={snap.otherBtn} onClick={() => { setUsageSource("bill"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
-                <Icon name="file" size={18} /> Rather type it in? <small>Copy the numbers yourself</small>
-              </button>
+              {/* 2 Nov 2026: one card for "no photo": estimate, or type the numbers in. */}
+              <div className={snap.otherCombo}>
+                <button type="button" className={snap.otherMain} onClick={() => { setUsageSource("estimate"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
+                  <Icon name="home" size={18} /> No bill handy? <small>Estimate from a few questions</small>
+                </button>
+                <button type="button" className={snap.otherSub} onClick={() => { setUsageSource("bill"); setInputStep(1); setEntry("wizard"); scrollToTop(); }}>
+                  Or type in the numbers from your bill →
+                </button>
+              </div>
             </BillPhotoUpload>
-            <p className={snap.underNote}>
-              Victorian homes · NSW, SA and QLD coming. Gas bill? <Link href="/gas">Check gas</Link>.
-            </p>
           </>
         )}
 

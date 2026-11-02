@@ -84,6 +84,9 @@ interface SubscriberSummary {
   distributor: string | null;
   baseline_retailer: string | null;
   baseline_plan_name: string | null;
+  /** The plan we last recommended (the daily job's pick). */
+  last_notified_retailer?: string | null;
+  last_notified_plan_name?: string | null;
   billing_days: number | null;
   has_solar: boolean | null;
   solar_export_kwh: number | null;
@@ -325,7 +328,7 @@ export default function AccountPage() {
       setSubLoading(true);
       setSubError("");
       const BASE_COLS =
-          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
+          "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, last_notified_retailer, last_notified_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
       const PRICING_COLS = ", current_rates, current_price_type, current_price_fixed_until, discount_ends_at";
       // Oct 2026 columns (schema.sql): loaded when the database has them.
       const NEW_COLS = ", demand_kw, gas_current_retailer";
@@ -577,6 +580,8 @@ export default function AccountPage() {
         source: fromBill ? "bill" : "answers",
         nmi: sub!.nmi,
         currentRates: sub!.current_rates ?? null,
+        // One pick everywhere (2 Nov 2026): the plan the emails last named.
+        pick: { retailer: sub!.last_notified_retailer ?? sub!.baseline_retailer, plan: sub!.last_notified_plan_name ?? sub!.baseline_plan_name },
         currentPriceType: sub!.current_price_type === "fixed" || sub!.current_price_type === "variable" ? sub!.current_price_type : null,
         currentFixedUntil: sub!.current_price_fixed_until ?? null,
         ev: (sub!.home_profile as { ev?: unknown } | null)?.ev === true,
@@ -1130,7 +1135,7 @@ export default function AccountPage() {
                                 {!showSwitchForm && (
                                   <button type="button" className={styles.btnGhost} onClick={() => setShowSwitchForm(true)}>I&apos;ve switched</button>
                                 )}
-                                <SwitchReminder retailer={summary.bestRetailer} plan={summary.bestPlan} savingYear={summary.savingYear} link={RETAILER_LINKS[summary.bestRetailer]} nmi={sub!.nmi} />
+                                <SwitchReminder retailer={summary.bestRetailer} plan={summary.bestPlan} savingYear={summary.savingYear} link={RETAILER_LINKS[summary.bestRetailer]} nmi={sub!.nmi} dark />
                               </div>
                               {showSwitchForm && (
                                 <div className={styles.switchRow}>

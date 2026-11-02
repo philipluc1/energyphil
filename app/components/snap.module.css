@@ -400,3 +400,12 @@
 .gate small { font-size: 12.5px; color: #5b6476; }
 .gate small a { color: #22306e; font-weight: 800; }
 .errLink { margin-left: 4px; font-weight: 900; color: inherit; text-decoration: underline; }
+
+/* 2 Nov 2026: "No bill handy?" and "type it in" as one card */
+.otherCombo { display: flex; flex-direction: column; border-radius: 12px; border: 1.5px solid rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.otherMain { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 14px 6px; border: 0; background: none; color: #fff; font: inherit; font-weight: 800; font-size: 15px; text-align: left; cursor: pointer; }
+.otherMain svg { flex: none; color: #5eead4; }
+.otherMain small { font-weight: 600; font-size: 13px; color: rgba(255, 255, 255, 0.7); }
+.otherSub { margin: 0 14px 11px; padding: 6px 0 0; border: 0; border-top: 1px dashed rgba(255, 255, 255, 0.2); background: none; color: #5eead4; font: inherit; font-size: 13px; font-weight: 700; text-align: left; cursor: pointer; }
+.otherMain:hover, .otherSub:hover { text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 640px) { .otherMain { flex-direction: column; align-items: flex-start; gap: 2px; } .otherMain svg { margin-bottom: 4px; } }

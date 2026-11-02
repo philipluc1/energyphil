@@ -16,6 +16,7 @@ import type { ResultsChartPalette } from "@/lib/dashThemes";
 import { AVERAGE_ANNUAL_KWH, usageOrAverage, vdoBillForUsage } from "@/lib/profileUsage";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { FREE_SHOWS_NAMES, WORTH_SWITCHING_PER_YEAR, OVERPRICED_PER_YEAR, OVERPRICED_SHARE } from "@/lib/dataPolicy";
+import { NEAR_TIE_PER_YEAR, namesList, stickyPick } from "@/lib/stickyPick";
 import { useCountUp } from "@/lib/useCountUp";
 import PriceLine from "./PriceLine";
 import PlanViewToggle from "./PlanViewToggle";
@@ -68,6 +69,9 @@ export interface ComparisonInput {
   currentFixedUntil?: string | null;
   /** Charges an EV at home: only then are EV-only plans (free/cheap overnight windows) listed. */
   ev?: boolean;
+  /** 2 Nov 2026: the member's pick (the plan we last recommended). Kept until another plan
+   *  beats it by the switching threshold, so every screen and email names the same plan. */
+  pick?: { retailer: string | null; plan: string | null } | null;
 }
 
 /** Plain-English "how it's charged" for a plan. */
@@ -109,9 +113,13 @@ export function compute(input: ComparisonInput) {
   const { usage, average } = usageOrAverage({ days: input.days, peak: input.peak, shoulder: input.shoulder, offpeak: input.offpeak, anytime: input.anytime, cl: input.cl, solarExportKwh: input.solarExportKwh, demandKw: input.demandKw ?? null });
   const household = { hasSolar: input.solarExportKwh > 0, currentRetailer: input.currentRetailer ?? null };
   const matches = rankPlans(input.distributor, usage, { ev: input.ev === true, ...household });
-  // Cheapest plan this household can get; offers needing a membership and so on stay listed.
-  const top = topOpen(matches);
+  // Our pick: the member's stored pick while it's within the switching threshold of
+  // the cheapest, else the cheapest this household can get (lib/stickyPick.ts).
+  const sp = input.days > 0 ? stickyPick(matches, input.pick ?? null, input.days) : null;
+  const top = sp?.pick ?? topOpen(matches);
   if (!top || input.days <= 0) return null;
+  const cheapestPlan = sp?.cheapest ?? top;
+  const nearTies = sp?.nearTies ?? [];
   const offerFor = (p: PlanRow) => describeOffer("E", p[0], p[2], p[1], household);
   const perYear = 365 / input.days;
   // A bill total for usage that thin can't be compared with the average home.
@@ -132,7 +140,7 @@ export function compute(input: ComparisonInput) {
   const cheapest = haveBill && savingYear < WORTH_SWITCHING_PER_YEAR;
   const verdict: ComparisonSummary["verdict"] = haveBill ? (cheapest ? "good" : "bad") : "estimate";
   const severe = verdict === "bad" && (savingYear >= OVERPRICED_PER_YEAR || savingYear >= you * perYear * OVERPRICED_SHARE);
-  return { matches, top, haveBill, you, vdo, savingYear, cheapest, verdict, severe, perYear, usage, offerFor, average, mismatch, basis };
+  return { matches, top, cheapestPlan, nearTies, haveBill, you, vdo, savingYear, cheapest, verdict, severe, perYear, usage, offerFor, average, mismatch, basis };
 }
 
 /** Free users: the two cheapest plans (and anything above the cheapest one
@@ -259,7 +267,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         </div>
         <div className={styles.arrow} aria-hidden="true">→</div>
         <div className={`${styles.side} ${styles.sideBest}`} style={{ "--n": 1 } as CSSProperties}>
-          <span className={styles.sideLabel}>Cheapest we found</span>
+          <span className={styles.sideLabel}>{c.top === c.cheapestPlan ? "Cheapest we found" : "Our pick"}</span>
           {names ? (
             <>
               <b>{top.plan[0]}</b>
@@ -288,6 +296,26 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         )}
       </div>
       {verdict !== "good" && savingYear > 0 && <FunEquivalents dollars={savingYear} />}
+      {/* One pick, everywhere (2 Nov 2026): near-equal plans named, not swapped in. */}
+      {names && (() => {
+        const moreCheap = c.top !== c.cheapestPlan ? c.cheapestPlan : null;
+        const ties = c.nearTies.filter((m) => m !== moreCheap).map((m) => m.plan[0]);
+        if (!moreCheap && ties.length === 0) return null;
+        return (
+          <p className={styles.ties}>
+            {moreCheap && (
+              <>
+                {moreCheap.plan[0]} is {whole((c.top.total - moreCheap.total) * c.perYear)} a year cheaper today. That&apos;s under the {whole(WORTH_SWITCHING_PER_YEAR)} we think matters, so our pick stays {c.top.plan[0]}.{" "}
+              </>
+            )}
+            {ties.length > 0 && (
+              <>
+                Within {whole(NEAR_TIE_PER_YEAR)} a year of {c.top.plan[0]}: {namesList(ties)}. Any of these is a good choice; compare their terms in the list.
+              </>
+            )}
+          </p>
+        );
+      })()}
       <div className={styles.verdictActions}>
         {!names && (
           <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> See which retailer →</a>
@@ -639,7 +667,8 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                         <RetailerLogo name={m.plan[0]} size={28} />
                         <RetailerLink name={m.plan[0]} />
                       </span>
-                      {m === top && !isPick(m) && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
+                      {m === top && !isPick(m) && <span className={styles.tagBest}>{m !== c.cheapestPlan ? "Our pick" : i === 0 ? "Cheapest" : "Cheapest you can get"}</span>}
+                      {m === c.cheapestPlan && m !== top && <span className={styles.tagBest}>Cheapest today</span>}
                       {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                       {input.ev && isEvFriendly(m.plan) && <span className={styles.tagEv}><Icon name="bolt" size={12} /> EV charging</span>}
                     </td>
@@ -706,7 +735,8 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                   <div className={styles.pcTop}>
                     <RetailerLogo name={m.plan[0]} size={26} />
                     <RetailerLink name={m.plan[0]} />
-                    {m === top && !isPick(m) && <span className={styles.tagBest}>{i === 0 ? "Cheapest" : "Best you can get"}</span>}
+                    {m === top && !isPick(m) && <span className={styles.tagBest}>{m !== c.cheapestPlan ? "Our pick" : i === 0 ? "Cheapest" : "Best you can get"}</span>}
+                    {m === c.cheapestPlan && m !== top && <span className={styles.tagBest}>Cheapest today</span>}
                     {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                   </div>
                   <span className={styles.pcPlan}>{m.plan[2]}{m.plan[5] === null ? " · Cheaper at night" : ""}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · Fixed price" : ""}</span>

@@ -1,10 +1,11 @@
+import { activeRowsToEmail } from "@/lib/oneMemberPerEmail";
 import { NextRequest, NextResponse } from "next/server";
 import { activityWords, marketActivity } from "@/lib/marketActivity";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { monthlyCheck } from "@/lib/emailTemplates";
 import { GAS_ZONES, bestGasPlan, type GasZone } from "@/lib/gasPlans";
-import { computeBest, referenceForUsage } from "@/lib/priceWatch";
+import { computePick, referenceForUsage } from "@/lib/priceWatch";
 import { ratesFromJson } from "@/lib/billReconcile";
 import { switchedPlanNow } from "@/lib/switched";
 import type { CurrentRates } from "@/lib/billExtraction";
@@ -47,6 +48,10 @@ interface Row {
   switched_at?: string | null;
   switched_to?: string | null;
   monthly_summary?: boolean | null;
+  last_notified_retailer?: string | null;
+  last_notified_plan_name?: string | null;
+  baseline_retailer?: string | null;
+  baseline_plan_name?: string | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -61,7 +66,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, baseline_total, unsubscribed, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, switched_at, switched_to",
+      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, baseline_total, unsubscribed, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, switched_at, switched_to, last_notified_retailer, last_notified_plan_name, baseline_retailer, baseline_plan_name",
     )
     .eq("status", "active")
     .not("distributor", "is", null);
@@ -103,7 +108,10 @@ export async function GET(req: NextRequest) {
   let saved = 0;
   let emailed = 0;
   let errors = 0;
+  // One email per address, from the newest active membership (2 Nov 2026).
+  const keep = await activeRowsToEmail(supabaseAdmin);
   for (const sub of (data ?? []) as Row[]) {
+    if (keep && !keep.has(sub.id)) continue;
     try {
       const days = sub.billing_days ?? 91;
       const watch = {
@@ -118,7 +126,8 @@ export async function GET(req: NextRequest) {
         demandKw: sub.demand_kw ?? null,
         ev: hasEv(sub.home_profile),
       };
-      const best = computeBest(watch);
+      // The same pick the dashboard and the daily alerts show (lib/stickyPick.ts).
+      const best = computePick(watch, { retailer: sub.last_notified_retailer ?? sub.baseline_retailer ?? null, plan: sub.last_notified_plan_name ?? sub.baseline_plan_name ?? null });
       // The bill total only when it fits the usage on file (else their rates
       // on that usage, or the default offer), as the dashboard shows it.
       // Switched? Compare with the plan they're on now, not the old bill.
@@ -126,6 +135,10 @@ export async function GET(req: NextRequest) {
       const ref = moved ? { total: moved.total, vsBill: true } : sub.reference_total !== null ? referenceForUsage(watch, sub.reference_total, ratesOf.get(sub.id) ?? null) : sub.baseline_total !== null ? { total: sub.baseline_total, vsBill: false } : null;
       const reference = ref ? ref.total : null;
       if (!best || reference === null) continue;
+      // A new pick (cheaper by the threshold, or the old one withdrawn): store it so tomorrow's check agrees.
+      if (best.reason !== "kept") {
+        await supabaseAdmin.from("subscribers").update({ last_notified_total: best.bestTotal, last_notified_retailer: best.bestRetailer, last_notified_plan_name: best.bestPlanName }).eq("id", sub.id);
+      }
 
       const saving = reference - best.bestTotal;
       const { error: upErr } = await supabaseAdmin.from("bill_checks").upsert(
@@ -185,6 +198,7 @@ export async function GET(req: NextRequest) {
           activityCount: act.ready ? act.newOffers + act.priceChanges : null,
           facts,
           customerName: who.get(sub.id)?.name ?? null,
+          nearTies: best.nearTies,
           currentRetailer: who.get(sub.id)?.retailer ?? null,
         });
         const ok = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });

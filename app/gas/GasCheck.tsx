@@ -222,12 +222,14 @@ export default function GasCheck() {
             </InfoTip>
           </div>
         ) : null}>
-          <button type="button" className={snap.otherBtn} onClick={() => { setBillRaw(""); setFromPhoto(false); setFromEstimate(true); setGqDir("fwd"); setGq(1); go("estimate"); }}>
-            <Icon name="home" size={18} /> No gas bill handy? <small>Use the average gas home, or a few taps</small>
-          </button>
-          <button type="button" className={snap.otherBtn} onClick={() => { setFromEstimate(false); go("type"); }}>
-            <Icon name="file" size={18} /> Rather type it in? <small>Three numbers from your gas bill</small>
-          </button>
+          <div className={snap.otherCombo}>
+            <button type="button" className={snap.otherMain} onClick={() => { setBillRaw(""); setFromPhoto(false); setFromEstimate(true); setGqDir("fwd"); setGq(1); go("estimate"); }}>
+              <Icon name="home" size={18} /> No gas bill handy? <small>Use the average gas home, or a few taps</small>
+            </button>
+            <button type="button" className={snap.otherSub} onClick={() => { setFromEstimate(false); go("type"); }}>
+              Or type in three numbers from your gas bill →
+            </button>
+          </div>
         </BillPhotoUpload>
         {elecOnly && (
           <div className={g.notice}>
