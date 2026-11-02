@@ -83,6 +83,9 @@ export default function UsageShape({
   const area = (p: string, pts: [number, number][]) => `${p} L${pts[pts.length - 1][0]},${base} L${pts[0][0]},${base} Z`;
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(max * f * 10) / 10);
   const peakH = curve.grid.indexOf(Math.max(...curve.grid));
+  // The weather sits in the chart's top-left, over the quiet night hours, unless
+  // those hours are busy (an EV charging overnight); then it sits above the chart.
+  const nightBusy = Math.max(...curve.grid.slice(0, 6)) > max * 0.45;
   const shapeInfo = USAGE_SHAPES.find((u) => u.key === key)!;
   const [pk0, pk1] = TOU_WINDOWS.peak;
 
@@ -100,21 +103,22 @@ export default function UsageShape({
         </div>
       )}
       <div className={s.chartCard}>
-        {live && weather && (
-          <p className={s.weather}>
-            <b>Today in {weather.place}: {weather.label}{weather.tempC !== null ? `, ${weather.tempC}°` : ""}.</b>
-            {typical.feedInKwhPerDay > 0 ? (
-              curve.share < 0.9
-                ? ` Your panels should make about ${Math.round(curve.share * 100)}% of a sunny day's output, so more of your power comes from the grid.`
-                : " A good solar day: your panels should run near full output."
-              ) : null}
-          </p>
-        )}
         <div className={s.legend}>
           <span><i className={s.swGrid} /> From the grid, kW</span>
           {curve.feedInKwhPerDay > 0 && <span><i className={s.swFeed} /> Solar sent to the grid{weather ? ", today's weather" : ""}</span>}
           <span><i className={s.swPeak} /> Typical peak window, {pk0 - 12}pm to {pk1 - 12}pm</span>
         </div>
+        <div className={s.chartBox}>
+        {live && weather && (
+          <div className={`${s.wx} ${nightBusy ? s.wxTop : ""}`}>
+            <div className={s.wxMain}>
+              <WeatherGlyph label={weather.label} />
+              {weather.tempC !== null && <b>{weather.tempC}°</b>}
+            </div>
+            <div className={s.wxPlace}>{weather.place} · {weather.label}</div>
+            {typical.feedInKwhPerDay > 0 && <div className={s.wxNote}>{curve.share < 0.9 ? `Solar about ${Math.round(curve.share * 100)}% of a sunny day` : "Good solar day"}</div>}
+          </div>
+        )}
         <svg className={s.chart} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${shapeInfo.title}: power use through the day, peaking around ${peakH > 12 ? `${peakH - 12}pm` : `${peakH || 12}am`}. About ${curve.gridKwhPerDay} kWh a day from the grid${curve.feedInKwhPerDay > 0 ? ` and ${curve.feedInKwhPerDay} kWh sent back` : ""}.`}>
           <defs>
             <linearGradient id={`${id}-g`} x1="0" y1="0" x2="0" y2="1">
@@ -161,6 +165,7 @@ export default function UsageShape({
             <text key={lab} x={x(i * 3)} y={H - 8} className={s.tick} textAnchor={i === 0 ? "start" : "middle"}>{lab}</text>
           ))}
         </svg>
+        </div>
         <div className={s.stats}>
           <div><b>{curve.gridKwhPerDay.toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh</b><span>{weather && typical.feedInKwhPerDay > 0 ? "from the grid today" : "a day from the grid"}</span></div>
           {curve.feedInKwhPerDay > 0 && <div><b>{curve.feedInKwhPerDay.toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh</b><span>{weather ? "sent to the grid today" : "a day sent to the grid"}</span></div>}
@@ -170,5 +175,27 @@ export default function UsageShape({
         {note && <p className={s.note}>{note}</p>}
       </div>
     </section>
+  );
+}
+
+/** A small picture of today's weather. */
+function WeatherGlyph({ label }: { label: string }) {
+  const sun = label === "Sunny" || label === "Partly cloudy";
+  const cloud = label !== "Sunny";
+  const rain = label === "Rain" || label === "Storms";
+  return (
+    <svg viewBox="0 0 40 32" width="40" height="32" aria-hidden="true" className={s.wxIcon}>
+      {sun && (
+        <g transform={cloud ? "translate(-4 -3)" : "translate(4 1)"}>
+          <circle cx="16" cy="14" r="6.5" fill="#f5a623" />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+            <line key={a} x1="16" y1="3" x2="16" y2="5.5" stroke="#f5a623" strokeWidth="2.2" strokeLinecap="round" transform={`rotate(${a} 16 14)`} />
+          ))}
+        </g>
+      )}
+      {cloud && <path d="M11 24h18a6 6 0 0 0 0-12 8 8 0 0 0-15.2 2.2A5 5 0 0 0 11 24z" fill={label === "Storms" || label === "Rain" ? "#94a3b8" : "#cbd5e1"} />}
+      {rain && [14, 20, 26].map((x0) => <line key={x0} x1={x0} y1="27" x2={x0 - 1.5} y2="31" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />)}
+      {label === "Storms" && <path d="M20 22l-3 5h3l-2 4" fill="none" stroke="#f5a623" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />}
+    </svg>
   );
 }
