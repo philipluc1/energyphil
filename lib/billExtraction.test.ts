@@ -55,3 +55,20 @@ test("a feed-in printed as a credit still counts", () => {
   assert.equal(b.amountDue, 310.34);
   assert.equal(b.currentRates?.solarFit, 0.0004);
 });
+
+import { checkFit, normaliseRates } from "./billExtraction";
+test("a lone 'peak' price is a single rate", () => {
+  const r = normaliseRates({ supply: 1.2815, anytime: null, peak: 0.31702, shoulder: null, offpeak: null, cl: null, solarFit: 0.0004 });
+  assert.equal(r.anytime, 0.31702);
+  assert.equal(r.peak, null);
+  const tou = { supply: 1.2, anytime: null, peak: 0.4, shoulder: null, offpeak: 0.2, cl: null, solarFit: null };
+  assert.deepEqual(normaliseRates(tou), tou);
+});
+
+test("the feed-in rate follows the credit actually paid", () => {
+  const r = { supply: 1.28, anytime: 0.317, peak: null, shoulder: null, offpeak: null, cl: null, solarFit: 0.04 }; // read as 4c
+  assert.equal(checkFit(r, 163.46, 0.07)!.solarFit, 0.000428); // 7c / 163 kWh ≈ 0.04c
+  const ok = { ...r, solarFit: 0.0004 };
+  assert.equal(checkFit(ok, 163.46, 0.07)!.solarFit, 0.0004); // close enough: keep the printed rate
+  assert.equal(checkFit(r, null, 0.07)!.solarFit, 0.04); // nothing to check against
+});

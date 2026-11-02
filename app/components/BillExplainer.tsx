@@ -92,9 +92,11 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
 
       <div className={s.tiles}>
         <div className={s.tile}>
-          <span className={`${s.icon} ${s.iUse}`} aria-hidden="true"><Icon name="bolt" size={18} /></span>
-          <span className={s.label}>You used</span>
-          <b className={s.big}>{kwh(used)}</b>
+          <div className={s.tileHead}>
+              <span className={`${s.icon} ${s.iUse}`} aria-hidden="true"><Icon name="bolt" size={18} /></span>
+              <span className={s.label}>You used</span>
+              <b className={s.big}>{kwh(used)}</b>
+            </div>
           <p>
             About {perDay.toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh a day:{" "}
             {ratio < 0.9 ? `about ${Math.round(ratio * 100)}% of a typical Victorian home` : ratio > 1.1 ? `about ${Math.round((ratio - 1) * 100)}% more than a typical home` : "about the same as a typical home"} (
@@ -105,18 +107,22 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
 
         {r && (r.anytime !== null || tou) && (
           <div className={s.tile}>
-            <span className={`${s.icon} ${s.iRate}`} aria-hidden="true"><Icon name="dollar" size={18} /></span>
-            <span className={s.label}>Each kWh costs</span>
-            <b className={s.big}>{tou ? `${cents(r.peak as number)} / ${cents(r.offpeak as number)}` : cents(r.anytime as number)}</b>
+            <div className={s.tileHead}>
+              <span className={`${s.icon} ${s.iRate}`} aria-hidden="true"><Icon name="dollar" size={18} /></span>
+              <span className={s.label}>Each kWh costs</span>
+              <b className={s.big}>{tou ? `${cents(r.peak as number)} / ${cents(r.offpeak as number)}` : cents(r.anytime as number)}</b>
+            </div>
             <p>{tou ? "Peak and off-peak: dearer in the late afternoon and evening, cheaper overnight." : "The same price whatever time of day you use it."}</p>
           </div>
         )}
 
         {supplyCost !== null && r?.supply != null && (
           <div className={s.tile}>
-            <span className={`${s.icon} ${s.iSupply}`} aria-hidden="true"><Icon name="home" size={18} /></span>
-            <span className={s.label}>Just for being connected</span>
-            <b className={s.big}>{money(r.supply)} a day</b>
+            <div className={s.tileHead}>
+              <span className={`${s.icon} ${s.iSupply}`} aria-hidden="true"><Icon name="home" size={18} /></span>
+              <span className={s.label}>Just for being connected</span>
+              <b className={s.big}>{money(r.supply)} a day</b>
+            </div>
             <p>
               {money(supplyCost)} on this bill{total ? <>, {Math.round((supplyCost / total) * 100)}% of it</> : null}. You pay it even if you use nothing, so a lower one
               matters for small users.
@@ -126,9 +132,11 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
 
         {f.solarExportKwh > 0 && (
           <div className={s.tile}>
-            <span className={`${s.icon} ${s.iSolar}`} aria-hidden="true"><Icon name="sun" size={18} /></span>
-            <span className={s.label}>Your solar sent out</span>
-            <b className={s.big}>{kwh(f.solarExportKwh)}</b>
+            <div className={s.tileHead}>
+              <span className={`${s.icon} ${s.iSolar}`} aria-hidden="true"><Icon name="sun" size={18} /></span>
+              <span className={s.label}>Your solar sent out</span>
+              <b className={s.big}>{kwh(f.solarExportKwh)}</b>
+            </div>
             <p>
               {r?.solarFit != null ? (
                 <>

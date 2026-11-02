@@ -242,6 +242,9 @@ export default function Comparator() {
   const [addressHintOff, setAddressHintOff] = useState(false);
   // Victorian postcodes and their suburbs (loaded on demand), to catch a postcode that doesn't match.
   const [localities, setLocalities] = useState<Localities | null>(null);
+  // A postcode typed on the home page (2 Nov 2026): filled in, and its step skipped once it resolves.
+  const [pcFromHome, setPcFromHome] = useState(false);
+  const pendingPc = useRef<string | null>(null);
   const [suburbNotListed, setSuburbNotListed] = useState(false);
   // A bill read that looks like a business, embedded network or large site.
   const [billFlag, setBillFlag] = useState<"business" | "embedded" | "large" | null>(null);
@@ -324,7 +327,13 @@ export default function Comparator() {
     let raw: string | null = null;
     try { raw = window.localStorage.getItem(SAVE_KEY); } catch { raw = null; }
     // /check?start=questions or ?start=type skips the photo panel.
-    const start = new URLSearchParams(window.location.search).get("start");
+    const qs = new URLSearchParams(window.location.search);
+    const start = qs.get("start");
+    const pcParam = (qs.get("postcode") ?? "").trim();
+    if (start === "questions" && /^[38]\d{3}$/.test(pcParam)) {
+      pendingPc.current = pcParam;
+      setTimeout(() => setPcFromHome(true), 0);
+    }
     if (start === "questions" || start === "type") {
       setTimeout(() => { setEntry("wizard"); if (start === "questions") { setQuestionsPage(true); setUsageSource("average"); setQp(2); } else setUsageSource("bill"); }, 0);
     }
@@ -418,6 +427,16 @@ export default function Comparator() {
     }
   }, [distributor, postcode, days, mode, anytime, peak, shoulder, offpeak, cl, showCl, profile, usageSource, hasSolar, solarExportRaw, currentBillRaw, calKwhRaw, calEndMonth, calFigure, email, inputStep, currentRetailer, customerName, address, suburb, ratesForm, propertyType, nmiRaw, networkFrom, addressHintOff, billCheck, hydrated]);
 
+  // The home page's postcode, once saved answers are read back (so they can't overwrite it), and again when the suburb list arrives.
+  useEffect(() => {
+    if (!hydrated || !pendingPc.current) return;
+    const pc = pendingPc.current;
+    if (localities) pendingPc.current = null;
+    const t = setTimeout(() => applyPostcode(pc), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, localities]);
+
   // The suburb list is ~20 KB gzipped, so it loads after the page, not with it.
   useEffect(() => {
     let live = true;
@@ -506,7 +525,10 @@ export default function Comparator() {
   const usagePick: "average" | "home" | "bill" = usageSource === "average" ? "average" : billRowOpen ? "bill" : "home";
   // The average home needs no questions about the home: straight to the estimate.
   // Questions first, postcode last (Phil, 2 Nov 2026): page 1 (home or business, postcode) comes just before the estimate.
-  const qPages: (1 | 2 | 3 | 4 | 5)[] = usagePick === "average" ? [2, 1, 5] : [2, 3, 4, 1, 5];
+  // A postcode from the home page that resolves cleanly (one network, one suburb, a home) skips that step.
+  const pcLoc = pcFromHome ? checkLocality(localities, postcode, suburb) : null;
+  const skipPlace = pcFromHome && networkFrom !== null && propertyType === "home" && pcLoc?.status === "ok";
+  const qPages: (1 | 2 | 3 | 4 | 5)[] = (usagePick === "average" ? [2, 1, 5] : [2, 3, 4, 1, 5]).filter((n) => !(skipPlace && n === 1)) as (1 | 2 | 3 | 4 | 5)[];
   const qIdx = Math.max(0, qPages.indexOf(qp));
   const Q_TITLES: Record<number, string> = { 1: "Where you live", 2: "Your usage", 3: "About your home", 4: "Anything else", 5: "Your estimate" };
   function goQ(to: 1 | 2 | 3 | 4 | 5, dir: "fwd" | "back") {

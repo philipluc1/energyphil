@@ -1,0 +1,8 @@
+/* "Email me these results" (2 Nov 2026) */
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 10px 2px 16px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface); color: var(--navy-accent-text); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.btn:hover { border-color: var(--navy-accent-text); }
+.btn:disabled { opacity: 0.6; cursor: default; }
+.btn:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.note { font-size: 13px; color: var(--grey); }
+.err { font-size: 13px; color: #b91c1c; font-weight: 700; }

@@ -378,3 +378,73 @@ function GasMarketDetail({ c, personal, events, onClose, startAt, inline = false
     document.body,
   );
 }
+
+/* ---------- My home, on the gas side (2 Nov 2026) ----------
+   Gas details and gas usage only: no meter number, tariff or solar from the
+   power bill. Without a gas bill: what an average gas home uses through the
+   year, and a clear "add your gas bill". */
+export function GasHome({ member, name, address, uploadHref = "#read-bill" }: { member: GasMember; name: string | null; address: string | null; uploadHref?: string }) {
+  const c = useGasCtx(member);
+  const f = useMemo<GasForecast | null>(() => {
+    if (!c) return null;
+    const share = heatingShareFor(null, c.mj / c.days);
+    const now = c.haveBill ? gasPricer({ bill: c.you, mj: c.mj, days: c.days, supplyPerDay: medianGasSupply(c.zone) }) : typicalGasPricer(c.zone);
+    return forecastGasYear({ mj: c.mj, days: c.days, endIso: null, heatingShare: share, now, best: planGasPricer(c.top.plan) });
+  }, [c]);
+  const est = !!member.estimate;
+  const days = member.gas_billing_days ?? 0;
+  const mj = member.gas_mj ?? 0;
+  const perDay = days > 0 ? Math.round(mj / days) : 0;
+  const maxMj = f ? Math.max(...f.months.map((m) => m.mj), 1) : 1;
+  const peak = f ? f.months.reduce((a, m) => (m.mj / m.days > a.mj / a.days ? m : a), f.months[0]) : null;
+  const row = (label: string, value: string | null, hint = "From your gas bill") => (
+    <div className={styles.ghRow}><span>{label}</span>{value ? <b>{value}</b> : <i>{hint}</i>}</div>
+  );
+  return (
+    <div className={styles.ghWrap}>
+      <section className={styles.ghCard} aria-labelledby="gas-home-title">
+        <h3 id="gas-home-title"><Icon name="flame" size={16} /> Your gas plan &amp; home</h3>
+        {row("Name", name, "From your bill")}
+        {row("Supply address", address, "From your bill")}
+        {row("Gas network", member.gas_zone ? `${member.gas_zone}${member.zone_guessed ? " (our guess from your postcode)" : ""}` : null)}
+        {row("Gas retailer", member.gas_current_retailer ?? null)}
+        {row("Current gas offer", member.gas_current_plan_name ?? null)}
+        {!est && row("Last gas bill", member.gas_reference_total !== null ? `${whole(member.gas_reference_total)} for ${days} days` : null)}
+      </section>
+
+      {est && (
+        <section className={styles.ghAdd} aria-labelledby="gas-add-title">
+          <span className={styles.ghAddIcon} aria-hidden="true"><Icon name="flame" size={20} /></span>
+          <div>
+            <h3 id="gas-add-title">Add your gas bill</h3>
+            <p>Until then everything on the gas side is an average Victorian gas home ({perDay} MJ a day). Your bill gives your real usage, your retailer and your rates, and we start re-checking gas every morning, like power.</p>
+            <a className={styles.ghAddBtn} href={uploadHref}><Icon name="camera" size={16} /> Upload my gas bill</a>
+          </div>
+        </section>
+      )}
+
+      {f && (
+        <section className={styles.ghCard} aria-labelledby="gas-use-title">
+          <h3 id="gas-use-title">{est ? "An average gas home through the year" : "Your gas use through the year"}</h3>
+          <div className={styles.ghStats}>
+            <div><b>{Math.round(mj).toLocaleString("en-AU")} MJ</b><span>{est ? "average home" : "last bill"} ({days} days)</span></div>
+            <div><b>{perDay} MJ</b><span>a day</span></div>
+            <div><b>{Math.round(f.annualMj).toLocaleString("en-AU")} MJ</b><span>expected a year</span></div>
+          </div>
+          <div className={styles.ghBars} role="img" aria-label={`Gas use by month for the next 12 months; most in ${peak ? MONTH_NAMES[peak.month] : "winter"}`}>
+            {f.months.map((m, i) => (
+              <div key={`${m.year}-${m.month}`} className={styles.ghBar}>
+                <span className={`${styles.ghFill} ${i === 0 ? styles.ghNow : ""} ${peak && m === peak ? styles.ghPeak : ""}`} style={{ height: `${Math.max(6, (m.mj / maxMj) * 100)}%` }} />
+                <span className={styles.ghMonth}>{short(m.month).slice(0, 1)}</span>
+              </div>
+            ))}
+          </div>
+          <p className={styles.ghNote}>
+            {peak ? <>Most gas in <b>{MONTH_NAMES[peak.month]}</b>, about {Math.round(peak.mj).toLocaleString("en-AU")} MJ. </> : null}
+            Heating drives gas: winter months use several times what summer does.{est ? <> <a href={uploadHref}>Add your gas bill</a> for your own pattern.</> : null}
+          </p>
+        </section>
+      )}
+    </div>
+  );
+}

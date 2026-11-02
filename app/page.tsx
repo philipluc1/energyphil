@@ -8,7 +8,7 @@ import { ABOUT, hasFounderStory } from "@/lib/about";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { PLUS_NAME, perWeekWords } from "@/lib/pricingPlans";
 import { marketActivity } from "@/lib/marketActivity";
-import { savingsByNetwork, typicalHouseholdExample } from "@/lib/savings";
+import { typicalHouseholdExample } from "@/lib/savings";
 import SiteHeader from "./components/SiteHeader";
 import StateWaitlist from "./components/StateWaitlist";
 import Icon from "./components/Icon";
@@ -18,6 +18,7 @@ import SourceBanner from "./components/SourceBanner";
 import PlanBand from "./components/PlanBand";
 import MemberGets from "./components/MemberGets";
 import JoinDirect from "./components/JoinDirect";
+import PostcodeStart from "./components/PostcodeStart";
 import { StepsVisual } from "./learn/LearnVisuals";
 import h from "./home3.module.css";
 import SiteFooter from "./components/SiteFooter";
@@ -57,9 +58,6 @@ export default function Home() {
   const best = Math.round(ex.annualBest);
   const market = marketActivity({ days: 30 });
   const changed = market.newOffers + market.priceChanges;
-  // "Up to" today's saving for the average home: the biggest of the five networks.
-  const nets = savingsByNetwork();
-  const topSave = nets[0] ?? null;
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, "\\u003c") }} />
@@ -82,20 +80,9 @@ export default function Home() {
               <Link href="/check" className={h.primary}>
                 <Icon name="camera" size={20} /> Snap my bill, free
               </Link>
-              <Link href="/check?start=questions" className={h.ghost}>No bill? Use the average home</Link>
             </div>
-            {topSave && topSave.save >= 1 && (
-              <div className={h.savePill}>
-                <span className={h.saveDot} aria-hidden="true" />
-                <span>
-                  Today&apos;s prices: <b>save up to $<CountUp value={Math.round(topSave.save)} /> a year</b>
-                </span>
-                <InfoTip label="About these savings">
-                  For the average Victorian home (4,000 kWh a year), the cheapest plan against the default offer, on each network today:{" "}
-                  {nets.map((n, i) => <span key={n.network}>{i > 0 ? ", " : ""}{n.network} {money(n.save)}</span>)}. Re-worked every time prices change. Snap your bill for your own figure.
-                </InfoTip>
-              </div>
-            )}
+            {/* No bill to hand: the postcode first, then a few questions (2 Nov 2026). */}
+            <div className={h.pcStart}><PostcodeStart /></div>
             {/* Internet ("Soon") is hidden for now: electricity and gas are the offer. */}
             <ul className={h.fuelsHero} aria-label="Bills we check">
               <li>

@@ -23,7 +23,7 @@ import FunEquivalents from "../components/FunEquivalents";
 import MovingCard from "../components/MovingCard";
 import UsageCard from "../components/UsageCard";
 import GasDashboard, { GasAside } from "../components/GasDashboard";
-import GasCards from "../components/GasCards";
+import GasCards, { GasHome } from "../components/GasCards";
 import { GAS_ZONES, TYPICAL_MJ_PER_DAY, bestGasPlan, gasDataReady, type GasZone } from "@/lib/gasPlans";
 import { guessGasZoneFromPostcode } from "@/lib/postcodeGas";
 import type { GasMember } from "../components/GasDashboard";
@@ -52,9 +52,10 @@ import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import BillTracker from "../components/BillTracker";
 import BillReview from "../components/BillReview";
-import type { CurrentRates, ExtractedBill } from "@/lib/billExtraction";
+import { isSingleRate, normaliseRates, type CurrentRates, type ExtractedBill } from "@/lib/billExtraction";
 import SwitchReminder from "../components/SwitchReminder";
 import ReviewCard from "../components/ReviewCard";
+import EmailResultsButton from "../components/EmailResultsButton";
 import { DeleteDataCard, MemberSettings } from "../components/MemberSettings";
 import { activityWords, marketActivity } from "@/lib/marketActivity";
 import styles from "./account.module.css";
@@ -366,6 +367,15 @@ export default function AccountPage() {
         }
       }
       if (cancelled) return;
+      // One usage price is a single rate, even if the bill called it "peak".
+      if (row) {
+        const rates = normaliseRates(row.current_rates ?? null);
+        // And one usage band on its own is single-rate use (a bill that called it all "peak").
+        const lone = (row.peak_kwh ?? 0) > 0 && !row.shoulder_kwh && !row.offpeak_kwh && !row.anytime_kwh;
+        row = lone
+          ? { ...row, current_rates: rates, anytime_kwh: row.peak_kwh, peak_kwh: 0, usage_mode: "simple", tariff_type: row.tariff_type === "time_of_use" ? "single_rate" : row.tariff_type }
+          : { ...row, current_rates: rates, tariff_type: isSingleRate(rates) && row.tariff_type === "time_of_use" ? "single_rate" : row.tariff_type };
+      }
       setSub(row);
       setSubLoading(false);
     }
@@ -484,7 +494,8 @@ export default function AccountPage() {
     document.body.style.backgroundAttachment = "fixed";
     return () => { document.body.style.background = prev; };
   }, [stage, themeMode]);
-  const [period, setPeriod] = useState<Period>("year");
+  // The bill's own period first (2 Nov 2026), so "You now" is the dollar figure on their bill. No bill: a month.
+  const [period, setPeriod] = useState<Period>("bill");
   // Which fuel the dashboard shows. #gas in the address opens gas.
   const [fuel, setFuel] = useState<"elec" | "gas">(() => (typeof window !== "undefined" && window.location.hash === "#gas" ? "gas" : "elec"));
   const [showSwitchForm, setShowSwitchForm] = useState(false);
@@ -800,7 +811,9 @@ export default function AccountPage() {
           distributor: planBase.distributor,
           nmi: planBase.nmi,
           address: [planBase.address, planBase.suburb, planBase.postcode].filter(Boolean).join(", ") || null,
-          tariff: planBase.tariff_type
+          tariff: isSingleRate(isMember ? sub!.current_rates : localPricing?.rates)
+            ? "Single rate"
+            : planBase.tariff_type
             ? TARIFF_NAMES[planBase.tariff_type] ?? planBase.tariff_type
             : planBase.usage_mode === "detailed" ? "Time of use" : planBase.usage_mode === "simple" ? "Single rate" : null,
           kwhPerDay: days > 0 && kwh > 0 ? kwh / days : null,
@@ -1023,6 +1036,7 @@ export default function AccountPage() {
                       <>
                         {/* The verdict sits under the tabs, at the top of Compare (1 Nov 2026). */}
                         <VerdictCard input={cmpInput} member={isMember} period={period} onPeriod={setPeriod} />
+                        {isMember && <EmailResultsButton />}
                         <CompareSection input={cmpInput} member={isMember} period={period} chartPalette={themeMode.chart} profile={homeProfile} />
                       </>
                     ) : (
@@ -1046,20 +1060,14 @@ export default function AccountPage() {
 
                   {shownTab === "home" && (
                     <>
-                      {fuel === "elec" && dashCheck && dashCheckFacts && (
-                        <div className={styles.billCheckWrap}>
-                          <BillCheckCard
-                            check={dashCheck}
-                            retailer={cmpInput?.currentRetailer ?? ""}
-                            facts={dashCheckFacts}
-                            title="We checked your latest bill"
-                            explain={cmpInput && !cmpInput.billIsPriced ? (
-                              <BillExplainer f={{ retailer: cmpInput.currentRetailer, planName: cmpInput.currentPlanName, days: cmpInput.days, anytime: cmpInput.anytime, peak: cmpInput.peak, shoulder: cmpInput.shoulder, offpeak: cmpInput.offpeak, cl: cmpInput.cl, solarExportKwh: cmpInput.solarExportKwh, rates: cmpInput.currentRates ?? null, total: cmpInput.billTotal, distributor: cmpInput.distributor }} />
-                            ) : undefined}
-                          />
-                        </div>
+                      {/* Your bill in plain English, first (2 Nov 2026). The bill check moved to the foot of the tab. */}
+                      {fuel === "elec" && cmpInput && !cmpInput.billIsPriced && (
+                        <BillExplainer f={{ retailer: cmpInput.currentRetailer, planName: cmpInput.currentPlanName, days: cmpInput.days, anytime: cmpInput.anytime, peak: cmpInput.peak, shoulder: cmpInput.shoulder, offpeak: cmpInput.offpeak, cl: cmpInput.cl, solarExportKwh: cmpInput.solarExportKwh, rates: cmpInput.currentRates ?? null, total: cmpInput.billTotal, distributor: cmpInput.distributor }} />
                       )}
-                      {isMember ? (
+                      {fuel === "gas" ? (
+                        // Gas (2 Nov 2026): gas details and gas use only, never the power bill's NMI, tariff or solar.
+                        <GasHome member={gasMember} name={sub?.customer_name ?? null} address={[sub?.address, sub?.suburb, sub?.postcode].filter(Boolean).join(", ") || null} />
+                      ) : isMember ? (
                         <>
                           <ProfilePanels d={{ ...sub!, source: sub!.nmi || sub!.current_plan_name ? "bill" : "answers" }} hideUsage={fuel === "elec" && !!myShape && !!cmpInput} />
                           {fuel === "elec" && cmpInput && (
@@ -1095,6 +1103,12 @@ export default function AccountPage() {
                                             {/* Usage (2 Nov 2026): "Through a day" card on top, "Year ahead" card below. */}
                       {fuel === "elec" && myShape && cmpInput && (
                         <UsageCard input={cmpInput} profile={homeProfile} shape={myShape.shape} exportPerDay={myShape.exportPerDay} evOvernight={myShape.evOvernight} fromAnswers={myShape.fromAnswers} place={sub?.suburb ?? null} />
+                      )}
+
+                      {fuel === "elec" && dashCheck && dashCheckFacts && (
+                        <div className={styles.billCheckWrap}>
+                          <BillCheckCard check={dashCheck} retailer={cmpInput?.currentRetailer ?? ""} facts={dashCheckFacts} title="We checked your latest bill" />
+                        </div>
                       )}
 
                       <div className={styles.sideInTab}>{sideCardList(false)}</div>

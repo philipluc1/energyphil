@@ -28,7 +28,7 @@ import DayChanges from "./DayChanges";
 import type { BillCheckFacts } from "./BillCheckCard";
 import { PLAN_VS_BILL_TAG, planVsBill, samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
-import { periodScale } from "@/lib/periods";
+import { showLabel, showOptions, showPeriod, showScale, showTab, type ShowPeriod } from "@/lib/periods";
 import { marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
@@ -41,8 +41,8 @@ import styles from "./dashcompare.module.css";
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const whole = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
 export const PERIOD_DAYS = { month: 365 / 12, quarter: 365 / 4, year: 365 } as const;
-const PERIOD_LABEL = { month: "a month", quarter: "a quarter", year: "a year" } as const;
-export type Period = keyof typeof PERIOD_DAYS;
+/** What the figures are shown for: the bill's own period ("bill"), a month, a quarter or a year. */
+export type Period = ShowPeriod;
 
 export interface ComparisonInput {
   distributor: Distributor;
@@ -195,7 +195,10 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
   // Everyone sees names (FREE_SHOWS_NAMES); the watching is what Plus adds.
   const names = member || FREE_SHOWS_NAMES;
   const c = useMemo(() => compute(input), [input]);
-  const k = c ? periodScale(period, input.days) : 0;
+  const per = showPeriod(period, !!c?.haveBill, input.days);
+  const k = c ? showScale(per, input.days) : 0;
+  const perLabel = showLabel(per, input.days);
+  const opts = showOptions(!!c?.haveBill, input.days);
   // The headline uses the same scaling as the tiles below it.
   const shown = useCountUp(c ? Math.max(0, (c.you - c.top.total) * k) : 0);
   if (!c) return null;
@@ -217,11 +220,11 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
                 ? "You could pay less"
                 : "Estimate from your answers"}
         </span>
-        <div className={styles.toggle} role="tablist" aria-label="Show figures per" style={{ "--i": (Object.keys(PERIOD_DAYS) as Period[]).indexOf(period) } as CSSProperties}>
+        <div className={styles.toggle} role="tablist" aria-label="Show figures per" style={{ "--i": Math.max(0, opts.indexOf(per)) } as CSSProperties}>
           <span className={styles.thumb} aria-hidden="true" />
-          {(Object.keys(PERIOD_DAYS) as Period[]).map((p) => (
-            <button key={p} type="button" role="tab" aria-selected={period === p} className={period === p ? styles.on : styles.tbtn} onClick={() => onPeriod(p)}>
-              {p === "month" ? "Monthly" : p === "quarter" ? "Quarterly" : "Yearly"}
+          {opts.map((p) => (
+            <button key={p} type="button" role="tab" aria-selected={per === p} className={per === p ? styles.on : styles.tbtn} onClick={() => onPeriod(p)}>
+              {showTab(p, input.days)}
             </button>
           ))}
         </div>
@@ -230,8 +233,8 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
         {verdict === "good"
           ? "Nothing beats your plan by enough to bother."
           : verdict === "bad"
-            ? <>You could save <span className={styles.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>
-            : <>Against the default offer, the cheapest plan saves up to <span className={styles.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>}
+            ? <>You could save <span className={styles.amount}>{whole(shown)}</span> {perLabel}</>
+            : <>Against the default offer, the cheapest plan saves up to <span className={styles.amount}>{whole(shown)}</span> {perLabel}</>}
       </h2>
       {/* "Don't bother switching" (2 Nov 2026): saying so plainly is the proof we're independent. */}
       {verdict === "good" && (
@@ -247,7 +250,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             <details className={`${styles.fact} ${styles.factBad}`}>
               <summary><Icon name="alert" size={14} /> <b>You pay {Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b><span className={styles.factMore}>why it matters</span></summary>
               <p>
-                The default offer is the government&apos;s reference price: {money(c.vdo * k)} {PERIOD_LABEL[period]} for your usage. Most people can do better than
+                The default offer is the government&apos;s reference price: {money(c.vdo * k)} {perLabel} for your usage. Most people can do better than
                 the default, so a plan that costs more than it is one worth moving off.
               </p>
             </details>
@@ -260,7 +263,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
           <span className={styles.sideLabel}>{haveBill ? "You now" : "Default offer"}</span>
           <b>{haveBill ? currentRetailer ?? "Your current plan" : "VDO"}</b>
           <span className={styles.sidePlan}>{haveBill ? currentPlanName ?? (c.basis === "rates" ? "your rates" : "from your bill") : `${distributor} network`}</span>
-          <span key={period} className={styles.sideCost}>{money(you * k)}</span>
+          <span key={per} className={styles.sideCost}>{money(you * k)}</span>
           {haveBill && input.currentPriceType === "fixed" && (
             <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price{input.currentFixedUntil ? ` until ${fmtDay(input.currentFixedUntil)}` : ""}</span>
           )}
@@ -279,7 +282,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
               <span className={styles.sidePlan}>Retailer and plan hidden</span>
             </>
           )}
-          <span key={period} className={styles.sideCost}>{money(top.total * k)}</span>
+          <span key={per} className={styles.sideCost}>{money(top.total * k)}</span>
           {names && bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
           {names && <span className={styles.sideChips}><OfferChips o={c.offerFor(top.plan)} /></span>}
         </div>
@@ -289,8 +292,8 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
             <div className={`${styles.side} ${styles.sideSave}`} style={{ "--n": 2 } as CSSProperties}>
               <span className={styles.sideLabel}>You save</span>
               <b>By switching</b>
-              <span className={styles.sidePlan}>{PERIOD_LABEL[period]}, to {names ? top.plan[0] : "the cheapest plan"}</span>
-              <span key={period} className={styles.sideCost}>{money((you - top.total) * k)}</span>
+              <span className={styles.sidePlan}>{perLabel}, to {names ? top.plan[0] : "the cheapest plan"}</span>
+              <span key={per} className={styles.sideCost}>{money((you - top.total) * k)}</span>
             </div>
           </>
         )}
@@ -333,7 +336,7 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
           ? `Priced today for the average Victorian home (${AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year), because we don't have enough of your usage yet. Upload a full bill for your own numbers.`
           : input.billIsPriced
             ? `Priced today for the plan you switched to, on the usage from your last bill`
-            : `Priced today from ${source === "bill" ? "your last bill" : "your answers"}`}{" "}({days}-day period, shown {PERIOD_LABEL[period]}).
+            : `Priced today from ${source === "bill" ? "your last bill" : "your answers"}`}{" "}({per === "bill" ? `your ${days}-day bill, shown as it is` : `${days}-day period, shown ${perLabel}`}).
         {member ? " We re-run this every morning and email you only when a move is worth it." : " Estimates only; confirm with the retailer before switching."}
       </p>
     </section>
@@ -490,7 +493,9 @@ export function CompareSection({ input: billInput, member, period, profile = nul
   const perRetailer = cheapestPerRetailer(allMatches, top);
   const matches = allPlans ? allMatches : perRetailer;
   const { days, currentRetailer, currentPlanName, source } = input;
-  const k = periodScale(period, days);
+  const per = showPeriod(period, haveBill, days);
+  const k = showScale(per, days);
+  const perLabel = showLabel(per, days);
   // Each plan against the Victorian Default Offer for the same usage, as a percentage.
   const vsVdo = (total: number) => (vdo > 0 ? (total - vdo) / vdo : 0);
   const pct = (x: number) => { const n = Math.round(x * 100); return `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n)}%`; };
@@ -530,13 +535,13 @@ export function CompareSection({ input: billInput, member, period, profile = nul
     <>
       {retailerBest && retailerBest !== top && isLocked(retailerBest) && (
         <div className={styles.stay}>
-          <b>Staying with {currentRetailer}?</b> One of the {lockedTop.length} cheapest plans is theirs, at {money(retailerBest.total * k)} {PERIOD_LABEL[period]}.
+          <b>Staying with {currentRetailer}?</b> One of the {lockedTop.length} cheapest plans is theirs, at {money(retailerBest.total * k)} {perLabel}.
           Plus members see which one, so you can ask {currentRetailer} to move you without changing company.
         </div>
       )}
       {retailerBest && retailerBest !== top && !isLocked(retailerBest) && (
         <div className={styles.stay}>
-          <b>Staying with {currentRetailer}?</b> Their cheapest current plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at {money(retailerBest.total * k)} {PERIOD_LABEL[period]},{" "}
+          <b>Staying with {currentRetailer}?</b> Their cheapest current plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at {money(retailerBest.total * k)} {perLabel},{" "}
           <span className={styles.stayGap}>{whole((retailerBest.total - top.total) * k)} more</span> than {member || FREE_SHOWS_NAMES ? top.plan[0] : "the cheapest plan"}.
           {!haveBill && <> You may be on an older, dearer {currentRetailer} plan: upload your bill to see what you actually pay.</>}
         </div>
@@ -553,13 +558,13 @@ export function CompareSection({ input: billInput, member, period, profile = nul
             you={you * k}
             youLabel={haveBill ? (c.basis === "rates" ? "Your plan" : "Your bill") : "The default offer"}
             vdo={haveBill ? vdo * k : null}
-            per={PERIOD_LABEL[period]}
+            per={perLabel}
             note={
               whatIf ? (
-                <>What if: priced for about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day){haveBill ? <>, on your plan&apos;s rates</> : null}. <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button></>
+                <>What if: priced for about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {perLabel}</b> ({kwhDay.toFixed(1)} kWh a day){haveBill ? <>, on your plan&apos;s rates</> : null}. <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button></>
               ) : haveBill ? (
                 <>
-                  {source === "bill" ? "Your last bill" : "Your answers"}: about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day){tariffWords ? `, ${tariffWords}` : ""}
+                  {source === "bill" ? "Your last bill" : "Your answers"}: about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {perLabel}</b> ({kwhDay.toFixed(1)} kWh a day){tariffWords ? `, ${tariffWords}` : ""}
                   {currentRetailer ? <> with {currentRetailer}</> : null}.{" "}
                   {Math.abs(vsVdo(you)) < 0.02
                     ? "About the same as the default offer."
@@ -570,7 +575,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
               ) : c.average ? (
                 <>The average Victorian home: <b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year</b>, on the default offer. Upload a full bill for your own numbers.</>
               ) : (
-                <>The default offer at about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {PERIOD_LABEL[period]}</b> ({kwhDay.toFixed(1)} kWh a day). Add your bill to compare against what you really pay.</>
+                <>The default offer at about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {perLabel}</b> ({kwhDay.toFixed(1)} kWh a day). Add your bill to compare against what you really pay.</>
               )
             }
           />
@@ -633,7 +638,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
         <div className={styles.tableWide}>
           <table>
             <thead>
-              <tr><th>#</th><th>Retailer</th><th>Plan</th><th>How it&apos;s charged</th><th className={styles.num}>Cost {PERIOD_LABEL[period]}</th><th className={styles.num}>vs {haveBill ? "your bill" : "default offer"}</th><th className={styles.num} title="Each plan against the Victorian Default Offer for the same usage">vs default offer</th></tr>
+              <tr><th>#</th><th>Retailer</th><th>Plan</th><th>How it&apos;s charged</th><th className={styles.num}>Cost {perLabel}</th><th className={styles.num}>vs {haveBill ? "your bill" : "default offer"}</th><th className={styles.num} title="Each plan against the Victorian Default Offer for the same usage">vs default offer</th></tr>
             </thead>
             <tbody>
               {rows.map((m, i) => {
@@ -819,7 +824,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
           o={topOffer}
           retailer={real.top.plan[0]}
           title={null}
-          payLateCost={topDetail && topDetail.conditionalDiscount * k >= 0.5 ? `${money(topDetail.conditionalDiscount * k)} ${PERIOD_LABEL[period]}` : null}
+          payLateCost={topDetail && topDetail.conditionalDiscount * k >= 0.5 ? `${money(topDetail.conditionalDiscount * k)} ${perLabel}` : null}
         />
       </details>
       )}

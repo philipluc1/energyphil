@@ -17,7 +17,12 @@ import s from "./usageshape.module.css";
 // (the dashboard).
 
 const HOURS = ["12am", "3am", "6am", "9am", "12pm", "3pm", "6pm", "9pm"];
-const W = 720, H = 270, PAD = { l: 40, r: 12, t: 26, b: 28 };
+const PAD = { l: 40, r: 12, t: 26, b: 28 };
+// Phones get a narrower, taller drawing (2 Nov 2026), so the chart reads bigger and its labels stay legible.
+const NARROW = "(max-width: 560px)";
+const subscribeNarrow = (cb: () => void) => { const m = window.matchMedia(NARROW); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); };
+const isNarrow = () => window.matchMedia(NARROW).matches;
+const notNarrow = () => false;
 
 /** A smooth path through 24 hourly points (Catmull-Rom to Bezier). */
 function smooth(points: [number, number][]): string {
@@ -65,6 +70,8 @@ export default function UsageShape({
   const typical = useMemo(() => usageCurve(key, dailyKwh, { exportKwhPerDay, evOvernight }), [key, dailyKwh, exportKwhPerDay, evOvernight]);
   const weather = useTodayWeather(place, live);
   const minute = useSyncExternalStore(subscribeMinute, minuteNow, noMinute);
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, notNarrow);
+  const W = narrow ? 440 : 720, H = narrow ? 300 : 270;
   const nowH = live && minute !== null ? Math.min(23, melbourneHour(new Date(minute * 60_000))) : null;
   // Today's clouds shape the solar (and the bit of extra grid power it costs).
   const curve = useMemo(() => {
@@ -107,9 +114,9 @@ export default function UsageShape({
       )}
       <div className={bare ? s.chartBare : s.chartCard}>
         <div className={s.legend}>
-          <span><i className={s.swGrid} /> From the grid, kW</span>
-          {curve.feedInKwhPerDay > 0 && <span><i className={s.swFeed} /> Solar sent to the grid{weather ? ", today's weather" : ""}</span>}
-          <span><i className={s.swPeak} /> Typical peak window, {pk0 - 12}pm to {pk1 - 12}pm</span>
+          <span><i className={s.swGrid} /> From the grid (kW)</span>
+          {curve.feedInKwhPerDay > 0 && <span><i className={s.swFeed} /> Solar sent out{weather ? " today" : ""}</span>}
+          <span><i className={s.swPeak} /> Peak {pk0 - 12}–{pk1 - 12}pm</span>
         </div>
         <div className={s.chartBox}>
         {live && weather && (

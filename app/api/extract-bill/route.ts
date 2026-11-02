@@ -218,6 +218,7 @@ const TOOL_SCHEMA = {
       shoulder_rate_cents: { type: ["number", "null"], description: "Shoulder usage rate in cents per kWh as printed, if shown." },
       offpeak_rate_cents: { type: ["number", "null"], description: "Off-peak usage rate in cents per kWh as printed, if shown." },
       controlled_load_rate_cents: { type: ["number", "null"], description: "Controlled load / dedicated circuit rate in cents per kWh as printed, if shown." },
+      solar_credit_total: { type: ["number", "null"], description: "The dollar credit for solar exported this period, as a positive number (e.g. a 'Solar feed-in credit -$0.07' line is 0.07). Null if not shown." },
       solar_fit_cents: { type: ["number", "null"], description: "Solar feed-in tariff in cents per kWh, as a positive number even if the bill prints it as a credit (e.g. '-0.040 c/kWh' is 0.04). Read it from the solar/feed-in line's rate column; if only the credit and kWh are shown, divide the credit by the kWh. Null if not shown." },
       looks_partial: {
         type: "boolean",

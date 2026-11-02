@@ -12,7 +12,7 @@ import { OfferChips } from "./OfferTerms";
 import { GAS_PLANS, GAS_PLAN_DATA_DATE, GAS_ZONES, TYPICAL_MJ_PER_DAY, rankGasPlans, gasDataReady, type GasZone, type GasPlanRow, type RankedGas } from "@/lib/gasPlans";
 import { describeOffer, topOpen } from "@/lib/planExtras";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
-import { PERIOD_DAYS, periodScale, type PeriodName as Period } from "@/lib/periods";
+import { showLabel, showOptions, showPeriod, showScale, showTab, type ShowPeriod as Period } from "@/lib/periods";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { gasPricer, gasSeasonFactors, medianGasSupply, typicalGasPricer } from "@/lib/gasInsights";
 import v from "./dashcompare.module.css";
@@ -40,7 +40,6 @@ export interface GasMember {
   zone_guessed?: boolean;
 }
 
-const PERIOD_LABEL: Record<Period, string> = { month: "a month", quarter: "a quarter", year: "a year" };
 const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const whole = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
 
@@ -54,7 +53,11 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
   const gasOffer = (p: GasPlanRow) => describeOffer("G", p[0], p[2], p[1], { hasSolar: false, currentRetailer: member.gas_current_retailer ?? null });
   const ranked = useMemo<RankedGas[]>(() => (have && zone ? rankGasPlans(zone, { days, mj }, member.gas_current_retailer ?? null) : []), [have, zone, days, mj, member.gas_current_retailer]);
   const top = topOpen(ranked);
-  const k = have ? periodScale(period, days) : 0;
+  // "bill": the gas bill's own period, when there's a gas bill total to match.
+  const per = showPeriod(period, have && bill !== null, days);
+  const k = have ? showScale(per, days) : 0;
+  const perLabel = showLabel(per, days);
+  const opts = showOptions(have && bill !== null, days);
   // No gas bill yet: an average home against the middle of the market, the
   // same yardstick as the free gas check. Victoria has no gas default offer.
   const est = !!member.estimate;
@@ -120,23 +123,23 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
             <Icon name="flame" size={14} />{" "}
             {verdict === "est" ? "Gas: an estimate until you add a bill" : verdict === "nobill" ? "Gas: add your bill total for a verdict" : verdict === "good" ? "Gas: you're on a good deal" : severe ? "Gas: you're paying far more than you need to" : "Gas: you could pay less"}
           </span>
-          <div className={v.toggle} role="tablist" aria-label="Show gas figures per" style={{ "--i": (Object.keys(PERIOD_DAYS) as Period[]).indexOf(period) } as CSSProperties}>
+          <div className={v.toggle} role="tablist" aria-label="Show gas figures per" style={{ "--i": Math.max(0, opts.indexOf(per)) } as CSSProperties}>
             <span className={v.thumb} aria-hidden="true" />
-            {(Object.keys(PERIOD_DAYS) as Period[]).map((p) => (
-              <button key={p} type="button" role="tab" aria-selected={period === p} className={period === p ? v.on : v.tbtn} onClick={() => onPeriod(p)}>
-                {p === "month" ? "Monthly" : p === "quarter" ? "Quarterly" : "Yearly"}
+            {opts.map((p) => (
+              <button key={p} type="button" role="tab" aria-selected={per === p} className={per === p ? v.on : v.tbtn} onClick={() => onPeriod(p)}>
+                {showTab(p, days)}
               </button>
             ))}
           </div>
         </div>
         <h2 className={v.headline}>
           {verdict === "est"
-            ? <>An average gas home could save up to <span className={v.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]}</>
+            ? <>An average gas home could save up to <span className={v.amount}>{whole(shown)}</span> {perLabel}</>
             : verdict === "nobill"
-            ? <>The cheapest gas plan for your usage is <span className={v.amount}>{top ? money(top.total * k) : "—"}</span> {PERIOD_LABEL[period]}</>
+            ? <>The cheapest gas plan for your usage is <span className={v.amount}>{top ? money(top.total * k) : "—"}</span> {perLabel}</>
             : verdict === "good"
               ? "No gas plan beats yours by enough to bother."
-              : <>You could save <span className={v.amount}>{whole(shown)}</span> {PERIOD_LABEL[period]} on gas</>}
+              : <>You could save <span className={v.amount}>{whole(shown)}</span> {perLabel} on gas</>}
         </h2>
         {verdict === "good" && (
           <p className={v.stayPut}>
@@ -149,7 +152,7 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
             <span className={v.sideLabel}>{est ? "A typical gas plan" : "You now"}</span>
             <b>{est ? "Middle of the market" : member.gas_current_retailer ?? "Your gas plan"}</b>
             <span className={v.sidePlan}>{est ? `an average home, ${TYPICAL_MJ_PER_DAY} MJ a day` : member.gas_current_plan_name ?? "from your gas bill"}</span>
-            <span key={period} className={v.sideCost}>{you !== null ? money(you * k) : "—"}</span>
+            <span key={per} className={v.sideCost}>{you !== null ? money(you * k) : "—"}</span>
           </div>
           <div className={v.arrow} aria-hidden="true">→</div>
           <div className={`${v.side} ${v.sideBest}`} style={{ "--n": 1 } as CSSProperties}>
@@ -158,7 +161,7 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
               <>
                 <b>{top.plan[0]}</b>
                 <span className={v.sidePlan}>{top.plan[2]}</span>
-                <span key={period} className={v.sideCost}>{money(top.total * k)}</span>
+                <span key={per} className={v.sideCost}>{money(top.total * k)}</span>
                 <span className={v.sideChips}><OfferChips o={gasOffer(top.plan)} /></span>
               </>
             ) : <b>No plan priced yet</b>}
@@ -169,8 +172,8 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
               <div className={`${v.side} ${v.sideSave}`} style={{ "--n": 2 } as CSSProperties}>
                 <span className={v.sideLabel}>{est ? "Up to" : "You save"}</span>
                 <b>{est ? "Less than a typical plan" : "By switching gas"}</b>
-                <span className={v.sidePlan}>{PERIOD_LABEL[period]}, to {top.plan[0]}</span>
-                <span key={period} className={v.sideCost}>{money(saving * k)}</span>
+                <span className={v.sidePlan}>{perLabel}, to {top.plan[0]}</span>
+                <span key={per} className={v.sideCost}>{money(saving * k)}</span>
               </div>
             </>
           )}
@@ -185,9 +188,9 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         </div>
         <p className={v.fine}>
           {est ? <>
-            Estimated for an average Victorian gas home ({TYPICAL_MJ_PER_DAY} MJ a day, shown {PERIOD_LABEL[period]}) on the {zone} network{member.zone_guessed ? ", our best guess from your postcode" : ""}, against {ranked.length} gas plans from {retailers} retailers. &ldquo;Up to&rdquo; is the gap between the middle of the market and the cheapest plan; your own bill could be more or less. Add a gas bill and we&apos;ll price your real usage and re-check it every morning. Plan data {GAS_PLAN_DATA_DATE}.
+            Estimated for an average Victorian gas home ({TYPICAL_MJ_PER_DAY} MJ a day, shown {perLabel}) on the {zone} network{member.zone_guessed ? ", our best guess from your postcode" : ""}, against {ranked.length} gas plans from {retailers} retailers. &ldquo;Up to&rdquo; is the gap between the middle of the market and the cheapest plan; your own bill could be more or less. Add a gas bill and we&apos;ll price your real usage and re-check it every morning. Plan data {GAS_PLAN_DATA_DATE}.
           </> : <>
-          Priced today from your gas bill ({days}-day period, {Math.round(mj).toLocaleString("en-AU")} MJ, shown {PERIOD_LABEL[period]}), against {ranked.length} gas plans from {retailers} retailers on the {zone} network. Plan data {GAS_PLAN_DATA_DATE}.
+          Priced today from your gas bill ({days}-day period, {Math.round(mj).toLocaleString("en-AU")} MJ, shown {perLabel}), against {ranked.length} gas plans from {retailers} retailers on the {zone} network. Plan data {GAS_PLAN_DATA_DATE}.
           {dual ? ` ${top!.plan[0]} is also your cheapest electricity retailer: ask about a dual-fuel discount.` : ""}
           </>}
         </p>
@@ -200,7 +203,7 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         k={k}
         you={youW}
         youLabel={est ? "A typical plan" : whatIf ? "Your plan" : "Your bill"}
-        perLabel={PERIOD_LABEL[period]}
+        perLabel={perLabel}
         zone={zone ?? ""}
         currentRetailer={member.gas_current_retailer ?? null}
         controls={
@@ -240,12 +243,12 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         }
         note={
           whatIf ? (
-            <>What if: priced for about <b>{Math.round(mjW * k).toLocaleString("en-AU")} MJ {PERIOD_LABEL[period]}</b> ({Math.round(mjW / days)} MJ a day){est ? <>, against a typical plan at that usage</> : bill !== null ? <>, your plan at your bill&apos;s average rate</> : null}. <button type="button" className={ins.wiReset} onClick={resetWhatIf}>{est ? "Back to average" : "Back to my bill"}</button></>
+            <>What if: priced for about <b>{Math.round(mjW * k).toLocaleString("en-AU")} MJ {perLabel}</b> ({Math.round(mjW / days)} MJ a day){est ? <>, against a typical plan at that usage</> : bill !== null ? <>, your plan at your bill&apos;s average rate</> : null}. <button type="button" className={ins.wiReset} onClick={resetWhatIf}>{est ? "Back to average" : "Back to my bill"}</button></>
           ) : est ? (
-            <>An average Victorian gas home: about <b>{Math.round(mj * k).toLocaleString("en-AU")} MJ {PERIOD_LABEL[period]}</b> ({TYPICAL_MJ_PER_DAY} MJ a day, more in winter). Add a gas bill and every price here switches to your own usage.</>
+            <>An average Victorian gas home: about <b>{Math.round(mj * k).toLocaleString("en-AU")} MJ {perLabel}</b> ({TYPICAL_MJ_PER_DAY} MJ a day, more in winter). Add a gas bill and every price here switches to your own usage.</>
           ) : (
             <>
-              Your last bill: about <b>{Math.round(mj * k).toLocaleString("en-AU")} MJ {PERIOD_LABEL[period]}</b> ({Math.round(mj / days)} MJ a day; a typical Victorian home uses about {TYPICAL_MJ_PER_DAY}, more in winter)
+              Your last bill: about <b>{Math.round(mj * k).toLocaleString("en-AU")} MJ {perLabel}</b> ({Math.round(mj / days)} MJ a day; a typical Victorian home uses about {TYPICAL_MJ_PER_DAY}, more in winter)
               {member.gas_current_retailer ? <> with {member.gas_current_retailer}</> : null}. Victoria has no default offer for gas, so your bill is the yardstick.
             </>
           )

@@ -217,3 +217,9 @@
   .heroTech .fuelCardText small { font-family: inherit; font-size: 12.5px; letter-spacing: 0; }
   .heroTech .savePill { font-size: 13px; }
 }
+
+/* 2 Nov 2026: the postcode start sits under the main button. */
+.pcStart { width: 100%; margin-top: 22px; }
+.heroTech .pcStart + .fuelsHero { margin-top: 26px; }
+@media (max-width: 520px) { .pcStart { margin-top: 18px; } }
+@media (max-width: 860px) { .hero { grid-template-columns: minmax(0, 1fr); } }

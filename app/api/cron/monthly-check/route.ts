@@ -1,18 +1,11 @@
 import { activeRowsToEmail } from "@/lib/oneMemberPerEmail";
 import { NextRequest, NextResponse } from "next/server";
-import { activityWords, marketActivity } from "@/lib/marketActivity";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
-import { monthlyCheck } from "@/lib/emailTemplates";
-import { GAS_ZONES, bestGasPlan, type GasZone } from "@/lib/gasPlans";
-import { computePick, referenceForUsage } from "@/lib/priceWatch";
 import { ratesFromJson } from "@/lib/billReconcile";
-import { switchedPlanNow } from "@/lib/switched";
 import type { CurrentRates } from "@/lib/billExtraction";
-import type { Distributor } from "@/lib/plans";
 import { rejectUnlessCron } from "@/lib/cronAuth";
-import { MONTHLY_SUMMARY_EXTRAS, summaryFacts, type SummaryFacts } from "@/lib/monthlySummary";
-import { DEFAULT_PROFILE, type HomeProfile } from "@/lib/profileUsage";
+import { memberSummary } from "@/lib/memberSummary";
 import { sendPush } from "@/lib/push";
 import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 
@@ -113,34 +106,16 @@ export async function GET(req: NextRequest) {
   for (const sub of (data ?? []) as Row[]) {
     if (keep && !keep.has(sub.id)) continue;
     try {
-      const days = sub.billing_days ?? 91;
-      const watch = {
-        distributor: sub.distributor as Distributor,
-        billingDays: days,
-        peak: sub.peak_kwh ?? 0,
-        shoulder: sub.shoulder_kwh ?? 0,
-        offpeak: sub.offpeak_kwh ?? 0,
-        anytime: sub.anytime_kwh ?? 0,
-        cl: sub.controlled_load_kwh ?? 0,
-        solarExportKwh: sub.solar_export_kwh ?? 0,
-        demandKw: sub.demand_kw ?? null,
-        ev: hasEv(sub.home_profile),
-      };
-      // The same pick the dashboard and the daily alerts show (lib/stickyPick.ts).
-      const best = computePick(watch, { retailer: sub.last_notified_retailer ?? sub.baseline_retailer ?? null, plan: sub.last_notified_plan_name ?? sub.baseline_plan_name ?? null });
-      // The bill total only when it fits the usage on file (else their rates
-      // on that usage, or the default offer), as the dashboard shows it.
-      // Switched? Compare with the plan they're on now, not the old bill.
-      const moved = sub.switched_at ? switchedPlanNow(sub.switched_to, watch.distributor, { days, peak: watch.peak, shoulder: watch.shoulder, offpeak: watch.offpeak, anytime: watch.anytime, cl: watch.cl, solarExportKwh: watch.solarExportKwh }) : null;
-      const ref = moved ? { total: moved.total, vsBill: true } : sub.reference_total !== null ? referenceForUsage(watch, sub.reference_total, ratesOf.get(sub.id) ?? null) : sub.baseline_total !== null ? { total: sub.baseline_total, vsBill: false } : null;
-      const reference = ref ? ref.total : null;
-      if (!best || reference === null) continue;
+      // Worked out and written once, in lib/memberSummary.ts (the dashboard's "Email me my results" uses the same).
+      const dates = datesOf.get(sub.id);
+      const r = memberSummary(sub, { rates: ratesOf.get(sub.id) ?? null, name: who.get(sub.id)?.name ?? null, currentRetailer: who.get(sub.id)?.retailer ?? null, discountEndsAt: dates?.discount ?? null, fixedUntil: dates?.fixed ?? null }, origin, now);
+      if (!r) continue;
+      const { best, reference, saving, days } = r;
       // A new pick (cheaper by the threshold, or the old one withdrawn): store it so tomorrow's check agrees.
       if (best.reason !== "kept") {
         await supabaseAdmin.from("subscribers").update({ last_notified_total: best.bestTotal, last_notified_retailer: best.bestRetailer, last_notified_plan_name: best.bestPlanName }).eq("id", sub.id);
       }
 
-      const saving = reference - best.bestTotal;
       const { error: upErr } = await supabaseAdmin.from("bill_checks").upsert(
         {
           email: sub.email,
@@ -160,48 +135,7 @@ export async function GET(req: NextRequest) {
 
       // The check is always saved; the email only if they haven't turned the summary off.
       if (emailConfigured && !sub.unsubscribed && summaryOn.get(sub.id) !== false) {
-        const monthName = now.toLocaleDateString("en-AU", { month: "long", timeZone: "UTC" });
-        const act = marketActivity({ network: sub.distributor, days: 31 });
-        // The extra sections never stop the email: if anything fails, send the short check.
-        let facts: SummaryFacts | null = null;
-        if (MONTHLY_SUMMARY_EXTRAS && !best.average) {
-          try {
-            const dates = datesOf.get(sub.id);
-            facts = summaryFacts({
-              network: watch.distributor,
-              usage: { days, peak: watch.peak, shoulder: watch.shoulder, offpeak: watch.offpeak, anytime: watch.anytime, cl: watch.cl, solarExportKwh: watch.solarExportKwh, demandKw: watch.demandKw },
-              reference,
-              vsBill: !!ref?.vsBill,
-              rates: moved ? null : ratesOf.get(sub.id) ?? null,
-              profile: answeredProfile(sub.home_profile),
-              ev: watch.ev,
-              best: { retailer: best.bestRetailer, planName: best.bestPlanName, total: best.bestTotal },
-              discountEndsAt: dates?.discount ?? null,
-              fixedUntil: dates?.fixed ?? null,
-              now,
-            });
-          } catch (err) {
-            console.error("monthly-check: summary facts failed", sub.id, err);
-          }
-        }
-        const e = monthlyCheck({
-          origin,
-          monthName,
-          // 1 July is when Victorian retailers usually reprice: say so.
-          isJuly: now.getUTCMonth() === 6,
-          retailer: best.bestRetailer,
-          planName: best.bestPlanName,
-          yearly: (saving * 365) / days,
-          unsubscribeUrl: `${origin}/api/unsubscribe?type=subscriber&id=${sub.id}`,
-          gas: gasSummary(sub),
-          activity: act.ready ? activityWords(act) || null : null,
-          activityCount: act.ready ? act.newOffers + act.priceChanges : null,
-          facts,
-          customerName: who.get(sub.id)?.name ?? null,
-          nearTies: best.nearTies,
-          currentRetailer: who.get(sub.id)?.retailer ?? null,
-        });
-        const ok = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
+        const ok = await sendEmail({ to: sub.email, subject: r.email.subject, title: r.email.title, html: r.email.html });
         if (ok) emailed++;
       }
       // A nudge on their phone too, if they turned notifications on and still want the summary.
@@ -222,26 +156,4 @@ export async function GET(req: NextRequest) {
   }
   await sendHealthEmail("monthly check", { "checks saved": saved, "summaries emailed": emailed, errors });
   return NextResponse.json({ ok: true, saved, emailed, errors });
-}
-
-/** Their home answers, when they've given them. */
-function answeredProfile(p: unknown): HomeProfile | null {
-  if (!p || typeof p !== "object") return null;
-  const hp = p as Partial<HomeProfile> & { answered?: boolean };
-  if (hp.answered === false || typeof hp.daytimeHome !== "string") return null;
-  return { ...DEFAULT_PROFILE, ...hp } as HomeProfile;
-}
-
-/** True when the saved home answers say they charge an EV at home. */
-function hasEv(profile: unknown): boolean {
-  return !!profile && typeof profile === "object" && (profile as { ev?: unknown }).ev === true;
-}
-
-/** The cheapest gas plan vs the member's gas bill, when they have one on file. */
-function gasSummary(sub: Row): { retailer: string; planName: string; yearly: number } | null {
-  if (!sub.gas_zone || !GAS_ZONES.includes(sub.gas_zone as GasZone) || !sub.gas_mj || !sub.gas_reference_total) return null;
-  const days = sub.gas_billing_days ?? 91;
-  const top = bestGasPlan(sub.gas_zone as GasZone, { days, mj: sub.gas_mj });
-  if (!top) return null;
-  return { retailer: top.plan[0], planName: top.plan[2], yearly: ((sub.gas_reference_total - top.total) * 365) / days };
 }

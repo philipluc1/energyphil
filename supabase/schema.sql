@@ -420,3 +420,22 @@ create table if not exists public.review_clicks (
 create index if not exists review_clicks_created on public.review_clicks (created_at desc);
 alter table public.review_clicks enable row level security;
 -- No policies: only the server (secret key) writes and reads these.
+
+-- 2 Nov 2026: "Email me my results" on the dashboard, at most one every few minutes.
+alter table public.subscribers add column if not exists results_emailed_at timestamptz;
+
+-- 2 Nov 2026, one-off tidy (safe to run more than once): bills with one usage
+-- price that were saved as "peak" / time of use. Their usage and rates become
+-- single rate, as the bill really is.
+update public.subscribers
+   set anytime_kwh = peak_kwh, peak_kwh = 0, usage_mode = 'simple',
+       tariff_type = case when tariff_type = 'time_of_use' then 'single_rate' else tariff_type end
+ where coalesce(anytime_kwh, 0) = 0 and coalesce(peak_kwh, 0) > 0
+   and coalesce(shoulder_kwh, 0) = 0 and coalesce(offpeak_kwh, 0) = 0;
+update public.subscribers
+   set current_rates = jsonb_set(jsonb_set(current_rates, '{anytime}', current_rates->'peak'), '{peak}', 'null'::jsonb)
+ where current_rates is not null
+   and jsonb_typeof(current_rates->'peak') = 'number'
+   and coalesce(jsonb_typeof(current_rates->'anytime'), 'null') = 'null'
+   and coalesce(jsonb_typeof(current_rates->'offpeak'), 'null') = 'null'
+   and coalesce(jsonb_typeof(current_rates->'shoulder'), 'null') = 'null';

@@ -13,3 +13,21 @@ export function periodScale(period: PeriodName, days: number): number {
   const d = PERIOD_DAYS[period];
   return Math.abs(d - days) <= 3 ? 1 : d / days;
 }
+
+/**
+ * "bill" (2 Nov 2026, Phil): the bill's own period, so "You now" is the dollar
+ * figure printed on the bill. Quarterly and yearly are scaled from it.
+ */
+export type ShowPeriod = PeriodName | "bill";
+const LABEL: Record<PeriodName, string> = { month: "a month", quarter: "a quarter", year: "a year" };
+
+/** The period actually shown: "bill" needs a bill with a period; otherwise a month. */
+export const showPeriod = (p: ShowPeriod, haveBill: boolean, days: number): ShowPeriod => (p === "bill" && !(haveBill && days > 0) ? "month" : p);
+export const showScale = (p: ShowPeriod, days: number): number => (p === "bill" ? 1 : periodScale(p, days));
+export const showLabel = (p: ShowPeriod, days: number): string => (p === "bill" ? `for ${days} days` : LABEL[p]);
+/** The three tabs: the bill, then a quarter (or a month, if the bill is already about a quarter) and a year. */
+export function showOptions(haveBill: boolean, days: number): ShowPeriod[] {
+  if (!(haveBill && days > 0)) return ["month", "quarter", "year"];
+  return ["bill", Math.abs(days - PERIOD_DAYS.quarter) <= 3 ? "month" : "quarter", "year"];
+}
+export const showTab = (p: ShowPeriod, days: number): string => (p === "bill" ? `Your bill · ${days} days` : p === "month" ? "Monthly" : p === "quarter" ? "Quarterly" : "Yearly");

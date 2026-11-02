@@ -402,3 +402,33 @@ li.rowPick > .pickBubble { position: absolute; top: -10px; left: 40px; margin: 0
 .stayPut b { font-weight: 900; }
 /* 2 Nov 2026: near-ties under the verdict */
 .ties { margin: 2px 0 14px; font-size: 13.5px; line-height: 1.5; opacity: 0.88; }
+
+/* 2 Nov 2026: My home on the gas side. */
+.ghWrap { display: grid; gap: 14px; }
+.ghCard { padding: 18px 20px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); }
+.ghCard h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 17px; font-weight: 900; color: var(--ink); }
+.ghCard h3 svg { color: #e8590c; }
+.ghRow { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.ghRow:last-child { border-bottom: 0; }
+.ghRow span { color: var(--grey); }
+.ghRow b { text-align: right; color: var(--ink); }
+.ghRow i { font-style: italic; color: var(--grey-soft); }
+.ghAdd { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-radius: 18px; background: #fff4ec; border: 1px solid #fed7bf; }
+.ghAddIcon { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #e8590c; color: #fff; }
+.ghAdd h3 { margin: 0 0 4px; font-size: 17px; font-weight: 900; color: #7c2d12; }
+.ghAdd p { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: #7c2d12; }
+.ghAddBtn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; background: #e8590c; color: #fff; font-weight: 800; font-size: 14.5px; text-decoration: none; }
+.ghAddBtn:hover { background: #c2410c; }
+.ghStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
+.ghStats > div { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 14px; background: #f3f5f9; min-width: 0; }
+.ghStats b { font: 900 19px/1.15 "Archivo", sans-serif; color: var(--ink); }
+.ghStats span { font-size: 12.5px; color: var(--grey); }
+.ghBars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; align-items: end; height: 150px; }
+.ghBar { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.ghFill { width: 100%; border-radius: 7px 7px 3px 3px; background: #fbd3bb; }
+.ghNow { background: #22306e; }
+.ghPeak { background: #e8590c; }
+.ghMonth { font-size: 11.5px; font-weight: 800; color: var(--grey); }
+.ghNote { margin: 12px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--grey); }
+.ghNote a { color: var(--navy-accent-text); font-weight: 700; }
+@media (max-width: 520px) { .ghStats b { font-size: 16px; } .ghBars { gap: 4px; height: 120px; } .ghAdd { flex-direction: column; } }

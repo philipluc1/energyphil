@@ -112,8 +112,35 @@ function readRates(r: Record<string, unknown>): CurrentRates | null {
     cl: cents("controlled_load_rate_cents", 120),
     solarFit: cents("solar_fit_cents", 60, false),
   };
-  return Object.values(rates).some((v) => v !== null) ? rates : null;
+  return Object.values(rates).some((v) => v !== null) ? normaliseRates(rates) : null;
 }
+
+/**
+ * The feed-in rate against the credit actually paid (2 Nov 2026: a Tango bill
+ * paid 7c for 163 kWh, i.e. 0.04c a kWh, but the rate came through as 4c).
+ * When the credit and the export are both shown and the rate is out by more
+ * than 3 times, the credit wins: it's the money on the bill.
+ */
+export function checkFit(r: CurrentRates | null, exportKwh: number | null, credit: number | null): CurrentRates | null {
+  if (!exportKwh || exportKwh < 5 || credit === null || credit < 0 || credit > 5000) return r;
+  const implied = Math.round((credit / exportKwh) * 1e6) / 1e6;
+  if (implied > 0.6) return r;
+  if (!r) return { supply: null, anytime: null, peak: null, shoulder: null, offpeak: null, cl: null, solarFit: implied };
+  if (r.solarFit === null || (implied > 0 && (r.solarFit / implied > 3 || r.solarFit / implied < 1 / 3))) return { ...r, solarFit: implied };
+  return r;
+}
+
+/**
+ * One usage price on its own is a single rate, whatever the bill calls it
+ * (2 Nov 2026: a Tango bill's one "peak" price showed as "Usage, peak" and
+ * "Time of use"). Peak only counts as time of use next to an off-peak or shoulder price.
+ */
+export function normaliseRates<T extends CurrentRates | null | undefined>(r: T): T {
+  if (!r || r.anytime !== null || r.peak === null || r.offpeak !== null || r.shoulder !== null) return r;
+  return { ...r, anytime: r.peak, peak: null };
+}
+/** True when the rates are one price all day (after normaliseRates). */
+export const isSingleRate = (r: CurrentRates | null | undefined) => !!r && r.anytime !== null && r.offpeak === null && r.shoulder === null;
 
 /**
  * What this bill period cost. The amount due can include an overdue balance
@@ -164,6 +191,8 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
   const postcodeRaw = typeof r.postcode === "string" ? r.postcode.trim() : "";
   const postcode = /^\d{4}$/.test(postcodeRaw) ? postcodeRaw : null;
 
+  // One usage band on its own is single-rate use, whatever the bill calls it (2 Nov 2026).
+  const lonePeak = toFiniteNumber(r.peak_kwh) !== null && !toFiniteNumber(r.shoulder_kwh) && !toFiniteNumber(r.offpeak_kwh) && !toFiniteNumber(r.anytime_kwh) && (toFiniteNumber(r.peak_kwh) ?? 0) > 0;
   return {
     isElectricityBill: r.is_electricity_bill === true,
     fuel: r.fuel === "electricity" || r.fuel === "gas" || r.fuel === "dual" ? r.fuel : null,
@@ -177,12 +206,12 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     retailerName: typeof r.retailer_name === "string" ? r.retailer_name.slice(0, 80) : null,
     nmi: typeof r.nmi === "string" && /^[A-Za-z0-9]{10,11}$/.test(r.nmi.trim()) ? r.nmi.trim().toUpperCase() : null,
     planName: typeof r.plan_name === "string" ? r.plan_name.slice(0, 120) : null,
-    tariffType: typeof r.tariff_type === "string" ? r.tariff_type.slice(0, 20) : null,
+    tariffType: lonePeak && r.tariff_type === "time_of_use" ? "single_rate" : typeof r.tariff_type === "string" ? r.tariff_type.slice(0, 20) : null,
     billingDays,
     ...periodCharges(toFiniteNumber(r.current_bill_total), toFiniteNumber(r.new_charges_total), toFiniteNumber(r.overdue_amount)),
-    usageMode,
-    anytimeKwh: toFiniteNumber(r.anytime_kwh),
-    peakKwh: toFiniteNumber(r.peak_kwh),
+    usageMode: lonePeak ? "simple" : usageMode,
+    anytimeKwh: lonePeak ? toFiniteNumber(r.peak_kwh) : toFiniteNumber(r.anytime_kwh),
+    peakKwh: lonePeak ? null : toFiniteNumber(r.peak_kwh),
     shoulderKwh: toFiniteNumber(r.shoulder_kwh),
     offpeakKwh: toFiniteNumber(r.offpeak_kwh),
     controlledLoadKwh: toFiniteNumber(r.controlled_load_kwh),
@@ -196,7 +225,7 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     demandKw: (() => { const n = toFiniteNumber(r.max_demand_kw); return n !== null && n > 0 && n < 500 ? n : null; })(),
     hasSolar: r.has_solar === true,
     solarExportKwh: toFiniteNumber(r.solar_export_kwh),
-    currentRates: readRates(r),
+    currentRates: checkFit(readRates(r), toFiniteNumber(r.solar_export_kwh), typeof r.solar_credit_total === "number" ? Math.abs(r.solar_credit_total) : null),
     priceType: r.price_type === "fixed" || r.price_type === "variable" ? r.price_type : null,
     priceFixedUntil: typeof r.price_fixed_until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.price_fixed_until) ? r.price_fixed_until : null,
     discountEndsAt: typeof r.discount_ends === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.discount_ends) ? r.discount_ends : null,

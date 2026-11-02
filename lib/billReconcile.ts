@@ -1,3 +1,4 @@
+import { normaliseRates } from "./billExtraction";
 // Does the bill total match the usage we're comparing on?
 //
 // The comparison prices every plan for one usage figure, then sets those
@@ -46,7 +47,7 @@ export function ratesFromJson(v: unknown): CurrentRates | null {
   const r = v as Record<string, unknown>;
   const num = (k: string) => (typeof r[k] === "number" && Number.isFinite(r[k]) && (r[k] as number) >= 0 && (r[k] as number) < 6 ? (r[k] as number) : null);
   const out: CurrentRates = { supply: num("supply"), anytime: num("anytime"), peak: num("peak"), shoulder: num("shoulder"), offpeak: num("offpeak"), cl: num("cl"), solarFit: num("solarFit") };
-  return Object.values(out).some((x) => x !== null) ? out : null;
+  return Object.values(out).some((x) => x !== null) ? normaliseRates(out) : null;
 }
 
 const kwhOf = (u: UsageInput) => u.peak + u.shoulder + u.offpeak + u.anytime + u.cl;
