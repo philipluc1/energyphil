@@ -9,7 +9,7 @@ import PageTracker from "./components/PageTracker";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 const DESCRIPTION =
-  "Snap your Victorian electricity bill and see which plans would cost less for your home: your own usage and rates, not a typical household. Free check, no sign-up.";
+  "Snap your Victorian power bill and see which plans cost less for your home, priced on your own usage and rates. Free check, no sign-up.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

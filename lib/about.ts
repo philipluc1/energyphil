@@ -18,6 +18,12 @@ export const ABOUT = {
   location: "",             // e.g. "Melbourne, Victoria"
   contactEmail: "",         // general contact, e.g. "hello@utilo.com.au"
   postalAddress: "",        // optional, for written privacy requests
+  /** Social pages, full links. Filled ones tell Google they're the same business (2 Nov 2026). */
+  socials: {
+    facebook: "",           // e.g. "https://www.facebook.com/utilo.au"
+    instagram: "",          // e.g. "https://www.instagram.com/utilo.au"
+    tiktok: "",             // e.g. "https://www.tiktok.com/@utilo.au"
+  },
 };
 
 /** Privacy-policy specifics. */

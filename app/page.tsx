@@ -23,7 +23,7 @@ import { StepsVisual } from "./learn/LearnVisuals";
 import h from "./home3.module.css";
 import SiteFooter from "./components/SiteFooter";
 
-export const metadata = pageMeta({ title: "Utilo: compare Victorian electricity plans against your own bill", description: "Bill keeps creeping up? Snap your Victorian electricity bill and see your savings: which plans would cost less for your home, priced on your own usage and rates. Free check, no sign-up.", path: "/", absoluteTitle: true });
+export const metadata = pageMeta({ title: "Utilo: compare Victorian electricity plans against your own bill", description: "Snap your Victorian power bill and see which plans cost less for your home, priced on your own usage and rates. Free check, no sign-up.", path: "/", absoluteTitle: true });
 
 const RETAILER_COUNT = new Set(PLANS.map((p) => p[0])).size;
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
@@ -46,6 +46,8 @@ function structuredData() {
   };
   if (ABOUT.contactEmail) org.email = ABOUT.contactEmail;
   if (ABOUT.abn) org.taxID = `ABN ${ABOUT.abn}`;
+  const sameAs = Object.values(ABOUT.socials).filter((u) => /^https:\/\//.test(u));
+  if (sameAs.length) org.sameAs = sameAs;
   return {
     "@context": "https://schema.org",
     "@graph": [org, { "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: SITE_NAME, url: SITE_URL, inLanguage: "en-AU", publisher: { "@id": `${SITE_URL}/#organization` } }],

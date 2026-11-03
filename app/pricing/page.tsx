@@ -14,7 +14,7 @@ import h from "../home3.module.css";
 import p from "./pricing.module.css";
 import SiteFooter from "../components/SiteFooter";
 
-export const metadata = pageMeta({ title: `Utilo Plus: ${plusValue().monthly} a month or ${plusValue().annual} a year`, description: "The bill check is free, with every plan by name. Utilo Plus keeps watching: every plan re-priced against your bill each morning, a warning before your discount ends, and an email only when switching is worth it.", path: "/pricing" });
+export const metadata = pageMeta({ title: `Utilo Plus: ${plusValue().monthly} a month or ${plusValue().annual} a year`, description: "The bill check is free. Utilo Plus re-prices every plan against your bill each morning and emails you only when switching is worth it.", path: "/pricing" });
 
 // Free check vs Plus, one line each. Detail lives in the (i) pop-ups.
 // "On your own": what it takes without Utilo (the free government and
