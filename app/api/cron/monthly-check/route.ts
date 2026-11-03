@@ -1,3 +1,4 @@
+import { melbourneDay } from "@/lib/switchReminder";
 import { activeRowsToEmail } from "@/lib/oneMemberPerEmail";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -54,7 +55,14 @@ export async function GET(req: NextRequest) {
 
   const origin = process.env.SITE_URL || req.nextUrl.origin;
   const now = new Date();
-  const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  // 3 Nov 2026: runs every morning at 8am Melbourne (7am in winter) and only does
+  // anything on the 1st there. A once-a-month UTC schedule landed on the 2nd.
+  // ?any_day=1 (still needs the cron secret) runs it on another day, for testing.
+  const today = melbourneDay(now);
+  if (!today.endsWith("-01") && req.nextUrl.searchParams.get("any_day") !== "1") {
+    return NextResponse.json({ ok: true, skipped: `Not the 1st in Melbourne (${today}).` });
+  }
+  const month = `${today.slice(0, 7)}-01`;
 
   const { data, error } = await supabaseAdmin
     .from("subscribers")

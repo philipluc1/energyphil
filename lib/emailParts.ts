@@ -466,3 +466,63 @@ export function sameRetailerBonus(o: { retailer: string; planName: string; amoun
     </td></tr>
   </table>`;
 }
+
+/** Four big promises in a 2x2 grid, each with a coloured number or word on top (3 Nov 2026, the invite). */
+export function pillars(items: { big: string; title: string; text: string; tint: keyof typeof TILE_TINTS }[]): string {
+  const rows: string[] = [];
+  for (let r = 0; r < items.length; r += 2) {
+    rows.push(`<tr>${items.slice(r, r + 2).map((it) => {
+      const t = TILE_TINTS[it.tint];
+      return `<td valign="top" width="50%" style="padding:14px 14px 13px;background:${t.bg};border-radius:14px;font-family:${F};">
+        <div style="font:900 24px/1.05 ${F};color:${t.fg};letter-spacing:-0.5px;">${it.big}</div>
+        <div style="margin-top:7px;font:800 14.5px/1.3 ${F};color:${C.navy};">${it.title}</div>
+        <div style="margin-top:3px;font:13px/1.45 ${F};color:${C.grey};">${it.text}</div>
+      </td>`;
+    }).join("")}</tr>`);
+  }
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border-collapse:separate;border-spacing:8px;table-layout:fixed;">${rows.join("")}</table>`;
+}
+
+/** "On your own" vs "With Utilo Plus", row by row (3 Nov 2026, the invite). */
+export function youVsUs(rows: { what: string; you: string; us: string }[]): string {
+  const head = `<tr>
+      <td style="padding:10px 10px 8px 14px;font:800 11px ${F};letter-spacing:0.6px;text-transform:uppercase;color:${C.grey};"></td>
+      <td width="36%" style="padding:10px 8px 8px;font:800 11px ${F};letter-spacing:0.6px;text-transform:uppercase;color:#b4441b;">On your own</td>
+      <td width="36%" style="padding:10px 14px 8px 8px;font:800 11px ${F};letter-spacing:0.6px;text-transform:uppercase;color:${C.green};">With Utilo Plus</td>
+    </tr>`;
+  const body = rows.map((r, n) => `<tr>
+      <td valign="top" style="padding:10px 10px 10px 14px;border-top:1px solid #e3e7f0;font:800 13.5px/1.35 ${F};color:${C.navy};">${r.what}</td>
+      <td valign="top" style="padding:10px 8px;border-top:1px solid #e3e7f0;font:13.5px/1.4 ${F};color:${C.grey};"><span style="color:#b4441b;font-weight:800;">&#10007;</span> ${r.you}</td>
+      <td valign="top" style="padding:10px 14px 10px 8px;border-top:1px solid #e3e7f0;font:700 13.5px/1.4 ${F};color:${C.ink};${n % 2 === 0 ? `background:${C.greenTint};` : ""}"><span style="color:${C.green};font-weight:900;">&#10003;</span> ${r.us}</td>
+    </tr>`).join("");
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;border:1px solid #e3e7f0;border-radius:14px;overflow:hidden;">${head}${body}</table>`;
+}
+
+/** A dashboard "screen" in an email (3 Nov 2026): a window bar naming the tab, then the content. */
+export function screen(tab: string, inner: string, caption?: string): string {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 ${caption ? "6" : "20"}px;border-collapse:separate;border:1px solid #dfe4ef;border-radius:16px;overflow:hidden;box-shadow:0 8px 22px rgba(19,28,87,0.07);">
+    <tr><td style="padding:9px 14px;background:#eef1f8;border-bottom:1px solid #dfe4ef;font:800 11px ${F};letter-spacing:0.5px;text-transform:uppercase;color:${C.grey};">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:#f87171;"></span>
+      <span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:${C.amber};margin-left:3px;"></span>
+      <span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:#4ade80;margin:0 10px 0 3px;"></span>
+      Utilo Plus &middot; ${tab}
+    </td></tr>
+    <tr><td style="padding:16px;background:#ffffff;">${inner}</td></tr>
+  </table>${caption ? `<p style="margin:0 0 22px;font:12.5px/1.45 ${F};color:${C.grey};">${caption}</p>` : ""}`;
+}
+
+/** Three small tiles in a row: label, big figure (the dashboard's verdict, in miniature). */
+export function miniVerdict(o: { headline: string; tiles: { label: string; name: string; value: string; tone: "plain" | "best" | "save" }[] }): string {
+  const cell = (t: (typeof o.tiles)[number]) => {
+    const bg = t.tone === "save" ? "#fde047" : t.tone === "best" ? "#232d72" : "#1c2565";
+    const fg = t.tone === "save" ? "#1c1917" : "#ffffff";
+    const inner = `<div style="font:700 11px ${F};color:${fg};opacity:0.8;">${t.label}</div>
+      <div style="font:800 13px/1.3 ${F};color:${fg};margin-top:2px;">${t.name}</div>
+      <div style="font:900 20px ${F};color:${fg};margin-top:6px;">${t.value}</div>`;
+    return `<td valign="top" width="33%" style="padding:10px 10px 11px;border-radius:12px;${t.tone === "save" ? `background:${bg};` : keepBg(bg)}${t.tone === "best" ? "border:1.5px solid #ffd166;" : ""}">${t.tone === "save" ? inner : keepWhite(inner)}</td>`;
+  };
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;"><tr><td style="padding:16px;border-radius:14px;${keepBg("#155e75")}">
+    ${keepWhite(`<div style="font:900 21px/1.2 ${F};color:#ffffff;margin:0 0 12px;">${o.headline}</div>`)}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:6px 0;table-layout:fixed;"><tr>${o.tiles.map(cell).join("")}</tr></table>
+  </td></tr></table>`;
+}

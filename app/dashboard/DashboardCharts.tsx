@@ -75,7 +75,7 @@ export default function DashboardCharts({
   top?: ReactNode;
   filters?: DashFilters;
   /** Per lead email (lower case): already a member, unsubscribed, last invited. */
-  leadState?: Record<string, { member: boolean; unsubscribed: boolean; invitedAt: string | null }>;
+  leadState?: Record<string, { member: boolean; unsubscribed: boolean; invitedAt: string | null; followUpAt?: string | null }>;
 }) {
   const scheme = useColorScheme();
   const colors = PALETTE[scheme];
@@ -325,7 +325,7 @@ export default function DashboardCharts({
                         "—"
                       )}
                     </td>
-                    <td>{(() => { const m = leadState?.[lead.email.trim().toLowerCase()]; return <InviteButton email={lead.email} sentAt={m?.invitedAt ?? null} disabled={!!m && (m.member || m.unsubscribed)} why={m?.member ? "Member" : m?.unsubscribed ? "Unsubscribed" : undefined} />; })()}</td>
+                    <td>{(() => { const m = leadState?.[lead.email.trim().toLowerCase()]; return <InviteButton email={lead.email} sentAt={m?.invitedAt ?? null} followUpAt={m?.followUpAt ?? null} disabled={!!m && (m.member || m.unsubscribed)} why={m?.member ? "Member" : m?.unsubscribed ? "Unsubscribed" : undefined} />; })()}</td>
                   </tr>
                 ))}
               </tbody>

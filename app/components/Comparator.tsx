@@ -2,6 +2,7 @@
 
 import OfferDate from "./OfferDate";
 import Icon from "./Icon";
+import PriceAddsUp from "./PriceAddsUp";
 import { sameRetailer } from "@/lib/sameRetailer";
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
@@ -526,9 +527,11 @@ export default function Comparator() {
   const usagePick: "average" | "home" | "bill" = usageSource === "average" ? "average" : billRowOpen ? "bill" : "home";
   // The average home needs no questions about the home: straight to the estimate.
   // Questions first, postcode last (Phil, 2 Nov 2026): page 1 (home or business, postcode) comes just before the estimate.
-  // A postcode from the home page that resolves cleanly (one network, one suburb, a home) skips that step.
+  // A postcode from the home page that gives us the network skips that step (3 Nov 2026, Phil: "minimise the pages").
+  // The suburb isn't needed to price plans (the postcode sets the network), so a postcode with
+  // several suburbs skips it too. A PO Box, unknown or mismatched postcode still stops there.
   const pcLoc = pcFromHome ? checkLocality(localities, postcode, suburb) : null;
-  const skipPlace = pcFromHome && networkFrom !== null && propertyType === "home" && pcLoc?.status === "ok";
+  const skipPlace = pcFromHome && networkFrom !== null && propertyType === "home" && (pcLoc?.status === "ok" || pcLoc?.status === "needSuburb");
   const qPages: (1 | 2 | 3 | 4 | 5)[] = (usagePick === "average" ? [2, 1, 5] : [2, 3, 4, 1, 5]).filter((n) => !(skipPlace && n === 1)) as (1 | 2 | 3 | 4 | 5)[];
   const qIdx = Math.max(0, qPages.indexOf(qp));
   const Q_TITLES: Record<number, string> = { 1: "Where you live", 2: "Your usage", 3: "About your home", 4: "Anything else", 5: "Your estimate" };
@@ -766,7 +769,7 @@ export default function Comparator() {
       ? `${postcode} is a PO Box postcode. Use the postcode of the home's street address.`
       : onStep1 && loc.status === "unknown"
       ? `We can't find postcode ${postcode} in Victoria. Check it against your bill.`
-      : onStep1 && loc.status === "needSuburb"
+      : onStep1 && loc.status === "needSuburb" && !skipPlace
       ? "Pick your suburb."
       : onStep1 && loc.status === "mismatch"
       ? `${suburb} is in postcode ${loc.suburbPostcodes.join(" or ")}, not ${postcode}. Fix the postcode or the suburb.`
@@ -2705,6 +2708,7 @@ export default function Comparator() {
                                 ) : (
                                   <RateBreakdown plan={m.plan} solarExportKwh={solarExportKwh} />
                                 )}
+                                <PriceAddsUp plan={m.plan} usage={{ days, peak: usagePeak, shoulder: usageShoulder, offpeak: usageOffpeak, anytime: usageAnytime, cl: clKwh, solarExportKwh, demandKw: usageSource === "bill" ? demandKw : null }} scale={k} periodLabel={perLabel} />
                                 <OfferTerms
                                   o={offer}
                                   retailer={m.plan[0]}

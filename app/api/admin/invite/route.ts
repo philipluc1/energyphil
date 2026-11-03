@@ -12,7 +12,7 @@ import { inviteBlock } from "@/lib/leadInvite";
 // Act: never to anyone who unsubscribed, never to a member, at most one invite
 // per person every 30 days, and every email carries an unsubscribe link.
 
-type LeadRow = { id: string; created_at: string; email: string; best_retailer: string | null; best_plan_name: string | null; estimated_saving: number | null; unsubscribed: boolean | null; invite_sent_at?: string | null; customer_name?: string | null };
+type LeadRow = { id: string; created_at: string; email: string; best_retailer: string | null; best_plan_name: string | null; estimated_saving: number | null; billing_days?: number | null; best_total?: number | null; unsubscribed: boolean | null; invite_sent_at?: string | null; customer_name?: string | null };
 
 const fail = (message: string, status = 400) => NextResponse.json({ ok: false, message }, { status });
 
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (!email) return fail("Which email?");
   const like = email.replace(/[%_\\]/g, "\\$&");
 
-  const cols = "id, created_at, email, best_retailer, best_plan_name, estimated_saving, unsubscribed, invite_sent_at, customer_name";
+  const cols = "id, created_at, email, best_retailer, best_plan_name, estimated_saving, billing_days, best_total, unsubscribed, invite_sent_at, customer_name";
   let res = await db.from("leads").select(cols).ilike("email", like).order("created_at", { ascending: false }).limit(50);
   if (res.error) return fail("Run the latest SQL first (leads.invite_sent_at), then try again.", 500);
   const leads = (res.data ?? []) as LeadRow[];
@@ -37,12 +37,19 @@ export async function POST(req: NextRequest) {
   const block = inviteBlock(leads, (subs ?? []).length > 0, new Date());
   if (block) return fail(block);
   const latest = leads[0];
+  // The check saved its saving for the bill's period, not a year (3 Nov 2026): scale it.
+  const days = latest.billing_days && latest.billing_days > 0 ? latest.billing_days : null;
+  const perYear = (x: number | null | undefined) => (x != null && days ? (x * 365) / days : null);
+  const yearly = perYear(latest.estimated_saving);
+  const bestYear = perYear(latest.best_total);
 
   const e = leadInvite({
     origin: process.env.SITE_URL || req.nextUrl.origin,
     retailer: latest.best_retailer,
     planName: latest.best_plan_name,
-    yearly: latest.estimated_saving,
+    yearly,
+    nowYear: bestYear !== null && yearly !== null ? bestYear + yearly : null,
+    bestYear,
     unsubscribeUrl: `${process.env.SITE_URL || req.nextUrl.origin}/api/unsubscribe?type=lead&id=${latest.id}`,
     checkedOn: new Date(latest.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "Australia/Melbourne" }),
     name: firstNameOf(latest.customer_name ?? null),

@@ -3,6 +3,7 @@
 import OfferDate from "./OfferDate";
 import RatesCompare from "./RatesCompare";
 import Icon from "./Icon";
+import PriceAddsUp from "./PriceAddsUp";
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -689,6 +690,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                       <td colSpan={7}>
                         <div className={styles.ratesDetail}>
                           <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
+                          <PriceAddsUp plan={m.plan} usage={c.usage} scale={k} periodLabel={perLabel} />
                           <p className={styles.ratesFine}><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></p>
                           <p className={styles.ratesFine}>Including GST, before discounts.{input.currentRates ? " ✓ marks the better rate." : ""}</p>
                         </div>
@@ -753,6 +755,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                 {openRates === key && (
                   <div className={`${styles.ratesDetail} ${styles.pcRatesDetail}`}>
                     <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
+                    <PriceAddsUp plan={m.plan} usage={c.usage} scale={k} periodLabel={perLabel} />
                     <p className={styles.ratesFine}><OfferDate retailer={m.plan[0]} plan={m.plan[2]} /></p>
                     <p className={styles.ratesFine}>Including GST, before discounts.{input.currentRates ? " ✓ marks the better rate." : ""}</p>
                   </div>

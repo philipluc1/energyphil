@@ -444,3 +444,6 @@ update public.subscribers
 -- and what they were looking at (retailer, plan, saving). Cleared once sent.
 alter table public.subscribers add column if not exists switch_remind_on date;
 alter table public.subscribers add column if not exists switch_remind_note jsonb;
+
+-- 3 Nov 2026: the invite follow-up ("a look inside the dashboard"), sent once a week after the invite.
+alter table public.leads add column if not exists invite_followup_at timestamptz;

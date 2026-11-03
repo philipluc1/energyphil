@@ -27,6 +27,15 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   // Added to an iPhone home screen: opens full screen, named "Utilo".
   appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
+  // Google Search Console's "HTML tag" check (3 Nov 2026): set the code in Vercel, not here.
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+    ? {
+        verification: {
+          ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : {}),
+          ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION ? { other: { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION } } : {}),
+        },
+      }
+    : {}),
 };
 
 export const viewport: Viewport = {

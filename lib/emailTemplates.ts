@@ -14,7 +14,7 @@ import { namesList } from "./stickyPick";
 import { sameRetailer } from "./sameRetailer";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, alertPreview, sameRetailerBonus, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
+import { C, alertPreview, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -193,38 +193,170 @@ export function followUpWeek(i: { origin: string; retailer: string | null; planN
   };
 }
 
-/* ---------- Invite (owner-sent, 2 Nov 2026): one personal nudge to a lead who didn't join ---------- */
+/* ---------- Invite (owner-sent, 2 Nov 2026): one personal nudge to a lead who didn't join ----------
+   3 Nov 2026 (Phil: "more engaging… savings, time, ease, control, daily checks"):
+   their saving big, their bill against the cheapest, four promises, on your own vs
+   with Plus, the year of daily checks, then the price. */
 export function leadInvite(i: {
   origin: string;
   retailer: string | null;
   planName: string | null;
+  /** The saving a year (not per bill). */
   yearly: number | null;
   unsubscribeUrl: string;
   checkedOn: string;      // "31 October"
   name?: string | null;
+  /** What they pay a year and the cheapest plan a year, for the bars. Optional. */
+  nowYear?: number | null;
+  bestYear?: number | null;
+  /** How many plans we price on their network, e.g. 131. */
+  plansChecked?: number | null;
 }): Email {
   const v = plusValue();
   const yearly = i.yearly && i.yearly >= 1 ? i.yearly : null;
   const tagged = (path: string) => `${i.origin}${path}${path.includes("?") ? "&" : "?"}utm_source=email&utm_medium=invite&utm_campaign=lead-invite`;
   const ra = regularPrice("annual");
+  const plans = i.plansChecked && i.plansChecked > 10 ? `all ${i.plansChecked} plans` : "every plan";
+  const named = FREE_SHOWS_NAMES && i.retailer ? esc(i.retailer) : null;
+  const hero = yearly
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border-collapse:separate;">
+        <tr><td style="padding:22px 22px 20px;border-radius:16px;${keepBg(C.navy)}">
+          <div style="display:inline-block;padding:3px 10px;border-radius:999px;background:${C.amber};color:${C.amberInk};font:800 11px Arial,Helvetica,sans-serif;letter-spacing:0.6px;text-transform:uppercase;">Your check on ${esc(i.checkedOn)}</div>
+          <div style="margin:14px 0 0;font:800 50px/1 Arial,Helvetica,sans-serif;color:${C.amber};letter-spacing:-1px;">${money(yearly)}</div>
+          ${keepWhite(`<div style="margin:4px 0 0;font:700 16px/1.4 Arial,Helvetica,sans-serif;color:#ffffff;">a year you could save${named ? ` with ${named}` : ""}.</div>
+          <div style="margin:10px 0 0;font:14px/1.5 Arial,Helvetica,sans-serif;color:#ffffff;opacity:0.8;">Prices move all the time. Utilo Plus keeps that saving coming: we check for you every single morning.</div>`)}
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin:18px 0 0;"><tr><td style="border-radius:999px;background:${C.amber};"><a href="${tagged("/pricing")}" style="display:inline-block;padding:12px 22px;font:800 15px Arial,Helvetica,sans-serif;color:${C.amberInk};text-decoration:none;border-radius:999px;">Keep my saving coming &rarr;</a></td></tr></table>
+        </td></tr>
+      </table>`
+    : heroPanel({ pill: "Utilo Plus", headline: "We'll watch your energy plan, every morning.", body: "Prices move and discounts end. We keep checking so you don't have to." });
+  const bars = yearly && i.nowYear && i.bestYear && i.nowYear > i.bestYear
+    ? versus({ before: { label: "What you pay now", value: i.nowYear }, after: { label: named ? `${named}, cheapest for you` : "The cheapest plan for you", value: i.bestYear }, gapLabel: "Left on the table" })
+    : "";
   const html = `
     ${greet(i.name)}
-    <p>On ${esc(i.checkedOn)} you checked your energy plan with Utilo${yearly ? ` and we found you could save about <strong>${money(yearly)} a year</strong>${FREE_SHOWS_NAMES && i.retailer ? ` with ${esc(i.retailer)}` : ""}` : ""}.</p>
+    <p>On ${esc(i.checkedOn)} you checked your energy plan with Utilo. Here's what it found, and how to keep saving without lifting a finger.</p>
+    ${hero}
+    ${bars}
+    ${heading("Why members let us do it")}
+    ${pillars([
+      { big: yearly ? money(yearly) : "$50+", title: "Savings", text: `One email when switching saves ${money(WORTH_SWITCHING_PER_YEAR)} or more a year. Never for small change.`, tint: "green" },
+      { big: "0 min", title: "Your time", text: `No comparing ${plans} yourself. We re-price them against your bill.`, tint: "amber" },
+      { big: "1 photo", title: "Ease", text: "Snap your bill once. Your dashboard sets itself up from it.", tint: "teal" },
+      { big: "You", title: "Control", text: "We never switch you. You choose, and set how big a saving is worth an email.", tint: "navy" },
+    ])}
+    ${youVsUs([
+      { what: "Checking prices", you: "When you remember", us: "Every morning, 365 days a year" },
+      { what: "Plans compared", you: "A few, by hand", us: `${plans[0].toUpperCase()}${plans.slice(1)} on your network` },
+      { what: "Discount ending", you: "Found on a bigger bill", us: "A month's warning" },
+      { what: "1 July price changes", you: "Start again", us: "Re-checked for you" },
+    ])}
+    ${heading("Your year, checked every morning")}
+    ${yearStrip(new Date().getMonth())}
     ${heroPanel({
       pill: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
-      headline: "We'll watch it for you, every morning.",
-      body: `Prices move and discounts end. Utilo Plus re-checks every plan against your own bill each day and emails you only when switching saves ${money(WORTH_SWITCHING_PER_YEAR)} or more a year. ${ra ? `<s>${fmtPrice(ra)}</s> ` : ""}${v.annual} a year (${v.perWeek} a week), or ${v.monthly} month to month.${FOUNDING_OFFER ? " Your price stays locked in while you stay." : ""}`,
+      headline: `${ra ? `<s style="opacity:0.55;font-weight:700;">${fmtPrice(ra)}</s> ` : ""}${v.annual} a year: ${v.perWeek} a week`,
+      body: `${yearly && timesPrice(yearly) ? `Your saving is <strong>${timesPrice(yearly)} times</strong> the price. ` : ""}Or ${v.monthly} month to month.${FOUNDING_OFFER ? " Your price stays locked in while you stay." : ""} Cancel any time. Not a cent from retailers.`,
       button: { label: "Start Utilo Plus", url: tagged("/pricing") },
     })}
-    ${tiles([
-      { sym: "!", title: "Never miss a price jump", text: "A month's warning before your discount or fixed price ends.", tint: "amber" },
-      { sym: "&#8635;", title: "Know the day it's cheaper", text: "Every plan re-checked against your bill, every morning.", tint: "teal" },
-    ])}
-    <p style="margin:0 0 8px;font-size:13px;color:#5f6b82;">Not ready? <a href="${tagged("/check")}">Check again with today's prices</a>, free. Cancel Plus any time. Not a cent from retailers.</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#5f6b82;">Not ready? <a href="${tagged("/check")}">Check again with today's prices</a>, free.</p>
     ${unsubscribe(i.unsubscribeUrl, "You're getting this one-off email because you checked your plan with Utilo and asked for your result.")}`;
   return {
-    subject: yearly ? `Your ${money(yearly)} a year: want us to keep watching?` : "Want us to keep watching your energy plan?",
+    subject: yearly ? `${money(yearly)} a year, checked every morning for you` : "Want us to keep watching your energy plan?",
     title: "Keep your saving coming.",
+    html,
+  };
+}
+
+/* ---------- Invite follow-up (3 Nov 2026): a look inside the dashboard ----------
+   Sent by the morning job a week after the owner-sent invite, once, if they
+   haven't joined (lib/inviteFollowUp.ts). Their own figures where we have them;
+   the rewards and market counts are live for their network; anything else is
+   marked as an example. */
+const TYPICAL_MONTH_SHAPE = [0.94, 0.88, 0.92, 0.95, 1.05, 1.17, 1.22, 1.16, 1.03, 0.95, 0.9, 0.95]; // Jan..Dec, a typical Victorian home
+export function inviteFollowUp(i: {
+  origin: string;
+  name?: string | null;
+  retailer: string | null;
+  yearly: number | null;
+  nowYear?: number | null;
+  bestYear?: number | null;
+  network?: string | null;
+  rewards?: { credit: number; points: number; gift: number; discount: number; topCredit: number | null; retailers: number } | null;
+  marketChanges?: number | null;
+  unsubscribeUrl: string;
+}): Email {
+  const v = plusValue();
+  const ra = regularPrice("annual");
+  const yearly = i.yearly && i.yearly >= 1 ? i.yearly : null;
+  const named = FREE_SHOWS_NAMES && i.retailer ? esc(i.retailer) : "The cheapest plan";
+  const tagged = (path: string) => `${i.origin}${path}${path.includes("?") ? "&" : "?"}utm_source=email&utm_medium=invite&utm_campaign=lead-invite-2`;
+  const net = i.network ? esc(i.network) : "your network";
+
+  // 1. The verdict, from their check.
+  const verdict = yearly && i.nowYear && i.bestYear
+    ? screen("Compare", miniVerdict({
+        headline: `You could save <span style="color:#fde047;">${money(yearly)}</span> a year`,
+        tiles: [
+          { label: "You now", name: "Your bill", value: money(i.nowYear), tone: "plain" },
+          { label: "Cheapest we found", name: named, value: money(i.bestYear), tone: "best" },
+          { label: "You save", name: "By switching", value: money(yearly), tone: "save" },
+        ],
+      }), "From your own check. Members see this re-priced every morning, by bill, quarter or year.")
+    : "";
+
+  // 2. The year ahead (a typical shape, scaled to their figures).
+  const yearNow = i.nowYear ?? null;
+  const yearBest = i.bestYear ?? null;
+  const total = TYPICAL_MONTH_SHAPE.reduce((a, b) => a + b, 0);
+  const start = new Date().getMonth();
+  const months = Array.from({ length: 12 }, (_, k) => (start + k) % 12);
+  const year = yearNow && yearBest && yearNow > yearBest
+    ? screen("Your year ahead", `${columns(months.map((m) => ({ parts: [{ value: (yearBest * TYPICAL_MONTH_SHAPE[m]) / total, color: C.green }, { value: ((yearNow - yearBest) * TYPICAL_MONTH_SHAPE[m]) / total, color: "#f4b183" }], label: "JFMAMJJASOND"[m] })), { height: 96 })}
+        ${legend([{ color: C.green, label: "On the cheapest plan" }, { color: "#f4b183", label: "Extra on your plan now" }])}`,
+        "Example shape of a Victorian home's year. Members see their own, from their bill and answers, with each bill marked.")
+    : "";
+
+  // 3. Discounts and rewards: live counts for their network.
+  const rw = i.rewards;
+  const rewardsBlock = rw && rw.credit + rw.points + rw.gift + rw.discount > 0
+    ? screen(`Discounts and rewards on ${net}`, `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:6px 0;table-layout:fixed;"><tr>
+        ${[
+          { n: rw.credit, l: "sign-up credits", c: "#ecfdf3", f: C.green },
+          { n: rw.points, l: "points offers", c: "#fff3d6", f: "#9a6400" },
+          { n: rw.gift, l: "gift cards", c: "#fde8ef", f: "#b4235a" },
+          { n: rw.discount, l: "% discounts", c: "#e6f6f5", f: C.teal },
+        ].map((x) => `<td align="center" valign="top" style="padding:12px 6px;border-radius:12px;background:${x.c};font-family:Arial,Helvetica,sans-serif;"><div style="font:900 26px ${"Arial,Helvetica,sans-serif"};color:${x.f};">${x.n}</div><div style="font:700 12px/1.3 Arial,Helvetica,sans-serif;color:${C.grey};margin-top:2px;">${x.l}</div></td>`).join("")}
+      </tr></table>
+      ${rw.topCredit ? `<div style="margin-top:12px;font:14px/1.5 Arial,Helvetica,sans-serif;color:${C.ink};">Sign-up credits of up to <strong>${money(rw.topCredit)}</strong>, from ${rw.retailers} retailers. Members see each one beside what that plan costs them a year, so a big credit on a dear plan doesn't fool anyone.</div>` : ""}`,
+      "Live counts for your network today. Credits, points and gifts are never in our prices; check each retailer's terms.")
+    : "";
+
+  // 4. The market, and 5. an alert.
+  const market = i.marketChanges && i.marketChanges > 0
+    ? screen("Market", `<div style="font:900 34px/1 Arial,Helvetica,sans-serif;color:${C.navy};">${i.marketChanges}</div>
+        <div style="font:700 14px/1.45 Arial,Helvetica,sans-serif;color:${C.ink};margin-top:4px;">offers new or changed on ${net} in the last 30 days</div>
+        <div style="font:13px/1.45 Arial,Helvetica,sans-serif;color:${C.grey};margin-top:4px;">Members see every one, checked against their own bill the morning it appears.</div>`)
+    : "";
+
+  const html = `
+    ${greet(i.name)}
+    <p>Last week we invited you to Utilo Plus. Here's a look inside the dashboard you'd get, set up from the check you already did.</p>
+    ${verdict}
+    ${year}
+    ${rewardsBlock}
+    ${market}
+    ${heading("And when something changes")}
+    ${alertPreview({ title: "Your discount ends in 30 days", body: `${yearly ? `Moving now keeps about ${money(yearly)} a year in your pocket.` : "Here's the plan to move to before it does."} Tap to see it.` })}
+    ${heroPanel({
+      pill: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
+      headline: `${ra ? `<s style="opacity:0.55;font-weight:700;">${fmtPrice(ra)}</s> ` : ""}${v.annual} a year: ${v.perWeek} a week`,
+      body: `Your dashboard is ready the moment you join: no forms, it builds itself from your check. Or ${v.monthly} month to month.${FOUNDING_OFFER ? " Your price stays locked in while you stay." : ""} Cancel any time. Not a cent from retailers.`,
+      button: { label: "Get my dashboard", url: tagged("/pricing") },
+    })}
+    ${unsubscribe(i.unsubscribeUrl, "You're getting this because you checked your plan with Utilo and we invited you to Plus last week. It's the last one about it.")}`;
+  return {
+    subject: yearly ? `A look inside your dashboard (and your ${money(yearly)} a year)` : "A look inside your Utilo dashboard",
+    title: "Here's what you'd see every morning.",
     html,
   };
 }

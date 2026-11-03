@@ -5,7 +5,9 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail, emailConfigured, sendHealthEmail } from "@/lib/email";
 import { GAS_ZONES, rankGasPlans, type GasZone } from "@/lib/gasPlans";
 import { topOpen } from "@/lib/planExtras";
-import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, renewalRecap, resultEmail, reviewAsk, switchReminderEmail } from "@/lib/emailTemplates";
+import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, renewalRecap, resultEmail, reviewAsk, switchReminderEmail, inviteFollowUp } from "@/lib/emailTemplates";
+import { inviteFollowUpDue, INVITE_FOLLOW_UP_DAYS } from "@/lib/inviteFollowUp";
+import { networkRewards } from "@/lib/networkRewards";
 import { cleanNote, melbourneDay } from "@/lib/switchReminder";
 import { reviewAskDue, reviewUrl, trackedReviewLink } from "@/lib/reviews";
 import { daysWatched, recapDue, savedSince, RECAP_PLANS, type Episode } from "@/lib/renewalRecap";
@@ -608,6 +610,69 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // --- Invite follow-up (3 Nov 2026): a look inside the dashboard, a week after the owner's invite, once ---
+  let inviteFollowUps = 0;
+  {
+    const since = new Date(Date.now() - (INVITE_FOLLOW_UP_DAYS + 14) * 86_400_000).toISOString();
+    const { data: inv, error: invErr } = await supabaseAdmin
+      .from("leads")
+      .select("id, email, created_at, distributor, best_retailer, estimated_saving, best_total, billing_days, unsubscribed, invite_sent_at, invite_followup_at, customer_name")
+      .not("invite_sent_at", "is", null)
+      .gte("invite_sent_at", since)
+      .order("created_at", { ascending: false });
+    if (invErr && !/column|schema cache/i.test(invErr.message ?? "")) console.warn("recheck-prices: invite follow-ups", invErr.message);
+    type InvRow = { id: string; email: string; distributor: string | null; best_retailer: string | null; estimated_saving: number | null; best_total: number | null; billing_days: number | null; unsubscribed: boolean | null; invite_sent_at: string | null; invite_followup_at: string | null; customer_name: string | null };
+    // One per address: their newest check, and any unsubscribe or earlier follow-up on any of their rows.
+    const byEmail = new Map<string, { latest: InvRow; unsub: boolean; followed: string | null; invited: string | null }>();
+    for (const r of (inv ?? []) as InvRow[]) {
+      const k = r.email.trim().toLowerCase();
+      const cur = byEmail.get(k);
+      if (!cur) byEmail.set(k, { latest: r, unsub: !!r.unsubscribed, followed: r.invite_followup_at, invited: r.invite_sent_at });
+      else {
+        cur.unsub ||= !!r.unsubscribed;
+        cur.followed ||= r.invite_followup_at;
+        if (r.invite_sent_at && (!cur.invited || r.invite_sent_at > cur.invited)) cur.invited = r.invite_sent_at;
+      }
+    }
+    const emails = [...byEmail.keys()];
+    const members = new Set<string>();
+    if (emails.length) {
+      const { data: ms } = await supabaseAdmin.from("subscribers").select("email").in("email", emails);
+      for (const m of (ms ?? []) as { email: string }[]) members.add(m.email.trim().toLowerCase());
+    }
+    for (const [email, x] of byEmail) {
+      if (!inviteFollowUpDue({ invitedAt: x.invited, followUpAt: x.followed, unsubscribed: x.unsub, isMember: members.has(email), now: new Date() })) continue;
+      try {
+        const r = x.latest;
+        const days = r.billing_days && r.billing_days > 0 ? r.billing_days : null;
+        const perYear = (v: number | null) => (v != null && days ? (v * 365) / days : null);
+        const yearly = perYear(r.estimated_saving);
+        const bestYear = perYear(r.best_total);
+        const rw = r.distributor ? networkRewards(r.distributor) : null;
+        const market = r.distributor ? marketActivity({ network: r.distributor as Distributor, days: 30 }) : null;
+        const e = inviteFollowUp({
+          origin,
+          name: r.customer_name,
+          retailer: r.best_retailer,
+          yearly,
+          nowYear: yearly !== null && bestYear !== null ? bestYear + yearly : null,
+          bestYear,
+          network: r.distributor,
+          rewards: rw ? { ...rw.counts, topCredit: rw.topCredit, retailers: rw.retailers } : null,
+          marketChanges: market?.ready ? market.newOffers + market.priceChanges : null,
+          unsubscribeUrl: unsubUrl(origin, "lead", r.id),
+        });
+        if (await sendEmail({ to: r.email, subject: e.subject, title: e.title, html: e.html })) {
+          inviteFollowUps++;
+          await supabaseAdmin.from("leads").update({ invite_followup_at: new Date().toISOString() }).ilike("email", email.replace(/[%_\\]/g, "\\$&"));
+        }
+      } catch (err) {
+        console.error("recheck-prices: invite follow-up failed", email, err);
+        errors++;
+      }
+    }
+  }
+
   // --- "Remind me" by email (2 Nov 2026): the member picked today. Sent once, then cleared. ---
   let reminders = 0;
   {
@@ -676,6 +741,7 @@ export async function GET(req: NextRequest) {
   await sendHealthEmail("daily recheck", {
     "review requests": reviewAsks,
     "switch reminders": reminders,
+    "invite follow-ups": inviteFollowUps,
     "renewal recaps": recaps,
     "members checked": (subsData ?? []).length,
     "members alerted": subscribersNotified,
@@ -685,7 +751,7 @@ export async function GET(req: NextRequest) {
     "gas alerts": gasAlerts,
     errors,
   });
-  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, recaps, reviewAsks, reminders, errors });
+  return NextResponse.json({ ok: true, subscribersNotified, leadsNotified, dripSent, dealAlerts, gasAlerts, recaps, reviewAsks, reminders, inviteFollowUps, errors });
 }
 
 /** Warn this many days before a discount or fixed price ends. */

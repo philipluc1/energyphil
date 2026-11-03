@@ -2,13 +2,23 @@
 
 import { useState } from "react";
 import styles from "./dashboard.module.css";
+import { INVITE_FOLLOW_UP_DAYS } from "@/lib/inviteFollowUp";
 
 /** "Send invite": one personal email asking a lead to join Utilo Plus (2 Nov 2026). The server applies the rules. */
-export default function InviteButton({ email, sentAt = null, disabled = false, why }: { email: string; sentAt?: string | null; disabled?: boolean; why?: string }) {
+const day = (iso: string) => new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Melbourne" });
+
+export default function InviteButton({ email, sentAt = null, followUpAt = null, disabled = false, why }: { email: string; sentAt?: string | null; followUpAt?: string | null; disabled?: boolean; why?: string }) {
   const [state, setState] = useState<{ busy: boolean; done: string | null; err: string | null }>({ busy: false, done: sentAt, err: null });
   if (disabled) return <span className={styles.inviteNote}>{why ?? "—"}</span>;
   if (state.done) {
-    return <span className={styles.inviteSent}>✓ Invited {new Date(state.done).toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Melbourne" })}</span>;
+    // The automatic follow-up (3 Nov 2026) goes a week later: show when it went, or when it's due.
+    const due = new Date(Date.parse(state.done) + INVITE_FOLLOW_UP_DAYS * 86_400_000).toISOString();
+    return (
+      <span className={styles.inviteSent}>
+        ✓ Invited {day(state.done)}
+        <span className={styles.inviteNote}> · {followUpAt ? `follow-up sent ${day(followUpAt)}` : `follow-up ${day(due)}`}</span>
+      </span>
+    );
   }
   async function send() {
     if (!window.confirm(`Send ${email} one email inviting them to Utilo Plus?`)) return;

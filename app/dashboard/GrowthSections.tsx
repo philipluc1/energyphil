@@ -37,7 +37,7 @@ export default function GrowthSections({
   checkouts: AbandonedCheckout[];
   checkoutDays?: number;
   checkoutsNote: string | null;
-  leadState?: Record<string, { member: boolean; unsubscribed: boolean; invitedAt: string | null }>;
+  leadState?: Record<string, { member: boolean; unsubscribed: boolean; invitedAt: string | null; followUpAt?: string | null }>;
 }) {
   const thisMonth = churn[churn.length - 1];
   const contactable = abandoned.filter((a) => !a.unsubscribed);
@@ -175,7 +175,7 @@ export default function GrowthSections({
                       <td>{day(a.created_at)}</td>
                       <td>{a.saving !== null && a.saving > 0 ? `$${Math.round(a.saving).toLocaleString("en-AU")}/yr` : "–"}</td>
                       <td>{a.distributor ?? "–"}</td>
-                      <td><InviteButton email={a.email} sentAt={leadState?.[a.email]?.invitedAt ?? null} disabled={a.unsubscribed} why="Unsubscribed" /></td>
+                      <td><InviteButton email={a.email} sentAt={leadState?.[a.email]?.invitedAt ?? null} followUpAt={leadState?.[a.email]?.followUpAt ?? null} disabled={a.unsubscribed} why="Unsubscribed" /></td>
                     </tr>
                   ))}
                 </tbody>
