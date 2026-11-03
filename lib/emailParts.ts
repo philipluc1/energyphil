@@ -526,3 +526,12 @@ export function miniVerdict(o: { headline: string; tiles: { label: string; name:
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:6px 0;table-layout:fixed;"><tr>${o.tiles.map(cell).join("")}</tr></table>
   </td></tr></table>`;
 }
+
+/** The Utilo Plus animation (3 Nov 2026): a looping GIF, linked. Its first frame
+ *  says it all, because Outlook on Windows shows only that frame.
+ *  Evergreen on purpose (no price), so it never goes out of date. */
+export function plusAnimation(origin: string, url: string): string {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;"><tr><td>
+    <a href="${url}" style="display:block;text-decoration:none;"><img src="${origin}/email/plus-watch.gif" width="504" alt="Your free check was one day. Prices change all year: Utilo Plus re-checks every plan against your bill every morning, and emails you only when switching pays." style="display:block;width:100%;max-width:504px;height:auto;border:0;border-radius:16px;font:700 15px Arial,Helvetica,sans-serif;color:${C.navy};"></a>
+  </td></tr></table>`;
+}

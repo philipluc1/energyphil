@@ -14,7 +14,7 @@ import { namesList } from "./stickyPick";
 import { sameRetailer } from "./sameRetailer";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, alertPreview, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
+import { C, alertPreview, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -183,6 +183,7 @@ export function followUpWeek(i: { origin: string; retailer: string | null; planN
     ${yearly && i.nowYear && i.bestYear
       ? versus({ before: { label: i.vsBill ? "Staying on your plan" : "The default offer", value: i.nowYear }, after: { label: FREE_SHOWS_NAMES && i.retailer ? `Switching to ${esc(i.retailer)}` : "Switching", value: i.bestYear }, gapLabel: "Staying put costs" })
       : yearly ? bigFigure({ figure: money(yearly), label: "Still on the old plan?", body: `What staying put costs you a year: about ${money(yearly / 12)} every month.`, tone: "amber" }) : ""}
+    ${plusAnimation(i.origin, `${i.origin}/pricing?utm_source=email&utm_medium=drip&utm_campaign=day7`)}
     ${button("Check again with today's prices", `${i.origin}/check`)}
     <p>Already switched? Nice work. This is the last of these emails.</p>
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you checked your plan with Utilo and asked for updates.")}`;
@@ -250,8 +251,7 @@ export function leadInvite(i: {
       { what: "Discount ending", you: "Found on a bigger bill", us: "A month's warning" },
       { what: "1 July price changes", you: "Start again", us: "Re-checked for you" },
     ])}
-    ${heading("Your year, checked every morning")}
-    ${yearStrip(new Date().getMonth())}
+    ${plusAnimation(i.origin, tagged("/pricing"))}
     ${heroPanel({
       pill: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
       headline: `${ra ? `<s style="opacity:0.55;font-weight:700;">${fmtPrice(ra)}</s> ` : ""}${v.annual} a year: ${v.perWeek} a week`,
