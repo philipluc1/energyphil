@@ -71,13 +71,12 @@ export default function Home() {
         {/* 1. The hook (2 Nov 2026, "precise and technical"): few words, one amber button, and a bill being read. */}
         <section className={`${h.hero} ${h.heroTech}`}>
           <div className={h.heroText}>
-            <span className={h.techLabel}><span className={h.techDot} aria-hidden="true" /> Bill check · Victoria · electricity and gas</span>
             <h1 className={h.h1}>
               Stop overpaying.
               <br />
               <span className={h.h1Accent}>Start saving.</span>
             </h1>
-            <p className={h.lede}>Snap your bill. We price it against every plan.</p>
+            <p className={h.lede}>Snap your Victorian power or gas bill. We price it against plans from {RETAILER_COUNT} retailers, then <b className={h.ledeEvery}>re-check it every morning</b> with {PLUS_NAME}.</p>
             <div className={h.ctas}>
               <Link href="/check" className={h.primary}>
                 <Icon name="camera" size={20} /> Snap my bill, free

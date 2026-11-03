@@ -2622,7 +2622,7 @@ export default function Comparator() {
                       <div className={r.picks}>
                         <span className={r.picksLabel}>Our pick</span>
                         <span>
-                          <b>{top.plan[0]}</b>, the cheapest for your home{haveBill ? `: about $${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")} a year less than your bill` : ""}.
+                          <b>{top.plan[0]}</b> &ldquo;{tidyPlanName(top.plan)}&rdquo;, the cheapest {matches[0] !== top ? "you can get without extra conditions" : "for your home"}{haveBill ? `: about $${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")} a year less than your bill` : ""}.
                           {noStrings ? <> Rather no conditions? <b>{noStrings.plan[0]}</b> is the cheapest without pay-on-time or direct-debit discounts, {fmtCurrency((noStrings.total - top.total) * k)} {perLabel} more.</> : null}
                         </span>
                       </div>
@@ -2734,7 +2734,7 @@ export default function Comparator() {
                           <button type="button" className={r.showAll} onClick={() => setRowCount(16)}>Show the next {Math.min(10, listRows.length - rowCount)} <span aria-hidden="true">▾</span></button>
                         )}
                         {foldedRows.length > 0 && (
-                          <button type="button" className={r.showAll} onClick={() => setRowCount(listRows.length)}>Show all {listRows.length} {allPlans ? "plans" : "retailers"} <span aria-hidden="true">▾</span></button>
+                          <button type="button" className={r.showAll} onClick={() => setRowCount(listRows.length)}>Show all {allPlans ? `${listRows.length} plans` : `${new Set(listRows.map((m) => m.plan[0])).size} retailers`} <span aria-hidden="true">▾</span></button>
                         )}
                         {rowCount > ROWS_FIRST && (
                           <button type="button" className={r.showAll} onClick={() => { setRowCount(ROWS_FIRST); document.getElementById("plans-compared")?.scrollIntoView({ block: "start" }); }}>Show the top {ROWS_FIRST} <span aria-hidden="true">▴</span></button>

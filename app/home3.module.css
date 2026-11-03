@@ -223,3 +223,4 @@
 .heroTech .pcStart + .fuelsHero { margin-top: 26px; }
 @media (max-width: 520px) { .pcStart { margin-top: 18px; } }
 @media (max-width: 860px) { .hero { grid-template-columns: minmax(0, 1fr); } }
+.ledeEvery { color: var(--ink, #111827); font-weight: 800; }

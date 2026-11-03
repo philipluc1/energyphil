@@ -9,7 +9,7 @@ import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Cancellation Policy", description: "How to cancel a Utilo membership, and what happens when you do.", path: "/cancellation-policy" });
 
-const LAST_UPDATED = "6 October 2026";
+const LAST_UPDATED = "4 November 2026";
 
 export default function CancellationPolicyPage() {
   return (

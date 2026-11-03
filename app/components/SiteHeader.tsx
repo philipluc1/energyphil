@@ -1,14 +1,9 @@
 import Link from "next/link";
 import styles from "./Comparator.module.css";
 import AccountNavLink from "./AccountNavLink";
+import SiteMenu from "./SiteMenu";
+import HouseMark from "./HouseMark";
 
-function BrandMark() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" />
-    </svg>
-  );
-}
 
 // "other" is for pages not represented by a nav tab (the policy/info pages
 // below) — none of the three tabs show as active there.
@@ -19,7 +14,7 @@ export default function SiteHeader({ active }: { active: "home" | "check" | "pri
       <div className={styles.bar}>
         <Link href="/" className={styles.brandLink} aria-label="Utilo home">
           <span className={styles.brandMark}>
-            <BrandMark />
+            <HouseMark />
           </span>
           <span className={styles.brandText}>
             <span className={styles.mark}>
@@ -49,6 +44,8 @@ export default function SiteHeader({ active }: { active: "home" | "check" | "pri
         <Link href="/check" className={`${styles.navCta} ${active === "check" ? styles.navCtaOn : ""}`}>
           Free check <span aria-hidden="true">→</span>
         </Link>
+        {/* Phones and small tablets: everything else behind the three-line menu (4 Nov 2026). */}
+        <SiteMenu active={active} />
       </div>
     </header>
   );

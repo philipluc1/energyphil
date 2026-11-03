@@ -24,7 +24,7 @@ export function StepsVisual() {
               <span className={v.billHead} />
               <span className={v.billLine} />
               <span className={v.billLine} />
-              <span className={v.billAmt}>$425</span>
+              <span className={v.billAmt}>${Math.round((bench * 91) / 365).toLocaleString("en-AU")}</span>
             </div>
             <span className={v.scan} />
           </div>

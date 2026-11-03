@@ -13,11 +13,11 @@ export const ABOUT = {
   photo: "",                // e.g. "/images/phil.jpg"
   /** A few short paragraphs in your own words: why you built it, what you found. */
   story: [] as string[],
-  businessName: "",         // registered business or company name, e.g. "Utilo Pty Ltd"
-  abn: "",                  // e.g. "12 345 678 901"
-  location: "",             // e.g. "Melbourne, Victoria"
-  contactEmail: "",         // general contact, e.g. "hello@utilo.com.au"
-  postalAddress: "",        // optional, for written privacy requests
+  businessName: "Utilo",    // registered business name (sole trader); legal name can be added, e.g. "Philip Luc trading as Utilo"
+  abn: "73 133 514 035",
+  location: "Point Cook, Victoria",
+  contactEmail: "info@utilo.com.au",
+  postalAddress: "PO Box 6355, Point Cook VIC 3030",
   /** Social pages, full links. Filled ones tell Google they're the same business (2 Nov 2026). */
   socials: {
     facebook: "",           // e.g. "https://www.facebook.com/utilo.au"
@@ -29,13 +29,15 @@ export const ABOUT = {
 /** Privacy-policy specifics. */
 export const PRIVACY = {
   /** Where privacy requests and complaints go, e.g. "privacy@utilo.com.au". */
-  email: "",
+  email: "info@utilo.com.au",
   /** Last date the policy text was changed. Update when you edit app/privacy/page.tsx. */
-  lastUpdated: "18 October 2026",
+  lastUpdated: "4 November 2026",
   /** The Supabase project's region (Supabase > Project Settings > General), e.g. "Sydney, Australia". */
   databaseRegion: "",
   /** How long member data is kept after a membership ends, e.g. "12 months". */
-  memberRetention: "",
+  memberRetention: "12 months",
+  /** The same, in days: the morning job deletes an ended membership's data this long after it ends (4 Nov 2026). */
+  memberRetentionDays: 365,
   /** How quickly you'll respond to access, correction and deletion requests. */
   responseDays: 30,
   /** IP records used to limit free bill reads are deleted after this many days (see the daily job). */

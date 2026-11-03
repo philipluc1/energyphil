@@ -13,9 +13,7 @@ export default function OpengraphImage() {
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 72px", background: "#22306e", color: "#fff", fontFamily: "sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-          <div style={{ width: 84, height: 84, borderRadius: 22, background: "#f5a623", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="52" height="52" viewBox="0 0 24 24" fill="#171305"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg>
-          </div>
+          <svg width="92" height="92" viewBox="0 0 100 100"><path d="M50,15 L18,42 L18,85 L82,85 L82,42 Z" fill="#ffffff" stroke="#ffffff" strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" /><path d="M51.2,51.5 L43,63.5 L48.3,63.5 L45.9,75.5 L57,60.2 L50.6,60.2 Z" fill="#F5A623" /></svg>
           <div style={{ display: "flex", fontSize: 60, fontWeight: 900, letterSpacing: -1 }}>
             Util<span style={{ color: "#f5a623" }}>o</span>
           </div>

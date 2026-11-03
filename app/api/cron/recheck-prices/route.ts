@@ -8,6 +8,7 @@ import { topOpen } from "@/lib/planExtras";
 import { cheaperForLead, cheaperForMember, cheaperGasForMember, dealEnding, followUpMembership, followUpWeek, renewalRecap, resultEmail, reviewAsk, switchReminderEmail, inviteFollowUp } from "@/lib/emailTemplates";
 import { inviteFollowUpDue, INVITE_FOLLOW_UP_DAYS } from "@/lib/inviteFollowUp";
 import { networkRewards } from "@/lib/networkRewards";
+import { retentionDue } from "@/lib/memberRetention";
 import { cleanNote, melbourneDay } from "@/lib/switchReminder";
 import { reviewAskDue, reviewUrl, trackedReviewLink } from "@/lib/reviews";
 import { daysWatched, recapDue, savedSince, RECAP_PLANS, type Episode } from "@/lib/renewalRecap";
@@ -610,6 +611,44 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // --- Member data retention (4 Nov 2026): the Privacy Policy says an ended membership's data is
+  // deleted PRIVACY.memberRetentionDays after it ends. Never while the email has a live membership. ---
+  let retentionDeleted = 0;
+  {
+    const cutoff = new Date(Date.now() - PRIVACY.memberRetentionDays * 86_400_000).toISOString();
+    const { data: old, error: oldErr } = await supabaseAdmin
+      .from("subscribers")
+      .select("id, email, status, canceled_at, current_period_end")
+      .eq("status", "canceled")
+      .lt("current_period_end", cutoff)
+      .limit(200);
+    if (oldErr && !/column|schema cache/i.test(oldErr.message ?? "")) console.warn("recheck-prices: retention", oldErr.message);
+    for (const r of (old ?? []) as { id: string; email: string; status: string; canceled_at: string | null; current_period_end: string | null }[]) {
+      try {
+        // ilike for case, with % and _ escaped so it matches this address only.
+        const like = r.email.replace(/[%_\\]/g, "\\$&");
+        const { data: live } = await supabaseAdmin.from("subscribers").select("id").ilike("email", like).in("status", ["active", "past_due"]).limit(1);
+        if (!retentionDue(r, { days: PRIVACY.memberRetentionDays, otherLive: (live ?? []).length > 0 })) continue;
+        // The membership (its savings history goes with it), then, once no membership rows are left for
+        // this email, the member-only records kept by email. Free results and price alerts (leads) follow
+        // their own rule: until they unsubscribe.
+        const { error } = await supabaseAdmin.from("subscribers").delete().eq("id", r.id);
+        if (error) throw error;
+        const { data: rest } = await supabaseAdmin.from("subscribers").select("id").ilike("email", like).limit(1);
+        if ((rest ?? []).length === 0) {
+          for (const table of ["bills", "bill_checks", "push_subscriptions"]) {
+            const { error: e2 } = await supabaseAdmin.from(table).delete().ilike("email", like);
+            if (e2 && !/schema cache|does not exist/i.test(e2.message)) console.error(`recheck-prices: retention ${table}`, e2.message);
+          }
+        }
+        retentionDeleted++;
+      } catch (err) {
+        console.error("recheck-prices: retention delete failed", r.id, err);
+        errors++;
+      }
+    }
+  }
+
   // --- Invite follow-up (3 Nov 2026): a look inside the dashboard, a week after the owner's invite, once ---
   let inviteFollowUps = 0;
   {
@@ -742,6 +781,7 @@ export async function GET(req: NextRequest) {
     "review requests": reviewAsks,
     "switch reminders": reminders,
     "invite follow-ups": inviteFollowUps,
+    "ended memberships deleted (retention)": retentionDeleted,
     "renewal recaps": recaps,
     "members checked": (subsData ?? []).length,
     "members alerted": subscribersNotified,

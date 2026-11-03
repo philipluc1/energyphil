@@ -21,3 +21,8 @@
   .base p { padding: 14px 16px 20px; }
 }
 .brand .proud { margin-top: -2px; font-size: 13.5px; font-weight: 800; color: #f8c46b; }
+
+/* 4 Nov 2026: Option F logo, white house on navy. */
+.mark { width: 36px; height: 36px; border-radius: 0; background: none; }
+.mark svg { width: 100%; height: 100%; }
+.word { font: 700 24px/1 "Plus Jakarta Sans", "Archivo", sans-serif; letter-spacing: -0.01em; }

@@ -20,6 +20,8 @@ export const C = {
   ink: "#1a1a1a",
 };
 const F = "Arial,Helvetica,sans-serif";
+/** Where email images are served from (the live site). */
+const EMAIL_ASSETS = (process.env.SITE_URL || "https://www.utilo.com.au").replace(/\/+$/, "");
 
 export const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
 
@@ -413,7 +415,7 @@ export function alertPreview(o: { title: string; body: string; label?: string })
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;background:#ffffff;border:1px solid #e3e7f0;border-radius:16px;box-shadow:0 6px 18px rgba(19,28,87,0.08);">
         <tr>
           <td valign="top" style="width:44px;padding:14px 0 14px 14px;">
-            <table role="presentation" cellspacing="0" cellpadding="0"><tr><td width="36" height="36" align="center" bgcolor="${C.amber}" style="width:36px;height:36px;border-radius:9px;background:${C.amber};font:900 18px ${F};color:${C.amberInk};">U</td></tr></table>
+            <img src="${EMAIL_ASSETS}/email/app-icon.png" width="36" height="36" alt="Utilo" style="display:block;width:36px;height:36px;border:0;border-radius:9px;background:#1E2A4A;font:900 14px ${F};color:#ffffff;">
           </td>
           <td style="padding:14px 14px 14px 10px;font-family:${F};">
             <div style="font:700 11.5px ${F};color:${C.grey};">UTILO &middot; now</div>

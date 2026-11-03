@@ -1,7 +1,9 @@
 import Link from "next/link";
 import Icon from "./Icon";
+import HouseMark from "./HouseMark";
 import { ABOUT } from "@/lib/about";
 import { PLUS_NAME } from "@/lib/pricingPlans";
+import { PLANS } from "@/lib/plans";
 import s from "./sitefooter.module.css";
 
 /** The site footer (1 Nov 2026): one on every public page. */
@@ -12,10 +14,10 @@ export default function SiteFooter() {
       <div className={s.inner}>
         <div className={s.brand}>
           <Link href="/" className={s.logo} aria-label="Utilo home">
-            <span className={s.mark}><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg></span>
+            <span className={s.mark}><HouseMark house="#ffffff" /></span>
             <span className={s.word}>Util<span>o</span></span>
           </Link>
-          <p>Every Victorian power and gas plan, priced on your own bill. Not a cent from retailers.</p>
+          <p>Victorian power and gas plans from {new Set(PLANS.map((p) => p[0])).size} retailers, priced on your own bill. Not a cent from retailers.</p>
           <p className={s.proud}>Proudly Australian. Helping homes now, and businesses soon.</p>
           {ABOUT.contactEmail && <a className={s.mail} href={`mailto:${ABOUT.contactEmail}`}><Icon name="mail" size={14} /> {ABOUT.contactEmail}</a>}
         </div>

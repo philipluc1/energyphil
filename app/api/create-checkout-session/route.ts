@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
             product_data: {
               name: `Utilo Plus — ${plan.name}`,
               description:
-                "Ongoing monitoring of Victorian electricity plans, with an alert whenever a cheaper deal appears.",
+                "Your power and gas plans re-checked against your own bill every morning, a warning before your discount ends, and an email when switching saves $50 or more a year. Cancel any time.",
             },
             ...(plan.mode === "subscription"
               ? { recurring: { interval: plan.interval!, interval_count: plan.intervalCount! } }

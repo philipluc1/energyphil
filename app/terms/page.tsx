@@ -10,7 +10,7 @@ import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Terms of Service", description: "The terms for using Utilo's free check and membership.", path: "/terms" });
 
-const LAST_UPDATED = "18 October 2026";
+const LAST_UPDATED = "4 November 2026";
 
 // Plain-English terms. Draft for review by a lawyer before launch.
 export default function TermsPage() {

@@ -31,6 +31,7 @@ import { PLAN_VS_BILL_TAG, planVsBill, samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
 import { showLabel, showOptions, showPeriod, showScale, showTab, type ShowPeriod } from "@/lib/periods";
 import { rateRows } from "@/lib/rateRows";
+import { standardVsVdo } from "@/lib/vdoCompare";
 import { sameRetailer } from "@/lib/sameRetailer";
 import { marketEvents, type MarketEvent } from "@/lib/marketActivity";
 import MarketBoard, { MarketSideCard, type MarketPersonal } from "./MarketBoard";
@@ -494,6 +495,14 @@ export function CompareSection({ input: billInput, member, period, profile = nul
   // Each plan against the Victorian Default Offer for the same usage, as a percentage.
   const vsVdo = (total: number) => (vdo > 0 ? (total - vdo) / vdo : 0);
   const pct = (x: number) => { const n = Math.round(x * 100); return `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n)}%`; };
+  // Each plan's "% vs default offer" on a standard home (4,000 kWh; time of use at 70/30), like retailers' own figure (4 Nov 2026).
+  const stdVdo = (m: { plan: PlanRow }) => standardVsVdo(m.plan)?.pct ?? null;
+  const vdoCell = (m: { plan: PlanRow }) => {
+    const x = stdVdo(m);
+    if (x === null) return <td className={`${styles.num} ${styles.flat}`}>–</td>;
+    const n = Math.round(x * 100);
+    return <td className={`${styles.num} ${n < 0 ? styles.pos : n > 0 ? styles.neg : styles.flat}`}>{pct(x)}</td>;
+  };
   const vdoWords = (x: number) => { const n = Math.round(x * 100); return n < 0 ? `${-n}% below default offer` : n > 0 ? `${n}% above default offer` : "Same as default offer"; };
   const u = c.usage;
   const kwhPeriod = (u.peak + u.shoulder + u.offpeak + u.anytime + u.cl) * k;
@@ -633,7 +642,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
         <div className={styles.tableWide}>
           <table>
             <thead>
-              <tr><th>#</th><th>Retailer</th><th>Plan</th><th>How it&apos;s charged</th><th className={styles.num}>Cost {perLabel}</th><th className={styles.num}>vs {haveBill ? "your bill" : "default offer"}</th><th className={styles.num} title="Each plan against the Victorian Default Offer for the same usage">vs default offer</th></tr>
+              <tr><th>#</th><th>Retailer</th><th>Plan</th><th>How it&apos;s charged</th><th className={styles.num}>Cost {perLabel}</th><th className={styles.num}>vs {haveBill ? "your bill" : "default offer"}</th><th className={styles.num} title="Each plan against the Victorian Default Offer for a standard home: 4,000 kWh a year, time-of-use plans at 70% peak and 30% off-peak against the time-of-use default offer">vs default offer*</th></tr>
             </thead>
             <tbody>
               {rows.map((m, i) => {
@@ -652,7 +661,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                       </td>
                       <td className={styles.num}>{money(m.total * k)}</td>
                       <td className={`${styles.num} ${diff >= 0 ? styles.pos : styles.neg}`}>{diff >= 0 ? `save ${money(diff)}` : `+${money(-diff)}`}</td>
-                      <td className={`${styles.num} ${Math.round(vsVdo(m.total) * 100) < 0 ? styles.pos : Math.round(vsVdo(m.total) * 100) > 0 ? styles.neg : styles.flat}`}>{pct(vsVdo(m.total))}</td>
+                      {vdoCell(m)}
                     </tr>
                   );
                 }
@@ -683,7 +692,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                     </td>
                     <td className={styles.num}>{money(m.total * k)}</td>
                     <td className={`${styles.num} ${diff >= 0 ? styles.pos : styles.neg}`}>{diff >= 0 ? `save ${money(diff)}` : `+${money(-diff)}`}</td>
-                    <td className={`${styles.num} ${Math.round(vsVdo(m.total) * 100) < 0 ? styles.pos : Math.round(vsVdo(m.total) * 100) > 0 ? styles.neg : styles.flat}`}>{pct(vsVdo(m.total))}</td>
+                    {vdoCell(m)}
                   </tr>
                   {openRates === key && (
                     <tr key={`${key}-rates`} className={styles.ratesDetailRow}>
@@ -751,7 +760,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                 <button type="button" className={`${styles.ratesToggle} ${styles.pcRates}`} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
                   {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
                 </button>
-                <span className={styles.pcVdoRow}>{vdoWords(vsVdo(m.total))}</span>
+                {stdVdo(m) !== null && <span className={styles.pcVdoRow}>{vdoWords(stdVdo(m)!)}</span>}
                 {openRates === key && (
                   <div className={`${styles.ratesDetail} ${styles.pcRatesDetail}`}>
                     <RatesCompare current={input.currentRates ?? null} plan={m.plan} planLabel={m.plan[0]} compact />
@@ -781,7 +790,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
         <details className={styles.legendBox}>
           <summary>What the columns and labels mean</summary>
           <div className={styles.legend}>
-          <span><b>Default offer</b>: the Victorian Default Offer, the government-set reference price. Each plan is compared with it for the same usage; minus (or &ldquo;below&rdquo;) is cheaper.</span>
+          <span><b>vs default offer*</b>: each plan against the Victorian Default Offer for a standard home, the way retailers quote it: 4,000 kWh a year, with discounts for paying on time. Time-of-use plans are taken as 70% peak and 30% off-peak and compared with the time-of-use default offer; single-rate plans with the flat one. Minus (or &ldquo;below&rdquo;) is cheaper. Your own prices and savings use your bill.</span>
           <span><b>Labels</b>: ✓ green discounts are in the price (we assume you pay on time); blue ones (credits, other conditions) aren&apos;t; amber ! means who can get it is limited, or a fee to know about. Concessions aren&apos;t counted.</span>
           <span><b>Same price all day</b>: one rate for every kWh.</span>
           <span><b>Cheaper at night</b>: dearer late afternoon to evening, cheaper overnight.</span>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Icon from "./Icon";
 import { PLUS_NAME } from "@/lib/pricingPlans";
 import s from "./dashheader.module.css";
+import HouseMark from "./HouseMark";
 
 /**
  * The dashboard's own header (29 Oct 2026). No site nav, so members stay in
@@ -41,7 +42,7 @@ export default function DashHeader({
     <header className={s.top}>
       <div className={s.bar}>
         <Link href="/" className={s.brand} aria-label="Utilo home page">
-          <span className={s.mark}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg></span>
+          <span className={s.mark}><HouseMark /></span>
           <span className={s.word}>Util<span>o</span></span>
         </Link>
         <div className={s.right}>
