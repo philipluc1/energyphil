@@ -482,7 +482,7 @@ export function monthlyCheck(i: {
         retailer: esc(i.retailer),
         planName: esc(i.planName),
         toLabel: same ? "Ask them to move you to" : undefined,
-        button: link && same ? { ...link, label: `Change plan with ${esc(i.retailer)}` } : link,
+        button: link,
         small: `${i.nearTies && i.nearTies.length ? `Within $20 a year: ${esc(namesList(i.nearTies))}. Any of these is a good choice. ` : ""}On today's prices for the usage on your last bill. We never switch you; you decide.`,
       })
     : statusBox({ kicker: `Your ${esc(i.monthName)} check`, headline: "You're on a good deal", body: `Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more. We'll keep watching.`, tone: "green" });
@@ -819,7 +819,7 @@ export function switchReminderEmail(i: {
       retailer: r,
       planName: esc(i.planName),
       toLabel: i.same ? "Ask them to move you to" : "Switch to",
-      button: link ? { label: i.same ? `Change plan with ${r}` : `Go to ${r}`, url: link } : null,
+      button: link ? { label: `Go to ${r}`, url: link } : null,
     })}
     ${i.same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName }) : ""}
     ${heading("Before you start")}

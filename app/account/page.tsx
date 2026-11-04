@@ -533,12 +533,38 @@ export default function AccountPage() {
   // Follow #hash links (header pill, "Upload your bill", emails) to a tab.
   useEffect(() => {
     const apply = () => {
-      const t = TAB_FROM_HASH[window.location.hash.slice(1)];
+      const h = window.location.hash.slice(1);
+      const t = TAB_FROM_HASH[h];
       if (!t) return;
       setTab(t);
+      const header = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+      // 5 Nov 2026: "Upload my gas bill" (#read-bill) goes straight to the upload box, not the top
+      // of Savings; and the address drops back to #savings so the same button works a second time.
+      if (h === "read-bill") {
+        try { window.history.replaceState(null, "", "#savings"); } catch { /* ignore */ }
+        // Cards above it (bill chart, rewards) load a moment later and push it down, so keep
+        // lining it up for about two seconds, or until the person scrolls themselves.
+        let tries = 0;
+        let stop = false;
+        const quit = () => { stop = true; };
+        window.addEventListener("touchstart", quit, { once: true, passive: true });
+        window.addEventListener("wheel", quit, { once: true, passive: true });
+        const toBox = () => {
+          if (stop) return;
+          const box = document.getElementById("read-bill");
+          if (box) {
+            // Below the sticky header and the tab bar.
+            const tabs = document.getElementById("dash-tabs")?.getBoundingClientRect().height ?? 60;
+            const want = box.getBoundingClientRect().top - header - tabs - 16;
+            if (Math.abs(want) > 24) window.scrollTo({ top: want + window.scrollY, behavior: tries === 0 ? "smooth" : "auto" });
+          }
+          if (tries++ < 20) setTimeout(toBox, tries === 1 ? 450 : 100);
+        };
+        setTimeout(toBox, 50);
+        return;
+      }
       // The marker above the tab bar (the bar is sticky, so it can't be measured).
       const bar = document.getElementById("dash-tabs-mark");
-      const header = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
       if (bar) window.scrollTo({ top: bar.getBoundingClientRect().top + window.scrollY - header - 8, behavior: "smooth" });
     };
     const first = setTimeout(apply, 0);
@@ -864,7 +890,7 @@ export default function AccountPage() {
     <>
       {fuel === "gas" && <GasAside member={gasMember} />}
       {fuel === "gas" && (marketTabs ? <GasCards member={gasMember} only="forecast" /> : <GasCards member={gasMember} noRewards={shownTab === "savings"} />)}
-      {withPlan && fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#savings" : "/check"} best={bestForRates} onEdit={editDetails} />}
+      {withPlan && fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#read-bill" : "/check"} best={bestForRates} onEdit={editDetails} />}
       {fuel === "elec" && cmpInput && myShape && <MiddayCard input={cmpInput} shape={myShape.shape} evOvernight={myShape.evOvernight} profile={homeProfile} member={isMember} />}
       {fuel === "elec" && cmpInput && <ForecastCard input={cmpInput} profile={homeProfile} member={isMember} />}
       {fuel === "elec" && isMember && <CountdownCard input={cmpInput} discountEndsAt={sub!.discount_ends_at ?? null} fixedUntil={sub!.current_price_fixed_until ?? null} onEdit={editDealDates} />}
@@ -906,7 +932,7 @@ export default function AccountPage() {
               </>
             ) : (
               <p className={styles.panelText}>
-                No gas bill yet. {isMember ? <>Upload one in <a href="#savings">Savings</a> (a dual-fuel bill works too) or </> : null}
+                No gas bill yet. {isMember ? <>Upload one in <a href="#read-bill">Savings</a> (a dual-fuel bill works too) or </> : null}
                 <Link href="/gas">run the free gas check</Link>.
               </p>
             )}
@@ -1045,7 +1071,7 @@ export default function AccountPage() {
                   <h2>{isMember ? "Upload a bill and we'll tell you." : "Run the free check and your answer lands here."}</h2>
                   <p>It takes about two minutes. We compare the published plans of {RETAILER_COUNT} retailers on your network against your usage.</p>
                   {isMember ? (
-                    <a href="#savings" className={styles.btnPrimary}>Upload a bill</a>
+                    <a href="#read-bill" className={styles.btnPrimary}>Upload a bill</a>
                   ) : (
                     <Link href="/check" className={styles.btnPrimary}>Run a free check</Link>
                   )}
@@ -1066,7 +1092,7 @@ export default function AccountPage() {
                       )}
                       {fuel === "gas" ? (
                         // Gas (2 Nov 2026): gas details and gas use only, never the power bill's NMI, tariff or solar.
-                        <GasHome member={gasMember} name={sub?.customer_name ?? null} address={[sub?.address, sub?.suburb, sub?.postcode].filter(Boolean).join(", ") || null} />
+                        <GasHome member={gasMember} name={sub?.customer_name ?? null} address={[sub?.address, sub?.suburb, sub?.postcode].filter(Boolean).join(", ") || null} uploadHref={isMember ? "#read-bill" : "/gas"} />
                       ) : isMember ? (
                         <>
                           <ProfilePanels d={{ ...sub!, source: sub!.nmi || sub!.current_plan_name ? "bill" : "answers" }} hideUsage={fuel === "elec" && !!myShape && !!cmpInput} />
@@ -1152,7 +1178,7 @@ export default function AccountPage() {
                               </p>
                               <div className={styles.stateActions}>
                                 {RETAILER_LINKS[summary.bestRetailer] && (
-                                  <a href={RETAILER_LINKS[summary.bestRetailer]} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>{summary.sameRetailer ? `Change plan with ${summary.bestRetailer} →` : `Go to ${summary.bestRetailer} →`}</a>
+                                  <a href={RETAILER_LINKS[summary.bestRetailer]} data-plan={summary.bestPlan ?? undefined} data-network={rateDist ?? undefined} data-same={summary.sameRetailer ? "1" : undefined} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>{`Go to ${summary.bestRetailer} →`}</a>
                                 )}
                                 {!showSwitchForm && (
                                   <button type="button" className={styles.btnGhost} onClick={() => setShowSwitchForm(true)}>{summary.sameRetailer ? "I've changed plan" : "I've switched"}</button>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
+import { RETAILER_DIRECTORY } from "@/lib/retailerDirectory";
 import { independenceLabel, independenceLine } from "@/lib/disclosures";
 import type { OfferSummary } from "@/lib/planExtras";
 import Icon from "./Icon";
@@ -37,13 +38,13 @@ function hasSolarHere(): boolean {
   }
 }
 
-type Target = { href: string; retailer: string; plan: string | null; network: string | null; fuel: "E" | "G" };
+type Target = { href: string; retailer: string; plan: string | null; network: string | null; fuel: "E" | "G"; same: boolean };
 
 export default function LeaveSiteGuard() {
   const [target, setTarget] = useState<Target | null>(null);
   const [offer, setOffer] = useState<OfferSummary | null>(null);
   const [skipToday, setSkipToday] = useState(false);
-  const goRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -56,7 +57,7 @@ export default function LeaveSiteGuard() {
       e.preventDefault();
       setSkipToday(false);
       setOffer(null);
-      setTarget({ href: a.href, retailer, plan: a.dataset.plan ?? null, network: a.dataset.network ?? null, fuel: a.dataset.fuel === "G" ? "G" : "E" });
+      setTarget({ href: a.href, retailer, plan: a.dataset.plan ?? null, network: a.dataset.network ?? null, fuel: a.dataset.fuel === "G" ? "G" : "E", same: a.dataset.same === "1" });
     }
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
@@ -74,7 +75,9 @@ export default function LeaveSiteGuard() {
   }, [target]);
   useEffect(() => {
     if (!target) return;
-    goRef.current?.focus();
+    // 5 Nov 2026: open at the top. Focusing the button at the bottom used to scroll the box to its end.
+    const d = dialogRef.current;
+    if (d) { d.scrollTop = 0; d.focus({ preventScroll: true }); }
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -83,7 +86,9 @@ export default function LeaveSiteGuard() {
   }, [target, close]);
 
   if (!target) return null;
-  const { retailer, plan, href } = target;
+  const { retailer, plan, href, same } = target;
+  const phone = RETAILER_DIRECTORY[retailer]?.phone ?? null;
+  const tel = phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : null;
 
   function go() {
     if (skipToday) { try { window.localStorage.setItem(SKIP_KEY, today()); } catch { /* ignore */ } }
@@ -93,17 +98,28 @@ export default function LeaveSiteGuard() {
 
   return (
     <div className={s.backdrop} onClick={close}>
-      <div className={s.dialog} role="dialog" aria-modal="true" aria-labelledby="leave-title" onClick={(e) => e.stopPropagation()}>
+      <div className={s.dialog} ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="leave-title" onClick={(e) => e.stopPropagation()}>
         <button type="button" className={s.x} onClick={close} aria-label="Close">×</button>
-        <span className={s.kicker}><Icon name="search" size={14} /> You&apos;re leaving Utilo</span>
-        <h2 id="leave-title" className={s.title}>Going to {retailer}&apos;s website</h2>
-        {plan && (
-          <p className={s.plan}>
-            Look for <b>&ldquo;{plan}&rdquo;</b> on their site.
-          </p>
-        )}
+        <span className={s.kicker}><Icon name="search" size={14} /> {same ? `You're already with ${retailer}` : "You're leaving Utilo"}</span>
+        <h2 id="leave-title" className={s.title}>{same ? `Changing plan with ${retailer}` : `Going to ${retailer}`}</h2>
+        {/* 5 Nov 2026: what to actually do, first and loud. */}
+        <div className={s.todo}>
+          <b className={s.todoHead}>What to do</b>
+          {same ? (
+            <ol>
+              <li>{plan ? <>Ask {retailer} to move you to <b>&ldquo;{plan}&rdquo;</b>.</> : <>Ask {retailer} for their cheapest plan for your home.</>} You stay with them: no switching retailer, no new connection.</li>
+              <li>Do it in your {retailer} account or app, or {phone ? <>call them on <a href={tel ?? undefined} className={s.tel}>{phone}</a></> : "call them"}. Have your account number from your bill.</li>
+              <li>Check the plan&apos;s rates and conditions before you agree.</li>
+            </ol>
+          ) : (
+            <ol>
+              <li>{plan ? <>Find <b>&ldquo;{plan}&rdquo;</b> on {retailer}&apos;s website</> : <>Find the plan on {retailer}&apos;s website</>}, or {phone ? <>call them on <a href={tel ?? undefined} className={s.tel}>{phone}</a></> : "call them"} and ask for it by name.</li>
+              <li>Check the plan&apos;s rates and conditions before you agree.</li>
+            </ol>
+          )}
+        </div>
         {offer && plan && <OfferTerms o={offer} retailer={retailer} compact title="This offer: discounts and what you need" />}
-        <div className={s.ready}>
+        {!same && <div className={s.ready}>
           <b>Have these ready (about 10 minutes)</b>
           <ul>
             <li>Your latest bill: it shows your meter number (NMI) and account details</li>
@@ -112,12 +128,12 @@ export default function LeaveSiteGuard() {
             <li>Bank or card details, if the plan needs direct debit</li>
           </ul>
           <span>No need to call your current retailer: {retailer} arranges the move, and your power stays on.</span>
-        </div>
+        </div>}
         <ul className={s.list}>
           <li><Icon name="scale" size={18} /><span><b>{independenceLabel()}</b> {independenceLine(retailer)}</span></li>
           <li><Icon name="refresh" size={18} /><span><b>Check it&apos;s still available.</b> Offers and prices change, sometimes daily. What {retailer} offers you may differ from our estimate.</span></li>
           <li><Icon name="receipt" size={18} /><span><b>Read the conditions.</b> Some prices depend on paying on time, direct debit, e-billing or a membership, and you need to be eligible. Our figures include each plan&apos;s discounts, assuming you pay on time, and leave out sign-up credits, fees and concessions.</span></li>
-          <li><Icon name="landmark" size={18} /><span><b>Concessions and payment plans don&apos;t move with you.</b> Give {retailer} your concession card details when you sign up. Behind on a bill or on a payment plan? Talk to your current retailer first.</span></li>
+          {!same && <li><Icon name="landmark" size={18} /><span><b>Concessions and payment plans don&apos;t move with you.</b> Give {retailer} your concession card details when you sign up. Behind on a bill or on a payment plan? Talk to your current retailer first.</span></li>}
           <li><Icon name="file" size={18} /><span><b>Read the Energy Fact Sheet.</b> It&apos;s the official summary of the plan&apos;s rates and terms. {retailer} must give you one.</span></li>
           <li><Icon name="calendar" size={18} /><span><b>You can change your mind.</b> In Victoria you have 10 business days to cancel a new energy contract without penalty.</span></li>
           <li><Icon name="check" size={18} /><span><b>Your decision.</b> This is general information, not financial advice. Think about what suits you before you switch.</span></li>
@@ -127,8 +143,9 @@ export default function LeaveSiteGuard() {
         </label>
         <div className={s.actions}>
           <button type="button" className={s.stay} onClick={close}>Stay on Utilo</button>
-          <button type="button" className={s.go} ref={goRef} onClick={go}>
-            I understand, go to {retailer} <span aria-hidden="true">↗</span>
+          {tel && <a href={tel} className={s.call}><Icon name="phone" size={16} /> Call {phone}</a>}
+          <button type="button" className={s.go} onClick={go}>
+            Go to {retailer}&apos;s website <span aria-hidden="true">↗</span>
           </button>
         </div>
       </div>

@@ -2723,7 +2723,7 @@ export default function Comparator() {
                                   payLateCost={(() => { const d = billDetail(m.plan, usage); return d && d.conditionalDiscount * k >= 0.5 ? `${fmtCurrency(d.conditionalDiscount * k)} ${perLabel}` : null; })()}
                                 />
                                 {RETAILER_LINKS[m.plan[0]] && (
-                                  <a href={RETAILER_LINKS[m.plan[0]]} data-plan={m.plan[2]} data-network={distributor} target="_blank" rel="noopener noreferrer" className={styles.rowSwitchLink}>
+                                  <a href={RETAILER_LINKS[m.plan[0]]} data-plan={m.plan[2]} data-network={distributor} data-same={haveBill && sameRetailer(currentRetailer, m.plan[0]) ? "1" : undefined} target="_blank" rel="noopener noreferrer" className={styles.rowSwitchLink}>
                                     Go to {m.plan[0]}&apos;s site →
                                   </a>
                                 )}

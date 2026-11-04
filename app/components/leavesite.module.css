@@ -38,3 +38,16 @@
 .ready ul { margin: 0 0 6px; padding-left: 18px; list-style: disc; }
 .ready li { margin: 2px 0; }
 .ready span { color: var(--grey, #5f6b82); }
+
+/* 5 Nov 2026: "What to do", up top and hard to miss. */
+.dialog:focus { outline: none; }
+.todo { margin: 12px 0 4px; padding: 14px 16px; border-radius: 14px; background: #fff7e8; border: 2px solid #f5a623; font-size: 14.5px; line-height: 1.5; color: #1e2a4a; }
+.todoHead { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: #8a5a00; }
+.todo ol { margin: 0; padding-left: 22px; list-style: decimal; }
+.todo li::marker { font-weight: 900; color: #8a5a00; }
+.todo li { margin: 4px 0; }
+.todo li b { color: #1e2a4a; }
+.tel { font-weight: 900; color: #1e2a4a; white-space: nowrap; }
+.call { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 18px; border-radius: 12px; border: 1.5px solid #1e2a4a; color: #1e2a4a; font-size: 14.5px; font-weight: 800; text-decoration: none; }
+.call:hover { background: #f4f6fb; }
+@media (max-width: 520px) { .call { width: 100%; box-sizing: border-box; } }

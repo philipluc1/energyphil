@@ -104,7 +104,7 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         <h2>{isMember ? "Add a gas bill and we'll check it every morning, like electricity." : "Run the free gas check and your answer lands here."}</h2>
         <p>A gas-only bill or a dual-fuel bill both work: we read the network, the days and the megajoules. Victoria has no default offer for gas, so your own bill is the yardstick.</p>
         <div className={s.emptyBtns}>
-          {isMember ? <a href="#savings" className={s.btnPrimary}>Upload a gas bill</a> : <Link href="/gas" className={s.btnPrimary}>Free gas check</Link>}
+          {isMember ? <a href="#read-bill" className={s.btnPrimary}>Upload a gas bill</a> : <Link href="/gas" className={s.btnPrimary}>Free gas check</Link>}
           <Link href="/gas" className={s.btnGhost}>How gas plans are priced</Link>
         </div>
       </section>
@@ -180,11 +180,11 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         </div>
         {verdict === "bad" && <FunEquivalents dollars={savingYear} />}
         <div className={v.verdictActions}>
-          {est && (isMember ? <a href="#savings" className={v.go}>Add your gas bill →</a> : <Link href="/gas" className={v.go}>Check your gas bill →</Link>)}
+          {est && (isMember ? <a href="#read-bill" className={v.go}>Add your gas bill →</a> : <Link href="/gas" className={v.go}>Check your gas bill →</Link>)}
           {top && verdict !== "good" && RETAILER_LINKS[top.plan[0]] && (
             <a href={RETAILER_LINKS[top.plan[0]]} target="_blank" rel="noopener noreferrer" className={est ? v.ghost : v.go}>Go to {top.plan[0]}{est ? "" : " →"}</a>
           )}
-          {isMember && !est && <a href="#savings" className={v.ghost}>Upload a newer gas bill</a>}
+          {isMember && !est && <a href="#read-bill" className={v.ghost}>Upload a newer gas bill</a>}
         </div>
         <p className={v.fine}>
           {est ? <>

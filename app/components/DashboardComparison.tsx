@@ -316,12 +316,12 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
           <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> See which retailer →</a>
         )}
         {names && verdict !== "good" && RETAILER_LINKS[top.plan[0]] && (
-          <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={input.distributor} target="_blank" rel="noopener noreferrer" className={styles.go}>{samePlace ? `Change plan with ${top.plan[0]} →` : `Go to ${top.plan[0]} →`}</a>
+          <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={input.distributor} data-same={samePlace ? "1" : undefined} target="_blank" rel="noopener noreferrer" className={styles.go}>{`Go to ${top.plan[0]} →`}</a>
         )}
         {member && verdict !== "good" && savingYear > 0 && (
           <SwitchReminder retailer={top.plan[0]} plan={top.plan[2]} savingYear={savingYear} link={RETAILER_LINKS[top.plan[0]]} nmi={input.nmi} dark same={samePlace} />
         )}
-        {!haveBill && <a href={member ? "#savings" : "/check"} className={styles.ghost}>Upload your bill for your real numbers</a>}
+        {!haveBill && <a href={member ? "#read-bill" : "/check"} className={styles.ghost}>Upload your bill for your real numbers</a>}
       </div>
       <p className={styles.fine}>
         {c.average
@@ -352,7 +352,7 @@ function MismatchNote({ m, member }: { m: BillMismatch; member: boolean }) {
         </p>
         <p className={styles.mismatchActions}>
           <Link href="/check?start=type">Fix my usage{m.impliedKwh !== null ? ` (${n(m.impliedKwh)} kWh?)` : ""} →</Link>
-          {member && <a href="#savings">Or upload the bill</a>}
+          {member && <a href="#read-bill">Or upload the bill</a>}
         </p>
       </div>
     </details>
