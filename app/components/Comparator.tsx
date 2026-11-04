@@ -1,6 +1,8 @@
 "use client";
 
 import OfferDate from "./OfferDate";
+import NoCalls from "./NoCalls";
+import { promiseLine } from "@/lib/disclosures";
 import Icon from "./Icon";
 import PriceAddsUp from "./PriceAddsUp";
 import { sameRetailer } from "@/lib/sameRetailer";
@@ -1390,6 +1392,7 @@ export default function Comparator() {
               <>Or skip the questions: a photo of your bill does it all. Gas bill? <Link href="/gas">Check gas</Link>.</>
             )}
           </p>
+          {entry !== "read" && <NoCalls />}
         </section>
         )}
 
@@ -2781,6 +2784,7 @@ export default function Comparator() {
                         Tell me if a cheaper plan turns up (unsubscribe any time)
                       </label>
                     )}
+                    {leadStatus !== "saved" && <p className={styles.leadPromise}><Icon name="check" size={14} /> {promiseLine()}</p>}
                     {leadStatus === "error" && <p className={styles.leadErr}>That didn&apos;t send. Please try again in a moment.</p>}
                   </div>
                 </div>

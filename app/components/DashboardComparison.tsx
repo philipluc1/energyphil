@@ -78,10 +78,6 @@ export interface ComparisonInput {
   pick?: { retailer: string | null; plan: string | null } | null;
 }
 
-/** Plain-English "how it's charged" for a plan. */
-function chargeLabel(plan: PlanRow): string {
-  return plan[5] !== null ? "Same price all day" : "Cheaper at night";
-}
 function chargeHelp(plan: PlanRow): string {
   return plan[5] !== null
     ? "One price for every kWh, whatever the time."
@@ -499,9 +495,11 @@ export function CompareSection({ input: billInput, member, period, profile = nul
   const stdVdo = (m: { plan: PlanRow }) => standardVsVdo(m.plan)?.pct ?? null;
   const vdoCell = (m: { plan: PlanRow }) => {
     const x = stdVdo(m);
-    if (x === null) return <td className={`${styles.num} ${styles.flat}`}>–</td>;
+    // 4 Nov 2026: the "New" / "Updated" bubble sits on the right-hand side of the row.
+    const fresh = <OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly short recentDays={7} />;
+    if (x === null) return <td className={`${styles.num} ${styles.flat}`}>–<span className={styles.freshSide}>{fresh}</span></td>;
     const n = Math.round(x * 100);
-    return <td className={`${styles.num} ${n < 0 ? styles.pos : n > 0 ? styles.neg : styles.flat}`}>{pct(x)}</td>;
+    return <td className={`${styles.num} ${n < 0 ? styles.pos : n > 0 ? styles.neg : styles.flat}`}>{pct(x)}<span className={styles.freshSide}>{fresh}</span></td>;
   };
   const vdoWords = (x: number) => { const n = Math.round(x * 100); return n < 0 ? `${-n}% below default offer` : n > 0 ? `${n}% above default offer` : "Same as default offer"; };
   const u = c.usage;
@@ -642,7 +640,7 @@ export function CompareSection({ input: billInput, member, period, profile = nul
         <div className={styles.tableWide}>
           <table>
             <thead>
-              <tr><th>#</th><th>Retailer</th><th>Plan</th><th>How it&apos;s charged</th><th className={styles.num}>Cost {perLabel}</th><th className={styles.num}>vs {haveBill ? "your bill" : "default offer"}</th><th className={styles.num} title="Each plan against the Victorian Default Offer for a standard home: 4,000 kWh a year, time-of-use plans at 70% peak and 30% off-peak against the time-of-use default offer">vs default offer*</th></tr>
+              <tr><th>#</th><th>Retailer</th><th>Plan</th><th>Rates</th><th className={styles.num}>Cost {perLabel}</th><th className={styles.num}>vs {haveBill ? "your bill" : "default offer"}</th><th className={styles.num} title="Each plan against the Victorian Default Offer for a standard home: 4,000 kWh a year, time-of-use plans at 70% peak and 30% off-peak against the time-of-use default offer">vs default offer*</th></tr>
             </thead>
             <tbody>
               {rows.map((m, i) => {
@@ -681,11 +679,11 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                       {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                       {input.ev && isEvFriendly(m.plan) && <span className={styles.tagEv}><Icon name="bolt" size={12} /> EV charging</span>}
                     </td>
-                    <td className={styles.planName}>{m.plan[2]}<br /><OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly recentDays={7} /><span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /><ComplaintBadge retailer={m.plan[0]} /></span></td>
+                    <td className={styles.planName}>{m.plan[2]}<span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /><ComplaintBadge retailer={m.plan[0]} /></span></td>
                     <td title={chargeHelp(m.plan)}>
-                      {chargeLabel(m.plan) === "Same price all day" ? "One rate" : chargeLabel(m.plan)}
-                      {planPriceType(m.plan[0], m.plan[2]) === "fixed" && <span className={styles.ptFixed}> · <Icon name="lock" size={12} /> Fixed</span>}
-                      <br />
+                      {/* 4 Nov 2026: single-rate plans say nothing here (customers know they're on one rate). */}
+                      {m.plan[5] === null && <>Cheaper at night<br /></>}
+                      {planPriceType(m.plan[0], m.plan[2]) === "fixed" && <><span className={styles.ptFixed}><Icon name="lock" size={12} /> Fixed</span><br /></>}
                       <button type="button" className={styles.ratesToggle} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
                         {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
                       </button>
@@ -750,12 +748,12 @@ export function CompareSection({ input: billInput, member, period, profile = nul
                     {mine && (() => { const rel = relation(m); return rel ? <span className={rel === "newRates" ? styles.tagNewRates : styles.tagMine} title={PLAN_VS_BILL_TAG[rel].help}>{PLAN_VS_BILL_TAG[rel].short}</span> : null; })()}
                   </div>
                   <span className={styles.pcPlan}>{m.plan[2]}{m.plan[5] === null ? " · Cheaper at night" : ""}{planPriceType(m.plan[0], m.plan[2]) === "fixed" ? " · Fixed price" : ""}</span>
-                  <OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly recentDays={7} />
                   <span className={styles.offerChips}><OfferChips o={offerFor(m.plan)} /><ComplaintBadge retailer={m.plan[0]} /></span>
                 </div>
                 <div className={styles.pcNums}>
                   <b>{whole(m.total * k)}</b>
                   <span className={diff >= 0 ? styles.pos : styles.neg}>{diff >= 0 ? `save ${whole(diff)}` : `+${whole(-diff)}`}</span>
+                  <div className={styles.freshPc}><OfferDate retailer={m.plan[0]} plan={m.plan[2]} badgeOnly short noDate recentDays={7} /></div>
                 </div>
                 <button type="button" className={`${styles.ratesToggle} ${styles.pcRates}`} aria-expanded={openRates === key} onClick={() => setOpenRates((x) => (x === key ? null : key))}>
                   {openRates === key ? "Hide rates" : "See rates"} <span aria-hidden="true">{openRates === key ? "▴" : "▾"}</span>
@@ -792,8 +790,8 @@ export function CompareSection({ input: billInput, member, period, profile = nul
           <div className={styles.legend}>
           <span><b>vs default offer*</b>: each plan against the Victorian Default Offer for a standard home, the way retailers quote it: 4,000 kWh a year, with discounts for paying on time. Time-of-use plans are taken as 70% peak and 30% off-peak and compared with the time-of-use default offer; single-rate plans with the flat one. Minus (or &ldquo;below&rdquo;) is cheaper. Your own prices and savings use your bill.</span>
           <span><b>Labels</b>: ✓ green discounts are in the price (we assume you pay on time); blue ones (credits, other conditions) aren&apos;t; amber ! means who can get it is limited, or a fee to know about. Concessions aren&apos;t counted.</span>
-          <span><b>Same price all day</b>: one rate for every kWh.</span>
-          <span><b>Cheaper at night</b>: dearer late afternoon to evening, cheaper overnight.</span>
+          <span><b>Rates</b>: blank means one rate for every kWh. <b>Cheaper at night</b>: dearer late afternoon to evening, cheaper overnight.</span>
+          <span><b>New</b> / <b>Updated</b>: the retailer launched the offer, or changed its rates or terms, in the last week.</span>
           <span><b><Icon name="lock" size={12} /> Fixed</b>: price locked for a set time. Everything else can change with notice, usually around 1 July.</span>
           {!input.ev && <span>Plans built around EV charging are hidden. Tell us you charge an EV to include them.</span>}
           </div>

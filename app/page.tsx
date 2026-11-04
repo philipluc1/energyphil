@@ -16,6 +16,7 @@ import CountUp from "./components/CountUp";
 import InfoTip from "./components/InfoTip";
 import SourceBanner from "./components/SourceBanner";
 import PlanBand from "./components/PlanBand";
+import NoCalls from "./components/NoCalls";
 import MemberGets from "./components/MemberGets";
 import JoinDirect from "./components/JoinDirect";
 import PostcodeStart from "./components/PostcodeStart";
@@ -82,6 +83,7 @@ export default function Home() {
                 <Icon name="camera" size={20} /> Snap my bill, free
               </Link>
             </div>
+            <NoCalls />
             {/* No bill to hand: the postcode first, then a few questions (2 Nov 2026). */}
             <div className={h.pcStart}><PostcodeStart /></div>
             {/* Internet ("Soon") is hidden for now: electricity and gas are the offer. */}

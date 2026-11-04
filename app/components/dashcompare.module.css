@@ -441,3 +441,9 @@ li.rowPick > .pickBubble { position: absolute; top: -10px; left: 40px; margin: 0
 .sameIcon { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: #bbf7d0; color: #14532d; }
 .factSame { border-color: rgba(187, 247, 208, 0.5); }
 .factSame summary svg { color: #bbf7d0; }
+/* 4 Nov 2026: "New" / "Updated" bubble on the right of each row (wide) and beside the retailer (phones). */
+.freshSide { display: block; margin-top: 8px; }
+.freshSide:empty { display: none; }
+.freshPc:empty { display: none; }
+.freshPc { margin-top: 4px; }
+.pcNums .freshPc span { font-size: 10.5px; }

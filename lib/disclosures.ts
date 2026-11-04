@@ -15,6 +15,16 @@ export function independenceLine(retailer?: string): string {
     : `We're not part of ${retailer ?? "any retailer"} and we aren't paid if you sign up.`;
 }
 
+/**
+ * 4 Nov 2026: the "no calls" promise, in one place. Utilo never phones anyone,
+ * isn't a broker, and (while RECEIVES_RETAILER_FEES is false) takes no commission.
+ */
+export function promiseLine(): string {
+  return RECEIVES_RETAILER_FEES
+    ? "We never call you, and we're not a broker. Just email, and only when it's worth it."
+    : "We never call you, we're not a broker, and we take no commission from retailers. Just email, and only when it's worth it.";
+}
+
 /** Short label for the independence point. */
 export function independenceLabel(): string {
   return RECEIVES_RETAILER_FEES ? "How we're paid." : "Independent.";

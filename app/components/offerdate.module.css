@@ -6,3 +6,6 @@
 .dark .label { color: rgba(255, 255, 255, 0.72); }
 .dark .new { background: rgba(94, 234, 212, 0.18); color: #5eead4; }
 .dark .changed { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+/* 4 Nov 2026: the small side bubble in the plan list. */
+.bubble { padding: 2px 7px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; box-shadow: 0 1px 3px -1px rgba(30, 42, 74, 0.25); }
+.bubble.new::before, .bubble.changed::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 5px; vertical-align: 1px; }
