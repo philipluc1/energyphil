@@ -17,7 +17,7 @@ export default function SiteFooter() {
             <span className={s.mark}><HouseMark house="#ffffff" /></span>
             <span className={s.word}>Util<span>o</span></span>
           </Link>
-          <p>Victorian power and gas plans from {new Set(PLANS.map((p) => p[0])).size} retailers, priced on your own bill. Not a cent from retailers.</p>
+          <p>Power and gas plans from {new Set(PLANS.map((p) => p[0])).size} retailers, priced on your own bill. Not a cent from retailers.</p>
           <p className={s.proud}>Proudly Australian. Helping homes now, and businesses soon.</p>
           {ABOUT.contactEmail && <a className={s.mail} href={`mailto:${ABOUT.contactEmail}`}><Icon name="mail" size={14} /> {ABOUT.contactEmail}</a>}
         </div>

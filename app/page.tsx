@@ -16,7 +16,6 @@ import CountUp from "./components/CountUp";
 import InfoTip from "./components/InfoTip";
 import SourceBanner from "./components/SourceBanner";
 import PlanBand from "./components/PlanBand";
-import NoCalls from "./components/NoCalls";
 import MemberGets from "./components/MemberGets";
 import JoinDirect from "./components/JoinDirect";
 import PostcodeStart from "./components/PostcodeStart";
@@ -77,36 +76,20 @@ export default function Home() {
               <br />
               <span className={h.h1Accent}>Start saving.</span>
             </h1>
-            <p className={h.lede}>Snap your Victorian power or gas bill. We price it against plans from {RETAILER_COUNT} retailers, then <b className={h.ledeEvery}>re-check it every morning</b> with {PLUS_NAME}.</p>
+            <p className={h.lede}>Snap your power or gas bill. We price it against plans from {RETAILER_COUNT} retailers, then <b className={h.ledeEvery}>re-check it every morning</b> with {PLUS_NAME}.</p>
             <div className={h.ctas}>
               <Link href="/check" className={h.primary}>
                 <Icon name="camera" size={20} /> Snap my bill, free
               </Link>
             </div>
-            <NoCalls />
-            {/* No bill to hand: the postcode first, then a few questions (2 Nov 2026). */}
+            {/* No bill to hand: the postcode, then a few questions (2 Nov 2026; label shortened 4 Nov). */}
             <div className={h.pcStart}><PostcodeStart /></div>
-            {/* Internet ("Soon") is hidden for now: electricity and gas are the offer. */}
-            <ul className={h.fuelsHero} aria-label="Bills we check">
-              <li>
-                <Link href="/check" className={`${h.fuelCard} ${h.fuelCardElec}`}>
-                  <span className={h.fElec}><Icon name="bolt" size={18} /></span>
-                  <span className={h.fuelCardText}><b>Electricity</b><small>Check my power bill</small></span>
-                  <span className={h.fuelGo} aria-hidden="true">→</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/gas" className={`${h.fuelCard} ${h.fuelCardGas}`}>
-                  <span className={h.fGas}><Icon name="flame" size={18} /></span>
-                  <span className={h.fuelCardText}><b>Gas</b><small>Check my gas bill</small></span>
-                  <span className={h.fuelGo} aria-hidden="true">→</span>
-                </Link>
-              </li>
-            </ul>
+            {/* 4 Nov 2026: the two fuel cards became one line (decluttered). */}
+            <p className={h.gasLine}>Gas bill? <Link href="/gas">Check gas instead →</Link></p>
           </div>
 
           {/* A bill being read, line by line: what the check does, as a picture. Example figures, labelled. */}
-          <div className={h.heroArt} aria-label="Example: a typical Victorian home's quarterly bill, checked">
+          <div className={h.heroArt} aria-label="Example: a typical home's quarterly bill, checked">
             <div className={h.readCard}>
               <div className={h.readHead}>
                 <span className={h.readTitle}><Icon name="camera" size={14} /> Reading your bill</span>

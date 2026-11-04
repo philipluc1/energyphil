@@ -2,6 +2,7 @@
 
 import OfferDate from "./OfferDate";
 import NoCalls from "./NoCalls";
+import RepeatNudge from "./RepeatNudge";
 import { promiseLine } from "@/lib/disclosures";
 import Icon from "./Icon";
 import PriceAddsUp from "./PriceAddsUp";
@@ -1392,7 +1393,6 @@ export default function Comparator() {
               <>Or skip the questions: a photo of your bill does it all. Gas bill? <Link href="/gas">Check gas</Link>.</>
             )}
           </p>
-          {entry !== "read" && <NoCalls />}
         </section>
         )}
 
@@ -1501,6 +1501,7 @@ export default function Comparator() {
             <button type="button" className={snap.readEdit} onClick={() => { setEntry("wizard"); setInputStep(3); scrollToTop(); }}>
               Check or change what we read
             </button>
+            <NoCalls center />
           </div>
         )}
 
@@ -2263,6 +2264,8 @@ export default function Comparator() {
           )}
         </div>
         )}
+        {/* 4 Nov 2026: the promise sits where they've just given their details. */}
+        {(onePage ? qp === 5 : inputStep >= 3) && <div className={styles.promiseRow}><NoCalls center /></div>}
         <div className={styles.stickyBar}>
           {/* A greyed button says nothing on its own: show what's missing right above it. */}
           {blockReason && !quietBlock && (!onePage || qp === 1 || qp === 5) && <p className={styles.stickyReason} role="status">{blockReason}</p>}
@@ -2319,6 +2322,7 @@ export default function Comparator() {
             </span>
           )}
         </section>
+          {matches.length > 0 && <RepeatNudge />}
           {usageSource === "bill" && scanBanner && !useEst && !useAvg && (
             <div className={styles.readStrip}>
               <span className={styles.readStripTick} aria-hidden="true">✓</span>

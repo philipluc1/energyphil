@@ -1853,3 +1853,4 @@
 /* 4 Nov 2026: the "we never call" promise under the email box. */
 .leadPromise { display: flex; gap: 6px; align-items: flex-start; margin: 8px 0 0; font-size: 12.5px; color: var(--grey); line-height: 1.45; }
 .leadPromise svg { flex: none; margin-top: 2px; color: #16a34a; }
+.promiseRow { margin: 4px 0 8px; }

@@ -1,0 +1,10 @@
+.nudge { display: flex; align-items: center; gap: 12px; margin: 12px 0; padding: 12px 14px; border-radius: 14px; background: #fff7e8; border: 1px solid #f5d79a; color: #1e2a4a; }
+.nudge p { margin: 0; flex: 1; font-size: 14px; line-height: 1.45; }
+.icon { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #f5a623; color: #241500; }
+.go { flex: none; padding: 9px 14px; border-radius: 10px; background: #1e2a4a; color: #fff; font-weight: 800; font-size: 14px; text-decoration: none; white-space: nowrap; }
+.go:hover { background: #2a3a66; }
+@media (max-width: 560px) {
+  .nudge { flex-wrap: wrap; align-items: flex-start; }
+  .nudge p { flex-basis: calc(100% - 46px); }
+  .go { margin-left: 46px; }
+}

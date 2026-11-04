@@ -224,3 +224,8 @@
 @media (max-width: 520px) { .pcStart { margin-top: 18px; } }
 @media (max-width: 860px) { .hero { grid-template-columns: minmax(0, 1fr); } }
 .ledeEvery { color: var(--ink, #111827); font-weight: 800; }
+
+/* 4 Nov 2026: "Gas bill? Check gas instead", in place of the two fuel cards. */
+.gasLine { margin: 12px 0 0; font-size: 14px; color: var(--grey); }
+.gasLine a { color: var(--navy-accent-text, #24307a); font-weight: 800; text-decoration: none; border-bottom: 1.5px solid currentColor; }
+.gasLine a:hover { color: #ea580c; }

@@ -5,6 +5,8 @@
 // Typing the numbers in is the fallback.
 
 import OfferDate from "../components/OfferDate";
+import RepeatNudge from "../components/RepeatNudge";
+import NoCalls from "../components/NoCalls";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { GAS_PLAN_DATA_DATE, GAS_RETAILER_COUNT, GAS_ZONES, TYPICAL_MJ_PER_DAY, gasBenchmark, gasDataReady, rankGasPlans, type GasZone } from "@/lib/gasPlans";
@@ -264,6 +266,7 @@ export default function GasCheck() {
         )}
         <button type="button" className={snap.readGo} disabled={!mjOk} onClick={() => go("result")}>See my gas result →</button>
         <button type="button" className={snap.readEdit} onClick={() => go("type")}>Check or change what we read</button>
+        <NoCalls center />
       </div>
     );
   }
@@ -456,6 +459,7 @@ export default function GasCheck() {
 
           <button type="button" className={snap.readGo} disabled={!mjOk} onClick={() => go("result")}>See my gas result →</button>
           {!mjOk && <p className={g.block}>Enter the MJ from your bill, or snap the bill above.</p>}
+          <NoCalls center />
         </div>
       </>
     );
@@ -529,6 +533,7 @@ export default function GasCheck() {
             </div>
           )}
 
+          <RepeatNudge href="/pricing" fuel="gas" />
           <div className={g.member}>
             <div>
               <b>Keep both bills watched</b>

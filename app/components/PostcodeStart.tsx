@@ -17,7 +17,7 @@ export default function PostcodeStart() {
   }
   return (
     <form className={s.form} onSubmit={go} noValidate>
-      <label htmlFor="home-postcode" className={s.label}>No bill to hand? Start with your postcode</label>
+      <label htmlFor="home-postcode" className={s.label}>No bill to hand?</label>
       <div className={s.row}>
         <input
           id="home-postcode"
@@ -25,7 +25,7 @@ export default function PostcodeStart() {
           inputMode="numeric"
           autoComplete="postal-code"
           maxLength={4}
-          placeholder="e.g. 3121"
+          placeholder="Your postcode"
           value={pc}
           onChange={(e) => { setPc(e.target.value.replace(/\D/g, "").slice(0, 4)); setErr(""); }}
           aria-describedby={err ? "home-postcode-err" : undefined}

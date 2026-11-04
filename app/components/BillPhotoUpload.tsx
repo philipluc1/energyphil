@@ -2,7 +2,6 @@
 import type React from "react";
 
 import Icon from "./Icon";
-import NoCalls from "./NoCalls";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { ExtractedBill } from "@/lib/billExtraction";
@@ -340,7 +339,6 @@ export default function BillPhotoUpload({
           <p className={snap.fine}>
             {access === "member" ? "Unlimited bill photos with Utilo Plus." : "Your first photo is free, no sign-up. Then one free read a quarter with your email."} We only keep the numbers, not the picture.
           </p>
-          {access !== "member" && <NoCalls dark />}
           {children && !reading && (
             <div className={snap.otherWays}>
               <span className={snap.otherLabel}>Or</span>
