@@ -7,6 +7,7 @@
 import OfferDate from "../components/OfferDate";
 import RepeatNudge from "../components/RepeatNudge";
 import NoCalls from "../components/NoCalls";
+import { fmtPrice, listPriceNow } from "@/lib/pricingPlans";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { GAS_PLAN_DATA_DATE, GAS_RETAILER_COUNT, GAS_ZONES, TYPICAL_MJ_PER_DAY, gasBenchmark, gasDataReady, rankGasPlans, type GasZone } from "@/lib/gasPlans";
@@ -418,6 +419,8 @@ export default function GasCheck() {
               )}
             </span>
           </div>
+          {/* 4 Nov 2026: same as electricity, the promise after the last question. */}
+          {gq === 4 && <NoCalls center />}
         </div>
       </>
     );
@@ -539,7 +542,7 @@ export default function GasCheck() {
               <b>Keep both bills watched</b>
               <span>Plus members get gas and electricity re-checked every morning, and an email only when switching saves {money0(WORTH_SWITCHING_PER_YEAR)}+ a year.</span>
             </div>
-            <Link href="/pricing" className={g.memberBtn}>Join for $7 a month →</Link>
+            <Link href="/pricing" className={g.memberBtn}>Join for {fmtPrice(listPriceNow("monthly"))} a month →</Link>
           </div>
 
           {(() => {
