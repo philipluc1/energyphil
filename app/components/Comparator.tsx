@@ -2765,35 +2765,6 @@ export default function Comparator() {
                     )}
                     {billAfterHidden && billMark}
               </section>
-              {free && (
-                <>
-                <div className={styles.leadCard} id="email-result">
-                  <span className={styles.leadIcon} aria-hidden="true"><Icon name="mail" size={20} /></span>
-                  <div className={styles.leadMain}>
-                    <h3>Email me this result</h3>
-                    <p>{top && worthSwitching ? <>{top.plan[0]}&apos;s plan and your saving, ready when you switch.</> : "Your result, so it's easy to find later."}</p>
-                    {leadStatus === "saved" ? (
-                      <p className={styles.leadOk}><Icon name="check" size={15} /> Sent. Check your inbox{wantsAlerts ? ", and we'll tell you if a cheaper plan turns up" : ""}.</p>
-                    ) : leadStatus === "notSent" ? (
-                      <p className={styles.leadErr}>We saved your result, but the email didn&apos;t go out just now. We&apos;ll try again, or take a screenshot of this page.</p>
-                    ) : (
-                      <form className={styles.leadForm} onSubmit={handleLeadSubmit}>
-                        <input type="email" required aria-label="Your email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-                        <button type="submit" className={styles.btnPrimary} disabled={leadStatus === "saving"}>{leadStatus === "saving" ? "Sending…" : "Email me"}</button>
-                      </form>
-                    )}
-                    {leadStatus !== "saved" && (
-                      <label className={styles.alertsCheckboxRow}>
-                        <input type="checkbox" checked={wantsAlerts} onChange={(e) => setWantsAlerts(e.target.checked)} />
-                        Tell me if a cheaper plan turns up (unsubscribe any time)
-                      </label>
-                    )}
-                    {leadStatus !== "saved" && <p className={styles.leadPromise}><Icon name="check" size={14} /> {promiseLine()}</p>}
-                    {leadStatus === "error" && <p className={styles.leadErr}>That didn&apos;t send. Please try again in a moment.</p>}
-                  </div>
-                </div>
-                </>
-              )}
               {!free && haveBill && (
                 <div className={styles.billNudge}>
                   <b>Based on one bill.</b> These are today&apos;s prices, worked out for the usage on that bill. Plus members get every plan re-priced each morning and a saved result every month, so the
@@ -2818,6 +2789,15 @@ export default function Comparator() {
                     retailerCount: RETAILER_COUNT,
                     worthPerYear: WORTH_SWITCHING_PER_YEAR,
                     money: usageSource === "bill" ? { rates: myRates, distributor, ...usage } : null,
+                  }}
+                  fix={{
+                    member: !free,
+                    joinHref: "#pricing",
+                    name: customerName || null,
+                    address: [address, suburb, postcode].filter(Boolean).join(", ") || null,
+                    nmi: nmiRaw.replace(/\s/g, "") || null,
+                    billTotal: haveBill ? bench : null,
+                    days,
                   }}
                 />
               )}
@@ -2888,6 +2868,36 @@ export default function Comparator() {
                 bestRetailer={top && !locked ? top.plan[0] : ""}
                 profile={subscribeProfile}
               />
+              {/* 5 Nov 2026: one decision. The Plus section above is the choice; emailing the result is the soft second option. */}
+              {free && (
+                <>
+                <div className={styles.leadCard} id="email-result">
+                  <span className={styles.leadIcon} aria-hidden="true"><Icon name="mail" size={20} /></span>
+                  <div className={styles.leadMain}>
+                    <h3>Not ready to join? Email me this result</h3>
+                    <p>{top && worthSwitching ? <>{top.plan[0]}&apos;s plan and your saving, ready when you switch.</> : "Your result, so it's easy to find later."}</p>
+                    {leadStatus === "saved" ? (
+                      <p className={styles.leadOk}><Icon name="check" size={15} /> Sent. Check your inbox{wantsAlerts ? ", and we'll tell you if a cheaper plan turns up" : ""}.</p>
+                    ) : leadStatus === "notSent" ? (
+                      <p className={styles.leadErr}>We saved your result, but the email didn&apos;t go out just now. We&apos;ll try again, or take a screenshot of this page.</p>
+                    ) : (
+                      <form className={styles.leadForm} onSubmit={handleLeadSubmit}>
+                        <input type="email" required aria-label="Your email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                        <button type="submit" className={styles.btnPrimary} disabled={leadStatus === "saving"}>{leadStatus === "saving" ? "Sending…" : "Email me"}</button>
+                      </form>
+                    )}
+                    {leadStatus !== "saved" && (
+                      <label className={styles.alertsCheckboxRow}>
+                        <input type="checkbox" checked={wantsAlerts} onChange={(e) => setWantsAlerts(e.target.checked)} />
+                        Tell me if a cheaper plan turns up (unsubscribe any time)
+                      </label>
+                    )}
+                    {leadStatus !== "saved" && <p className={styles.leadPromise}><Icon name="check" size={14} /> {promiseLine()}</p>}
+                    {leadStatus === "error" && <p className={styles.leadErr}>That didn&apos;t send. Please try again in a moment.</p>}
+                  </div>
+                </div>
+                </>
+              )}
               {/* The maths and the fine print sit below the Plus card (1 Nov 2026). */}
               <details className={styles.detailsBox}>
                 <summary>Every plan we compared, and the maths</summary>
@@ -2933,17 +2943,7 @@ export default function Comparator() {
                 est={useEst ? est : null}
                 priceDate={fmtUpdated()}
               />
-                <details className={styles.switchHelp}>
-                  <summary>Before you switch: what to expect</summary>
-                  <ul>
-                    <li><b>Have ready:</b> a recent bill (for your NMI and address), your ID, and a payment method.</li>
-                    <li><b>Takes about 10 minutes</b> online. The retailer will ask whether you own or rent, and whether you have solar.</li>
-                    <li><b>No interruption.</b> Your power stays on; only the company billing you changes. Nobody visits.</li>
-                    <li><b>Cooling-off:</b> you can cancel within 10 business days of agreeing, without penalty.</li>
-                    <li><b>Check the fine print:</b> contract length, any exit fee, whether the rate is fixed or variable, and the conditions on discounts.</li>
-                    <li><b>Final bill:</b> your old retailer sends one for the days up to the switch. Pay it as normal.</li>
-                  </ul>
-                </details>
+                {/* "Before you switch" was removed (5 Nov 2026): signing up is between the customer and the retailer. */}
 
 
                 </div>

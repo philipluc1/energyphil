@@ -46,6 +46,8 @@ export interface SummaryExtras {
   currentRetailer: string | null;
   discountEndsAt: string | null;
   fixedUntil: string | null;
+  /** 5 Nov 2026: "We've caught 3 things on your bills…" (lib/moneyFound.ts), or nothing. */
+  found?: string | null;
 }
 
 export interface MemberSummary {
@@ -119,6 +121,7 @@ export function memberSummary(sub: SummaryMember, x: SummaryExtras, origin: stri
     customerName: x.name,
     nearTies: best.nearTies,
     currentRetailer: x.currentRetailer,
+    found: x.found ?? null,
   });
   return { best, reference, saving, days, email };
 }

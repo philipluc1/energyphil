@@ -274,3 +274,6 @@ button.heroBtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; di
 .sameFold summary span::after { content: " ▾"; }
 .sameFold[open] summary span::after { content: " ▴"; }
 .sameFold p { margin: 0; padding: 0 12px 10px 30px; opacity: 0.92; }
+
+/* 5 Nov 2026 UI review: every "Show all / Show the next" button looks the same. */
+.showAll { min-height: 44px; padding: 0 18px; border: 1.5px solid #d5dbea; border-radius: 12px; background: #fff; color: #22306e; font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer; }

@@ -206,3 +206,6 @@
   .wiChipsRow .evLong { display: none; }
   .wiChipsRow .wiReset { grid-column: 1 / -1; justify-self: start; margin-top: 2px; }
 }
+
+/* 5 Nov 2026 UI review: a bigger touch area, same look and layout. */
+.more { padding: 8px 0; margin: -8px 0; }

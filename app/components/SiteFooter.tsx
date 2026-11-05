@@ -28,6 +28,7 @@ export default function SiteFooter() {
             <Link href="/gas">Gas</Link>
             <Link href="/ev">EV plans</Link>
             <Link href="/market">Market changes</Link>
+            <Link href="/loyalty-tax">The loyalty tax</Link>
           </div>
           <div>
             <h3>{PLUS_NAME}</h3>

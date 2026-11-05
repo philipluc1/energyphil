@@ -7,6 +7,7 @@ import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "@
 import styles from "../components/Comparator.module.css";
 import home from "../home.module.css";
 import SiteFooter from "../components/SiteFooter";
+import StateWaitlist from "../components/StateWaitlist";
 
 export const metadata = pageMeta({ title: "Questions about Utilo", description: "Is it free, do you need a bill, is it independent, how it differs from Victorian Energy Compare, and what happens to your details.", path: "/faq" });
 
@@ -28,7 +29,8 @@ export default function FaqPage() {
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;m not in Victoria. Can I use it?</summary>
-              <p>Not yet. We&apos;re starting with Victoria, then rolling out to New South Wales, South Australia and Queensland. Leave your email on the <Link href="/#waitlist">home page</Link> and we&apos;ll tell you when your state opens.</p>
+              <p>Not yet. We&apos;re starting with Victoria, then rolling out to New South Wales, South Australia and Queensland. Leave your email and we&apos;ll tell you when your state opens.</p>
+              <StateWaitlist compact />
             </details>
             <details className={home.faqItem}>
               <summary>Do I need my bill?</summary>

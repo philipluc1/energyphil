@@ -1,3 +1,4 @@
+import { foundSentence, foundTotals } from "@/lib/moneyFound";
 import { activeRowsToEmail } from "@/lib/oneMemberPerEmail";
 import { NextRequest, NextResponse } from "next/server";
 import { BIG_SAVING_PER_YEAR, QUIET_DAYS_AFTER_SWITCH } from "@/lib/dataPolicy";
@@ -597,6 +598,10 @@ export async function GET(req: NextRequest) {
           founding: plan ? price < plan.priceCents || (FOUNDING_OFFER && price === plan.priceCents) : false,
           unsubscribeUrl: unsubUrl(origin, "subscriber", sub.id),
           reviewLink: reviewUrl() && !sub.review_clicked_at ? trackedReviewLink(origin, sub.id, "recap") : null,
+          found: await (async () => {
+            const { data: mf, error: mfErr } = await supabaseAdmin!.from("subscribers").select("money_found").eq("id", sub.id).maybeSingle();
+            return mfErr ? null : foundSentence(foundTotals((mf as { money_found?: unknown } | null)?.money_found));
+          })(),
         });
         const sent = await sendEmail({ to: sub.email, subject: e.subject, title: e.title, html: e.html });
         if (sent) {

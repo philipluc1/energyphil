@@ -447,3 +447,19 @@ alter table public.subscribers add column if not exists switch_remind_note jsonb
 
 -- 3 Nov 2026: the invite follow-up ("a look inside the dashboard"), sent once a week after the invite.
 alter table public.leads add column if not exists invite_followup_at timestamptz;
+
+-- 5 Nov 2026: forwarded bills. Each member's private address (the part before @bills.utilo.com.au),
+-- and what last arrived there. Only the numbers from a bill are kept (inbox_pending until checked).
+alter table public.subscribers add column if not exists bill_inbox text;
+create unique index if not exists subscribers_bill_inbox_key on public.subscribers (bill_inbox) where bill_inbox is not null;
+alter table public.subscribers add column if not exists inbox_last_at timestamptz;
+alter table public.subscribers add column if not exists inbox_last_status text;
+alter table public.subscribers add column if not exists inbox_last_email_id text;
+alter table public.subscribers add column if not exists inbox_pending jsonb;
+alter table public.subscribers add column if not exists inbox_gmail_code text;
+alter table public.subscribers add column if not exists inbox_gmail_link text;
+
+-- 5 Nov 2026: "find money on every bill". Has a Pensioner, Health Care or DVA Gold card (null: not asked).
+alter table public.subscribers add column if not exists concession_card boolean;
+-- 5 Nov 2026: money found on each bill (the running total on the dashboard, monthly email and renewal recap).
+alter table public.subscribers add column if not exists money_found jsonb;

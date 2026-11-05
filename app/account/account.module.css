@@ -582,3 +582,9 @@ details[open] > .panelSummary::after { content: " ▴"; }
 .sameFold summary span::after { content: " ▾"; }
 .sameFold[open] summary span::after { content: " ▴"; }
 .sameFold p { margin: 0; padding: 0 12px 10px 30px; opacity: 0.92; }
+
+/* 5 Nov 2026 UI review: a bigger touch area, same look and layout. */
+.dismissX { display: inline-grid; place-items: center; min-width: 36px; min-height: 36px; margin: -8px -8px -8px 0; font-size: 20px; line-height: 1; }
+
+/* 5 Nov 2026 UI review: "Go to …", "I've switched" and "Remind me" share one shape, as on the Compare tab. */
+.stateActions > a, .stateActions > button { border-radius: 999px; }

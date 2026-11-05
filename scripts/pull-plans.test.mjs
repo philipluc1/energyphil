@@ -137,3 +137,40 @@ assert.equal(siteRetailerName("Sumo Power", null, "sumo-power"), "Sumo");
 assert.equal(siteRetailerName(undefined, undefined, "red-energy"), "Red Energy");
 assert.equal(KNOWN["blue-nrg"], "Blue NRG");
 console.log("all retailers ok");
+
+// NSW (5 Nov 2026): two controlled loads, seasons, the free window, networks.
+import { parseNswPlan, parseControlledLoads, nswDistributors } from "./pull-plans.mjs";
+{
+  const cls = parseControlledLoads({ controlledLoad: [
+    { displayName: "Controlled Load 1", singleRate: { dailySupplyCharge: "0.10", rates: [{ unitPrice: "0.15" }] } },
+    { displayName: "Controlled Load 2", singleRate: { rates: [{ unitPrice: "0.20" }] } },
+  ] });
+  assert.deepEqual(cls, { cl1: 0.165, cl2: 0.22, cl1Supply: 0.11, cl2Supply: null });
+  // Labelled CL2 first: still lands in CL2.
+  const swapped = parseControlledLoads({ controlledLoad: [{ displayName: "CL2", singleRate: { rates: [{ unitPrice: "0.2" }] } }, { displayName: "CL1", singleRate: { rates: [{ unitPrice: "0.1" }] } }] });
+  assert.equal(swapped.cl1, 0.11); assert.equal(swapped.cl2, 0.22);
+  // No labels: by order.
+  const plain = parseControlledLoads({ controlledLoad: [{ singleRate: { rates: [{ unitPrice: "0.1" }] } }, { singleRate: { rates: [{ unitPrice: "0.2" }] } }] });
+  assert.equal(plain.cl1, 0.11); assert.equal(plain.cl2, 0.22);
+
+  // Seasons: high season (Nov-Mar, ~151 days) peak 0.60, low season (Apr-Oct, ~214 days) peak 0.40.
+  const band = (peak) => [{ type: "PEAK", rates: [{ unitPrice: String(peak) }] }, { type: "SHOULDER", rates: [{ unitPrice: "0.25" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0.18" }] }];
+  const seasonal = { displayName: "Everyday Saver", electricityContract: { tariffPeriod: [
+    { startDate: "11-01", endDate: "03-31", rateBlockUType: "timeOfUseRates", dailySupplyCharges: "1.00", timeOfUseRates: band(0.6) },
+    { startDate: "04-01", endDate: "10-31", rateBlockUType: "timeOfUseRates", dailySupplyCharges: "1.00", timeOfUseRates: band(0.4) },
+  ], controlledLoad: [{ displayName: "Controlled Load 1", singleRate: { rates: [{ unitPrice: "0.15" }] } }] } };
+  const n = parseNswPlan(seasonal);
+  assert.ok(n.peak > 0.44 * 1.0 && n.peak < 0.66, "peak averaged between the seasons");
+  assert.ok(Math.abs(n.peak - (0.66 * 151 + 0.44 * 214) / 365) < 0.01, `weighted by days, got ${n.peak}`);
+  assert.equal(n.shoulder, 0.275); assert.equal(n.cl1, 0.165); assert.equal(n.cl2, null); assert.equal(n.free, false);
+
+  // Solar Sharer: a free 11am-2pm band.
+  const sso = { displayName: "Solar Sharer Offer", electricityContract: { tariffPeriod: [{ rateBlockUType: "timeOfUseRates", dailySupplyCharges: "1",
+    timeOfUseRates: [{ type: "PEAK", rates: [{ unitPrice: "0.45" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0" }] }, { type: "OFF_PEAK", rates: [{ unitPrice: "0.2" }] }] }] } };
+  assert.equal(parseNswPlan(sso).free, true);
+
+  assert.deepEqual(nswDistributors({ geography: { distributors: ["Ausgrid", "Endeavour Energy"] } }), ["Ausgrid", "Endeavour Energy"]);
+  assert.deepEqual(nswDistributors({ geography: { distributors: ["Essential Energy"] } }), ["Essential Energy"]);
+  assert.deepEqual(nswDistributors({ geography: { distributors: ["Powercor"] } }), []);
+  console.log("NSW parser ok");
+}

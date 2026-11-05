@@ -447,3 +447,10 @@ li.rowPick > .pickBubble { position: absolute; top: -10px; left: 40px; margin: 0
 .freshPc:empty { display: none; }
 .freshPc { margin-top: 4px; }
 .pcNums .freshPc span { font-size: 10.5px; }
+
+/* 5 Nov 2026 UI review: a bigger touch area, same look and layout. */
+.ratesToggle { padding: 8px 0; margin: -4px 0 -8px; }
+
+/* 5 Nov 2026 UI review: every "Show all / Show the next" button looks the same. */
+.more { min-height: 44px; padding: 0 18px; border: 1.5px solid #d5dbea; border-radius: 12px; background: #fff; color: #22306e; font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer; }
+.mdMore { min-height: 44px; padding: 0 18px; border: 1.5px solid #d5dbea; border-radius: 12px; background: #fff; color: #22306e; font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer; }

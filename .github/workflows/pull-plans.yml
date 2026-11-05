@@ -26,12 +26,12 @@ jobs:
         run: npx --yes tsx scripts/price-index.ts
       - name: Commit if anything changed (Vercel deploys on push)
         run: |
-          if git diff --quiet -- lib/plans.ts lib/gasPlans.ts lib/planTerms.ts lib/planExtras.ts lib/retailerDirectory.ts; then
+          if git diff --quiet -- lib/plans.ts lib/plansNsw.ts lib/gasPlans.ts lib/planTerms.ts lib/planExtras.ts lib/retailerDirectory.ts; then
             echo "No price changes today."
             exit 0
           fi
           git config user.name "utilo-bot"
           git config user.email "bot@utilo.local"
-          git add lib/plans.ts lib/gasPlans.ts lib/planTerms.ts lib/planExtras.ts lib/retailerDirectory.ts data/
+          git add lib/plans.ts lib/plansNsw.ts lib/gasPlans.ts lib/planTerms.ts lib/planExtras.ts lib/retailerDirectory.ts data/
           git commit -m "Daily plan pull: $(date -u +%Y-%m-%d)"
           git push

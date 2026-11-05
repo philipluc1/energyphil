@@ -23,6 +23,8 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PLANS_TS = path.join(ROOT, "lib", "plans.ts");
 const GAS_TS = path.join(ROOT, "lib", "gasPlans.ts");
+// 5 Nov 2026: NSW electricity, in its own file so the Victorian pages stay the same size.
+const NSW_TS = path.join(ROOT, "lib", "plansNsw.ts");
 const TERMS_TS = path.join(ROOT, "lib", "planTerms.ts");
 // "Retailer|Plan name" for every plan whose CDR contract says isFixed: true.
 const FIXED = new Set();
@@ -227,6 +229,71 @@ async function listPlans(url) {
   return plans;
 }
 
+// 5 Nov 2026: NSW's three networks (ACT's Evoenergy is left out for now).
+const NSW = [
+  ["Ausgrid", ["ausgrid"]],
+  ["Endeavour Energy", ["endeavour"]],
+  ["Essential Energy", ["essential energy", "essential"]],
+];
+/** Which NSW networks a plan applies to, from its geography block. */
+export function nswDistributors(plan) {
+  const text = (plan.geography?.distributors ?? []).join(" ").toLowerCase();
+  return NSW.filter(([, words]) => words.some((w) => text.includes(w))).map(([name]) => name);
+}
+
+const mmdd = (s) => { const m = /^(\d{2})-(\d{2})$/.exec(String(s ?? "")); return m ? (Number(m[1]) - 1) * 31 + Number(m[2]) : null; };
+/** Days a tariff period covers in a year, from its "MM-DD" start and end (365 if not given). */
+function periodDays(t) {
+  const a = mmdd(t.startDate), b = mmdd(t.endDate);
+  if (a === null || b === null) return 365;
+  const d = b >= a ? b - a + 1 : 372 - a + b + 1;
+  return Math.max(1, Math.min(365, Math.round(d * 365 / 372)));
+}
+
+/**
+ * Both controlled loads, as NSW bills show them: CL1 and CL2 rates ($/kWh) and
+ * any daily charge for each controlled-load meter ($/day), GST added. The feed
+ * names them in displayName ("Controlled Load 2", "CL2"); otherwise by order.
+ */
+export function parseControlledLoads(c) {
+  const out = { cl1: null, cl2: null, cl1Supply: null, cl2Supply: null };
+  const list = Array.isArray(c?.controlledLoad) ? c.controlledLoad : [];
+  list.forEach((x, i) => {
+    const label = `${x.displayName ?? ""} ${x.singleRate?.displayName ?? ""}`.toLowerCase();
+    const two = /(?:\b|cl|load\s*)2\b/.test(label) ? true : /(?:\b|cl|load\s*)1\b/.test(label) ? false : i === 1;
+    const rate = firstRate(x.singleRate?.rates) ?? firstRate((x.timeOfUseRates ?? [])[0]?.rates);
+    const daily = num(x.singleRate?.dailySupplyCharge ?? x.singleRate?.dailySupplyCharges ?? x.dailySupplyCharge);
+    const key = two ? "cl2" : "cl1";
+    if (out[key] === null && rate !== null) { out[key] = gst(rate); out[`${key}Supply`] = daily === null ? null : gst(daily); }
+  });
+  return out;
+}
+
+/**
+ * NSW plan: the usual rate columns, averaged over the year when the plan has
+ * seasons (Endeavour's peak, for one, differs between high and low season;
+ * weighted by the days each season covers), plus both controlled loads and
+ * whether the plan has a free window (Solar Sharer: free 11am-2pm).
+ */
+export function parseNswPlan(detail) {
+  const c = detail.electricityContract;
+  if (!c) return null;
+  const periods = c.tariffPeriod ?? [];
+  const parts = periods.map((t) => ({ days: periodDays(t), r: parsePlan({ ...detail, electricityContract: { ...c, tariffPeriod: [t] } }) }));
+  if (!parts.length || parts.some((x) => !x.r)) return null;
+  const total = parts.reduce((s, x) => s + x.days, 0);
+  const avg = (k) => {
+    if (parts.some((x) => x.r[k] === null)) return parts[0].r[k];
+    return Math.round(parts.reduce((s, x) => s + x.r[k] * x.days, 0) / total * 1e6) / 1e6;
+  };
+  const free = periods.some((t) => (t.timeOfUseRates ?? []).some((b) => num(b.rates?.[0]?.unitPrice) === 0))
+    || /solar\s*sharer/i.test(String(detail.displayName ?? ""));
+  return {
+    supply: avg("supply"), anytime: avg("anytime"), peak: avg("peak"), shoulder: avg("shoulder"), offpeak: avg("offpeak"),
+    solarFit: parts[0].r.solarFit, demand: parts[0].r.demand, ...parseControlledLoads(c), free,
+  };
+}
+
 /** Which VIC networks a plan applies to, from its geography block. */
 function vicDistributors(plan) {
   const names = [...(plan.geography?.distributors ?? []), ...(plan.geography?.includedPostcodes ?? []).map(String)];
@@ -315,6 +382,8 @@ export function parseDemand(c) {
 const EXTRAS_TS = path.join(ROOT, "lib", "planExtras.ts");
 // One entry per fuel + retailer + network + plan name.
 const EXTRAS = [];
+/** NSW rows from every retailer (5 Nov 2026). */
+const NSW_ROWS = [];
 
 /** Plain text: no HTML tags or markdown links, one line, at most n characters. */
 export function tidyText(v, n = 240) {
@@ -428,10 +497,11 @@ async function pullRetailer(cdrCode, orgName, log) {
   const base = `https://cdr.energymadeeasy.gov.au/${cdrCode}/cds-au/v1/energy/plans`;
   const plans = (await listPlans(`${base}?fuelType=ELECTRICITY&type=ALL&effective=CURRENT`)).filter((p) => {
     const ct = String(p.customerType ?? "RESIDENTIAL").toUpperCase();
-    return ct === "RESIDENTIAL" && vicDistributors(p).length > 0;
+    return ct === "RESIDENTIAL" && (vicDistributors(p).length > 0 || nswDistributors(p).length > 0);
   });
   const retailerName = siteRetailerName(plans[0]?.brandName, orgName, cdrCode);
   const rows = [];
+  const nsw = [];
   let skipped = 0;
   for (const p of plans) {
     await sleep(1000);
@@ -442,21 +512,30 @@ async function pullRetailer(cdrCode, orgName, log) {
       log(`  ${retailerName}: skipped ${p.planId} (${e.message})`);
       continue;
     }
-    const rates = parsePlan(detail);
-    if (!rates) { skipped++; continue; }
     const name = String(detail.displayName ?? p.displayName ?? p.planId).replace(/\s+/g, " ").trim();
     // One CDR code can carry several brands (e.g. energy-locals): name each plan by its own brand.
     const brand = siteRetailerName(detail.brandName ?? p.brandName, orgName, cdrCode);
     const offerType = String(p.type ?? detail.type ?? "MARKET").toUpperCase() === "STANDING" ? "STANDING" : "MARKET";
+    // NSW (5 Nov 2026): its own rows and file; nothing Victorian changes.
+    const nswNets = nswDistributors(detail.geography ? detail : p);
+    if (nswNets.length) {
+      const n = parseNswPlan(detail);
+      if (n) for (const d of nswNets) nsw.push([brand, d, name, offerType, n.supply, n.anytime, n.peak, n.shoulder, n.offpeak, n.cl1, n.solarFit, n.demand, n.cl2, n.cl1Supply, n.cl2Supply, n.free ? 1 : 0]);
+    }
+    const vicNets = vicDistributors(detail.geography ? detail : p);
+    if (!vicNets.length) continue;
+    const rates = parsePlan(detail);
+    if (!rates) { skipped++; continue; }
     if (detail.electricityContract?.isFixed === true) FIXED.add(`${brand}|${name}`);
     noteDates(brand, name, detail, p);
     const extras = parseExtras(detail);
-    for (const d of vicDistributors(detail.geography ? detail : p)) {
+    for (const d of vicNets) {
       rows.push([brand, d, name, offerType, rates.supply, rates.anytime, rates.peak, rates.shoulder, rates.offpeak, rates.cl, rates.solarFit, rates.demand]);
       if (extras) EXTRAS.push({ fuel: "E", retailer: brand, plan: name, network: d, extras });
     }
   }
-  if (plans.length) log(`  ${retailerName}: ${plans.length} VIC residential plans listed, ${rows.length} rows priced (${rows.filter((r) => r[6] !== null).length} time-of-use), ${skipped} plans skipped (demand charges or no usable rates)`);
+  if (plans.length) log(`  ${retailerName}: ${plans.length} VIC/NSW residential plans listed, ${rows.length} VIC rows priced (${rows.filter((r) => r[6] !== null).length} time-of-use), ${skipped} VIC plans skipped (demand charges or no usable rates); ${nsw.length} NSW rows`);
+  NSW_ROWS.push(...nsw);
   return rows;
 }
 
@@ -590,6 +669,24 @@ async function main() {
     fs.writeFileSync(path.join(DATA_DIR, `gas-plans-${today}.json`), JSON.stringify({ pulled: today, rows: gasUnique }));
   }
   log(`Wrote lib/plans.ts, lib/gasPlans.ts and data/*-${today}.json`);
+  writeNsw(today, log);
+}
+
+/** lib/plansNsw.ts: one row per retailer + NSW network + plan. Never replaced by a much smaller pull. */
+function writeNsw(today, log) {
+  const seen = new Set();
+  const unique = NSW_ROWS.filter((r) => { const k = `${r[0]}|${r[1]}|${r[2]}`; if (seen.has(k)) return false; seen.add(k); return true; });
+  unique.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]) || a[2].localeCompare(b[2]));
+  const before = fs.existsSync(NSW_TS) ? fs.readFileSync(NSW_TS, "utf8") : "";
+  const prev = (before.match(/^export const NSW_PLANS: NswPlanRow\[\] = (\[.*\]);$/m) ?? [, "[]"])[1];
+  const prevCount = prev === "[]" ? 0 : prev.split("],[").length;
+  log(`${unique.length} NSW plan rows from ${new Set(unique.map((r) => r[0])).size} retailers (previous file: ${prevCount}).`);
+  if (!unique.length || unique.length < prevCount * 0.6) { log("NSW file left as it was."); return; }
+  const head = before ? before.slice(0, before.indexOf("export const NSW_PLAN_DATA_DATE")) : "";
+  const tail = before ? before.slice(before.indexOf("\n", before.indexOf("export const NSW_PLANS: NswPlanRow[] =")) + 1) : "";
+  fs.writeFileSync(NSW_TS, `${head}export const NSW_PLAN_DATA_DATE = "${today}";\n\nexport const NSW_PLANS: NswPlanRow[] = ${JSON.stringify(unique)};\n${tail}`);
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(path.join(DATA_DIR, `plans-nsw-${today}.json`), JSON.stringify({ pulled: today, rows: unique }));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {

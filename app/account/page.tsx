@@ -1,7 +1,7 @@
 "use client";
 
 import Icon from "../components/Icon";
-import { useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase, supabaseConfigured } from "@/lib/supabaseClient";
@@ -52,6 +52,8 @@ import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import BillTracker from "../components/BillTracker";
 import BillReview from "../components/BillReview";
+import BillInbox from "../components/BillInbox";
+import MoneyFoundCard from "../components/MoneyFoundCard";
 import { isSingleRate, normaliseRates, type CurrentRates, type ExtractedBill } from "@/lib/billExtraction";
 import SwitchReminder from "../components/SwitchReminder";
 import ReviewCard from "../components/ReviewCard";
@@ -164,7 +166,7 @@ function useNarrow(): boolean {
 }
 // Old links (#read-bill, #join) still land on the right tab.
 const TAB_FROM_HASH: Record<string, Tab> = {
-  compare: "compare", market: "market", rewards: "rewards", home: "home", savings: "savings", "read-bill": "savings", membership: "membership", join: "membership",
+  compare: "compare", market: "market", rewards: "rewards", home: "home", savings: "savings", "read-bill": "savings", "bill-inbox": "savings", membership: "membership", join: "membership",
 };
 
 function statusLabel(status: string): string {
@@ -540,7 +542,7 @@ export default function AccountPage() {
       const header = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
       // 5 Nov 2026: "Upload my gas bill" (#read-bill) goes straight to the upload box, not the top
       // of Savings; and the address drops back to #savings so the same button works a second time.
-      if (h === "read-bill") {
+      if (h === "read-bill" || h === "bill-inbox") {
         try { window.history.replaceState(null, "", "#savings"); } catch { /* ignore */ }
         // Cards above it (bill chart, rewards) load a moment later and push it down, so keep
         // lining it up for about two seconds, or until the person scrolls themselves.
@@ -551,7 +553,7 @@ export default function AccountPage() {
         window.addEventListener("wheel", quit, { once: true, passive: true });
         const toBox = () => {
           if (stop) return;
-          const box = document.getElementById("read-bill");
+          const box = document.getElementById(h);
           if (box) {
             // Below the sticky header and the tab bar.
             const tabs = document.getElementById("dash-tabs")?.getBoundingClientRect().height ?? 60;
@@ -766,6 +768,29 @@ export default function AccountPage() {
     setSwitchBusy(false);
     if (body?.ok) setSub((p) => (p ? { ...p, switched_at: body.switched_at, switched_to: body.switched_to } : p));
   }
+
+  // 5 Nov 2026: "Do you have a concession card?" saved with the membership, so forwarded bills can check it too.
+  async function saveConcessionCard(v: boolean) {
+    if (!supabase) return;
+    const { data } = await supabase.auth.getSession();
+    await fetch("/api/member-settings", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ concessionCard: v }),
+    }).catch(() => null);
+  }
+
+  // 5 Nov 2026: what the bill check found, added to the member's running total (once per bill).
+  const foundKey = dashCheck?.checkedAt ?? null;
+  const saveMoneyFound = useCallback(async (f: { perYear: number; oneOff: number; ids: string[] }) => {
+    if (!supabase || !foundKey) return;
+    const { data } = await supabase.auth.getSession();
+    await fetch("/api/member-settings", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ moneyFound: { key: foundKey, ...f } }),
+    }).catch(() => null);
+  }, [foundKey]);
 
   async function handleBill(bill: ExtractedBill) {
     setBillSaving(true);
@@ -1023,7 +1048,7 @@ export default function AccountPage() {
                   <span>
                     <b>Welcome aboard.</b> {dashCheck ? "Your bill came with you" : "Your free check came with you"}, and we re-check it every morning.
                   </span>
-                  <button type="button" className={styles.linkBtn} onClick={() => setJustJoined(false)} aria-label="Dismiss">×</button>
+                  <button type="button" className={`${styles.linkBtn} ${styles.dismissX}`} onClick={() => setJustJoined(false)} aria-label="Dismiss">×</button>
                 </div>
               )}
 
@@ -1133,7 +1158,23 @@ export default function AccountPage() {
 
                       {fuel === "elec" && dashCheck && dashCheckFacts && (
                         <div className={styles.billCheckWrap}>
-                          <BillCheckCard check={dashCheck} retailer={cmpInput?.currentRetailer ?? ""} facts={dashCheckFacts} title="We checked your latest bill" />
+                          <BillCheckCard
+                            check={dashCheck}
+                            retailer={cmpInput?.currentRetailer ?? ""}
+                            facts={dashCheckFacts}
+                            title="We checked your latest bill"
+                            fix={{
+                              member: isMember,
+                              joinHref: "#membership",
+                              name: sub?.customer_name ?? null,
+                              address: [sub?.address, sub?.suburb, sub?.postcode].filter(Boolean).join(", ") || null,
+                              nmi: sub?.nmi ?? null,
+                              billTotal: cmpInput?.billTotal ?? null,
+                              days: cmpInput?.days ?? null,
+                              onCard: isMember ? (v) => void saveConcessionCard(v) : undefined,
+                              onFound: isMember && dashCheck?.checkedAt ? saveMoneyFound : undefined,
+                            }}
+                          />
                         </div>
                       )}
 
@@ -1216,6 +1257,8 @@ export default function AccountPage() {
                         {/* Google review ask, once they've switched (2 Nov 2026). */}
                         <ReviewCard switched={!!switchedAt} />
                         {/* Bills and savings by month, straight under "Your next move" (2 Nov 2026). */}
+                        {/* 5 Nov 2026: the running total of money found on their bills. */}
+                        <MoneyFoundCard priceYear={(sub?.amount_cents ? (sub.plan === "monthly" ? sub.amount_cents * 12 : sub.plan === "quarterly" ? sub.amount_cents * 4 : sub.plan === "half_yearly" ? sub.amount_cents * 2 : sub.amount_cents) / 100 : null)} />
                         <BillTracker key={fuel} initialFuel={fuel === "gas" ? "gas" : "electricity"} gasAccount={!!sub?.gas_zone} />
 
                         <section className={styles.panelCard}>
@@ -1307,6 +1350,9 @@ export default function AccountPage() {
                             <BillPhotoUpload onApply={onBillRead} />
                           )}
                         </section>
+
+                        {/* 5 Nov 2026: forward bills by email instead of uploading. */}
+                        <BillInbox onSave={(b) => void handleBill(b)} onReread={onBillRead} saving={billSaving} />
 
                       </>
                     ) : (

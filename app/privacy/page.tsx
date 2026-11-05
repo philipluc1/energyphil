@@ -76,6 +76,12 @@ export default function PrivacyPolicyPage() {
               never used in emails.
             </li>
             <li>
+              <strong>Forwarded bills (members).</strong> If you set up your private Utilo bill address, emails sent to it are received by our email
+              provider (Resend). We read only what&apos;s needed: who sent it and the subject, to spot a Gmail confirmation, and the attached bill,
+              which is read the same way as an upload. We keep the figures, when the last email arrived and whether it was read, plus Gmail&apos;s
+              confirmation code until you&apos;ve used it. The email and its attachments aren&apos;t kept by us. Emails that aren&apos;t bills are ignored.
+            </li>
+            <li>
               <strong>How the check is used, anonymously:</strong> a count of checks started and finished, clicks to join, which network, and how
               you arrived (a partner&apos;s link, a member&apos;s referral link, or an ad&apos;s campaign name). These counts carry no name, email
               or IP address. They tell us which parts of the site and which partners help people.
@@ -136,7 +142,7 @@ export default function PrivacyPolicyPage() {
               <tr><td>Vercel</td><td>Website hosting and anonymous visit counts</td><td>United States and other regions</td></tr>
               <tr><td>Anthropic</td><td>Reading the figures from bill photos and PDFs</td><td>United States</td></tr>
               <tr><td>Stripe</td><td>Payments and billing</td><td>United States and other regions</td></tr>
-              <tr><td>Resend</td><td>Sending emails</td><td>United States</td></tr>
+              <tr><td>Resend</td><td>Sending emails, and receiving bills members forward to us</td><td>United States</td></tr>
             </tbody>
           </table>
           <p className={styles.tableNote}>
@@ -158,7 +164,7 @@ export default function PrivacyPolicyPage() {
               <strong>Free bill-read records:</strong> {PRIVACY.billReadRetentionDays} days.
             </li>
             <li>
-              <strong>Bill photos and PDFs:</strong> not kept.
+              <strong>Bill photos and PDFs:</strong> not kept, including bills forwarded by email.
             </li>
           </ul>
         </section>

@@ -79,3 +79,10 @@ h3 {
 
 /* The full-width footer uses 100vw; never let that make the page scroll sideways. */
 html, body { overflow-x: clip; }
+
+/* 5 Nov 2026 UI review: fold-out links ("Read more", "How we worked this out") get a 24px touch height. */
+summary { padding-block: 2px; }
+
+/* 5 Nov 2026 UI review: one clear focus ring for keyboard users on every button and link
+   (only on keyboard focus, never on a tap or click). Components with their own focus style keep it. */
+:where(a, button, summary, [role="button"], [role="tab"]):focus-visible { outline: 3px solid #f5a623; outline-offset: 2px; }

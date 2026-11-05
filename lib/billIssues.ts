@@ -57,6 +57,8 @@ export interface BillIssue {
   body: string;
   /** Dollars a year at stake, when we can say. */
   perYear?: number;
+  /** Dollars on this bill (e.g. charges the usage doesn't explain). */
+  amount?: number;
 }
 
 const whole = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
@@ -206,6 +208,7 @@ export function billIssues(x: IssueInput): BillIssue[] {
         out.push({
           id: "unexplained",
           level: "look",
+          amount: Math.round(extra),
           title: `About ${whole(extra)} we can't match to your usage.`,
           body: `Your rates and usage come to about ${money(expected)}${feeTotal ? `, plus ${money(feeTotal)} in fees` : ""}, but the bill is ${money(m.total)}. It could be a meter charge, a back-bill or an adjustment from an earlier bill. Check the charges page, and ask ${who} about anything you don't recognise.`,
         });

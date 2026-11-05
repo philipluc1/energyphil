@@ -44,3 +44,6 @@
 .netEdit small { flex-basis: 100%; font-size: 12px; color: var(--grey); }
 .netEdit .netErr { color: #b91c1c; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* 5 Nov 2026 UI review: a bigger touch area, same look and layout. */
+.netChange { padding: 8px 4px; margin: -8px -4px -8px 2px; }

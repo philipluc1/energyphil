@@ -29,7 +29,7 @@ export default function MarketPage() {
         </section>
         <MarketBoard />
         <p className={styles.lede} style={{ marginTop: 24 }}>
-          Plus members get each of these priced against their own bill. <Link href="/check">Start with the free check</Link>.
+          What all this costs people who stay put: <Link href="/loyalty-tax">the loyalty tax report</Link>. Plus members get each of these priced against their own bill. <Link href="/check">Start with the free check</Link>.
         </p>
       </div>
       <SiteFooter />

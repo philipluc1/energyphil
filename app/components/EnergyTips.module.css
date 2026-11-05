@@ -95,3 +95,10 @@
 .dot, .dotOn { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 4px; background: rgba(255, 255, 255, 0.4); cursor: pointer; transition: width 0.3s, background 0.3s; }
 .dotOn { width: 18px; background: #fde047; }
 @media (prefers-reduced-motion: reduce) { .slide, .slideIcon { animation: none; } }
+
+/* 5 Nov 2026 UI review: a bigger touch area, same look and layout. */
+.dots { gap: 0; }
+.dot, .dotOn { width: 24px; height: 24px; display: inline-grid; place-items: center; background: transparent; border-radius: 0; transition: none; }
+.dot::before, .dotOn::before { content: ""; width: 7px; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.4); transition: width 0.3s, background 0.3s; }
+.dotOn { width: 30px; }
+.dotOn::before { width: 18px; background: #fde047; }

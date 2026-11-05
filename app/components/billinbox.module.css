@@ -1,0 +1,22 @@
+/* "Forward your bills" (5 Nov 2026). */
+.head { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+.icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: #fff7e8; color: #8a5a00; }
+.addrRow { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; margin: 4px 0 10px; }
+.addr { flex: 1 1 220px; min-width: 0; padding: 12px 14px; border-radius: 12px; background: var(--bg, #f4f6fb); border: 1px solid var(--border); font: 700 15px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); overflow-wrap: anywhere; user-select: all; }
+.status { margin: 0 0 12px; font-size: 14px; color: var(--ink); }
+.gmail { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: #fff7e8; border: 1.5px solid #f5a623; font-size: 14px; line-height: 1.5; }
+.code { font: 800 17px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 2px; }
+.pending { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; padding: 14px; border-radius: 14px; border: 1.5px solid #f5a623; }
+.steps { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.steps details { border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; }
+.steps summary { cursor: pointer; font-weight: 800; font-size: 14px; color: var(--ink); }
+.steps ol { margin: 8px 0 2px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
+.steps p { margin: 8px 0 2px; font-size: 14px; line-height: 1.5; }
+.fine { margin: 6px 0 4px; font-size: 12.5px; color: var(--grey); line-height: 1.5; }
+.rotate { margin: 0; font-size: 13px; color: var(--grey); }
+.rotateBtn { font-size: 13px; padding: 8px 0; margin: -4px 0 -8px; color: var(--grey); }
+.err { margin: 8px 0 0; font-size: 13.5px; font-weight: 700; color: #b91c1c; }
+@media (max-width: 520px) {
+  .addr { flex-basis: 100%; font-size: 14px; overflow-wrap: normal; word-break: break-all; }
+  .addrRow > button { flex: 1 1 100%; }
+}

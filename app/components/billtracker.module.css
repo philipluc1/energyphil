@@ -79,3 +79,6 @@
 /* 2 Nov 2026: why the latest bill changed, one line */
 .change { margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: var(--grey); }
 .change b { color: var(--ink); }
+
+/* 5 Nov 2026 UI review: a bigger touch area, same look and layout. */
+.addOlder { padding: 8px 0; margin: 4px 0 -8px; }

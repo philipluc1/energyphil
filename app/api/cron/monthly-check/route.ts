@@ -1,3 +1,4 @@
+import { foundSentence, foundTotals } from "@/lib/moneyFound";
 import { melbourneDay } from "@/lib/switchReminder";
 import { activeRowsToEmail } from "@/lib/oneMemberPerEmail";
 import { NextRequest, NextResponse } from "next/server";
@@ -106,6 +107,13 @@ export async function GET(req: NextRequest) {
     if (!dErr) for (const x of (ds ?? []) as { id: string; discount_ends_at: string | null; current_price_fixed_until: string | null }[]) datesOf.set(x.id, { discount: x.discount_ends_at, fixed: x.current_price_fixed_until });
   }
 
+  // 5 Nov 2026: money found on their bills (separate query, so an older database without the column still sends).
+  const foundOf = new Map<string, string | null>();
+  {
+    const { data: fs, error: fErr } = await supabaseAdmin.from("subscribers").select("id, money_found").eq("status", "active").not("money_found", "is", null);
+    if (!fErr) for (const x of (fs ?? []) as { id: string; money_found: unknown }[]) foundOf.set(x.id, foundSentence(foundTotals(x.money_found)));
+  }
+
   let saved = 0;
   let emailed = 0;
   let errors = 0;
@@ -116,7 +124,7 @@ export async function GET(req: NextRequest) {
     try {
       // Worked out and written once, in lib/memberSummary.ts (the dashboard's "Email me my results" uses the same).
       const dates = datesOf.get(sub.id);
-      const r = memberSummary(sub, { rates: ratesOf.get(sub.id) ?? null, name: who.get(sub.id)?.name ?? null, currentRetailer: who.get(sub.id)?.retailer ?? null, discountEndsAt: dates?.discount ?? null, fixedUntil: dates?.fixed ?? null }, origin, now);
+      const r = memberSummary(sub, { rates: ratesOf.get(sub.id) ?? null, name: who.get(sub.id)?.name ?? null, currentRetailer: who.get(sub.id)?.retailer ?? null, discountEndsAt: dates?.discount ?? null, fixedUntil: dates?.fixed ?? null, found: foundOf.get(sub.id) ?? null }, origin, now);
       if (!r) continue;
       const { best, reference, saving, days } = r;
       // A new pick (cheaper by the threshold, or the old one withdrawn): store it so tomorrow's check agrees.

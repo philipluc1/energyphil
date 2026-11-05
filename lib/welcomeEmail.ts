@@ -113,13 +113,28 @@ export function welcomeEmail(i: WelcomeEmailInput): { subject: string; title: st
       ${when("30 days before your deal ends", "A warning, with your options, while there's time to move.", true)}
     </table>
 
+    <!-- 5 Nov 2026: bill forwarding, the one setup that makes Plus run by itself. -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+      <tr><td style="padding:18px 18px 16px;border-radius:14px;border:2px solid ${AMBER};background:#fffaf0;font-family:${F};">
+        <div style="font:700 11px ${F};letter-spacing:1.2px;color:#8a5a00;text-transform:uppercase;">Two minutes, once</div>
+        <div style="font:800 19px/1.3 ${F};color:${NAVY};margin-top:6px;">Forward your bills, never upload again</div>
+        <div style="font:14.5px/1.55 ${F};color:#1a1a1a;margin-top:6px;">Get your private bill address on your dashboard, then set Gmail or Outlook to forward your retailer's bills to it. Every bill is read the day it arrives, your numbers update and every plan is re-checked. You don't have to remember a thing.</div>
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:14px 0 0;"><tr><td style="border-radius:999px;background:${NAVY};">
+          <a href="${dash}#bill-inbox" style="display:inline-block;padding:11px 20px;font:800 14px ${F};color:#ffffff;text-decoration:none;border-radius:999px;">Set up bill forwarding &rarr;</a>
+        </td></tr></table>
+        <div style="font:12.5px/1.5 ${F};color:${GREY};margin-top:10px;">We keep only the numbers from each bill. The email and PDF aren't stored.</div>
+      </td></tr>
+    </table>
+
     <p style="font:800 17px ${F};color:${NAVY};margin:4px 0 14px;">Get the most from it</p>
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 10px;">
       ${i.fromBill
-        ? step(1, "Snap each new bill", "We've read this one. Snap the next one when it arrives, so your checks follow your real usage through the seasons.")
-        : step(1, "Snap your latest bill", "So every check uses your real usage and the rates you actually pay. About 30 seconds.")}
-      ${step(2, "Add your discount end date", "It's on your welcome pack or in your retailer's app. We'll warn you a month before.")}
-      ${step(3, "Switched? Tell us the date", "Your savings tally counts from that day. Gas too: snap a gas bill and we'll watch both.")}
+        ? step(1, "Add your discount end date", "It's on your welcome pack or in your retailer's app. We'll warn you a month before.")
+        : step(1, "Snap your latest bill", "Or forward it to your bill address. So every check uses your real usage and the rates you actually pay.")}
+      ${i.fromBill
+        ? step(2, "Switched? Tell us the date", "Your savings tally counts from that day.")
+        : step(2, "Add your discount end date", "It's on your welcome pack or in your retailer's app. We'll warn you a month before.")}
+      ${step(3, i.fromBill ? "Gas too" : "Switched? Tell us the date", i.fromBill ? "Forward or snap a gas bill and we'll watch both." : "Your savings tally counts from that day. Gas too: forward or snap a gas bill and we'll watch both.")}
     </table>
 
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:6px 0 20px;border-collapse:separate;">

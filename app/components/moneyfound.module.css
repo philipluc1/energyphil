@@ -1,0 +1,5 @@
+/* "Money we found for you" (5 Nov 2026). */
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 6px 0 12px; }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; }
+.stat b { font-size: 24px; font-weight: 900; color: #15803d; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: #14532d; line-height: 1.35; }

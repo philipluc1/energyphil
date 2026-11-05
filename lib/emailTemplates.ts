@@ -458,8 +458,11 @@ export function monthlyCheck(i: {
   currentRetailer?: string | null;
   /** Other retailers within $20 a year of the pick (lib/stickyPick.ts). */
   nearTies?: string[];
+  /** 5 Nov 2026: the running total of money found on their bills, as one sentence. */
+  found?: string | null;
 }): Email {
   const name = firstNameOf(i.customerName);
+  const foundBox = i.found ? statusBox({ kicker: "Money we found for you", headline: esc(i.found), body: "Each one is on your dashboard with exactly what to ask for.", tone: "green" }) : "";
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
   const gasWorth = !!i.gas && i.gas.yearly >= WORTH_SWITCHING_PER_YEAR;
   const gasBlock = !i.gas
@@ -495,6 +498,7 @@ export function monthlyCheck(i: {
     ${card}
     ${worth && same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName, amount: i.yearly }) : ""}
     ${i.gas ? heading("Gas") + gasBlock : ""}
+    ${foundBox}
     ${summaryGlance(i, f)}
     ${tip(`<strong>Tip: ${esc(f.tip.title)}.</strong> ${esc(f.tip.body)}`)}
     ${button("Open my full summary", `${i.origin}/account#compare`)}
@@ -507,6 +511,7 @@ export function monthlyCheck(i: {
     ${card}
     ${worth && same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName, amount: i.yearly }) : ""}
     ${i.gas ? heading("Gas") + gasBlock : ""}
+    ${foundBox}
     ${button("Open my dashboard", `${i.origin}/account#compare`)}
     ${tip(`Switched recently? <a href="${i.origin}/account">Add the date on your dashboard</a> so your savings count from the right day. New bill? Snap it there too.`)}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this as a Utilo member. This won't cancel Utilo Plus.")}`;
@@ -631,6 +636,8 @@ export function renewalRecap(i: {
   unsubscribeUrl: string;
   /** Our tracked Google review link, when one is set up. */
   reviewLink?: string | null;
+  /** 5 Nov 2026: the running total of money found on their bills, as one sentence. */
+  found?: string | null;
 }): Email {
   const saved = i.switched && i.savedSoFar >= 1;
   const html = `
@@ -645,6 +652,7 @@ export function renewalRecap(i: {
     ${!i.switched && i.availableYear && i.availableYear >= WORTH_SWITCHING_PER_YEAR && i.nowYear && i.bestYear
       ? `${heading("Still there to save")}${versus({ before: { label: "Your plan now", value: i.nowYear }, after: { label: i.bestRetailer ? esc(i.bestRetailer) : "The cheapest plan", value: i.bestYear }, gapLabel: "You could save" })}${button("See my options", `${i.origin}/account#compare`)}`
       : ""}
+    ${i.found ? statusBox({ kicker: "Money we found on your bills", headline: esc(i.found), body: "Fees to ask back, discounts you missed, concessions and cheaper plans with your own retailer: each one on your dashboard with exactly what to ask for.", tone: "green" }) : ""}
     ${heading("Coming up in your next year")}
     ${tiles([
       { sym: "!", title: "Never miss a price jump", text: "A month's warning before your discount or fixed price ends.", tint: "amber" },
