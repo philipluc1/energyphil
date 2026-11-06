@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        message:
-          "Couldn't open billing management — if this keeps happening, the Stripe Customer Portal may need activating (Stripe Dashboard > Settings > Billing > Customer portal).",
+        // 6 Nov 2026: a customer-facing message; the detail stays in the log.
+        message: "Couldn't open your billing page just now. Please try again in a minute, or email info@utilo.com.au and we'll sort it out.",
       },
       { status: 502 },
     );

@@ -149,6 +149,10 @@ export async function POST(req: NextRequest) {
       ],
       metadata,
       ...(discounts ? { discounts } : {}),
+      // 6 Nov 2026: say plainly, beside the pay button, that it renews and how to stop it.
+      ...(plan.mode === "subscription"
+        ? { custom_text: { submit: { message: `Renews automatically every ${plan.intervalCount === 12 ? "year" : plan.intervalCount === 1 ? "month" : `${plan.intervalCount} months`} until you cancel. Cancel any time from your Utilo dashboard.` } } }
+        : {}),
       // Goes via /api/welcome-link, which signs the new member in and lands them on /welcome.
       success_url: `${origin}/api/welcome-link?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}${CANCEL_PATHS.has(body.cancelPath ?? "") ? body.cancelPath : "/check#pricing"}`,
