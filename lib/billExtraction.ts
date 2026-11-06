@@ -8,6 +8,9 @@ export interface ExtractedBill {
   gasMj: number | null;
   gasBillTotal: number | null;
   gasPlanName: string | null;
+  /** 7 Nov 2026: the gas rates printed on the bill, for "your rates vs the cheapest" on the gas dashboard. */
+  gasSupplyCentsPerDay: number | null;
+  gasUsageCentsPerMj: number | null;
   distributor: Distributor | null;
   retailerName: string | null;
   nmi: string | null;
@@ -202,6 +205,8 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     periodEnd: typeof r.period_end === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.period_end) ? r.period_end : null,
     gasBillTotal: toFiniteNumber(r.gas_bill_total),
     gasPlanName: typeof r.gas_plan_name === "string" ? r.gas_plan_name.slice(0, 120) : null,
+    gasSupplyCentsPerDay: (() => { const v = toFiniteNumber(r.gas_supply_cents_per_day); return v !== null && v > 0 && v < 1000 ? v : null; })(),
+    gasUsageCentsPerMj: (() => { const v = toFiniteNumber(r.gas_usage_cents_per_mj); return v !== null && v > 0 && v < 100 ? v : null; })(),
     distributor,
     retailerName: typeof r.retailer_name === "string" ? r.retailer_name.slice(0, 80) : null,
     nmi: typeof r.nmi === "string" && /^[A-Za-z0-9]{10,11}$/.test(r.nmi.trim()) ? r.nmi.trim().toUpperCase() : null,

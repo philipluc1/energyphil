@@ -15,7 +15,7 @@ import { reviewAskDue, reviewUrl, trackedReviewLink } from "@/lib/reviews";
 import { daysWatched, recapDue, savedSince, RECAP_PLANS, type Episode } from "@/lib/renewalRecap";
 import { marketActivity } from "@/lib/marketActivity";
 import { FOUNDING_OFFER, findPlan, fmtPrice } from "@/lib/pricingPlans";
-import { computeBest, isMeaningfullyCheaper, priceOfPlan, referenceForUsage } from "@/lib/priceWatch";
+import { computeBest, gasAlertDecision, isMeaningfullyCheaper, priceOfPlan, referenceForUsage } from "@/lib/priceWatch";
 import { ratesFromJson } from "@/lib/billReconcile";
 import { switchedPlanNow } from "@/lib/switched";
 import type { CurrentRates } from "@/lib/billExtraction";
@@ -505,8 +505,18 @@ export async function GET(req: NextRequest) {
       if (!top) continue;
       // Re-price our last gas pick at today's prices, as for electricity.
       const pickToday = gasRanked.find((m) => m.plan[0] === sub.gas_best_retailer && m.plan[2] === sub.gas_best_plan_name)?.total ?? null;
-      const previous = pickToday ?? sub.gas_best_total ?? sub.gas_reference_total;
-      if (!isMeaningfullyCheaper(top.total, previous, gDays, alertMin.get(sub.id))) continue;
+      const quietlyRepick = () => supabaseAdmin!
+        .from("subscribers")
+        .update({ gas_best_retailer: top.plan[0], gas_best_plan_name: top.plan[2], gas_best_total: top.total, gas_updated_at: new Date().toISOString() })
+        .eq("id", sub.id);
+      // 7 Nov 2026: news means it beats our last pick; a saving means it beats the
+      // member's own bill (the dashboard's rule). Someone on a good deal is left alone.
+      const decision = gasAlertDecision({ top: top.total, pickToday, lastPickTotal: sub.gas_best_total, billTotal: sub.gas_reference_total, days: gDays, minPerYear: alertMin.get(sub.id) });
+      if (decision === "skip") continue;
+      if (decision === "repick") { await quietlyRepick(); continue; }
+      const lastPick = pickToday ?? sub.gas_best_total;
+      // The saving shown is against the bill when we have one.
+      const previous = sub.gas_reference_total ?? lastPick;
       const e = cheaperGasForMember({
         origin,
         retailer: top.plan[0],
@@ -523,10 +533,7 @@ export async function GET(req: NextRequest) {
         gasAlerts++;
         const gSave = Math.round(((previous! - top.total) * 365) / gDays);
         await sendPush(sub.email, { title: "A cheaper gas plan for you", body: `${top.plan[0]} could save you about $${gSave.toLocaleString("en-AU")} a year on gas. Tap to see it.`, url: "/account", tag: "cheaper-gas" });
-        await supabaseAdmin
-          .from("subscribers")
-          .update({ gas_best_retailer: top.plan[0], gas_best_plan_name: top.plan[2], gas_best_total: top.total, gas_updated_at: new Date().toISOString() })
-          .eq("id", sub.id);
+        await quietlyRepick();
       }
     } catch (err) {
       console.error("recheck-prices: gas member failed", sub.id, err);

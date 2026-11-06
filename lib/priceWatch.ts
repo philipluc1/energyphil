@@ -110,3 +110,17 @@ export function isMeaningfullyCheaper(newBest: number, previousBest: number | nu
 export function fmtCurrency(n: number): string {
   return "$" + n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+/**
+ * Whether to email a member about a cheaper gas plan (7 Nov 2026).
+ * "email": it beats our last pick AND their own bill (when we have one) by the
+ * alert minimum. "repick": the stored pick is stale or their bill is already
+ * cheaper, so quietly make today's cheapest the new pick. "skip": nothing new.
+ */
+export function gasAlertDecision(i: { top: number; pickToday: number | null; lastPickTotal: number | null; billTotal: number | null; days: number; minPerYear?: number }): "email" | "repick" | "skip" {
+  const lastPick = i.pickToday ?? i.lastPickTotal;
+  if (i.pickToday === null && lastPick !== null && lastPick > i.top * 1.5) return "repick";
+  if (!isMeaningfullyCheaper(i.top, lastPick ?? i.billTotal, i.days, i.minPerYear)) return "skip";
+  if (i.billTotal !== null && !isMeaningfullyCheaper(i.top, i.billTotal, i.days, i.minPerYear)) return "repick";
+  return "email";
+}

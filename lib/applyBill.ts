@@ -65,8 +65,16 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
         gas_best_plan_name: best ? best.plan[2] : null,
         gas_best_total: best ? best.total : null,
         gas_updated_at: new Date().toISOString(),
+        // 7 Nov 2026: the rates off the bill (cents), for the gas rates table on the dashboard.
+        gas_rates: num(b?.gasSupplyCentsPerDay) || num(b?.gasUsageCentsPerMj)
+          ? { supply: num(b?.gasSupplyCentsPerDay), usage: num(b?.gasUsageCentsPerMj) }
+          : null,
       };
-      const { error: gErr } = await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id);
+      let { error: gErr } = await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id);
+      if (gErr && /gas_rates/.test(gErr.message)) {
+        delete gasRow.gas_rates;
+        ({ error: gErr } = await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id));
+      }
       if (gErr && /gas_current_retailer/.test(gErr.message)) {
         delete gasRow.gas_current_retailer;
         await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id);

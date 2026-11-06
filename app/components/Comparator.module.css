@@ -1516,6 +1516,13 @@
 .resultHeroSub { font-size: 15px; opacity: 0.9; margin-bottom: 10px; }
 .resultHeroBtn { display: inline-block; padding: 13px 26px; border-radius: 999px; background: #fbbf24; color: #1a1a1a; font-weight: 800; text-decoration: none; }
 .resultHeroBtn:hover { filter: brightness(1.05); }
+/* 7 Nov 2026: keep people on Utilo. The retailer link is a quiet text link next to the Plus button. */
+.heroPlusRow { margin-top: 14px; display: grid; gap: 10px; justify-items: center; }
+.heroPlusRow .resultHeroBtn { margin-top: 0; }
+.quietLink { font-size: 13.5px; font-weight: 600; color: inherit; opacity: 0.8; text-decoration: underline; text-underline-offset: 3px; }
+.quietLink:hover { opacity: 1; }
+.quietLinkDark { display: inline-block; margin-top: 12px; font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,0.75); text-decoration: underline; text-underline-offset: 3px; }
+.quietLinkDark:hover { color: #fff; }
 
 /* ---- Bolder header: big logo, slogan, pill nav and a call-to-action ---- */
 .top { background: var(--navy-deep); }
@@ -1861,3 +1868,8 @@
 /* 6 Nov 2026: the new logo in the site header. */
 .brandLogo { display: block; height: 36px; flex-shrink: 0; }
 @media (max-width: 440px) { .brandLogo { height: 29px; } }
+
+/* 7 Nov 2026: the gas result card: logo beside the retailer name. */
+.bestCard .retailerRow { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 8px; }
+.bestCard .retailerRow .retailer { margin-top: 0; }
+.bestCard .switchBtn { margin-top: 14px; }

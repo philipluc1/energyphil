@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import Icon from "./Icon";
 import { PLUS_NAME } from "@/lib/pricingPlans";
-import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import styles from "./planband.module.css";
 
 /** The Utilo Plus pitch: one flat navy band with a headline, what you get
@@ -35,10 +34,11 @@ export default function PlanBand({
       </div>
       {/* What you get: the hero of the band. */}
       {gets && <ul className={styles.gets}>
-        <li><span className={styles.getIcon}><Icon name="bell" size={20} /></span><b>Never miss a price jump</b><span>A month&apos;s warning before your discount or fixed price ends.</span></li>
-        <li><span className={styles.getIcon}><Icon name="refresh" size={20} /></span><b>Know the day it&apos;s cheaper</b><span>Every plan re-checked against your own bill, each morning.</span></li>
-        <li><span className={styles.getIcon}><Icon name="mail" size={20} /></span><b>Only emails that pay</b><span>One email, when switching saves ${WORTH_SWITCHING_PER_YEAR}+ a year.</span></li>
-        <li><span className={styles.getIcon}><Icon name="home" size={20} /></span><b>One membership, every bill</b><span>Power and gas now, more to come. Tracked in one place.</span></li>
+        {/* 7 Nov 2026 (Phil): one line each, no small print. */}
+        <li><span className={styles.getIcon}><Icon name="refresh" size={20} /></span><b>Every plan checked, every day</b></li>
+        <li><span className={styles.getIcon}><Icon name="bell" size={20} /></span><b>Live pricing on your own bill</b></li>
+        <li><span className={styles.getIcon}><Icon name="mail" size={20} /></span><b>Only emails that pay</b></li>
+        <li><span className={styles.getIcon}><Icon name="home" size={20} /></span><b>One membership, every bill</b></li>
       </ul>}
       {children && <div className={styles.step}>{children}</div>}
       <div className={styles.cards}>{cards}</div>

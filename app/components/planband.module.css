@@ -18,7 +18,7 @@
 
 /* 1 Nov 2026: what you get as four tiles (the hero), and three trust badges. */
 .gets { list-style: none; padding: 0; margin: 22px auto 0; max-width: 900px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.gets li { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 16px 12px; border-radius: 16px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); }
+.gets li { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; padding: 16px 12px; border-radius: 16px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); }
 .gets b { font-size: 15.5px; font-weight: 900; line-height: 1.25; }
 .gets span:last-child { font-size: 13px; line-height: 1.4; color: rgba(255, 255, 255, 0.75); }
 .getIcon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 6px; border-radius: 12px; background: rgba(252, 211, 77, 0.16); color: #fcd34d; }

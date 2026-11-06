@@ -53,9 +53,47 @@ function Lines({ icon, title, note, lines }: { icon: string; title: string; note
   );
 }
 
+/* 7 Nov 2026 (Phil: "just show rates, simplify the terms"): the short form. One line per
+   thing that matters (no retailer blurbs), at most five, then everything folded under
+   "All conditions and fees". Used on opened rows; the full form stays for the pop-up. */
+const short = (t: string, max = 70) => { const s = t.replace(/\s+/g, " ").trim(); return s.length > max ? s.slice(0, max - 1).replace(/[ ,;:.]+\S*$/, "") + "…" : s; };
+
+function BriefTerms({ o, retailer, payLateCost, dark }: { o: OfferSummary; retailer: string; payLateCost?: string | null; dark?: boolean }) {
+  const lines: { tone: OfferLine["tone"]; text: string }[] = [];
+  if (o.restricted) lines.push({ tone: "warn", text: `Not for everyone: ${short(o.restricted, 60)}` });
+  for (const d of o.discounts) lines.push({ tone: d.tone, text: `${short(d.text)} (in our price)` });
+  // Skip the boilerplate: how you can pay, and "available to customers in <network>" (they're on it).
+  for (const n of o.needs.filter((x) => !/^Pay by /i.test(x.text) && !/available to (new |residential )?customers (within|in|of)/i.test(x.text))) lines.push({ tone: n.tone, text: short(n.text) });
+  for (const c of o.credits) lines.push({ tone: "info", text: `${short(c.text)} (not in our price)` });
+  const shown = lines.slice(0, 5);
+  const plain = o.found && !lines.length;
+  return (
+    <section className={`${s.wrap} ${dark ? s.dark : ""} ${s.compact}`} aria-label="What to know">
+      {plain ? (
+        <p className={s.empty}><Icon name="check" size={15} /> Standard rates, no special conditions.</p>
+      ) : !o.found ? (
+        <p className={s.empty}>Conditions arrive with the next daily price update. Check the offer on {retailer}&apos;s site.</p>
+      ) : (
+        <ul className={s.lines}>
+          {shown.map((l, i) => (
+            <li key={i} className={toneClass(l.tone)}><span className={s.mark} aria-hidden="true">{l.tone === "good" ? "✓" : l.tone === "warn" ? "!" : "•"}</span><span>{l.text}</span></li>
+          ))}
+        </ul>
+      )}
+      {payLateCost && <p className={s.condSave}>Pay late and it&apos;s about <b>{payLateCost} more</b>.</p>}
+      <details className={s.fold}>
+        <summary>All conditions, fees and contract terms{o.fees.length ? ` (${o.fees.length} fees)` : ""}</summary>
+        <OfferTerms o={o} retailer={retailer} payLateCost={null} dark={dark} compact title={null} full />
+      </details>
+    </section>
+  );
+}
+
 export default function OfferTerms({
-  o, retailer, payLateCost, dark, compact, title = "Discounts and what you need to sign up",
+  o, retailer, payLateCost, dark, compact, title = "Discounts and what you need to sign up", full,
 }: {
+  /** The full list (the pop-up, or inside the fold). Without it, opened rows get the short form. */
+  full?: boolean;
   o: OfferSummary;
   retailer: string;
   /** e.g. "$4.10 a month": the pay-on-time / direct-debit discount that's in
@@ -65,6 +103,7 @@ export default function OfferTerms({
   compact?: boolean;
   title?: string | null;
 }) {
+  if (!full) return <BriefTerms o={o} retailer={retailer} payLateCost={payLateCost} dark={dark} />;
   const cls = `${s.wrap} ${dark ? s.dark : ""} ${compact ? s.compact : ""}`;
   return (
     <section className={cls} aria-label={title ?? "Offer conditions"}>

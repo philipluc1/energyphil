@@ -23,7 +23,14 @@ import { StepsVisual } from "./learn/LearnVisuals";
 import h from "./home3.module.css";
 import SiteFooter from "./components/SiteFooter";
 
-export const metadata = pageMeta({ title: "Utilo: compare Victorian electricity plans against your own bill", description: "Snap your Victorian power bill and see which plans cost less for your home, priced on your own usage and rates. Free check, no sign-up.", path: "/", absoluteTitle: true });
+// 7 Nov 2026: the Google snippet. A title under 60 characters that says what you get, and a
+// description that reads like the page (Google swaps in footer text when the two don't match).
+export const metadata = pageMeta({
+  title: "Utilo: free power and gas bill check for Victorian homes",
+  description: "Snap your electricity or gas bill and see the cheapest plan for your home in about a minute, priced on your own usage. Free, no sign-up, no calls. Utilo Plus re-checks it every morning.",
+  path: "/",
+  absoluteTitle: true,
+});
 
 const RETAILER_COUNT = new Set(PLANS.map((p) => p[0])).size;
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
@@ -50,7 +57,20 @@ function structuredData() {
   if (sameAs.length) org.sameAs = sameAs;
   return {
     "@context": "https://schema.org",
-    "@graph": [org, { "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: SITE_NAME, url: SITE_URL, inLanguage: "en-AU", publisher: { "@id": `${SITE_URL}/#organization` } }],
+    "@graph": [
+      org,
+      // The site name Google shows above the title (7 Nov 2026): "Utilo", not "utilo.com.au".
+      { "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: SITE_NAME, alternateName: ["Utilo Australia", "utilo.com.au"], url: SITE_URL, inLanguage: "en-AU", publisher: { "@id": `${SITE_URL}/#organization` } },
+      {
+        "@type": "WebApplication",
+        name: "Utilo bill check",
+        url: `${SITE_URL}/check`,
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Web",
+        description: "Upload a Victorian electricity or gas bill and see which plan is cheapest for your home.",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "AUD" },
+      },
+    ],
   };
 }
 

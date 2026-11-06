@@ -119,6 +119,7 @@ interface SubscriberSummary {
   gas_reference_total: number | null;
   gas_current_plan_name: string | null;
   gas_current_retailer?: string | null;
+  gas_rates?: { supply: number | null; usage: number | null } | null;
   gas_best_retailer: string | null;
   gas_best_plan_name: string | null;
   gas_best_total: number | null;
@@ -349,7 +350,7 @@ export default function AccountPage() {
           "plan, status, amount_cents, currency, current_period_end, created_at, distributor, baseline_retailer, baseline_plan_name, last_notified_retailer, last_notified_plan_name, billing_days, has_solar, solar_export_kwh, switched_at, switched_to, customer_name, address, suburb, postcode, nmi, current_retailer, current_plan_name, tariff_type, usage_mode, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_current_plan_name, gas_best_retailer, gas_best_plan_name, gas_best_total, gas_updated_at, reference_total";
       const PRICING_COLS = ", current_rates, current_price_type, current_price_fixed_until, discount_ends_at";
       // Oct 2026 columns (schema.sql): loaded when the database has them.
-      const NEW_COLS = ", demand_kw, gas_current_retailer";
+      const NEW_COLS = ", demand_kw, gas_current_retailer, gas_rates";
       const pick = (cols: string) =>
         supabase!.from("subscribers").select(cols).order("created_at", { ascending: false }).limit(1).maybeSingle();
       let { data, error } = await pick(BASE_COLS + PRICING_COLS + NEW_COLS + ", bill_check");

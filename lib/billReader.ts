@@ -38,6 +38,8 @@ export const TOOL_SCHEMA = {
       gas_mj: { type: ["number", "null"], description: "For a bill with gas: total gas usage for the period in megajoules (MJ). Convert from kWh if needed (1 kWh = 3.6 MJ)." },
       gas_bill_total: { type: ["number", "null"], description: "For a bill with gas: the gas charges for the period including GST, in AUD. On a dual bill, the gas portion only." },
       gas_plan_name: { type: ["string", "null"], description: "For a bill with gas: the gas plan or offer name printed on the bill." },
+      gas_supply_cents_per_day: { type: ["number", "null"], description: "For a bill with gas: the daily supply (service) charge in cents per day including GST, e.g. 95.7. Null if not shown." },
+      gas_usage_cents_per_mj: { type: ["number", "null"], description: "For a bill with gas: the usage rate in cents per MJ including GST, e.g. 3.85. If the bill has stepped rates, the first (highest-volume or first block) rate. Null if not shown." },
       distributor: {
         type: ["string", "null"],
         enum: ["Citipower", "Powercor", "United Energy", "Jemena", "AusNet Services", null],

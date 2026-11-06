@@ -166,6 +166,8 @@ alter table public.subscribers add column if not exists solar_export_kwh numeric
 alter table public.subscribers add column if not exists demand_kw numeric;
 -- The gas retailer off the bill, for the gas dashboard (Oct 2026).
 alter table public.subscribers add column if not exists gas_current_retailer text;
+-- The gas rates off the bill, {supply: c/day, usage: c/MJ} (7 Nov 2026).
+alter table public.subscribers add column if not exists gas_rates jsonb;
 
 -- Household profile (people, dwelling, heating, EV, solar size, ...) captured
 -- on /check, so usage can be estimated for their shape rather than a general average.

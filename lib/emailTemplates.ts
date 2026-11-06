@@ -368,9 +368,9 @@ export function cheaperForMember(i: { origin: string; retailer: string; planName
 export function cheaperGasForMember(i: { origin: string; retailer: string; planName: string; yearly: number; vsBill: boolean; unsubscribeUrl: string; prevYear?: number | null; newYear?: number | null; name?: string | null }): Email {
   const html = `
     ${greet(i.name)}
-    ${heroPanel({ pill: "Gas", headline: `A cheaper gas plan: about ${money(i.yearly)} a year less`, body: "Watching gas prices for you this morning, we found a gas plan that beats our last pick." })}
-    ${i.prevYear && i.newYear ? versus({ before: { label: "Our last gas pick", value: i.prevYear }, after: { label: esc(i.retailer), value: i.newYear }, gapLabel: "You'd save" }) : ""}
-    ${planCard({ kicker: "New cheapest gas plan for you", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: i.vsBill ? "a year less than our last pick, based on your gas bill." : "a year less than our last pick." }, link: retailerLink(i.retailer), tone: "amber" })}
+    ${heroPanel({ pill: "Gas", headline: `A cheaper gas plan: about ${money(i.yearly)} a year less`, body: i.vsBill ? "Watching gas prices for you this morning, we found a gas plan that beats your current bill." : "Watching gas prices for you this morning, we found a gas plan that beats our last pick." })}
+    ${i.prevYear && i.newYear ? versus({ before: { label: i.vsBill ? "Your gas plan now" : "Our last gas pick", value: i.prevYear }, after: { label: esc(i.retailer), value: i.newYear }, gapLabel: "You'd save" }) : ""}
+    ${planCard({ kicker: "New cheapest gas plan for you", retailer: i.retailer, planName: i.planName, figure: { amount: i.yearly, after: i.vsBill ? "a year less than your gas bill, scaled to a year." : "a year less than our last pick." }, link: retailerLink(i.retailer), tone: "amber" })}
     ${button("See it on my dashboard", `${i.origin}/account`)}
     ${tip("Getting electricity from the same retailer? Ask about a dual-fuel discount when you switch.")}
     ${note(esc(PRICE_CHANGE_CLAUSE) + " Gas use swings with the seasons, so yearly figures are scaled from your bill.")}

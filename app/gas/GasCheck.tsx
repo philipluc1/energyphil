@@ -14,7 +14,6 @@ import { GAS_PLAN_DATA_DATE, GAS_RETAILER_COUNT, GAS_ZONES, TYPICAL_MJ_PER_DAY, 
 import { PRICE_CHANGE_CLAUSE, WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { describeOffer, topOpen } from "@/lib/planExtras";
-import OfferTerms from "../components/OfferTerms";
 import RetailerLogo from "../components/RetailerLogo";
 import GasPlanTable from "../components/GasPlanTable";
 import GasSeasonChart from "../components/GasSeasonChart";
@@ -150,7 +149,6 @@ export default function GasCheck() {
   const bench = useMemo(() => (mjOk ? gasBenchmark(zone, usage, haveBill ? bill : null) : null), [zone, usage, bill, haveBill, mjOk]);
   // Cheapest gas plan anyone can get; members-only offers and the like stay in the list.
   const top = topOpen(ranked);
-  const offerFor = (p: (typeof ranked)[number]["plan"]) => describeOffer("G", p[0], p[2], p[1], { hasSolar: false });
   const perYear = (v: number) => (v / Math.max(1, days)) * 365;
   const yearly = top && bench ? perYear(bench.value - top.total) : 0;
   const worth = yearly >= WORTH_SWITCHING_PER_YEAR;
@@ -501,14 +499,18 @@ export default function GasCheck() {
               <div className={styles.resultHeroLabel}>{haveBill ? "You could save about" : "The cheapest gas plan saves up to"}</div>
               <div className={styles.resultHeroNum}>{money0(Math.max(0, yearly))}</div>
               <div className={styles.resultHeroSub}>a year with {top.plan[0]}{haveBill ? ", vs your gas bill" : ". Add your gas charges for your own saving."}</div>
-              {RETAILER_LINKS[top.plan[0]] && <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={zone} data-fuel="G" target="_blank" rel="noopener noreferrer" className={styles.resultHeroBtn}>See the plan →</a>}
+              <div className={styles.heroPlusRow}>
+                <a href="#gas-plus" className={styles.resultHeroBtn} onClick={(e) => { e.preventDefault(); document.getElementById("gas-plus")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Keep this checked every day →</a>
+                {RETAILER_LINKS[top.plan[0]] && <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={zone} data-fuel="G" target="_blank" rel="noopener noreferrer" className={styles.quietLink}>or see the plan on {top.plan[0]}&apos;s site ↗</a>}
+              </div>
               <span className={styles.resultHeroFine}>{fromEstimate ? "Priced on a whole year of typical use for a home like yours. " : "From this bill, scaled to a year. Gas use swings with the seasons (a winter bill overstates it), so treat it as a guide. "}{PRICE_CHANGE_CLAUSE}</span>
             </div>
           )}
 
           <div className={styles.bestCard}>
             <span className={styles.bestTag}>{worth || !haveBill ? "Cheapest gas plan for you" : "Cheapest we found"}</span>
-            <div className={styles.retailer}>{top.plan[0]}</div>
+            {/* 7 Nov 2026 (Phil): the logo sits with the name; no sign-up terms or "get this plan" box, since that's the retailer's process. */}
+            <div className={styles.retailerRow}><RetailerLogo name={top.plan[0]} size={44} /><div className={styles.retailer}>{top.plan[0]}</div></div>
             <div className={styles.plan}>{top.plan[2]}</div>
             <div className={styles.offerDateRow}><OfferDate retailer={top.plan[0]} plan={top.plan[2]} dark /></div>
             <div className={styles.nums}>
@@ -522,16 +524,8 @@ export default function GasCheck() {
                 ? <><b>{money(bench.value - top.total)} less</b> than {bench.label} for the same gas</>
                 : <><b>{money(top.total - bench.value)} more</b> than {bench.label}</>}
             </p>
-            <OfferTerms o={offerFor(top.plan)} retailer={top.plan[0]} dark />
             {RETAILER_LINKS[top.plan[0]] && (
-              <div className={styles.getPlan}>
-                <RetailerLogo name={top.plan[0]} size={56} />
-                <div className={styles.getPlanText}>
-                  <b>Get this plan from {top.plan[0]}</b>
-                  <span>Look for &ldquo;{top.plan[2]}&rdquo;. If you take electricity from them too, ask about a dual-fuel discount.</span>
-                </div>
-                <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={zone} data-fuel="G" target="_blank" rel="noopener noreferrer" className={styles.switchBtn}>Go to {top.plan[0]} →</a>
-              </div>
+              <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={zone} data-fuel="G" target="_blank" rel="noopener noreferrer" className={styles.quietLinkDark}>See the plan on {top.plan[0]}&apos;s site ↗</a>
             )}
           </div>
 
@@ -542,7 +536,7 @@ export default function GasCheck() {
           )}
 
           <RepeatNudge href="/pricing" fuel="gas" />
-          <div className={g.member}>
+          <div className={g.member} id="gas-plus">
             <div>
               <b>Keep both bills watched</b>
               <span>Plus members get gas and electricity re-checked every morning, and an email only when switching saves {money0(WORTH_SWITCHING_PER_YEAR)}+ a year.</span>

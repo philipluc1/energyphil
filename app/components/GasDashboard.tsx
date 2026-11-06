@@ -31,6 +31,8 @@ export interface GasMember {
   gas_reference_total: number | null;
   gas_current_plan_name: string | null;
   gas_current_retailer?: string | null;
+  /** The rates off the gas bill, in cents (7 Nov 2026). */
+  gas_rates?: { supply: number | null; usage: number | null } | null;
   gas_updated_at: string | null;
   /** The electricity best retailer, to suggest a dual-fuel question. */
   baseline_retailer?: string | null;
@@ -254,6 +256,7 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
           )
         }
       />
+      {!est && top && <GasRatesTable member={member} top={top} bill={bill} mj={mj} days={days} hideName={!isMember} />}
       {(() => {
         const share = heatingShareFor(null, mj / days);
         const months = monthsFromAnnual(annualFromGasBill(mj, days, null, share), share);
@@ -294,6 +297,68 @@ export function GasAside({ member }: { member: GasMember }) {
         {member.gas_reference_total !== null && <div className={pa.row}><dt>Last bill</dt><dd>{money(member.gas_reference_total)} / {days} days</dd></div>}
         {best && <div className={pa.row}><dt>Cheapest we found</dt><dd>{best.plan[0]}<br /><small>{money(best.total)} for the same period</small></dd></div>}
       </dl>
+    </section>
+  );
+}
+
+/**
+ * "Your gas rates vs the cheapest" (7 Nov 2026): the same table as electricity.
+ * Your own rates come off the bill (gas_rates); if the bill didn't give them but
+ * we hold your plan, we use our copy of it. The all-in average is bill ÷ MJ.
+ */
+function GasRatesTable({ member, top, bill, mj, days, hideName }: { member: GasMember; top: RankedGas; bill: number | null; mj: number; days: number; hideName: boolean }) {
+  const ownPlan = member.gas_current_retailer && member.gas_current_plan_name
+    ? GAS_PLANS.find((p) => p[0] === member.gas_current_retailer && p[1] === member.gas_zone && p[2].toLowerCase() === member.gas_current_plan_name!.toLowerCase())
+    : undefined;
+  const youSupply = member.gas_rates?.supply ?? (ownPlan ? ownPlan[4] * 100 : null);
+  const youUsage = member.gas_rates?.usage ?? (ownPlan?.[5]?.[0] ? ownPlan[5][0].rate * 100 : null);
+  const bestSupply = top.plan[4] * 100;
+  const bestBlocks = top.plan[5];
+  const bestUsage = bestBlocks[0]?.rate * 100;
+  const stepped = bestBlocks.length > 1;
+  const avgYou = bill !== null && mj > 0 ? (bill / mj) * 100 : null;
+  const avgBest = mj > 0 ? (top.total / mj) * 100 : null;
+  const cDay = (c: number) => `$${(c / 100).toFixed(2)}/day`;
+  const cMj = (c: number) => `${c.toFixed(2)}c/MJ`;
+  const fromBill = !!(member.gas_rates?.supply || member.gas_rates?.usage);
+  return (
+    <section className={v.table}>
+      <div className={v.tableHead}>
+        <h3>Your gas rates vs the cheapest</h3>
+        <p>What you pay per day and per megajoule now, beside {hideName ? "the cheapest plan" : top.plan[0]}. All prices include GST.</p>
+      </div>
+      <div className={v.rates}>
+        <div className={v.ratesHead}>
+          <span />
+          <div>
+            <b>You now</b>
+            <span>{member.gas_current_retailer ?? "Your retailer"}{member.gas_current_plan_name ? ` · ${member.gas_current_plan_name}` : ""}</span>
+          </div>
+          <div>
+            <b>Cheapest</b>
+            <span>{hideName ? "Plus members see which retailer" : `${top.plan[0]} · ${top.plan[2]}`}</span>
+          </div>
+        </div>
+        <div className={v.ratesRow}>
+          <span className={v.ratesLabel}>Daily supply</span>
+          <span className={youSupply !== null && youSupply > bestSupply ? v.neg : ""}>{youSupply !== null ? cDay(youSupply) : "–"}</span>
+          <span>{cDay(bestSupply)}</span>
+        </div>
+        <div className={v.ratesRow}>
+          <span className={v.ratesLabel}>Usage{stepped ? <small>first step; cheaper after {bestBlocks[0].upTo?.toLocaleString("en-AU")} MJ {top.plan[6] ? "a day" : "a bill"}</small> : null}</span>
+          <span className={youUsage !== null && youUsage > bestUsage ? v.neg : ""}>{youUsage !== null ? cMj(youUsage) : "–"}</span>
+          <span>{cMj(bestUsage)}</span>
+        </div>
+        <div className={`${v.ratesRow} ${v.ratesAvg}`}>
+          <span className={v.ratesLabel}>All-in average<small>bill ÷ MJ used</small></span>
+          <span className={avgYou !== null && avgBest !== null && avgYou > avgBest ? v.neg : ""}>{avgYou !== null ? cMj(avgYou) : "–"}</span>
+          <span className={v.pos}>{avgBest !== null ? cMj(avgBest) : "–"}</span>
+        </div>
+      </div>
+      <p className={v.fineDark}>
+        {fromBill ? "Your own rates come off your gas bill." : ownPlan ? "Your own rates are our copy of your plan; your bill may show different ones." : "Your bill didn't show its rates. Upload your next gas bill and we'll fill these in."}
+        {" "}Gas plans often charge less per MJ the more you use, so the all-in average is the fairest comparison.
+      </p>
     </section>
   );
 }
