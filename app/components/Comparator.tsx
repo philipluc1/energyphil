@@ -94,6 +94,9 @@ import BillPagePrompt from "./BillPagePrompt";
 import { shouldAskForAnotherPage } from "@/lib/billExtraction";
 import { track } from "@/lib/track";
 import styles from "./Comparator.module.css";
+import { marketActivity } from "@/lib/marketActivity";
+import CountUp from "./CountUp";
+import LockedPreviews from "./LockedPreviews";
 import SiteFooter from "./SiteFooter";
 
 const PLAN_COUNT = PLANS.length;
@@ -961,6 +964,8 @@ export default function Comparator() {
   // Free users see plans from #3 on; the cheapest ones are for members.
   const TOP_LOCKED = 2;
   const FREE_ROWS = 3;
+  // 7 Nov 2026: for the free hero, how much the market moved on this network.
+  const heroChanges = useMemo(() => { try { const m = marketActivity({ days: 30 }); return m.ready ? m.newOffers + m.priceChanges : 0; } catch { return 0; } }, []);
   const joinScroll = () => {
     track("unlock_clicked", { distributor });
     document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2450,25 +2455,25 @@ export default function Comparator() {
                   <span className={r.kicker}>{useAvg ? "Based on an average Victorian home" : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? (reconciled.basis === "rates" ? "Based on your rates" : "Based on your bill") : "Based on your usage"}</span>
                   <div className={r.heroLabel}>{haveBill ? "You could save" : "The cheapest plan could save you up to"}</div>
                   <div className={r.heroNum}>
-                    ${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")}
+                    <CountUp value={Math.round(perYear(bench - top.total))} format={(n) => `$${Math.round(n).toLocaleString("en-AU")}`} />
                     <span> a year</span>
                   </div>
                   <div className={r.compare}>
                     <div className={r.tile}>
                       <span className={r.tileLabel}>{haveBill ? `${youName} now` : "The default offer"}</span>
-                      <b>{fmtCurrency(bench * k)}</b>
+                      <b><CountUp value={bench * k} format={fmtCurrency} /></b>
                       <small>{perLabel}{haveBill && k !== 1 ? ` · your ${days}-day bill was ${fmtCurrency(bench)}` : ""}</small>
                     </div>
                     <span className={r.op} aria-hidden="true">→</span>
                     <div className={r.tile}>
                       <span className={r.tileLabel}>{locked ? "With the cheapest plan" : haveBill && sameRetailer(currentRetailer, top.plan[0]) ? `${top.plan[0]}, ${currentPlanSame(top) ? "today's rates" : "new plan"}` : `With ${top.plan[0]}`}</span>
-                      <b>{fmtCurrency(top.total * k)}</b>
+                      <b><CountUp value={top.total * k} format={fmtCurrency} /></b>
                       <small>{perLabel}</small>
                     </div>
                     <span className={r.op} aria-hidden="true">=</span>
                     <div className={`${r.tile} ${r.tileSave}`}>
                       <span className={r.tileLabel}>You save</span>
-                      <b>{fmtCurrency((bench - top.total) * k)}</b>
+                      <b><CountUp value={(bench - top.total) * k} format={fmtCurrency} /></b>
                       <small>{perLabel}</small>
                     </div>
                   </div>
@@ -2491,8 +2496,16 @@ export default function Comparator() {
                     <button type="button" className={r.heroBtn} onClick={joinScroll}>
                       <Icon name="lock" size={16} /> See which retailer →
                     </button>
+                  ) : free ? (
+                    // 7 Nov 2026 (Phil): on the free result the hero sells the daily check, not the plan.
+                    // The plan is a scroll away in the list; Plus is what we want them to do next.
+                    <div className={r.heroPlus}>
+                      <p>{heroChanges > 0 ? <><b>{heroChanges} offers changed</b> on your network in 30 days. </> : null}Today&apos;s cheapest can change next week. Utilo Plus re-checks this against your bill every morning and emails you the day a plan beats it.</p>
+                      <button type="button" className={r.heroBtn} onClick={joinScroll}>Keep this checked every day →</button>
+                      <a href="#top-plan" className={r.heroLink} onClick={(e) => { e.preventDefault(); openTopRow(); }}>or see the {top.plan[0]} plan ↓</a>
+                    </div>
                   ) : (
-                    // Stays on the page: down to the top row of the list, opened, with the rates, conditions and the retailer's link.
+                    // Members: straight to the top row of the list, opened, with the rates, conditions and the retailer's link.
                     <a href="#top-plan" className={r.heroBtn} onClick={(e) => { e.preventDefault(); openTopRow(); }}>
                       See the {top.plan[0]} plan ↓
                     </a>
@@ -2504,6 +2517,10 @@ export default function Comparator() {
                     </InfoTip>
                   </span>
                 </div>
+              )}
+              {/* 7 Nov 2026: a blurred taste of the dashboard on free results. */}
+              {free && top && (
+                <LockedPreviews network={distributor} monthNow={(bench / days) * 30.4} monthBest={(top.total / days) * 30.4} haveBill={haveBill} retailer={currentRetailer ?? null} onUnlock={joinScroll} />
               )}
               {locked && worthSwitching && !atPricing && (
                 <div className={styles.stickyBar}>

@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from "react";
  * is in the page from the start (for search engines and no-JS), and stays put
  * for people who prefer reduced motion.
  */
-export default function CountUp({ value, duration = 900 }: { value: number; duration?: number }) {
+// 7 Nov 2026: `format` (optional) renders the value, e.g. as dollars with cents, for the result hero.
+export default function CountUp({ value, duration = 900, format }: { value: number; duration?: number; format?: (n: number) => string }) {
   const [shown, setShown] = useState(value);
   const ref = useRef<HTMLSpanElement | null>(null);
   useEffect(() => {
@@ -19,7 +20,8 @@ export default function CountUp({ value, duration = 900 }: { value: number; dura
       const t0 = performance.now();
       const tick = (t: number) => {
         const p = Math.min(1, (t - t0) / duration);
-        setShown(Math.round(value * (1 - Math.pow(1 - p, 3))));
+        const v = value * (1 - Math.pow(1 - p, 3));
+        setShown(format ? v : Math.round(v));
         if (p < 1) raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
@@ -39,6 +41,6 @@ export default function CountUp({ value, duration = 900 }: { value: number; dura
       io.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [value, duration]);
-  return <span ref={ref}>{shown.toLocaleString("en-AU")}</span>;
+  }, [value, duration, format]);
+  return <span ref={ref}>{format ? format(shown) : shown.toLocaleString("en-AU")}</span>;
 }
