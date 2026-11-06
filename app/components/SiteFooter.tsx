@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Icon from "./Icon";
-import HouseMark from "./HouseMark";
+import Wordmark from "./Wordmark";
 import { ABOUT } from "@/lib/about";
 import { PLUS_NAME } from "@/lib/pricingPlans";
 import { PLANS } from "@/lib/plans";
@@ -14,8 +14,7 @@ export default function SiteFooter() {
       <div className={s.inner}>
         <div className={s.brand}>
           <Link href="/" className={s.logo} aria-label="Utilo home">
-            <span className={s.mark}><HouseMark house="#ffffff" /></span>
-            <span className={s.word}>Util<span>o</span></span>
+            <span className={s.wordmark}><Wordmark ink="#ffffff" /></span>
           </Link>
           <p>Power and gas plans from {new Set(PLANS.map((p) => p[0])).size} retailers, priced on your own bill. Not a cent from retailers.</p>
           <p className={s.proud}>Proudly Australian. Helping homes now, and businesses soon.</p>

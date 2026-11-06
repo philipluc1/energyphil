@@ -2,7 +2,7 @@ import Link from "next/link";
 import styles from "./Comparator.module.css";
 import AccountNavLink from "./AccountNavLink";
 import SiteMenu from "./SiteMenu";
-import HouseMark from "./HouseMark";
+import Wordmark from "./Wordmark";
 
 
 // "other" is for pages not represented by a nav tab (the policy/info pages
@@ -13,14 +13,8 @@ export default function SiteHeader({ active }: { active: "home" | "check" | "pri
     <header className={styles.top}>
       <div className={styles.bar}>
         <Link href="/" className={styles.brandLink} aria-label="Utilo home">
-          <span className={styles.brandMark}>
-            <HouseMark />
-          </span>
-          <span className={styles.brandText}>
-            <span className={styles.mark}>
-              Util<span className={styles.accent}>o</span>
-            </span>
-          </span>
+          {/* 6 Nov 2026: the new logo, animated once per visit. */}
+          <span className={styles.brandLogo}><Wordmark animate /></span>
         </Link>
         {/* Who it's for (1 Nov 2026): homes today, businesses coming. */}
         <nav className={styles.audience} aria-label="Who it's for">

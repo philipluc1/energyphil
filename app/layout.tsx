@@ -44,8 +44,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-AU" data-theme="light">
+    <html lang="en-AU" data-theme="light" suppressHydrationWarning>
       <head>
+        {/* 6 Nov 2026: the header logo animates on the first page of a visit only. Later pages (and
+            client-side moves) get data-logo-seen, which turns the animation off. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{var d=document.documentElement;if(sessionStorage.getItem('utilo.logo')){d.setAttribute('data-logo-seen','')}else{sessionStorage.setItem('utilo.logo','1');setTimeout(function(){d.setAttribute('data-logo-seen','')},1800)}}catch(e){}",
+          }}
+        />
         {/* Fonts: linked here rather than @import-ed from the CSS, so the
             browser fetches them straight away instead of after the stylesheet. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

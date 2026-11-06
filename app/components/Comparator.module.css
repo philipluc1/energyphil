@@ -1857,3 +1857,7 @@
 
 /* 5 Nov 2026 UI review: a bigger touch area, same look and layout. */
 .backLink { padding: 8px 0; margin: -8px 0; }
+
+/* 6 Nov 2026: the new logo in the site header. */
+.brandLogo { display: block; height: 36px; flex-shrink: 0; }
+@media (max-width: 440px) { .brandLogo { height: 29px; } }

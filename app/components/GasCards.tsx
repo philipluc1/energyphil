@@ -8,7 +8,7 @@ import DayChanges from "./DayChanges";
 import DashOverlay from "./DashOverlay";
 import { MarketSideCard, type MarketPersonal } from "./MarketBoard";
 import MarketRewards, { RewardsSideCard, rewardItems } from "./MarketRewards";
-import { GAS_ZONES, gasDataReady, rankGasPlans, type GasZone, type RankedGas } from "@/lib/gasPlans";
+import { GAS_ZONES, TYPICAL_MJ_PER_DAY, gasDataReady, rankGasPlans, type GasZone, type RankedGas } from "@/lib/gasPlans";
 import { topOpen } from "@/lib/planExtras";
 import { heatingShareFor } from "@/lib/gasUsage";
 import { forecastGasYear, gasOfferKeys, gasPricer, medianGasSupply, planGasPricer, typicalGasPricer, type GasForecast } from "@/lib/gasInsights";
@@ -18,6 +18,7 @@ import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { useOpenParam } from "@/lib/useOpenParam";
 import type { GasMember } from "./GasDashboard";
 import s from "./insights.module.css";
+import bx from "./billexplainer.module.css";
 import styles from "./dashcompare.module.css";
 
 // The gas tab's side cards (1 Nov 2026), the same set as electricity's:
@@ -395,13 +396,18 @@ export function GasHome({ member, name, address, uploadHref = "#read-bill" }: { 
   const days = member.gas_billing_days ?? 0;
   const mj = member.gas_mj ?? 0;
   const perDay = days > 0 ? Math.round(mj / days) : 0;
-  const maxMj = f ? Math.max(...f.months.map((m) => m.mj), 1) : 1;
-  const peak = f ? f.months.reduce((a, m) => (m.mj / m.days > a.mj / a.days ? m : a), f.months[0]) : null;
-  const row = (label: string, value: string | null, hint = "From your gas bill") => (
+  // 6 Nov 2026: twelve bars, not thirteen (the forecast can end part-way into the same month next year).
+  const months = f ? f.months.slice(0, 12) : [];
+  const maxMj = months.length ? Math.max(...months.map((m) => m.mj), 1) : 1;
+  const peak = months.length ? months.reduce((a, m) => (m.mj / m.days > a.mj / a.days ? m : a), months[0]) : null;
+  const row = (label: string, value: string | null, hint = est ? "From your gas bill" : "Not on your bill") => (
     <div className={styles.ghRow}><span>{label}</span>{value ? <b>{value}</b> : <i>{hint}</i>}</div>
   );
   return (
     <div className={styles.ghWrap}>
+      {!est && c && member.gas_reference_total !== null && member.gas_reference_total > 0 && (
+        <GasBillPlain uploadHref={uploadHref} total={member.gas_reference_total} mj={mj} days={days} zone={c.zone} retailer={member.gas_current_retailer ?? null} planName={member.gas_current_plan_name ?? null} annualMj={f?.annualMj ?? null} yearNow={f?.yearNow ?? null} />
+      )}
       <section className={styles.ghCard} aria-labelledby="gas-home-title">
         <h3 id="gas-home-title"><Icon name="flame" size={16} /> Your gas plan &amp; home</h3>
         {row("Name", name, "From your bill")}
@@ -432,7 +438,7 @@ export function GasHome({ member, name, address, uploadHref = "#read-bill" }: { 
             <div><b>{Math.round(f.annualMj).toLocaleString("en-AU")} MJ</b><span>expected a year</span></div>
           </div>
           <div className={styles.ghBars} role="img" aria-label={`Gas use by month for the next 12 months; most in ${peak ? MONTH_NAMES[peak.month] : "winter"}`}>
-            {f.months.map((m, i) => (
+            {months.map((m, i) => (
               <div key={`${m.year}-${m.month}`} className={styles.ghBar}>
                 <span className={`${styles.ghFill} ${i === 0 ? styles.ghNow : ""} ${peak && m === peak ? styles.ghPeak : ""}`} style={{ height: `${Math.max(6, (m.mj / maxMj) * 100)}%` }} />
                 <span className={styles.ghMonth}>{short(m.month).slice(0, 1)}</span>
@@ -446,5 +452,101 @@ export function GasHome({ member, name, address, uploadHref = "#read-bill" }: { 
         </section>
       )}
     </div>
+  );
+}
+
+/* ---------- Your gas bill in plain English (6 Nov 2026) ----------
+   The gas bill gives the total, the MJ and the days, not the rates. So the
+   connection charge is the usual one on their network, and the gas rate is
+   what's left of the bill, per MJ. Both are shown as "about". */
+function GasBillPlain({ uploadHref, total, mj, days, zone, retailer, planName, annualMj, yearNow }: {
+  uploadHref: string; total: number; mj: number; days: number; zone: GasZone; retailer: string | null; planName: string | null; annualMj: number | null; yearNow: number | null;
+}) {
+  if (!(mj > 0) || !(days > 0)) return null;
+  const perDay = mj / days;
+  const typicalYear = TYPICAL_MJ_PER_DAY * 365;
+  const ratio = annualMj ? annualMj / typicalYear : perDay / TYPICAL_MJ_PER_DAY;
+  const supplyDay = medianGasSupply(zone);
+  const supply = Math.round(Math.min(supplyDay * days, total * 0.9) * 100) / 100;
+  const used = Math.round((total - supply) * 100) / 100;
+  const rate = used / mj; // $ a MJ
+  // Only split the bill when the result looks like a real gas rate (2c to 8c a MJ). A small summer
+  // bill, a discount or a cheaper connection charge can make the split meaningless; then show the all-in cost.
+  const split = rate >= 0.02 && rate <= 0.08;
+  const allIn = total / mj;
+  const perMonth = (total / days) * (365 / 12);
+  const c$ = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const cents = (d: number) => `${(d * 100).toLocaleString("en-AU", { maximumFractionDigits: 1 })}c`;
+  const n = (x: number) => Math.round(x).toLocaleString("en-AU");
+  return (
+    <section className={bx.box} aria-labelledby="gas-plain-title">
+      <div className={bx.headRow}>
+        <div className={bx.head}>
+          <h3 id="gas-plain-title" className={bx.title}>Your gas bill in plain English</h3>
+          <p className={bx.sub}>{[retailer, planName].filter(Boolean).join(" · ")}{retailer || planName ? " · " : ""}{days} days</p>
+        </div>
+        <a className={bx.upload} href={uploadHref}><Icon name="camera" size={15} /> Upload a new bill</a>
+      </div>
+      <div className={bx.tiles}>
+        <div className={bx.tile}>
+          <div className={bx.tileHead}>
+            <span className={`${bx.icon} ${bx.iUse}`} aria-hidden="true"><Icon name="flame" size={18} /></span>
+            <span className={bx.label}>You used</span>
+            <b className={bx.big}>{n(mj)} MJ</b>
+          </div>
+          <p>
+            About {n(perDay)} MJ a day.{" "}
+            {annualMj ? <>Over a year that&apos;s about {n(annualMj)} MJ, </> : null}
+            {ratio < 0.9 ? `about ${Math.round(ratio * 100)}% of a typical Victorian gas home` : ratio > 1.1 ? `about ${Math.round((ratio - 1) * 100)}% more than a typical gas home` : "about the same as a typical gas home"}
+            {ratio < 0.5 ? ": the pattern of gas for cooking and hot water rather than heating." : "."}
+          </p>
+          <p className={bx.hint}>An MJ (megajoule) is the unit gas is sold in: a cooktop burner on high uses about 1 MJ every 5 or 6 minutes.</p>
+        </div>
+        <div className={bx.tile}>
+          <div className={bx.tileHead}>
+            <span className={`${bx.icon} ${bx.iRate}`} aria-hidden="true"><Icon name="dollar" size={18} /></span>
+            <span className={bx.label}>{split ? "Each MJ costs about" : "All in, each MJ cost"}</span>
+            <b className={bx.big}>{cents(split ? rate : allIn)}</b>
+          </div>
+          <p>
+            {split
+              ? "An average for this bill. Most gas plans charge more for the first MJ each day and less after that, so heavy users pay less per MJ."
+              : "Including the daily connection charge. On a small bill most of the money is the connection charge, so each MJ looks dear. It evens out in winter."}
+          </p>
+        </div>
+        {supply > 0 && (
+          <div className={bx.tile}>
+            <div className={bx.tileHead}>
+              <span className={`${bx.icon} ${bx.iSupply}`} aria-hidden="true"><Icon name="home" size={18} /></span>
+              <span className={bx.label}>Just for being connected</span>
+              <b className={bx.big}>about {c$(supplyDay)} a day</b>
+            </div>
+            <p>
+              {split
+                ? <>About {c$(supply)} on this bill, {Math.round((supply / total) * 100)}% of it, going by the usual charge on {zone}.</>
+                : <>The usual charge on {zone}: about {c$(supplyDay * days)} over {days} days, so most of a bill like this.</>}{" "}
+              You pay it even in summer, when you hardly use gas.
+            </p>
+          </div>
+        )}
+      </div>
+      {split && supply > 0 && used > 0 && (
+        <div className={bx.split}>
+          <span className={bx.label}>Where the money went (about)</span>
+          <div className={bx.bar} role="img" aria-label={`Gas you used about ${c$(used)}, being connected about ${c$(supply)}`}>
+            <span className={bx.segUse} style={{ flexGrow: used }} />
+            <span className={bx.segSupply} style={{ flexGrow: supply }} />
+          </div>
+          <ul className={bx.key}>
+            <li><i className={bx.segUse} /> Gas you used <b>{c$(used)}</b></li>
+            <li><i className={bx.segSupply} /> Being connected <b>{c$(supply)}</b></li>
+          </ul>
+        </div>
+      )}
+      <p className={bx.total}>
+        <span>This bill: <b>{c$(total)}</b></span>
+        <span>About <b>{c$(perMonth)} a month</b> at this rate{yearNow ? <>; about <b>{whole(yearNow)} over a year</b>, with winter</> : null}</span>
+      </p>
+    </section>
   );
 }

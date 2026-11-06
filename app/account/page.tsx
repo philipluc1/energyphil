@@ -1113,7 +1113,7 @@ export default function AccountPage() {
                     <>
                       {/* Your bill in plain English, first (2 Nov 2026). The bill check moved to the foot of the tab. */}
                       {fuel === "elec" && cmpInput && !cmpInput.billIsPriced && (
-                        <BillExplainer f={{ retailer: cmpInput.currentRetailer, planName: cmpInput.currentPlanName, days: cmpInput.days, anytime: cmpInput.anytime, peak: cmpInput.peak, shoulder: cmpInput.shoulder, offpeak: cmpInput.offpeak, cl: cmpInput.cl, solarExportKwh: cmpInput.solarExportKwh, rates: cmpInput.currentRates ?? null, total: cmpInput.billTotal, distributor: cmpInput.distributor }} />
+                        <BillExplainer f={{ retailer: cmpInput.currentRetailer, planName: cmpInput.currentPlanName, days: cmpInput.days, anytime: cmpInput.anytime, peak: cmpInput.peak, shoulder: cmpInput.shoulder, offpeak: cmpInput.offpeak, cl: cmpInput.cl, solarExportKwh: cmpInput.solarExportKwh, rates: cmpInput.currentRates ?? null, total: cmpInput.billTotal, distributor: cmpInput.distributor }} uploadHref={isMember ? "#read-bill" : "/check"} />
                       )}
                       {fuel === "gas" ? (
                         // Gas (2 Nov 2026): gas details and gas use only, never the power bill's NMI, tariff or solar.
@@ -1128,15 +1128,6 @@ export default function AccountPage() {
                               onMoved={(f) => setSub((cur) => (cur ? { ...cur, postcode: f.postcode, suburb: f.suburb, address: f.address, distributor: f.distributor, nmi: null, ...(f.gas_zone ? { gas_zone: f.gas_zone } : {}) } as typeof cur : cur))}
                             />
                           )}
-                          <SolarCard
-                            distributor={sub!.distributor}
-                            billingDays={sub!.billing_days}
-                            exportKwh={sub!.solar_export_kwh}
-                            fitDollars={sub!.current_rates?.solarFit ?? null}
-                            onSaved={(next) =>
-                              setSub((cur) => (cur ? { ...cur, has_solar: next.has_solar, solar_export_kwh: next.solar_export_kwh, current_rates: (next.current_rates as unknown as CurrentRates | null) ?? cur.current_rates } : cur))
-                            }
-                          />
                         </>
                       ) : localCheck ? (
                         <>
@@ -1154,6 +1145,19 @@ export default function AccountPage() {
                                             {/* Usage (2 Nov 2026): "Through a day" card on top, "Year ahead" card below. */}
                       {fuel === "elec" && myShape && cmpInput && (
                         <UsageCard input={cmpInput} profile={homeProfile} shape={myShape.shape} exportPerDay={myShape.exportPerDay} evOvernight={myShape.evOvernight} fromAnswers={myShape.fromAnswers} place={sub?.suburb ?? null} />
+                      )}
+
+                      {/* 6 Nov 2026: Your solar sits below "Through a day". */}
+                      {fuel === "elec" && isMember && (
+                        <SolarCard
+                            distributor={sub!.distributor}
+                            billingDays={sub!.billing_days}
+                            exportKwh={sub!.solar_export_kwh}
+                            fitDollars={sub!.current_rates?.solarFit ?? null}
+                            onSaved={(next) =>
+                              setSub((cur) => (cur ? { ...cur, has_solar: next.has_solar, solar_export_kwh: next.solar_export_kwh, current_rates: (next.current_rates as unknown as CurrentRates | null) ?? cur.current_rates } : cur))
+                            }
+                          />
                       )}
 
                       {fuel === "elec" && dashCheck && dashCheckFacts && (

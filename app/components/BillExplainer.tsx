@@ -37,7 +37,7 @@ function bestFit(distributor: string): number | null {
  * be connected, what your solar earned, and where the money went. Built from
  * the numbers read off the bill (or typed), so it changes as they're fixed.
  */
-export default function BillExplainer({ f }: { f: BillFacts }) {
+export default function BillExplainer({ f, uploadHref }: { f: BillFacts; uploadHref?: string }) {
   const r = f.rates;
   const general = f.anytime + f.peak + f.shoulder + f.offpeak;
   const used = general + f.cl;
@@ -81,13 +81,16 @@ export default function BillExplainer({ f }: { f: BillFacts }) {
 
   return (
     <section className={s.box} aria-labelledby="bill-plain-title">
-      <div className={s.head}>
-        <h3 id="bill-plain-title" className={s.title}>Your bill in plain English</h3>
-        <p className={s.sub}>
-          {[f.retailer, f.planName].filter(Boolean).join(" · ")}
-          {f.retailer || f.planName ? " · " : ""}
-          {f.days} days
-        </p>
+      <div className={s.headRow}>
+        <div className={s.head}>
+          <h3 id="bill-plain-title" className={s.title}>Your bill in plain English</h3>
+          <p className={s.sub}>
+            {[f.retailer, f.planName].filter(Boolean).join(" · ")}
+            {f.retailer || f.planName ? " · " : ""}
+            {f.days} days
+          </p>
+        </div>
+        {uploadHref && <a className={s.upload} href={uploadHref}><Icon name="camera" size={15} /> Upload a new bill</a>}
       </div>
 
       <div className={s.tiles}>

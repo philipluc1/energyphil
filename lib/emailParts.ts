@@ -537,3 +537,38 @@ export function plusAnimation(origin: string, url: string): string {
     <a href="${url}" style="display:block;text-decoration:none;"><img src="${origin}/email/plus-watch.gif" width="504" alt="Your free check was one day. Prices change all year: Utilo Plus re-checks every plan against your bill every morning, and emails you only when switching pays." style="display:block;width:100%;max-width:504px;height:auto;border:0;border-radius:16px;font:700 15px Arial,Helvetica,sans-serif;color:${C.navy};"></a>
   </td></tr></table>`;
 }
+
+/* ---------- Your bill vs the cheapest, animated (6 Nov 2026) ----------
+   Two bars that grow when the email opens: what they pay, then the cheapest
+   plan, with the gap (the saving) sweeping in. The bars are pre-made GIFs
+   (public/email/bars, from scripts/make-email-bars.py), one for every 2%, so
+   nothing is generated per email and no numbers go in an image address. The
+   figures are text beside the bars, so they read with images off. Outlook on
+   Windows (which shows only a GIF's first frame) gets the same bars as table cells. */
+export function billVsBest(o: { origin: string; nowLabel: string; now: number; best: number; money: (n: number) => string }): string {
+  if (!(o.now > 0) || !(o.best > 0)) return "";
+  const share = Math.min(1, o.best / o.now);
+  const pct = Math.max(30, Math.min(100, Math.round(share * 50) * 2));
+  const save = Math.max(0, o.now - o.best);
+  const GAP = "#f4b183";
+  const img = (file: string) =>
+    `<!--[if !mso]><!--><img src="${o.origin}/email/bars/${file}" width="520" height="28" alt="" style="display:block;width:100%;max-width:520px;height:auto;border:0;"><!--<![endif]-->`;
+  const cell = (color: string, w: number, radius: string) =>
+    `<td width="${w}%" height="18" bgcolor="${color}" style="height:18px;background:${color};border-radius:${radius};font-size:0;line-height:0;">&nbsp;</td>`;
+  const mso = (cells: string) => `<!--[if mso]><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>${cells}</tr></table><![endif]-->`;
+  // Label and figure on one line, the bar full width under them, so it's big enough to see on a phone.
+  const row = (label: string, bar: string, value: string, color: string) => `<tr>
+      <td style="padding:6px 0 5px;font:700 14px/1.3 ${F};color:${C.ink};">${label}</td>
+      <td align="right" style="padding:6px 0 5px 10px;font:800 17px ${F};color:${color};white-space:nowrap;">${value}</td>
+    </tr>
+    <tr><td colspan="2" style="padding:0 0 8px;">${bar}</td></tr>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+    <tr><td style="padding:14px 16px 12px;background:${C.greyTint};border-radius:14px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        ${row(`${o.nowLabel}, a year`, `${img("bill.gif")}${mso(cell("#e8590c", 100, "7px"))}`, o.money(o.now), "#c2410c")}
+        ${row("Cheapest plan, a year", `${img(`best-${pct}.gif`)}${mso(`${cell(C.green, pct, "7px 0 0 7px")}${pct < 100 ? cell(GAP, 100 - pct, "0 7px 7px 0") : ""}`)}`, o.money(o.best), C.green)}
+      </table>
+      ${save > 0 ? `<div style="margin-top:6px;font:13px/1.4 ${F};color:${C.grey};"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${GAP};vertical-align:middle;margin-right:6px;"></span>The gap: <strong style="font:800 15px ${F};color:#9a6400;">${o.money(save)} a year</strong> you'd save</div>` : ""}
+    </td></tr>
+  </table>`;
+}

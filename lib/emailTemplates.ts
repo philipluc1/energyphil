@@ -14,7 +14,7 @@ import { namesList } from "./stickyPick";
 import { sameRetailer } from "./sameRetailer";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, alertPreview, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
+import { C, alertPreview, billVsBest, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -62,13 +62,8 @@ export function resultEmail(i: {
     : statusBox({ kicker: "Your result", headline: "Nothing beats it by enough to bother", body: `The cheapest plan we found saves less than ${money(WORTH_SWITCHING_PER_YEAR)} a year. Stay put.`, tone: "green" });
 
   // The numbers at a glance: what you pay, the cheapest, the saving.
-  const stats = i.nowYear && i.bestYear
-    ? statRow([
-        { big: money(i.nowYear), small: `${nowWord}, a year`, tone: "navy" },
-        { big: money(i.bestYear), small: "Cheapest plan, a year", tone: "green" },
-        { big: money(Math.max(0, i.nowYear - i.bestYear)), small: "You'd save, a year", tone: "amber" },
-      ])
-    : "";
+  // 6 Nov 2026: as two bars that grow when the email opens (billVsBest), in place of three number tiles.
+  const stats = i.nowYear && i.bestYear ? billVsBest({ origin: i.origin, nowLabel: nowWord, now: i.nowYear, best: i.bestYear, money }) : "";
 
   // How the cheapest few compare with what you pay.
   const ranking = i.runnersUp && i.runnersUp.length && i.nowYear && FREE_SHOWS_NAMES

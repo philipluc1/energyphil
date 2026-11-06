@@ -58,7 +58,7 @@ ${opts.preheader ? `<div style="display:none;max-height:0;overflow:hidden;color:
   </td></tr>
   <tr><td style="background:#ffffff;border-radius:0 0 18px 18px;border-top:1px solid #e6e9f2;padding:16px 28px;font-size:12px;color:#777;line-height:1.5;">
     <b style="color:#1e2a4a;">${promiseLine()}</b><br>
-    Utilo is an independent comparison service for Victorian households, not affiliated with the Victorian Government or any retailer. Estimates only; confirm prices with the retailer before switching.
+    Utilo is an independent comparison service for households, not affiliated with the Victorian Government or any retailer. Estimates only; confirm prices with the retailer before switching.
     <br><a href="${site}" style="color:#777;">${site.replace(/^https?:\/\//, "")}</a>
   </td></tr>
 </table></td></tr></table></body></html>`;

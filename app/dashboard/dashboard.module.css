@@ -388,3 +388,7 @@
 .livePages { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; font-size: 12px; }
 .livePages li { display: flex; justify-content: space-between; gap: 8px; color: var(--grey); }
 .livePages b { color: var(--ink, inherit); }
+
+/* 6 Nov 2026: the new logo. */
+.adminLogo { display: block; height: 26px; }
+.loginLogo { display: block; height: 34px; margin: 0 auto; width: fit-content; }

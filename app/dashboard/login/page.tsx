@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import styles from "../dashboard.module.css";
+import Wordmark from "../../components/Wordmark";
 
 export default function DashboardLoginPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function DashboardLoginPage() {
     <div className={styles.loginWrap}>
       <form className={styles.loginCard} onSubmit={handleSubmit}>
         <div className={styles.loginBrand}>
-          Util<span className={styles.loginAccent}>o</span>
+          <span className={styles.loginLogo}><Wordmark /></span>
         </div>
         <p className={styles.loginSub}>Private dashboard — enter the password to continue.</p>
         <input
