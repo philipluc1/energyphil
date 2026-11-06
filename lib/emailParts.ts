@@ -572,3 +572,60 @@ export function billVsBest(o: { origin: string; nowLabel: string; now: number; b
     </td></tr>
   </table>`;
 }
+
+/* ---------- "Sound familiar?" (6 Nov 2026) ----------
+   Three things people say about energy bills, each with what Plus does about it.
+   A big figure on the left, the complaint, then the answer in green. */
+export function pains(items: { n: string; label: string; fix: string }[]): string {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border:1px solid #e3e7f0;border-radius:16px;border-collapse:separate;">
+    ${items.map((it, k) => `<tr><td style="padding:14px 18px;${k ? "border-top:1px solid #e3e7f0;" : ""}">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
+        <td style="width:86px;vertical-align:top;font:900 24px/1.1 ${F};color:#c2410c;white-space:nowrap;padding-right:12px;">${it.n}</td>
+        <td style="vertical-align:top;">
+          <div style="font:700 14.5px/1.4 ${F};color:${C.ink};">${it.label}</div>
+          <div style="margin-top:5px;font:14px/1.5 ${F};color:${C.green};"><strong>Plus:</strong> ${it.fix}</div>
+        </td>
+      </tr></table>
+    </td></tr>`).join("")}
+  </table>`;
+}
+
+/* What Plus does every morning, as a 9-second animation: the daily check, the bill
+   in plain English, then the one email when a plan beats theirs. 150 KB; the first
+   frame stands on its own where animation doesn't play. */
+export function plusMorning(origin: string, url: string): string {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;"><tr><td>
+    <a href="${url}" style="display:block;text-decoration:none;"><img src="${origin}/email/plus-morning.gif" width="504" height="320" alt="Utilo Plus: every plan re-checked against your bill every morning, your bill explained in plain English, and one email the day a plan beats yours." style="display:block;width:100%;max-width:504px;height:auto;border:0;border-radius:16px;font:700 15px ${F};color:${C.navy};"></a>
+  </td></tr></table>`;
+}
+
+/* ---------- The join card (6 Nov 2026) ----------
+   One navy card: the price big with the regular price struck through, how many
+   times their saving covers it, three ticks, and the button. Bulletproof-ish
+   button (a table cell with a background) so it stays a button in Outlook. */
+export function joinCard(o: {
+  url: string; special?: string | null; regular?: string | null; annual: string; perWeek: string; monthly: string;
+  times?: string | null; saving?: number | null; ticks: string[]; button?: string;
+}): string {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
+    <tr><td style="padding:24px 22px 22px;border-radius:18px;${keepBg(C.navy)}">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
+        <td><span style="display:inline-block;padding:4px 11px;border-radius:999px;background:${C.amber};color:${C.amberInk};font:800 11px ${F};letter-spacing:0.6px;text-transform:uppercase;">Utilo Plus</span></td>
+        ${o.special ? `<td align="right"><span style="display:inline-block;padding:4px 11px;border-radius:999px;background:#e11d48;color:#ffffff;font:800 11px ${F};letter-spacing:0.5px;text-transform:uppercase;">${o.special}</span></td>` : ""}
+      </tr></table>
+      ${keepWhite(`
+      <div style="margin:16px 0 2px;font:900 40px/1 ${F};color:#ffffff;letter-spacing:-1px;">${o.regular ? `<span style="font:700 22px ${F};color:#9aa3c7;text-decoration:line-through;vertical-align:middle;margin-right:8px;">${o.regular}</span>` : ""}${o.annual}<span style="font:700 16px ${F};color:#c7cde0;letter-spacing:0;"> a year</span></div>
+      <div style="font:14px/1.5 ${F};color:#c7cde0;">That's ${o.perWeek} a week. Or ${o.monthly} a month, no lock-in.</div>
+      ${o.times && o.saving ? `<div style="margin:14px 0 0;padding:10px 14px;border-radius:12px;background:#1f2a66;font:700 14px/1.4 ${F};color:#ffffff;"><span style="color:#8ef0b0;">&#10003;</span> Your ${money(o.saving)} a year saving covers it <span style="color:#f5c15c;">${o.times} times over</span>.</div>` : ""}
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin:14px 0 0;">
+        ${o.ticks.map((t) => `<tr><td style="padding:3px 0;font:14px/1.5 ${F};color:#e9ecf7;"><span style="color:#8ef0b0;font-weight:900;">&#10003;</span>&nbsp; ${t}</td></tr>`).join("")}
+      </table>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:18px 0 0;"><tr>
+        <td align="center" bgcolor="${C.amber}" style="border-radius:999px;background:${C.amber};">
+          <a href="${o.url}" style="display:block;padding:15px 22px;font:900 17px ${F};color:${C.amberInk};text-decoration:none;border-radius:999px;">${o.button ?? "Start Utilo Plus"} &rarr;</a>
+        </td>
+      </tr></table>
+      <div style="margin:10px 0 0;text-align:center;font:12.5px ${F};color:#9aa3c7;">Takes a minute. Your dashboard is set up from this check.</div>`)}
+    </td></tr>
+  </table>`;
+}

@@ -14,13 +14,14 @@ import { namesList } from "./stickyPick";
 import { sameRetailer } from "./sameRetailer";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, alertPreview, billVsBest, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
+import { C, alertPreview, billVsBest, joinCard, pains, plusMorning, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
 export interface Email { subject: string; title: string; html: string }
 
 const SWITCH_FACTS = ["About 10 minutes online", "Your power stays on", "10-day cooling-off"];
+const F = "Arial,Helvetica,sans-serif";
 const retailerLink = (r: string) => (RETAILER_LINKS[r] ? { label: `See the plan on ${esc(r)}'s site`, url: RETAILER_LINKS[r] } : null);
 
 /* ---------- 1. Your result (sent straight after a free check) ----------
@@ -78,11 +79,6 @@ export function resultEmail(i: {
     i.marketChanges && i.marketChanges > 0 ? `Retailers made <strong>${i.marketChanges} new or changed offers</strong>${i.network ? ` on ${esc(i.network)}` : ""} in the last 30 days. Today's cheapest may not be next month's.` : "",
   ].filter(Boolean);
 
-  // A taste of the dashboard: the year ahead, month by month, on the cheapest plan and on what they pay now.
-  const preview = i.year && i.year.length === 12
-    ? `${columns(i.year.map((m) => ({ parts: [{ value: m.best, color: C.green }, { value: Math.max(0, m.now - m.best), color: "#f4b183" }], label: m.label })), { height: 90 })}
-       ${legend([{ color: C.green, label: "On the cheapest plan" }, { color: "#f4b183", label: `Extra on ${i.vsBill ? "your plan" : "the default offer"}` }])}`
-    : "";
 
   const html = `
     ${greet(i.name)}
@@ -95,27 +91,23 @@ export function resultEmail(i: {
     ${ranking}
     ${facts.length ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${C.grey};">${facts.join("<br>")}</p>` : ""}
 
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:4px 0 22px;border-collapse:separate;">
-      <tr><td style="padding:22px 20px;border-radius:16px;${keepBg(C.navy)}">
-        <div style="display:inline-block;padding:3px 10px;border-radius:999px;background:${C.amber};color:${C.amberInk};font:800 11px Arial,Helvetica,sans-serif;letter-spacing:0.6px;text-transform:uppercase;">Utilo Plus</div>
-        ${keepWhite(`<div style="margin:10px 0 4px;font:800 22px/1.25 Arial,Helvetica,sans-serif;color:#ffffff;">Stop paying the loyalty tax.</div>
-        <div style="font:14px/1.55 Arial,Helvetica,sans-serif;color:#ffffff;opacity:0.82;">Discounts end and prices change. We watch your power and gas every day, from your own bill, and tell you when to move. Join and your dashboard sets itself up from this check.</div>`)}
-      </td></tr>
-    </table>
-    ${preview ? `${heading("A preview of your dashboard: your year ahead")}${preview}` : ""}
-    ${tiles([
-      { sym: "!", title: "Never miss a price jump", text: "A month's warning before your discount or fixed price ends.", tint: "amber" },
-      { sym: "&#8635;", title: "Know the day it's cheaper", text: "Every plan re-checked against your bill, every morning.", tint: "teal" },
-      { sym: "&#9993;", title: "Only emails that pay", text: `One email, when switching saves ${money(WORTH_SWITCHING_PER_YEAR)}+ a year.`, tint: "green" },
-      { sym: "&#9638;", title: "One membership, every bill", text: "Power and gas now, more to come. Your dashboard tracks it all.", tint: "navy" },
+    ${/* 6 Nov 2026: the Plus pitch, rebuilt to convert. The three things people tell us, then what
+         Plus does about each, shown as a short animation (public/email/plus-morning.gif). */""}
+    ${heading("Sound familiar?")}
+    ${pains([
+      { n: i.marketChanges && i.marketChanges > 0 ? `${i.marketChanges}` : "100+", label: "offers changed on your network in 30 days", fix: "Today's cheapest is rarely next month's. We re-check every one against your bill, every morning." },
+      { n: "23.1c", label: "peak, 17.8c off-peak, 112c a day: rates nobody can read", fix: "We turn your bill into plain English: what you used, what each part cost, and where the money went." },
+      { n: "+$61", label: "on the bill, and nobody says why", fix: "Estimated read, a discount that fell off, a late fee: we spot it and tell you what to say to get it back." },
     ])}
-    ${statusBox({
-      kicker: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
-      headline: `${regularPrice("annual") ? `<s style="opacity:0.55;font-weight:700;">${fmtPrice(regularPrice("annual")!)}</s> ` : ""}${v.annual} a year: ${v.perWeek} a week`,
-      body: `${worth && timesPrice(i.yearly) ? `Your saving is <strong>${timesPrice(i.yearly)} times</strong> the yearly price. ` : ""}${FOUNDING_OFFER ? "Locked in while you stay. " : ""}Or ${v.monthly} month to month${regularPrice("monthly") ? ` (regular ${fmtPrice(regularPrice("monthly")!)})` : ""}. Cancel any time. Not a cent from retailers.`,
-      tone: "teal",
+    ${plusMorning(i.origin, `${i.origin}/pricing`)}
+    ${joinCard({
+      url: `${i.origin}/pricing`,
+      special: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : null,
+      regular: regularPrice("annual") ? fmtPrice(regularPrice("annual")!) : null,
+      annual: v.annual, perWeek: v.perWeek, monthly: v.monthly,
+      times: worth ? timesPrice(i.yearly) : null, saving: worth ? i.yearly : null,
+      ticks: ["Every plan re-checked against your bill, every morning", "Power and gas, one membership", "We never call, and we never switch you. Cancel any time."],
     })}
-    ${button("Start Utilo Plus", `${i.origin}/pricing`)}
     ${note(`${esc(PRICE_CHANGE_CLAUSE)}`)}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you asked for your result by email.")}`;
   return { subject, title, html };
@@ -432,6 +424,18 @@ export function dealEnding(i: {
 }
 
 /* ---------- 7. Monthly check (member), July version included ---------- */
+/* One fuel's line in the monthly "This month" box (6 Nov 2026). */
+function fuelRow(o: { icon: string; fuel: string; status: string; statusColor: string; line: string; link: { label: string; url: string } | null; first?: boolean }): string {
+  return `<tr><td style="padding:14px 0;${o.first === false ? "border-top:1px solid #e3e7f0;" : ""}">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
+      <td style="font:800 16px ${F};color:${C.navy};">${o.icon}&nbsp; ${o.fuel}</td>
+      <td align="right" style="font:900 17px ${F};color:${o.statusColor};white-space:nowrap;">${o.status}</td>
+    </tr></table>
+    <div style="margin-top:4px;font:14px/1.5 ${F};color:${C.ink};">${o.line}</div>
+    ${o.link ? `<div style="margin-top:6px;"><a href="${o.link.url}" style="font:700 14px ${F};color:${C.teal};text-decoration:underline;">${o.link.label} &rarr;</a></div>` : ""}
+  </td></tr>`;
+}
+
 export function monthlyCheck(i: {
   origin: string;
   monthName: string;       // "October"
@@ -457,59 +461,59 @@ export function monthlyCheck(i: {
   found?: string | null;
 }): Email {
   const name = firstNameOf(i.customerName);
-  const foundBox = i.found ? statusBox({ kicker: "Money we found for you", headline: esc(i.found), body: "Each one is on your dashboard with exactly what to ask for.", tone: "green" }) : "";
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
   const gasWorth = !!i.gas && i.gas.yearly >= WORTH_SWITCHING_PER_YEAR;
-  const gasBlock = !i.gas
-    ? ""
-    : gasWorth
-      ? planCard({ kicker: "Gas: you could pay less", retailer: i.gas.retailer, planName: i.gas.planName, figure: { amount: i.gas.yearly, after: "a year less than your gas bill." }, link: retailerLink(i.gas.retailer), tone: "amber" })
-      : statusBox({ kicker: "Gas", headline: "Your gas plan is a good deal", body: `Nothing beats it by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more.`, tone: "green" });
-  const lead = i.isJuly
-    ? "Retailers changed their prices on 1 July, so we've re-checked your plan against the new ones."
-    : "We re-checked your plan against today's prices.";
   // The saving is the hero: the amount, big, and the retailer to move to (2 Nov 2026).
   const link = retailerLink(i.retailer);
   // Same retailer, different plan (2 Nov 2026): a plan change, not a switch.
   const same = sameRetailer(i.currentRetailer, i.retailer);
-  const card = worth
-    ? moneyHero({
-        pill: same ? "Same retailer, better plan" : "You could pay less",
-        amount: i.yearly,
-        after: same ? `a year less, staying with ${esc(i.retailer)}` : `a year less than your last bill${i.currentRetailer && i.currentRetailer !== i.retailer ? ` with ${esc(i.currentRetailer)}` : ""}`,
-        retailer: esc(i.retailer),
-        planName: esc(i.planName),
-        toLabel: same ? "Ask them to move you to" : undefined,
-        button: link,
-        small: `${i.nearTies && i.nearTies.length ? `Within $20 a year: ${esc(namesList(i.nearTies))}. Any of these is a good choice. ` : ""}On today's prices for the usage on your last bill. We never switch you; you decide.`,
-      })
-    : statusBox({ kicker: `Your ${esc(i.monthName)} check`, headline: "You're on a good deal", body: `Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more. We'll keep watching.`, tone: "green" });
+  // 6 Nov 2026: one short email for both fuels. A "This month" box with a row each for electricity
+  // and gas (what to do, and what it's worth), the money found in one line, then at most three
+  // "at a glance" rows. The full detail lives on the dashboard.
   const f = i.facts ?? null;
-  const html = f
-    ? `
+  const sameNote = worth && same ? " No need to change retailer: it's a few taps in their app or on their website." : "";
+  const elecRow = fuelRow({
+    icon: "&#9889;",
+    fuel: "Electricity",
+    status: worth ? `${money(i.yearly)} a year` : "Stay put",
+    statusColor: worth ? "#b45309" : C.green,
+    line: worth
+      ? `${same ? `We recommend asking ${esc(i.retailer)} to move you to <strong>${esc(i.planName)}</strong>.` : `We recommend <strong>${esc(i.retailer)}</strong> · ${esc(i.planName)}, the cheapest for your home.`}${sameNote}${i.nearTies && i.nearTies.length ? ` Also within $20: ${esc(namesList(i.nearTies))}.` : ""}`
+      : `We recommend staying on your plan: nothing beats it by ${money(WORTH_SWITCHING_PER_YEAR)} a year, the point where moving is worth your time.`,
+    link: worth ? link : null,
+  });
+  const gasRow = !i.gas
+    ? ""
+    : fuelRow({
+        icon: "&#128293;",
+        fuel: "Gas",
+        status: gasWorth ? `${money(i.gas.yearly)} a year` : "Stay put",
+        statusColor: gasWorth ? "#b45309" : C.green,
+        line: gasWorth
+          ? `We recommend <strong>${esc(i.gas.retailer)}</strong> · ${esc(i.gas.planName)}, the cheapest for your home.`
+          : `We recommend staying on your gas plan: nothing beats it by ${money(WORTH_SWITCHING_PER_YEAR)} a year.`,
+        link: gasWorth ? retailerLink(i.gas.retailer) : null,
+        first: false,
+      });
+  const total = worth && gasWorth && i.gas ? i.yearly + i.gas.yearly : 0;
+  const box = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 18px;border:1px solid #e3e7f0;border-radius:16px;border-collapse:separate;">
+    <tr><td style="padding:6px 18px 4px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${elecRow}${gasRow}</table>
+    </td></tr>
+    ${total > 0 ? `<tr><td style="padding:12px 18px;background:${C.amberTint};border-radius:0 0 16px 16px;font:15px/1.4 ${F};color:${C.ink};">Together: about <strong style="color:#b45309;">${money(total)} a year</strong> to save.</td></tr>` : ""}
+  </table>`;
+  const foundLine = i.found ? `<p style="margin:0 0 18px;font:14px/1.5 ${F};color:${C.ink};"><span style="color:${C.green};font-weight:700;">&#10003; Money we found:</span> ${esc(i.found)}</p>` : "";
+  const intro = i.isJuly
+    ? "Retailers changed their prices on 1 July, so we re-checked your plans against the new ones."
+    : `We re-checked your plan${i.gas ? "s" : ""} against today's prices${i.activityCount ? `, including ${i.activityCount} offers that changed on your network` : ""}.`;
+  const html = `
     ${greet(i.customerName)}
-    <p>${i.isJuly ? "Retailers changed their prices on 1 July, so we've re-checked your plan against the new ones." : "Your month in 30 seconds. We re-checked your plan against today's prices"}${i.activityCount && !i.isJuly ? `, including ${i.activityCount} offers that changed on your network.` : i.isJuly ? "" : "."}</p>
-    ${i.gas ? heading("Electricity") : ""}
-    ${card}
-    ${worth && same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName, amount: i.yearly }) : ""}
-    ${i.gas ? heading("Gas") + gasBlock : ""}
-    ${foundBox}
-    ${summaryGlance(i, f)}
-    ${tip(`<strong>Tip: ${esc(f.tip.title)}.</strong> ${esc(f.tip.body)}`)}
-    ${button("Open my full summary", `${i.origin}/account#compare`)}
-    ${note(`Switched recently? <a href="${i.origin}/account">Add the date on your dashboard</a> so your savings count from the right day. New bill? Snap it there and every figure updates. All figures are estimates from your bill and today's prices.`)}
-    ${unsubscribe(i.unsubscribeUrl, "You're getting this monthly summary as a Utilo member. You can also turn it off on the Plus tab. This won't cancel Utilo Plus.")}`
-    : `
-    ${greet(i.customerName)}
-    <p>${lead}${i.activity ? ` This month retailers made ${esc(i.activity)} on your network, and we checked every one against your home.` : ""}</p>
-    ${i.gas ? heading("Electricity") : ""}
-    ${card}
-    ${worth && same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName, amount: i.yearly }) : ""}
-    ${i.gas ? heading("Gas") + gasBlock : ""}
-    ${foundBox}
+    <p>${intro}</p>
+    ${box}
+    ${foundLine}
+    ${f ? summaryGlance(i, f, 3) : ""}
     ${button("Open my dashboard", `${i.origin}/account#compare`)}
-    ${tip(`Switched recently? <a href="${i.origin}/account">Add the date on your dashboard</a> so your savings count from the right day. New bill? Snap it there too.`)}
-    ${unsubscribe(i.unsubscribeUrl, "You're getting this as a Utilo member. This won't cancel Utilo Plus.")}`;
+    ${unsubscribe(i.unsubscribeUrl, f ? "You're getting this monthly summary as a Utilo member. You can also turn it off on the Plus tab. This won't cancel Utilo Plus." : "You're getting this as a Utilo member. This won't cancel Utilo Plus.")}`;
   return {
     subject: `${name ? `${name}, ` : ""}${i.isJuly ? `${name ? "p" : "P"}rices changed on 1 July: your re-check` : worth ? `${name ? "y" : "Y"}our ${i.monthName} check: about ${money(i.yearly)} a year to save` : `${name ? "y" : "Y"}our ${i.monthName} check: you're on a good deal`}`,
     title: i.isJuly ? "Your 1 July re-check" : `Your ${esc(i.monthName)} check`,
@@ -524,12 +528,13 @@ type MonthlyInput = Parameters<typeof monthlyCheck>[0];
 const INK = { you: "#e8590c", best: "#16a34a", vdo: "#b8bfcf", navy: "#22306e", light: "#c7cde0", amber: "#f5a623", teal: "#14b8a6", free: "#16a34a", soak: "#5eead4", peak: "#f87171", off: "#c7cde0" };
 
 /** "At a glance": one line per topic with a small chart and a link to the full chart on the dashboard. */
-function summaryGlance(i: MonthlyInput, f: SummaryFacts): string {
+function summaryGlance(i: MonthlyInput, f: SummaryFacts, max = 99): string {
   const open = (what: string) => `${i.origin}/account?open=${what}#home`;
   const rows: string[] = [];
   const y = f.charts.year;
 
-  if (y.vsBill) {
+  // The short monthly email (max 3) leaves out the year row: the "This month" box already has the saving.
+  if (y.vsBill && max >= 99) {
     rows.push(glanceRow({
       dot: INK.you,
       // A bill cheaper than every plan on sale (an old deal, a concession): say so, don't imply the "cheapest" costs more.
@@ -607,7 +612,7 @@ function summaryGlance(i: MonthlyInput, f: SummaryFacts): string {
       chart: miniBars([{ value: f.like.you, color: INK.you }, { value: f.like.typical, color: INK.navy }]),
     }));
   }
-  return rows.length ? heading("Your month at a glance") + glance(rows) : "";
+  return rows.length ? heading("At a glance") + glance(rows.slice(0, max)) : "";
 }
 
 /* ---------- Yearly recap, two weeks before renewal (2 Nov 2026) ----------

@@ -49,7 +49,7 @@ ${opts.preheader ? `<div style="display:none;max-height:0;overflow:hidden;color:
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef0f8;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;">
   <tr><td style="background-color:#131c57;background-image:linear-gradient(#131c57,#131c57);border-radius:18px 18px 0 0;padding:0;line-height:0;">
-    <a href="${site}" style="display:block;text-decoration:none;"><img src="${site}/email/header.png" width="560" height="76" alt="Utilo" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:18px 18px 0 0;font:900 26px Arial,Helvetica,sans-serif;color:#ffffff;line-height:76px;padding-left:0;"></a>
+    <a href="${site}" style="display:block;text-decoration:none;"><img src="${site}/email/header-2026-11.png" width="560" height="76" alt="Utilo" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:18px 18px 0 0;font:900 26px Arial,Helvetica,sans-serif;color:#ffffff;line-height:76px;padding-left:0;"></a>
   </td></tr>
   <tr><td style="background:#ffffff;padding:28px 28px 22px;font-size:15px;">
     <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;letter-spacing:-0.3px;">${opts.title}</h1>

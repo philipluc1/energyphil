@@ -118,11 +118,11 @@ export function welcomeEmail(i: WelcomeEmailInput): { subject: string; title: st
       <tr><td style="padding:18px 18px 16px;border-radius:14px;border:2px solid ${AMBER};background:#fffaf0;font-family:${F};">
         <div style="font:700 11px ${F};letter-spacing:1.2px;color:#8a5a00;text-transform:uppercase;">Two minutes, once</div>
         <div style="font:800 19px/1.3 ${F};color:${NAVY};margin-top:6px;">Forward your bills, never upload again</div>
-        <div style="font:14.5px/1.55 ${F};color:#1a1a1a;margin-top:6px;">Get your private bill address on your dashboard, then set Gmail or Outlook to forward your retailer's bills to it. Every bill is read the day it arrives, your numbers update and every plan is re-checked. You don't have to remember a thing.</div>
+        <div style="font:14.5px/1.55 ${F};color:#1a1a1a;margin-top:6px;">Set your email to forward your retailer's bills to your private Utilo address. Each bill is read the day it arrives and every plan re-checked.</div>
         <table role="presentation" cellspacing="0" cellpadding="0" style="margin:14px 0 0;"><tr><td style="border-radius:999px;background:${NAVY};">
           <a href="${dash}#bill-inbox" style="display:inline-block;padding:11px 20px;font:800 14px ${F};color:#ffffff;text-decoration:none;border-radius:999px;">Set up bill forwarding &rarr;</a>
         </td></tr></table>
-        <div style="font:12.5px/1.5 ${F};color:${GREY};margin-top:10px;">We keep only the numbers from each bill. The email and PDF aren't stored.</div>
+        <div style="font:12.5px/1.5 ${F};color:${GREY};margin-top:10px;">We keep the numbers only, never the email or PDF.</div>
       </td></tr>
     </table>
 

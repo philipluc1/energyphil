@@ -38,15 +38,19 @@ test("no bill: no year ahead or homes like yours; far-off dates are left out", (
   assert.equal(f.ending, null);
 });
 
-test("the email has the new sections only when facts are given", () => {
+test("the monthly email: one short message, both fuels, at most three glance rows (6 Nov 2026)", () => {
   const f = summaryFacts(base);
   const common = { origin: "https://example.test", monthName: "November", isJuly: false, retailer: best.bestRetailer, planName: best.bestPlanName, yearly: 300, unsubscribeUrl: "https://example.test/u" };
-  const rich = monthlyCheck({ ...common, activity: "8 new offers and 12 price changes", activityCount: 20, facts: f });
-  assert.match(rich.html, /at a glance/);
-  assert.match(rich.html, /open=midday/);
-  assert.match(rich.html, /Tip:/);
-  assert.match(rich.html, /Midday Power Saver/);
+  const rich = monthlyCheck({ ...common, activity: "8 new offers and 12 price changes", activityCount: 20, facts: f, gas: { retailer: "Alinta Energy", planName: "Gas Saver", yearly: -40 } });
+  assert.match(rich.html, /At a glance/);
   assert.match(rich.html, /ends 10 December/);
+  assert.match(rich.html, /Electricity/);
+  assert.match(rich.html, /Gas/);
+  assert.match(rich.html, /We recommend staying on your gas plan/);
+  assert.doesNotMatch(rich.html, /Tip:/);
+  const both = monthlyCheck({ ...common, gas: { retailer: "Alinta Energy", planName: "Gas Saver", yearly: 120 } });
+  assert.match(both.html, /Together: about <strong[^>]*>\$420 a year/);
   const plain = monthlyCheck(common);
-  assert.doesNotMatch(plain.html, /at a glance/);
+  assert.doesNotMatch(plain.html, /At a glance/);
+  assert.doesNotMatch(plain.html, /Gas/);
 });

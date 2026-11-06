@@ -304,11 +304,23 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (!supabase) return;
+    // 6 Nov 2026: a link from an email (…/account#bill-inbox) loses its #part through the sign-in
+    // link, so keep it in this browser and put it back once they're in.
+    const KEY = "utilo.afterLogin";
+    const wanted = ["bill-inbox", "read-bill", "compare", "savings", "membership", "home", "market", "rewards"];
+    const restore = () => {
+      try {
+        const h = window.sessionStorage.getItem(KEY);
+        if (h) { window.sessionStorage.removeItem(KEY); if (!window.location.hash) { window.location.hash = h; } }
+      } catch { /* ignore */ }
+    };
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user?.email) {
         setUserEmail(data.session.user.email);
         setStage("signedIn");
+        restore();
       } else {
+        try { const h = window.location.hash.slice(1); if (wanted.includes(h)) window.sessionStorage.setItem(KEY, h); } catch { /* ignore */ }
         setStage("signedOut");
       }
     });
@@ -316,6 +328,7 @@ export default function AccountPage() {
       if (session?.user?.email) {
         setUserEmail(session.user.email);
         setStage("signedIn");
+        restore();
       } else {
         setUserEmail(null);
         setSub(null);
@@ -556,12 +569,13 @@ export default function AccountPage() {
           if (stop) return;
           const box = document.getElementById(h);
           if (box) {
-            // Below the sticky header and the tab bar.
-            const tabs = document.getElementById("dash-tabs")?.getBoundingClientRect().height ?? 60;
-            const want = box.getBoundingClientRect().top - header - tabs - 16;
+            // Just below the sticky tab bar (which already sits under the header).
+            const bar = document.getElementById("dash-tabs")?.getBoundingClientRect();
+            const under = bar ? bar.bottom : header + 60;
+            const want = box.getBoundingClientRect().top - under - 12;
             if (Math.abs(want) > 24) window.scrollTo({ top: want + window.scrollY, behavior: tries === 0 ? "smooth" : "auto" });
           }
-          if (tries++ < 20) setTimeout(toBox, tries === 1 ? 450 : 100);
+          if (tries++ < 35) setTimeout(toBox, tries === 1 ? 450 : 120);
         };
         setTimeout(toBox, 50);
         return;
@@ -573,7 +587,9 @@ export default function AccountPage() {
     const first = setTimeout(apply, 0);
     window.addEventListener("hashchange", apply);
     return () => { clearTimeout(first); window.removeEventListener("hashchange", apply); };
-  }, []);
+    // Runs again once signed in: the boxes it scrolls to only exist on the member dashboard.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
 
   // One comparison input for the whole dashboard, so the verdict, the table
   // and the Savings tab always quote the same numbers.
