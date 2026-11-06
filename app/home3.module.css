@@ -229,3 +229,8 @@
 .gasLine { margin: 12px 0 0; font-size: 14px; color: var(--grey); }
 .gasLine a { color: var(--navy-accent-text, #24307a); font-weight: 800; text-decoration: none; border-bottom: 1.5px solid currentColor; }
 .gasLine a:hover { color: #ea580c; }
+
+/* 6 Nov 2026: the member login line under the hero. */
+.memberLine { margin: 6px 0 0; font-size: 13.5px; color: var(--grey); }
+.memberLine a { color: var(--navy-accent-text, #24307a); font-weight: 800; text-decoration: none; border-bottom: 1.5px solid currentColor; }
+.memberLine a:hover { color: #ea580c; }

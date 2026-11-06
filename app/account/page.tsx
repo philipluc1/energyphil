@@ -1002,7 +1002,7 @@ export default function AccountPage() {
           className={`${styles.card} ${stage === "signedIn" ? styles.cardDash : ""}`}
           style={stage === "signedIn" ? (themeMode.vars as React.CSSProperties) : undefined}
         >
-          {stage !== "signedIn" && <h1>My Dashboard</h1>}
+          {stage !== "signedIn" && <h1>Utilo Plus member login</h1>}
 
           {!supabaseConfigured && <p className={styles.note}>Accounts aren&apos;t switched on yet — check back soon.</p>}
 
@@ -1011,7 +1011,7 @@ export default function AccountPage() {
           {supabaseConfigured && stage === "signedOut" && (
             <>
               <p className={styles.lede}>
-                Enter your email and we&apos;ll send a sign-in link. No password.
+                Enter the email you joined with and we&apos;ll send a sign-in link. No password. Not a member yet? <Link href="/pricing">See Utilo Plus</Link>.
               </p>
               {linkSent ? (
                 <div className={styles.inbox}>

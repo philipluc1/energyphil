@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
-/** "Sign in" until we know the person is signed in, then "Dashboard". */
+/** "Member login" until we know the person is signed in, then "My dashboard" (6 Nov 2026: says who it's for). */
 export default function AccountNavLink({ className }: { className: string }) {
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => {
@@ -21,7 +21,7 @@ export default function AccountNavLink({ className }: { className: string }) {
   }, []);
   return (
     <Link href="/account" className={className}>
-      {signedIn ? "Dashboard" : "Log in"}
+      {signedIn ? "My dashboard" : "Member login"}
     </Link>
   );
 }

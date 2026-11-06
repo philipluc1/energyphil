@@ -12,6 +12,8 @@ const LINKS: { href: string; label: string; key: string; note?: string }[] = [
   { href: "/check", label: "Check my power bill", key: "check" },
   { href: "/gas", label: "Check my gas bill", key: "gas" },
   { href: "/pricing", label: "Utilo Plus", key: "pricing", note: "Plus" },
+  // 6 Nov 2026: a member row in the list itself (the bottom button is easy to miss).
+  { href: "/account", label: "Member login", key: "account", note: "Plus" },
   { href: "/learn", label: "How it works", key: "learn" },
   { href: "/faq", label: "Questions", key: "faq" },
   { href: "/market", label: "Market changes", key: "market" },

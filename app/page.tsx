@@ -86,6 +86,8 @@ export default function Home() {
             <div className={h.pcStart}><PostcodeStart /></div>
             {/* 4 Nov 2026: the two fuel cards became one line (decluttered). */}
             <p className={h.gasLine}>Gas bill? <Link href="/gas">Check gas instead →</Link></p>
+            {/* 6 Nov 2026: members arriving from an email or a search know where to go. */}
+            <p className={h.memberLine}>Already a Utilo Plus member? <Link href="/account">Log in to your dashboard →</Link></p>
           </div>
 
           {/* A bill being read, line by line: what the check does, as a picture. Example figures, labelled. */}

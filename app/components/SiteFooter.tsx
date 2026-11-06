@@ -34,7 +34,7 @@ export default function SiteFooter() {
             <Link href="/pricing">Pricing</Link>
             <Link href="/learn">How it works</Link>
             <Link href="/faq">Questions</Link>
-            <Link href="/account">Log in</Link>
+            <Link href="/account">Member login</Link>
           </div>
           <div>
             <h3>Utilo</h3>
