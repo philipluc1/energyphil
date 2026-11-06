@@ -637,6 +637,8 @@ export default function Comparator() {
       } catch { /* ignore */ }
     }
     if (bill.fuel === "gas") {
+      // 7 Nov 2026: a gas bill on the power check. Hand it to the gas check so they don't upload twice.
+      try { window.sessionStorage.setItem("utilo.gasHandoff", JSON.stringify(bill)); } catch { /* ignore */ }
       router.push("/gas");
       return;
     }

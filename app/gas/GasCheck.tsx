@@ -91,6 +91,11 @@ export default function GasCheck() {
         }
       } catch { /* nothing saved */ }
       setHydrated(true);
+      // 7 Nov 2026: a gas bill read on the power check (utilo.gasHandoff) is applied here, once.
+      try {
+        const raw = window.sessionStorage.getItem("utilo.gasHandoff");
+        if (raw) { window.sessionStorage.removeItem("utilo.gasHandoff"); fromBill(JSON.parse(raw) as ExtractedBill); }
+      } catch { /* ignore */ }
     }, 0);
     return () => clearTimeout(t);
   }, []);
