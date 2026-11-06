@@ -279,10 +279,12 @@ export function GasAside({ member }: { member: GasMember }) {
   return (
     <section className={pa.card} aria-label="Your gas plan now">
       <div className={pa.head}>
-        <RetailerLogo name={member.gas_current_retailer ?? null} size={48} />
+        {member.gas_current_retailer
+          ? <RetailerLogo name={member.gas_current_retailer} size={48} />
+          : <span className={pa.unknownLogo} aria-hidden="true"><Icon name="flame" size={22} /></span>}
         <div className={pa.headText}>
           <span className={pa.kicker}><Icon name="flame" size={11} /> Your gas plan now</span>
-          <b>{member.gas_current_retailer ?? "Your gas retailer"}</b>
+          <b>{member.gas_current_retailer ?? "Your gas plan"}</b>
           <span>{member.gas_current_plan_name ?? "Plan name from your next bill"}</span>
         </div>
       </div>

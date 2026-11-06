@@ -59,7 +59,8 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
         gas_mj: mj,
         gas_reference_total: gTotal,
         gas_current_plan_name: str(b?.gasPlanName, 120),
-        gas_current_retailer: str(b?.retailer, 80),
+        // 6 Nov 2026: the bill reader calls it retailerName (it was read as b.retailer, so it was never saved).
+        gas_current_retailer: str(b?.retailerName ?? b?.retailer, 80),
         gas_best_retailer: best ? best.plan[0] : null,
         gas_best_plan_name: best ? best.plan[2] : null,
         gas_best_total: best ? best.total : null,

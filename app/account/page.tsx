@@ -31,6 +31,7 @@ import gd from "../components/gasdash.module.css";
 import { shapeForProfile } from "@/lib/usageShape";
 import DashTabs, { type TabDef } from "../components/DashTabs";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
+import { WORTH_SWITCHING_PER_YEAR } from "@/lib/dataPolicy";
 import { useCountUp } from "@/lib/useCountUp";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { DASH_THEMES, DEFAULT_DASH_THEME, isDashTheme, type DashThemeId } from "@/lib/dashThemes";
@@ -1189,8 +1190,55 @@ export default function AccountPage() {
                   {shownTab === "savings" && (
                     isMember ? (
                       <>
+                        {/* 6 Nov 2026: on the gas side, the next move is about gas. */}
+                        {fuel === "gas" && (() => {
+                          const z = sub!.gas_zone as GasZone | null;
+                          const gDays = sub!.gas_billing_days ?? 0;
+                          const gMj = sub!.gas_mj ?? 0;
+                          if (!z || !GAS_ZONES.includes(z) || !(gDays > 0) || !(gMj > 0)) {
+                            return (
+                              <section className={`${styles.stateCard} ${styles.stateAct}`}>
+                                <span className={styles.stateLabel}>Your next gas move</span>
+                                <h2 className={styles.stateHead}>Add your gas bill and we&apos;ll check your gas plan too.</h2>
+                                <p className={styles.stateSub}>Snap it or upload the PDF. We re-check every gas plan on your network every morning, the same as electricity.</p>
+                                <div className={styles.stateActions}><a href="#read-bill" className={styles.btnPrimary}>Upload my gas bill</a></div>
+                              </section>
+                            );
+                          }
+                          const best = gasDataReady ? bestGasPlan(z, { days: gDays, mj: gMj }, sub!.gas_current_retailer ?? null) : undefined;
+                          const bill = sub!.gas_reference_total;
+                          const saveYear = best && bill !== null ? Math.round(((bill - best.total) * 365) / gDays) : null;
+                          const act = saveYear !== null && saveYear >= WORTH_SWITCHING_PER_YEAR && best;
+                          return (
+                            <section className={`${styles.stateCard} ${act ? styles.stateAct : styles.stateGood}`}>
+                              <span className={styles.stateLabel}>Your next gas move</span>
+                              {act ? (
+                                <>
+                                  <h2 className={styles.stateHead}>Move your gas to {best.plan[0]}&apos;s {best.plan[2]} and save about <span className={styles.stateAmt}>{fmtDollars(saveYear)}</span> a year</h2>
+                                  <p className={styles.stateSub}>Priced on your last gas bill: {Math.round(gMj).toLocaleString("en-AU")} MJ over {gDays} days on {z}.</p>
+                                  <div className={styles.stateActions}>
+                                    {RETAILER_LINKS[best.plan[0]] && <a href={RETAILER_LINKS[best.plan[0]]} data-plan={best.plan[2]} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>{`Go to ${best.plan[0]} →`}</a>}
+                                    <button type="button" className={styles.btnGhost} onClick={() => changeTab("compare")}>See every gas plan</button>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <h2 className={styles.stateHead}>Nothing to do on gas. You&apos;re on a good deal.</h2>
+                                  <p className={styles.stateSub}>
+                                    {best && bill !== null && saveYear !== null && saveYear <= 0
+                                      ? `Your last gas bill (${fmtDollars(bill)}) was less than the cheapest plan we found (${fmtDollars(best.total)} for the same ${gDays} days).`
+                                      : saveYear !== null && saveYear > 0
+                                        ? `The cheapest plan would save only about ${fmtDollars(saveYear)} a year, under your alert amount.`
+                                        : "We'll compare it as soon as today's gas prices are in."}{" "}
+                                    We re-check gas every morning and email you only if something beats it by more than your alert amount.
+                                  </p>
+                                </>
+                              )}
+                            </section>
+                          );
+                        })()}
                         {/* One card that changes with where you are: not switched, switched, or on a good deal. */}
-                        <section className={`${styles.stateCard} ${switchedAt || summary?.verdict === "good" ? styles.stateGood : summary?.severe ? styles.stateSevere : styles.stateAct}`}>
+                        {fuel !== "gas" && <section className={`${styles.stateCard} ${switchedAt || summary?.verdict === "good" ? styles.stateGood : summary?.severe ? styles.stateSevere : styles.stateAct}`}>
                           {switchedAt ? (
                             <>
                               <span className={styles.stateLabel}>Saved since you switched to {sub!.switched_to ?? sub!.baseline_retailer}</span>
@@ -1257,7 +1305,7 @@ export default function AccountPage() {
                               <p className={styles.stateSub}>We re-check every morning and email you only if something beats your plan by more than your alert amount ($50 a year unless you change it on the Plus tab).</p>
                             </>
                           )}
-                        </section>
+                        </section>}
                         {/* Google review ask, once they've switched (2 Nov 2026). */}
                         <ReviewCard switched={!!switchedAt} />
                         {/* Bills and savings by month, straight under "Your next move" (2 Nov 2026). */}
@@ -1265,7 +1313,8 @@ export default function AccountPage() {
                         <MoneyFoundCard priceYear={(sub?.amount_cents ? (sub.plan === "monthly" ? sub.amount_cents * 12 : sub.plan === "quarterly" ? sub.amount_cents * 4 : sub.plan === "half_yearly" ? sub.amount_cents * 2 : sub.amount_cents) / 100 : null)} />
                         <BillTracker key={fuel} initialFuel={fuel === "gas" ? "gas" : "electricity"} gasAccount={!!sub?.gas_zone} />
 
-                        <section className={styles.panelCard}>
+                        {/* 6 Nov 2026: savings by month follow the electricity switch, so electricity side only. */}
+                        {fuel !== "gas" && <section className={styles.panelCard}>
                           <div className={styles.panelTitle}>Savings by month</div>
                           {!episodesLoading && months.length === 0 ? (
                             <p className={styles.panelText}>Your monthly savings will show here.</p>
@@ -1278,7 +1327,7 @@ export default function AccountPage() {
                               {switchedAt ? "Months with a saved check use it. Others are estimates." : "Before you switch, these show what switching would have saved."}
                             </div>
                           )}
-                        </section>
+                        </section>}
 
                         {/* Discounts and rewards on their network (1 Nov 2026): money on the table, next to their saving. */}
                         {fuel === "elec" && cmpInput && <MemberMarket input={cmpInput} member={isMember} only="rewardsCard" />}

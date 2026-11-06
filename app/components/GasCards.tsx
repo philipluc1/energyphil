@@ -400,7 +400,7 @@ export function GasHome({ member, name, address, uploadHref = "#read-bill" }: { 
   const months = f ? f.months.slice(0, 12) : [];
   const maxMj = months.length ? Math.max(...months.map((m) => m.mj), 1) : 1;
   const peak = months.length ? months.reduce((a, m) => (m.mj / m.days > a.mj / a.days ? m : a), months[0]) : null;
-  const row = (label: string, value: string | null, hint = est ? "From your gas bill" : "Not on your bill") => (
+  const row = (label: string, value: string | null, hint = est ? "From your gas bill" : "From your next gas bill") => (
     <div className={styles.ghRow}><span>{label}</span>{value ? <b>{value}</b> : <i>{hint}</i>}</div>
   );
   return (
