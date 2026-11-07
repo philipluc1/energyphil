@@ -306,3 +306,24 @@ export function shouldAskForAnotherPage(b: ExtractedBill): boolean {
 export function listWords(items: string[]): string {
   return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
+
+/**
+ * The gas charges to compare plans against (7 Nov 2026). When the bill shows
+ * its rates, supply × days + usage × MJ is the cost of the plan for that
+ * usage, which is exactly how every other plan is priced, and a one-off
+ * credit, true-up or previous balance can't get into it. The bill's own total
+ * is used when it agrees with that (a pay-on-time or direct-debit discount can
+ * take it a little under); otherwise the rates win and `basis` says so.
+ */
+export function gasChargesForComparison(b: Pick<ExtractedBill, "gasBillTotal" | "gasMj" | "gasBillingDays" | "billingDays" | "gasSupplyCentsPerDay" | "gasUsageCentsPerMj">): { total: number | null; basis: "bill" | "rates" | null; fromRates: number | null } {
+  const days = b.gasBillingDays ?? b.billingDays;
+  const fromRates = b.gasSupplyCentsPerDay && b.gasUsageCentsPerMj && b.gasMj && days
+    ? Math.round(((b.gasSupplyCentsPerDay / 100) * days + (b.gasUsageCentsPerMj / 100) * b.gasMj) * 100) / 100
+    : null;
+  const bill = b.gasBillTotal && b.gasBillTotal > 0 ? b.gasBillTotal : null;
+  if (fromRates === null) return { total: bill, basis: bill === null ? null : "bill", fromRates: null };
+  if (bill === null) return { total: fromRates, basis: "rates", fromRates };
+  const ratio = bill / fromRates;
+  if (ratio >= 0.85 && ratio <= 1.05) return { total: bill, basis: "bill", fromRates };
+  return { total: fromRates, basis: "rates", fromRates };
+}

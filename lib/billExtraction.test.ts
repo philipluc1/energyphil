@@ -1,7 +1,7 @@
 // Run: npx tsx lib/billExtraction.test.ts
 // What a bill read is missing, and when to ask for the next page.
 import assert from "node:assert/strict";
-import { billGaps, listWords, sanitizeExtractedBill, shouldAskForAnotherPage } from "./billExtraction";
+import { billGaps, listWords, sanitizeExtractedBill, shouldAskForAnotherPage, gasChargesForComparison } from "./billExtraction";
 
 // Page 1 of a paper bill: amount due, address, network, but no usage or period.
 const page1 = sanitizeExtractedBill({
@@ -75,3 +75,15 @@ test("the feed-in rate follows the credit actually paid", () => {
   assert.equal(checkFit(ok, 163.46, 0.07)!.solarFit, 0.0004); // close enough: keep the printed rate
   assert.equal(checkFit(r, null, 0.07)!.solarFit, 0.04); // nothing to check against
 });
+
+// 7 Nov 2026: Meiling's GloBird bill. Printed total $42.65 after a -$24.44 credit
+// adjustment; rates $1.177/day and 3.982c/MJ on 857 MJ over 28 days = $67.09.
+{
+  const r = gasChargesForComparison({ gasBillTotal: 42.65, gasMj: 857.03, gasBillingDays: 28, billingDays: 28, gasSupplyCentsPerDay: 117.7, gasUsageCentsPerMj: 3.982 });
+  assert.equal(r.basis, "rates"); assert.equal(r.total, 67.08);
+  // A bill with a 3% pay-on-time discount agrees with its rates: the bill wins.
+  const ok = gasChargesForComparison({ gasBillTotal: 65.1, gasMj: 857.03, gasBillingDays: 28, billingDays: 28, gasSupplyCentsPerDay: 117.7, gasUsageCentsPerMj: 3.982 });
+  assert.equal(ok.basis, "bill"); assert.equal(ok.total, 65.1);
+  // No rates on the bill: the total is all we have.
+  assert.deepEqual(gasChargesForComparison({ gasBillTotal: 41.52, gasMj: 857, gasBillingDays: 28, billingDays: 28, gasSupplyCentsPerDay: null, gasUsageCentsPerMj: null }), { total: 41.52, basis: "bill", fromRates: null });
+}

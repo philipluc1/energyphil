@@ -91,7 +91,7 @@ import { useRouter } from "next/navigation";
 import SiteHeader from "./SiteHeader";
 import SourceBanner from "./SourceBanner";
 import BillPagePrompt from "./BillPagePrompt";
-import { shouldAskForAnotherPage } from "@/lib/billExtraction";
+import { shouldAskForAnotherPage, gasChargesForComparison } from "@/lib/billExtraction";
 import { track } from "@/lib/track";
 import styles from "./Comparator.module.css";
 import { marketActivity } from "@/lib/marketActivity";
@@ -640,7 +640,7 @@ export default function Comparator() {
       try {
         window.localStorage.setItem(
           "utilo.gas.v1",
-          JSON.stringify({ zone: bill.gasDistributor ?? "Australian Gas Networks", days: bill.gasBillingDays ?? bill.billingDays ?? 91, mj: Math.round(bill.gasMj), billRaw: bill.gasBillTotal ? String(bill.gasBillTotal) : "", planName: bill.gasPlanName ?? "", fromBill: true, retailer: bill.retailerName ?? "" }),
+          JSON.stringify({ zone: bill.gasDistributor ?? "Australian Gas Networks", days: bill.gasBillingDays ?? bill.billingDays ?? 91, mj: Math.round(bill.gasMj), billRaw: gasChargesForComparison(bill).total ? String(gasChargesForComparison(bill).total) : "", planName: bill.gasPlanName ?? "", fromBill: true, retailer: bill.retailerName ?? "" }),
         );
       } catch { /* ignore */ }
     }

@@ -315,7 +315,10 @@ function GasRatesTable({ member, top, bill, mj, days, hideName }: { member: GasM
   const bestBlocks = top.plan[5];
   const bestUsage = bestBlocks[0]?.rate * 100;
   const stepped = bestBlocks.length > 1;
-  const avgYou = bill !== null && mj > 0 ? (bill / mj) * 100 : null;
+  // From the rates when we have them (so a credit on the bill can't drag it down); else bill ÷ MJ.
+  const avgYou = youSupply !== null && youUsage !== null && mj > 0
+    ? ((youSupply / 100) * days + (youUsage / 100) * mj) / mj * 100
+    : bill !== null && mj > 0 ? (bill / mj) * 100 : null;
   const avgBest = mj > 0 ? (top.total / mj) * 100 : null;
   const cDay = (c: number) => `$${(c / 100).toFixed(2)}/day`;
   const cMj = (c: number) => `${c.toFixed(2)}c/MJ`;
@@ -349,13 +352,13 @@ function GasRatesTable({ member, top, bill, mj, days, hideName }: { member: GasM
           <span>{cMj(bestUsage)}</span>
         </div>
         <div className={`${v.ratesRow} ${v.ratesAvg}`}>
-          <span className={v.ratesLabel}>All-in average<small>bill ÷ MJ used</small></span>
+          <span className={v.ratesLabel}>All-in average<small>cost ÷ MJ used</small></span>
           <span className={avgYou !== null && avgBest !== null && avgYou > avgBest ? v.neg : ""}>{avgYou !== null ? cMj(avgYou) : "–"}</span>
           <span className={v.pos}>{avgBest !== null ? cMj(avgBest) : "–"}</span>
         </div>
       </div>
       <p className={v.fineDark}>
-        {fromBill ? "Your own rates come off your gas bill." : ownPlan ? "Your own rates are our copy of your plan; your bill may show different ones." : "Your bill didn't show its rates. Upload your next gas bill and we'll fill these in."}
+        {fromBill ? "Your own rates come off your gas bill; the all-in average is those rates on your usage, before any pay-on-time discount." : ownPlan ? "Your own rates are our copy of your plan; your bill may show different ones." : "Your bill didn't show its rates. Upload your next gas bill and we'll fill these in."}
         {" "}Gas plans often charge less per MJ the more you use, so the all-in average is the fairest comparison.
       </p>
     </section>

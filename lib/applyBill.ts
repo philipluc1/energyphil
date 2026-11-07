@@ -1,7 +1,7 @@
 import "server-only";
 import { costFromRates } from "./currentRates";
 import { billCheckFromBill, forStorage } from "./billCheck";
-import type { CurrentRates } from "./billExtraction";
+import { gasChargesForComparison, type CurrentRates } from "./billExtraction";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { billRowFrom } from "./billRows";
 import { DISTRIBUTORS, bestPlan, type Distributor, type UsageInput } from "./plans";
@@ -43,7 +43,9 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
     const zone = GAS_ZONES.includes(b?.gasDistributor) ? (b.gasDistributor as GasZone) : null;
     const gDays = num(b?.gasBillingDays) ?? num(b?.billingDays);
     const mj = num(b?.gasMj);
-    const gTotal = num(b?.gasBillTotal);
+    // 7 Nov 2026: rates × usage when the bill shows its rates, so a credit or
+    // true-up on the bill can't make a dear plan look cheap.
+    const gTotal = gasChargesForComparison({ gasBillTotal: num(b?.gasBillTotal), gasMj: mj, gasBillingDays: gDays, billingDays: gDays, gasSupplyCentsPerDay: num(b?.gasSupplyCentsPerDay), gasUsageCentsPerMj: num(b?.gasUsageCentsPerMj) }).total;
     if (!zone || !gDays || !mj) return null;
     const best = bestGasPlan(zone, { days: gDays, mj }) ?? null;
     const bench = gasBenchmark(zone, { days: gDays, mj }, gTotal);

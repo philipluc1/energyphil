@@ -22,7 +22,7 @@ import BillPhotoUpload from "../components/BillPhotoUpload";
 import BillPagePrompt from "../components/BillPagePrompt";
 import Icon from "../components/Icon";
 import { guessGasZoneFromPostcode } from "@/lib/postcodeGas";
-import type { ExtractedBill } from "@/lib/billExtraction";
+import { gasChargesForComparison, type ExtractedBill } from "@/lib/billExtraction";
 import styles from "../components/Comparator.module.css";
 import uc from "../components/usagechooser.module.css";
 import InfoTip from "../components/InfoTip";
@@ -63,6 +63,8 @@ export default function GasCheck() {
   const [fromPhoto, setFromPhoto] = useState(false);
   // The retailer estimated the read on the bill we read (7 Nov 2026).
   const [estimatedRead, setEstimatedRead] = useState(false);
+  // The printed total was set aside for rates × usage (a credit or adjustment on the bill).
+  const [billBasis, setBillBasis] = useState<{ printed: number } | null>(null);
   // No bill: a few questions about the home, priced on typical Victorian gas use.
   const [profile, setProfile] = useState<GasProfile>(DEFAULT_GAS_PROFILE);
   const [fromEstimate, setFromEstimate] = useState(false);
@@ -140,7 +142,11 @@ export default function GasCheck() {
     setPeriodEnd(b.periodEnd ?? null);
     setFromEstimate(false);
     setMjRaw(String(Math.round(b.gasMj)));
-    setBillRaw(b.gasBillTotal ? String(b.gasBillTotal) : "");
+    // 7 Nov 2026: rates × usage when the bill shows its rates (a credit or true-up
+    // on the bill can't get into that); the bill's total only when it agrees.
+    const charges = gasChargesForComparison(b);
+    setBillRaw(charges.total ? String(charges.total) : "");
+    setBillBasis(charges.basis === "rates" && b.gasBillTotal ? { printed: b.gasBillTotal } : null);
     setPlanName(b.gasPlanName ?? "");
     setRetailer(b.retailerName ?? "");
     setEstimatedRead(!!b.usageEstimated);
@@ -513,6 +519,7 @@ export default function GasCheck() {
           <span className={styles.readStripText}>
             <b>Read from your {retailer ? `${retailer} ` : ""}gas bill</b>
             <span>{Math.round(parseFloat(mjRaw) || 0).toLocaleString("en-AU")} MJ over {days} days · {money(bill ?? 0)}{planName ? ` · ${planName}` : ""}{zone ? ` · ${zone}` : ""}</span>
+            {billBasis && <span className={styles.readStripNote}>Your bill&apos;s printed total ({money(billBasis.printed)}) includes a one-off credit or adjustment, so we&apos;ve priced your plan from its rates and your usage instead.</span>}
             {estimatedRead && <span className={styles.readStripNote}>Your retailer estimated this read, so the next bill may correct the usage. The ranking holds; the dollars can move a little.</span>}
           </span>
           <button type="button" className={styles.readStripEdit} onClick={() => go("read")}>Check</button>
