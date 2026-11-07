@@ -165,16 +165,34 @@ export function parseGasPlan(detail) {
   const supply = num(period.dailySupplyCharges ?? period.dailySupplyCharge);
   const rates = period.singleRate?.rates;
   if (supply === null || !Array.isArray(rates) || !rates.length) return null;
-  const perDay = String(rates[0].period ?? "P1D").toUpperCase().startsWith("P1D");
-  const blocks = rates.map((r) => ({ upTo: r.volume === undefined || r.volume === null ? null : Number(r.volume), rate: num(r.unitPrice) }));
+  // 7 Nov 2026: in the CDR standard each step's `volume` is the SIZE of that
+  // block ("volume that this rate applies to"), not a running total, and the
+  // `period` the volumes are quoted for sits on singleRate (a few feeds put it on
+  // the rate). We store every block as a per-day size, so the pricing can sum
+  // them. AGL, for one, quotes per two months (6,000 MJ = 100 MJ a day × 60).
+  const periodDays = isoDays(period.singleRate?.period ?? rates[0].period ?? "P1D");
+  const blocks = rates.map((r) => ({ upTo: r.volume === undefined || r.volume === null ? null : Number(r.volume) / periodDays, rate: num(r.unitPrice) }));
   if (blocks.some((b) => b.rate === null)) return null;
   // Rates are per MJ; a few feeds quote per kWh — convert (1 kWh = 3.6 MJ).
   const unit = String(rates[0].measureUnit ?? "MJ").toUpperCase();
   if (unit === "KWH") for (const b of blocks) { b.rate = b.rate / 3.6; if (b.upTo !== null) b.upTo = b.upTo * 3.6; }
   blocks[blocks.length - 1].upTo = null;
+  for (const b of blocks) if (b.upTo !== null) b.upTo = Math.round(b.upTo * 1000) / 1000;
   // Add GST, like electricity.
   for (const b of blocks) b.rate = gst(b.rate);
-  return { supply: gst(supply), blocks, perDay };
+  return { supply: gst(supply), blocks, perDay: true };
+}
+
+/**
+ * Days in an ISO 8601 duration such as P1D, P60D, P2M, P3M, P1Y. A month counts
+ * as 30 days: that's what retailers mean (AGL's "6,000 MJ per P2M" is the
+ * network's 100 MJ a day × 60, exactly).
+ */
+export function isoDays(iso) {
+  const m = /^P(?:(\d+(?:\.\d+)?)Y)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)W)?(?:(\d+(?:\.\d+)?)D)?/i.exec(String(iso ?? "").trim());
+  if (!m) return 1;
+  const d = (Number(m[1] ?? 0) * 365) + (Number(m[2] ?? 0) * 30) + (Number(m[3] ?? 0) * 7) + Number(m[4] ?? 0);
+  return d > 0 ? d : 1;
 }
 
 async function pullGasRetailer(cdrCode, orgName, log) {
@@ -546,7 +564,9 @@ export function buildPlanDates(termsSrc, previousPlansSrc, rows, today, previous
   const prevDates = prevMatch ? JSON.parse(prevMatch[1]) : {};
   const prevRowsMatch = previousPlansSrc.match(/^export const PLANS: PlanRow\[\] = (\[.*\]);$/m);
   const prevRows = prevRowsMatch ? JSON.parse(prevRowsMatch[1]) : [];
-  const priceOf = (r) => JSON.stringify(r.slice(4));
+  // Gas block sizes compare to one decimal, so a change in how they're rounded
+  // isn't a "price change" (7 Nov 2026).
+  const priceOf = (r) => JSON.stringify(r.slice(4).map((x) => Array.isArray(x) ? x.map((b) => b && typeof b === "object" && "upTo" in b ? { upTo: b.upTo === null ? null : Math.round(b.upTo * 10) / 10, rate: b.rate } : b) : x));
   const prevGasMatch = previousGasSrc.match(/export const GAS_PLANS: GasPlanRow\[\] = (\[.*?\]);/s);
   const prevGas = prevGasMatch ? JSON.parse(prevGasMatch[1]) : [];
   const prevPrice = new Map([...prevRows, ...prevGas].map((r) => [`${r[0]}|${r[1]}|${r[2]}`, priceOf(r)]));

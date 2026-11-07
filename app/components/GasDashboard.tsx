@@ -308,9 +308,7 @@ export function GasAside({ member }: { member: GasMember }) {
  * we hold your plan, we use our copy of it. The all-in average is bill ÷ MJ.
  */
 function GasRatesTable({ member, top, bill, mj, days, hideName }: { member: GasMember; top: RankedGas; bill: number | null; mj: number; days: number; hideName: boolean }) {
-  const ownPlan = member.gas_current_retailer && member.gas_current_plan_name
-    ? GAS_PLANS.find((p) => p[0] === member.gas_current_retailer && p[1] === member.gas_zone && p[2].toLowerCase() === member.gas_current_plan_name!.toLowerCase())
-    : undefined;
+  const ownPlan = findOwnGasPlan(member);
   const youSupply = member.gas_rates?.supply ?? (ownPlan ? ownPlan[4] * 100 : null);
   const youUsage = member.gas_rates?.usage ?? (ownPlan?.[5]?.[0] ? ownPlan[5][0].rate * 100 : null);
   const bestSupply = top.plan[4] * 100;
@@ -333,7 +331,7 @@ function GasRatesTable({ member, top, bill, mj, days, hideName }: { member: GasM
           <span />
           <div>
             <b>You now</b>
-            <span>{member.gas_current_retailer ?? "Your retailer"}{member.gas_current_plan_name ? ` · ${member.gas_current_plan_name}` : ""}</span>
+            <span>{member.gas_current_retailer ?? ownPlan?.[0] ?? retailerFromPlanName(member) ?? "Your retailer"}{member.gas_current_plan_name ? ` · ${member.gas_current_plan_name}` : ""}</span>
           </div>
           <div>
             <b>Cheapest</b>
@@ -369,8 +367,32 @@ function yourGasRates(member: GasMember): { supply: number | null; usage: number
   if (member.gas_rates && (member.gas_rates.supply || member.gas_rates.usage)) {
     return { supply: member.gas_rates.supply ? member.gas_rates.supply / 100 : null, usage: member.gas_rates.usage ? member.gas_rates.usage / 100 : null };
   }
-  const own = member.gas_current_retailer && member.gas_current_plan_name
-    ? GAS_PLANS.find((p) => p[0] === member.gas_current_retailer && p[1] === member.gas_zone && p[2].toLowerCase() === member.gas_current_plan_name!.toLowerCase())
-    : undefined;
+  const own = findOwnGasPlan(member);
   return own ? { supply: own[4], usage: own[5][0]?.rate ?? null } : null;
+}
+
+/**
+ * Our copy of the member's own gas plan. By retailer and plan name; if the
+ * retailer wasn't saved (bills read before 7 Nov 2026), by plan name alone when
+ * that names exactly one retailer in their zone (GLOSAVE is only GloBird's).
+ */
+function findOwnGasPlan(member: GasMember): GasPlanRow | undefined {
+  const name = member.gas_current_plan_name?.trim().toLowerCase();
+  if (!name) return undefined;
+  // Exact name first; else the bill's plan word inside the feed's longer name
+  // ("GLOHOME" in "GloBird GLOHOME Residential(Central)-AusNet Services (gas)").
+  const inZone = GAS_PLANS.filter((p) => p[1] === member.gas_zone);
+  const exact = inZone.filter((p) => p[2].toLowerCase() === name);
+  const loose = exact.length ? exact : inZone.filter((p) => name.length >= 5 && p[2].toLowerCase().includes(name));
+  const mine = member.gas_current_retailer ? loose.filter((p) => p[0] === member.gas_current_retailer) : loose;
+  // Rates only when it's unambiguous (sub-zones of one network can differ).
+  return mine.length === 1 ? mine[0] : undefined;
+}
+
+/** The retailer a plan name points to, when it points to exactly one (for the "You now" label). */
+function retailerFromPlanName(member: GasMember): string | null {
+  const name = member.gas_current_plan_name?.trim().toLowerCase();
+  if (!name || name.length < 5) return null;
+  const rs = new Set(GAS_PLANS.filter((p) => p[1] === member.gas_zone && p[2].toLowerCase().includes(name)).map((p) => p[0]));
+  return rs.size === 1 ? [...rs][0] : null;
 }

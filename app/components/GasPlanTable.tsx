@@ -46,8 +46,11 @@ export function GasRates({ plan, days, yours, planLabel }: { plan: GasPlanRow; d
           <td className={cmp && yours!.supply !== null && supply < yours!.supply ? s.win : ""}>{c(supply)}</td>
         </tr>
         {blocks.map((b, i) => {
-          const prev = i === 0 ? 0 : blocks[i - 1].upTo ?? 0;
-          const label = b.upTo === null ? (i === 0 ? "All usage" : `Over ${prev.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}`) : i === 0 ? `First ${b.upTo.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}` : `${prev.toLocaleString("en-AU")} to ${b.upTo.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}`;
+          // Blocks are sizes, so the thresholds are running totals (7 Nov 2026).
+          const prev = blocks.slice(0, i).reduce((a, x) => a + (x.upTo ?? 0), 0);
+          const to = b.upTo === null ? null : prev + b.upTo;
+          const n = (x: number) => Math.round(x).toLocaleString("en-AU");
+          const label = to === null ? (i === 0 ? "All usage" : `Over ${n(prev)} MJ${perDay ? " a day" : ""}`) : i === 0 ? `First ${n(to)} MJ${perDay ? " a day" : ""}` : `${n(prev)} to ${n(to)} MJ${perDay ? " a day" : ""}`;
           return (
             <tr key={i}>
               <th scope="row">{label}<small>c per MJ</small></th>

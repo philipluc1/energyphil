@@ -19,9 +19,13 @@ assert.equal(parsePlan({ electricityContract: { tariffPeriod: [{ ...single.elect
 assert.equal(parsePlan({ ...single, displayName: "Origin Basic (Residential Demand)" }), null);
 assert.notEqual(parsePlan({ ...single, displayName: "Origin Basic" }), null);
 console.log("parser ok");
-import { parseGasPlan } from "./pull-plans.mjs";
+import { isoDays, parseGasPlan } from "./pull-plans.mjs";
 const gas = { gasContract: { tariffPeriod: [{ dailySupplyCharges: "0.85", singleRate: { rates: [{ unitPrice: "0.0412", volume: 50, period: "P1D", measureUnit: "MJ" }, { unitPrice: "0.0318", period: "P1D", measureUnit: "MJ" }] } }] } };
 assert.deepEqual(parseGasPlan(gas), { supply: 0.935, blocks: [{ upTo: 50, rate: 0.04532 }, { upTo: null, rate: 0.03498 }], perDay: true });
+// Blocks quoted per two months (AGL) come out per day: 6,000 MJ per P2M is 100 a day (7 Nov 2026).
+const gas2m = { gasContract: { tariffPeriod: [{ dailySupplyCharges: "0.85", singleRate: { period: "P2M", rates: [{ unitPrice: "0.03", volume: 6000, measureUnit: "MJ" }, { unitPrice: "0.028", volume: 6000, measureUnit: "MJ" }, { unitPrice: "0.02", measureUnit: "MJ" }] } }] } };
+assert.deepEqual(parseGasPlan(gas2m).blocks.map((b) => b.upTo), [100, 100, null]);
+assert.equal(isoDays("P1D"), 1); assert.equal(isoDays("P60D"), 60); assert.equal(isoDays("P3M"), 90); assert.equal(isoDays("P1Y"), 365); assert.equal(isoDays(undefined), 1);
 console.log("gas parser ok");
 
 // Duplicate bands (e.g. a free 11am-2pm window listed as a second OFF_PEAK) keep the higher rate.
