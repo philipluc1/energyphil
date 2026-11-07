@@ -558,6 +558,8 @@ details[open] > .panelSummary::after { content: " ▴"; }
 .stateCard.stateAct { background: var(--v-mild, #155e75); }
 .stateCard.stateSevere { background: var(--v-severe, #0f766e); }
 .stateCard.stateGood { background: var(--v-good, #13795b); }
+/* 7 Nov 2026: gas cards are orange whatever the verdict, like the gas Compare card. */
+.stateCard.stateGas { --v-good: #c2410c; --v-mild: #b45309; --v-severe: #b91c1c; }
 .stateAct::before, .stateSevere::before, .stateGood::before { display: none; }
 .stateAct .stateLabel, .stateSevere .stateLabel, .stateGood .stateLabel { color: rgba(255, 255, 255, 0.78); }
 .stateAct .stateSub, .stateSevere .stateSub, .stateGood .stateSub,

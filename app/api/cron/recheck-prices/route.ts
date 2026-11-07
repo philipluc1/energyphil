@@ -233,7 +233,8 @@ export async function GET(req: NextRequest) {
         subscribersNotified++;
         // The same news on their phone, if they turned notifications on.
         const save = Math.round(((previousBest! - best.bestTotal) * 365) / days);
-        await sendPush(sub.email, { title: "A cheaper plan for you", body: `${best.bestRetailer} could save you about $${save.toLocaleString("en-AU")} a year. Tap to see it.`, url: "/account#compare", tag: "cheaper-electricity" });
+        // Record it the moment the email has gone, before anything that could fail
+        // (7 Nov 2026), so a hiccup after this can't repeat the email tomorrow.
         const notifiedAt = new Date().toISOString();
         await supabaseAdmin
           .from("subscribers")
@@ -244,6 +245,7 @@ export async function GET(req: NextRequest) {
             last_notified_at: notifiedAt,
           })
           .eq("id", sub.id);
+        await sendPush(sub.email, { title: "A cheaper plan for you", body: `${best.bestRetailer} could save you about $${save.toLocaleString("en-AU")} a year. Tap to see it.`, url: "/account#compare", tag: "cheaper-electricity" }).catch(() => {});
 
         // Roll the savings-history episode over: close whatever was running
         // and open a new one at today's (better) daily rate. Subscribers from
@@ -405,8 +407,8 @@ export async function GET(req: NextRequest) {
       if (sent) {
         dealAlerts++;
         const short = due.what.startsWith("discount") ? "discount" : "fixed price";
-        await sendPush(sub.email, { title: `Your ${short} ends ${when}`, body: `In ${due.days} day${due.days === 1 ? "" : "s"}. Prices often go up then. Tap to see your options.`, url: "/account#compare", tag: "deal-ending" });
         await supabaseAdmin.from("subscribers").update({ deal_alert_sent_for: due.date }).eq("id", sub.id);
+        await sendPush(sub.email, { title: `Your ${short} ends ${when}`, body: `In ${due.days} day${due.days === 1 ? "" : "s"}. Prices often go up then. Tap to see your options.`, url: "/account#compare", tag: "deal-ending" }).catch(() => {});
       }
     } catch (err) {
       console.error("recheck-prices: deal alert failed", sub.id, err);
@@ -532,8 +534,8 @@ export async function GET(req: NextRequest) {
       if (sent) {
         gasAlerts++;
         const gSave = Math.round(((previous! - top.total) * 365) / gDays);
-        await sendPush(sub.email, { title: "A cheaper gas plan for you", body: `${top.plan[0]} could save you about $${gSave.toLocaleString("en-AU")} a year on gas. Tap to see it.`, url: "/account", tag: "cheaper-gas" });
         await quietlyRepick();
+        await sendPush(sub.email, { title: "A cheaper gas plan for you", body: `${top.plan[0]} could save you about $${gSave.toLocaleString("en-AU")} a year on gas. Tap to see it.`, url: "/account", tag: "cheaper-gas" }).catch(() => {});
       }
     } catch (err) {
       console.error("recheck-prices: gas member failed", sub.id, err);

@@ -8,7 +8,8 @@ import s from "./sitefooter.module.css";
 
 /** The site footer (1 Nov 2026): one on every public page. */
 export default function SiteFooter() {
-  const who = [ABOUT.businessName, ABOUT.abn ? `ABN ${ABOUT.abn}` : "", ABOUT.location].filter(Boolean).join(" · ");
+  // "© 2026 Utilo · ABN … · Point Cook": the business name only when it isn't just "Utilo" again.
+  const who = [ABOUT.businessName && ABOUT.businessName !== "Utilo" ? ABOUT.businessName : "", ABOUT.abn ? `ABN ${ABOUT.abn}` : "", ABOUT.location].filter(Boolean).join(" · ");
   return (
     <footer className={s.footer}>
       <div className={s.inner}>

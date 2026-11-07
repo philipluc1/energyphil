@@ -18,11 +18,21 @@ export const pushConfigured = Boolean(PUBLIC_KEY && PRIVATE_KEY && supabaseAdmin
 export const pushPublicKey = PUBLIC_KEY;
 
 let ready = false;
+let broken = false;
 function setup(): boolean {
-  if (!pushConfigured) return false;
+  if (!pushConfigured || broken) return false;
   if (!ready) {
-    webpush.setVapidDetails(SUBJECT, PUBLIC_KEY, PRIVATE_KEY);
-    ready = true;
+    // 7 Nov 2026: a bad key or subject used to throw out of here, mid-job, after
+    // an email had gone but before "we've told them" was saved, so the same alert
+    // went again the next morning. Now it's logged once and push is simply off.
+    try {
+      webpush.setVapidDetails(SUBJECT, PUBLIC_KEY, PRIVATE_KEY);
+      ready = true;
+    } catch (err) {
+      broken = true;
+      console.error("push: not configured correctly, notifications are off:", err instanceof Error ? err.message : err);
+      return false;
+    }
   }
   return true;
 }

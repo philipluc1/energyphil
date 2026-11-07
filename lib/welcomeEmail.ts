@@ -7,10 +7,12 @@ import { esc } from "./email";
 import { RETAILER_LINKS } from "./retailerLinks";
 import { WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
-import { greet, keepBg, keepWhite } from "./emailParts";
+import { greet, keepBg, keepWhite, unsubscribe } from "./emailParts";
 
 export interface WelcomeEmailInput {
   origin: string;
+  /** Unsubscribe link for this member (7 Nov 2026: every Utilo email carries one). */
+  unsubscribeUrl?: string | null;
   customerName: string | null;
   planName: string;          // "Yearly"
   priceLabel: string;        // "$39 a year"
@@ -148,6 +150,7 @@ export function welcomeEmail(i: WelcomeEmailInput): { subject: string; title: st
       Your plan: <strong style="color:#1a1a1a;">${esc(i.planName)}, ${esc(i.priceLabel)}</strong>. No lock-in: change or cancel any time from your dashboard.
     </p>
     <p style="margin:18px 0 0;font:15px/1.5 ${F};">Questions? Just reply to this email.<br>The Utilo team</p>
+    ${i.unsubscribeUrl ? unsubscribe(i.unsubscribeUrl, "You're getting this because you joined Utilo Plus. Your daily checks keep running while you're a member; this link stops the extra emails.") : ""}
   `;
 
   return { subject, title, html };

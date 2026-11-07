@@ -305,6 +305,10 @@ export default function Comparator() {
   // a missing page can be added and the pages read together.
   const [lastBill, setLastBill] = useState<ExtractedBill | null>(null);
   const [billPages, setBillPages] = useState<Blob[]>([]);
+  // A gas bill's front page was read on the power check: ask for page 2 before handing over.
+  const [gasPagePrompt, setGasPagePrompt] = useState(false);
+  // The bill had gas on it too: the result's read strip links to the gas result.
+  const [dualGas, setDualGas] = useState(false);
   const [currentRetailer, setCurrentRetailer] = useState("");
   // The rates on their current plan, typed from the bill (or read off it).
   const [ratesForm, setRatesForm] = useState<RatesForm>(EMPTY_RATES_FORM);
@@ -641,7 +645,15 @@ export default function Comparator() {
       } catch { /* ignore */ }
     }
     if (bill.fuel === "gas") {
-      // 7 Nov 2026: a gas bill on the power check. Hand it to the gas check so they don't upload twice.
+      // 7 Nov 2026: a gas bill on the power check. A front page alone (amount due, no MJ)
+      // stops here and asks for page 2; a full read is handed to the gas check so they
+      // don't upload twice.
+      if (shouldAskForAnotherPage(bill) && pages.length > 0) {
+        setGasPagePrompt(true);
+        scrollToTop();
+        return;
+      }
+      setGasPagePrompt(false);
       try { window.sessionStorage.setItem("utilo.gasHandoff", JSON.stringify(bill)); } catch { /* ignore */ }
       router.push("/gas");
       return;
@@ -721,7 +733,11 @@ export default function Comparator() {
       const hit = RETAILERS.find((r) => bill.retailerName!.toLowerCase().includes(r.toLowerCase().split(" ")[0]));
       if (hit) setCurrentRetailer(hit);
     }
-    if (bill.fuel === "dual" && bill.gasMj) warnings.push("We also read the gas part of this bill. See your gas result on the gas check page after this.");
+    // A dual-fuel bill: the gas part is kept for the gas check (above). That's a note,
+    // not a doubt, so it doesn't stop a clean read going straight to the result (7 Nov 2026).
+    const dual = bill.fuel === "dual" && !!bill.gasMj;
+    setDualGas(dual);
+    if (dual) warnings.push("We also read the gas part of this bill. See your gas result on the gas check page after this.");
     setScanBanner({ retailer: bill.retailerName, warnings });
 
     // Read from the results page: stay there; the numbers update in place.
@@ -733,7 +749,7 @@ export default function Comparator() {
       // A clean read goes straight to the result (1 Nov 2026): everything we need was on the
       // bill, nothing to check. A strip at the top of the result shows what we read, with a
       // way back to change it. Anything doubtful still stops at the "here's what we read" card.
-      const clean = warnings.length === 0 && !askPage && !flag && bill.currentBill !== null && nmiCheck?.status !== "notVictorian";
+      const clean = warnings.length === (dual ? 1 : 0) && !askPage && !flag && bill.currentBill !== null && nmiCheck?.status !== "notVictorian";
       if (clean) {
         setStage("results");
         scrollToTop();
@@ -1404,6 +1420,15 @@ export default function Comparator() {
         </section>
         )}
 
+        {entry === "snap" && gasPagePrompt && lastBill && (
+          <div className={snap.readCard}>
+            <div className={snap.readHead}>
+              <span className={snap.readTick} aria-hidden="true">✓</span>
+              {lastBill.retailerName ? `Got the front of your ${lastBill.retailerName} gas bill` : "Got the front of your gas bill"}
+            </div>
+            <BillPagePrompt bill={lastBill} pages={billPages} onApply={handleBillExtracted} typeItIn={<>Or <Link href="/gas">type your gas usage in on the gas check</Link>.</>} />
+          </div>
+        )}
         {entry === "snap" && (
           <>
             <BillPhotoUpload variant="hero" onApply={handleBillExtracted}>
@@ -2340,7 +2365,9 @@ export default function Comparator() {
                   {scanBanner.retailer ? `${scanBanner.retailer} · ` : ""}{distributor} · {days} days · {Math.round(usageAnytime + usagePeak + usageShoulder + usageOffpeak + clKwh).toLocaleString("en-AU")} kWh
                   {typedBill !== null && !Number.isNaN(typedBill) ? ` · ${fmtCurrency(typedBill)}` : ""}
                 </span>
+                {lastBill?.usageEstimated && <span className={styles.readStripNote}>Your retailer estimated this read, so the next bill may correct the usage. The ranking holds; the dollars can move a little.</span>}
               </span>
+              {dualGas && <Link href="/gas" className={styles.readStripEdit}>Gas result →</Link>}
               <button type="button" className={styles.readStripEdit} onClick={() => { setStage("input"); setEntry("read"); scrollToTop(); }}>Check</button>
             </div>
           )}

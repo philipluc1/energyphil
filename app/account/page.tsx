@@ -840,10 +840,11 @@ export default function AccountPage() {
     }).catch(() => null);
     const body = await res?.json().catch(() => null);
     if (body?.ok) {
+      const estNote = bill.usageEstimated ? " Your retailer estimated this read; we'll re-price it when an actual read comes in." : "";
       setBillMsg(
         body.fuel === "gas"
-          ? body.retailer ? `Best gas match: ${body.retailer} — ${body.plan}. Opening your gas bill…` : `${body.message ?? "Gas details saved."} Reloading…`
-          : `Best match: ${body.retailer} — ${body.plan}${body.gas?.retailer ? `; gas: ${body.gas.retailer}` : ""}. Reloading your dashboard…`,
+          ? body.retailer ? `Best gas match: ${body.retailer} — ${body.plan}.${estNote} Opening your gas bill…` : `${body.message ?? "Gas details saved."}${estNote} Reloading…`
+          : `Best match: ${body.retailer} — ${body.plan}${body.gas?.retailer ? `; gas: ${body.gas.retailer}` : ""}.${estNote} Reloading your dashboard…`,
       );
       // 7 Nov 2026: a gas bill lands on the gas Home tab, at "Your bill in plain English".
       // (replaceState, not location.hash: a hashchange would be handled now, before the reload.)
@@ -1243,7 +1244,7 @@ export default function AccountPage() {
                           const gMj = sub!.gas_mj ?? 0;
                           if (!z || !GAS_ZONES.includes(z) || !(gDays > 0) || !(gMj > 0)) {
                             return (
-                              <section className={`${styles.stateCard} ${styles.stateAct}`}>
+                              <section className={`${styles.stateCard} ${styles.stateAct} ${styles.stateGas}`}>
                                 <span className={styles.stateLabel}>Your next gas move</span>
                                 <h2 className={styles.stateHead}>Add your gas bill and we&apos;ll check your gas plan too.</h2>
                                 <p className={styles.stateSub}>Snap it or upload the PDF. We re-check every gas plan on your network every morning, the same as electricity.</p>
@@ -1256,7 +1257,7 @@ export default function AccountPage() {
                           const saveYear = best && bill !== null ? Math.round(((bill - best.total) * 365) / gDays) : null;
                           const act = saveYear !== null && saveYear >= WORTH_SWITCHING_PER_YEAR && best;
                           return (
-                            <section className={`${styles.stateCard} ${act ? styles.stateAct : styles.stateGood}`}>
+                            <section className={`${styles.stateCard} ${act ? styles.stateAct : styles.stateGood} ${styles.stateGas}`}>
                               <span className={styles.stateLabel}>Your next gas move</span>
                               {act ? (
                                 <>
@@ -1353,10 +1354,12 @@ export default function AccountPage() {
                           )}
                         </section>}
                         {/* Google review ask, once they've switched (2 Nov 2026). */}
-                        <ReviewCard switched={!!switchedAt} />
+                        {/* 7 Nov 2026: the gas side shows gas things only; the review ask, money found and the
+                            electricity dates stay on the electricity side. */}
+                        {fuel !== "gas" && <ReviewCard switched={!!switchedAt} />}
                         {/* Bills and savings by month, straight under "Your next move" (2 Nov 2026). */}
                         {/* 5 Nov 2026: the running total of money found on their bills. */}
-                        <MoneyFoundCard priceYear={(sub?.amount_cents ? (sub.plan === "monthly" ? sub.amount_cents * 12 : sub.plan === "quarterly" ? sub.amount_cents * 4 : sub.plan === "half_yearly" ? sub.amount_cents * 2 : sub.amount_cents) / 100 : null)} />
+                        {fuel !== "gas" && <MoneyFoundCard priceYear={(sub?.amount_cents ? (sub.plan === "monthly" ? sub.amount_cents * 12 : sub.plan === "quarterly" ? sub.amount_cents * 4 : sub.plan === "half_yearly" ? sub.amount_cents * 2 : sub.amount_cents) / 100 : null)} />}
                         <BillTracker key={fuel} initialFuel={fuel === "gas" ? "gas" : "electricity"} gasAccount={!!sub?.gas_zone} />
 
                         {/* 6 Nov 2026: savings by month follow the electricity switch, so electricity side only. */}
@@ -1380,7 +1383,7 @@ export default function AccountPage() {
                         {fuel === "gas" && <GasCards member={gasMember} only="rewardsCard" />}
 
 
-                        <section className={styles.panelCard} id="deal-dates">
+                        {fuel !== "gas" && <section className={styles.panelCard} id="deal-dates">
                           <div className={styles.panelTitleRow}>
                             <div className={styles.panelTitle}>Price changes we&apos;re watching for you</div>
                             {!dealForm && (
@@ -1422,20 +1425,24 @@ export default function AccountPage() {
                           )}
                           {dealMsg && <p className={styles.panelText}><b>{dealMsg}</b></p>}
                           <p className={styles.stateFine}>Not sure of the dates? They&apos;re usually on your welcome pack or in your retailer&apos;s app. A new bill read fills them in when they&apos;re printed.</p>
-                        </section>
+                        </section>}
 
                         <section className={styles.panelCard} id="read-bill">
                           <div className={styles.panelTitleRow}>
-                            <div className={styles.panelTitle}>This month&apos;s bill check</div>
-                            <span className={doneThisMonth ? styles.chipDone : styles.chipDue}>{doneThisMonth ? "✓ Done" : "Due"}</span>
+                            <div className={styles.panelTitle}>{fuel === "gas" ? "Upload a newer gas bill" : "This month\u2019s bill check"}</div>
+                            {fuel !== "gas" && <span className={doneThisMonth ? styles.chipDone : styles.chipDue}>{doneThisMonth ? "✓ Done" : "Due"}</span>}
                           </div>
                           <p className={styles.panelText}>
-                            {doneThisMonth
+                            {fuel === "gas"
+                              ? "Snap or upload your latest gas bill (the page with the MJ and the days). We'll update your gas numbers and recheck every gas plan."
+                              : doneThisMonth
                               ? "We'll check again next month. Got a newer bill? Upload it and we'll recheck straight away."
                               : "Snap or upload your latest bill (electricity, gas or dual fuel). We'll update your numbers and recheck every plan."}
                           </p>
                           {billMsg && <p className={styles.panelText}><b>{billMsg}</b></p>}
-                          {pendingBill ? (
+                          {pendingBill && fuel === "gas" ? (
+                            <p className={styles.panelText}>An electricity bill is waiting for your check on the <button type="button" className={styles.linkBtn} onClick={() => setFuel("elec")}>Electricity side</button>.</p>
+                          ) : pendingBill ? (
                             <BillReview
                               key={pendingBill.n}
                               bill={pendingBill.bill}

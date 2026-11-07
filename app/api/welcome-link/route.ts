@@ -32,13 +32,16 @@ export async function GET(req: NextRequest) {
     if (!paid || !fresh || !email) return fallback;
 
     const redirectTo = `${origin}/welcome`;
+    // The member's unsubscribe link for the welcome email (the row was saved by the webhook).
+    const subRow = supabaseAdmin ? (await supabaseAdmin.from("subscribers").select("id").eq("email", email).order("created_at", { ascending: false }).limit(1).maybeSingle()).data : null;
+    const unsubscribeUrl = subRow?.id ? `${origin}/api/unsubscribe?type=subscriber&id=${subRow.id}` : null;
 
     // One email: welcome + sign-in link.
     if (supabaseAdmin && emailConfigured) {
       const { data, error } = await supabaseAdmin.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo } });
       const link = data?.properties?.action_link;
       if (!error && link) {
-        const w = welcomeEmail(welcomeInputFromSession(session, origin, link));
+        const w = welcomeEmail({ ...welcomeInputFromSession(session, origin, link), unsubscribeUrl });
         const sent = await sendEmail({ to: email, subject: w.subject, title: w.title, html: w.html }).catch((e) => { console.error("welcome email failed", e); return false; });
         if (sent) return NextResponse.redirect(`${origin}/welcome?check_email=1`);
       } else if (error) {
@@ -57,7 +60,7 @@ export async function GET(req: NextRequest) {
       return fallback;
     }
     if (emailConfigured) {
-      const w = welcomeEmail(welcomeInputFromSession(session, origin, null));
+      const w = welcomeEmail({ ...welcomeInputFromSession(session, origin, null), unsubscribeUrl });
       await sendEmail({ to: email, subject: w.subject, title: w.title, html: w.html }).catch((e) => console.error("welcome email failed", e));
     }
     return NextResponse.redirect(`${origin}/welcome?check_email=1`);

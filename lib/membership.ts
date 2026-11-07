@@ -154,7 +154,7 @@ export async function createMembershipFromSession(session: Stripe.Checkout.Sessi
     // Normally the welcome goes from /api/welcome-link (with the sign-in link
     // in it) the moment they land back from Stripe. This is only for callers
     // that ask for it. Wording and layout live in lib/welcomeEmail.ts.
-    const w = welcomeEmail(welcomeInputFromSession(session, origin, null));
+    const w = welcomeEmail({ ...welcomeInputFromSession(session, origin, null), unsubscribeUrl: inserted?.id ? `${origin}/api/unsubscribe?type=subscriber&id=${inserted.id}` : null });
     await sendEmail({ to: email, subject: w.subject, title: w.title, html: w.html }).catch((e) => console.error("welcome email failed", e));
   }
 

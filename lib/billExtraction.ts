@@ -46,6 +46,8 @@ export interface ExtractedBill {
   demandKw: number | null;
   // True if the bill shows any solar feed-in credit line, even a small one.
   hasSolar: boolean;
+  /** The retailer estimated the read (7 Nov 2026): the usage may be corrected on the next bill. */
+  usageEstimated: boolean;
   solarExportKwh: number | null;
   /** Current plan's rates in GST-inclusive dollars (supply per day, usage per kWh), as read off the bill. */
   currentRates: CurrentRates | null;
@@ -229,6 +231,7 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     demandCharge: r.has_demand_charge === true,
     demandKw: (() => { const n = toFiniteNumber(r.max_demand_kw); return n !== null && n > 0 && n < 500 ? n : null; })(),
     hasSolar: r.has_solar === true,
+    usageEstimated: r.usage_estimated === true,
     solarExportKwh: toFiniteNumber(r.solar_export_kwh),
     currentRates: checkFit(readRates(r), toFiniteNumber(r.solar_export_kwh), typeof r.solar_credit_total === "number" ? Math.abs(r.solar_credit_total) : null),
     priceType: r.price_type === "fixed" || r.price_type === "variable" ? r.price_type : null,

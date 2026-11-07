@@ -20,26 +20,51 @@ const money = (n: number) => `$${n.toLocaleString("en-AU", { minimumFractionDigi
 const whole = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
 const c = (dollars: number, dp = 2) => `${(dollars * 100).toFixed(dp)}c`;
 
-/** Supply and the stepped usage rates of a gas plan, in plain words. */
-export function GasRates({ plan, days }: { plan: GasPlanRow; days: number }) {
+/** The rates off the member's own gas bill, in dollars (supply $/day, usage $/MJ). */
+export type YourGasRates = { supply: number | null; usage: number | null; label?: string } | null;
+
+/**
+ * Supply and the stepped usage rates of a gas plan, in plain words. With `yours`
+ * (7 Nov 2026) it's "Your bill" beside the plan, with a tick on the better rate,
+ * the same as the electricity rows.
+ */
+export function GasRates({ plan, days, yours, planLabel }: { plan: GasPlanRow; days: number; yours?: YourGasRates; planLabel?: string }) {
   const [, , , , supply, blocks, perDay] = plan;
+  const cmp = !!(yours && (yours.supply !== null || yours.usage !== null));
+  const tick = (mine: number | null, theirs: number) => mine === null ? "" : mine < theirs ? s.win : mine > theirs ? "" : "";
   return (
-    <table className={s.rates}>
+    <table className={`${s.rates} ${cmp ? s.ratesCmp : ""}`}>
+      {cmp && (
+        <thead>
+          <tr><th scope="col"><span className={s.srOnly}>Rate</span></th><th scope="col">{yours?.label ?? "Your bill"}</th><th scope="col">{planLabel ?? "This plan"}</th></tr>
+        </thead>
+      )}
       <tbody>
-        <tr><th scope="row">Supply charge<small>c a day</small></th><td>{c(supply)}</td></tr>
+        <tr>
+          <th scope="row">Supply charge<small>c a day</small></th>
+          {cmp && <td className={tick(yours!.supply, supply)}>{yours!.supply !== null ? c(yours!.supply) : "—"}</td>}
+          <td className={cmp && yours!.supply !== null && supply < yours!.supply ? s.win : ""}>{c(supply)}</td>
+        </tr>
         {blocks.map((b, i) => {
           const prev = i === 0 ? 0 : blocks[i - 1].upTo ?? 0;
           const label = b.upTo === null ? (i === 0 ? "All usage" : `Over ${prev.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}`) : i === 0 ? `First ${b.upTo.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}` : `${prev.toLocaleString("en-AU")} to ${b.upTo.toLocaleString("en-AU")} MJ${perDay ? " a day" : ""}`;
-          return <tr key={i}><th scope="row">{label}<small>c per MJ</small></th><td>{c(b.rate, 3)}</td></tr>;
+          return (
+            <tr key={i}>
+              <th scope="row">{label}<small>c per MJ</small></th>
+              {cmp && <td className={i === 0 ? tick(yours!.usage, b.rate) : ""}>{i === 0 && yours!.usage !== null ? c(yours!.usage, 3) : i === 0 ? "—" : ""}</td>}
+              <td className={cmp && i === 0 && yours!.usage !== null && b.rate < yours!.usage ? s.win : ""}>{c(b.rate, 3)}</td>
+            </tr>
+          );
         })}
-        {perDay && <tr><td colSpan={2} className={s.ratesNote}>Usage steps are per day, scaled to your {days}-day bill.</td></tr>}
+        {perDay && <tr><td colSpan={cmp ? 3 : 2} className={s.ratesNote}>Usage steps are per day, scaled to your {days}-day bill.</td></tr>}
+        {cmp && <tr><td colSpan={3} className={s.ratesNote}>Your bill&apos;s usage rate is its first step. ✓ marks the better rate.</td></tr>}
       </tbody>
     </table>
   );
 }
 
 export default function GasPlanTable({
-  ranked, days, mj, k, you, youLabel, perLabel, zone, currentRetailer, chart = true, controls, note,
+  ranked, days, mj, k, you, youLabel, perLabel, zone, currentRetailer, chart = true, controls, note, yourRates = null,
 }: {
   ranked: RankedGas[];
   days: number;
@@ -59,6 +84,8 @@ export default function GasPlanTable({
   controls?: ReactNode;
   /** The usage line under the price chart. */
   note?: ReactNode;
+  /** The rates off their own bill, shown beside each plan's rates (7 Nov 2026). */
+  yourRates?: YourGasRates;
 }) {
   const [allPlans, setAllPlans] = useState(false);
   // Top 6, then 10 more, then everything (same as electricity).
@@ -141,7 +168,7 @@ export default function GasPlanTable({
                       <tr className={v.ratesDetailRow}>
                         <td colSpan={5}>
                           <div className={v.ratesDetail}>
-                            <GasRates plan={m.plan} days={days} />
+                            <GasRates plan={m.plan} days={days} yours={yourRates} planLabel={m.plan[0]} />
                             <p className={v.ratesFine}>Published rates including GST, before any discounts.</p>
                           </div>
                         </td>
@@ -181,7 +208,7 @@ export default function GasPlanTable({
                 </button>
                 {openRates === key && (
                   <div className={`${v.ratesDetail} ${v.pcRatesDetail}`}>
-                    <GasRates plan={m.plan} days={days} />
+                    <GasRates plan={m.plan} days={days} yours={yourRates} planLabel={m.plan[0]} />
                     <p className={v.ratesFine}>Published rates including GST, before any discounts.</p>
                   </div>
                 )}

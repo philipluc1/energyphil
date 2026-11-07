@@ -36,7 +36,7 @@ export const TOOL_SCHEMA = {
       },
       gas_billing_days: { type: ["integer", "null"], description: "For a bill with gas: days in the gas billing period." },
       gas_mj: { type: ["number", "null"], description: "For a bill with gas: total gas usage for the period in megajoules (MJ). Convert from kWh if needed (1 kWh = 3.6 MJ)." },
-      gas_bill_total: { type: ["number", "null"], description: "For a bill with gas: the gas charges for the period including GST, in AUD. On a dual bill, the gas portion only." },
+      gas_bill_total: { type: ["number", "null"], description: "For a bill with gas: this period's gas charges including GST, in AUD: supply plus usage, less any ongoing plan discount (pay-on-time, direct debit). Do NOT subtract one-off items such as a 'credit adjustment', 'balance adjustment', refund, sign-up credit, bill relief or a previous balance; if the printed total already has one taken off, give the charges before it. On a dual bill, the gas portion only." },
       gas_plan_name: { type: ["string", "null"], description: "For a bill with gas: the gas plan or offer name printed on the bill." },
       gas_supply_cents_per_day: { type: ["number", "null"], description: "For a bill with gas: the daily supply (service) charge in cents per day including GST, e.g. 95.7. Null if not shown." },
       gas_usage_cents_per_mj: { type: ["number", "null"], description: "For a bill with gas: the usage rate in cents per MJ including GST, e.g. 3.85. If the bill has stepped rates, the first (highest-volume or first block) rate. Null if not shown." },
@@ -146,7 +146,7 @@ export const TOOL_SCHEMA = {
       new_charges_total: {
         type: ["number", "null"],
         description:
-          "This billing period's new charges including GST, in AUD, before any balance carried forward, payments received or overdue amounts are added (often 'New charges', 'Total new charges', 'This bill'). Discounts, concessions and credits for this period are already taken off. Null if the bill doesn't show it separately.",
+          "This billing period's new charges including GST, in AUD, before any balance carried forward, payments received or overdue amounts are added (often 'New charges', 'Total new charges', 'This bill'). Ongoing plan discounts, concessions and solar credits for this period are already taken off, but a one-off 'credit adjustment', 'balance adjustment', refund, sign-up credit or bill relief is not part of the charges: if the printed figure has one taken off, give the charges before it. Null if the bill doesn't show it separately.",
       },
       fees: {
         type: "array",
@@ -176,6 +176,7 @@ export const TOOL_SCHEMA = {
         type: "boolean",
         description: "True if the bill's best offer message says the customer is already on the retailer's best (or cheapest) offer. False otherwise.",
       },
+      usage_estimated: { type: ["boolean", "null"], description: "True if the usage on this bill is an estimate rather than an actual meter read: readings marked 'E', '(Estimate)', 'estimated', or a line such as 'This bill is based on an estimate of your usage'. False if the readings are actual ('A', 'Actual', 'self read'). Null if the bill doesn't say." },
       has_solar: {
         type: "boolean",
         description: "True if the bill shows any solar feed-in / solar export credit line item, even a small or zero-dollar one — this indicates the property has solar, regardless of the credit amount.",

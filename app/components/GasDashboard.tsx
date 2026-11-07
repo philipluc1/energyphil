@@ -208,6 +208,7 @@ export default function GasDashboard({ member, isMember, period, onPeriod }: { m
         perLabel={perLabel}
         zone={zone ?? ""}
         currentRetailer={member.gas_current_retailer ?? null}
+        yourRates={est ? null : yourGasRates(member)}
         controls={
           <div className={`${ins.useBar} ${whatIf ? ins.useBarOn : ""}`} role="group" aria-labelledby="gas-use-title">
             {/* 1 Nov 2026: same as electricity: says what it is and what it does. */}
@@ -361,4 +362,15 @@ function GasRatesTable({ member, top, bill, mj, days, hideName }: { member: GasM
       </p>
     </section>
   );
+}
+
+/** The member's own gas rates in dollars: off the bill, else our copy of their plan (7 Nov 2026). */
+function yourGasRates(member: GasMember): { supply: number | null; usage: number | null } | null {
+  if (member.gas_rates && (member.gas_rates.supply || member.gas_rates.usage)) {
+    return { supply: member.gas_rates.supply ? member.gas_rates.supply / 100 : null, usage: member.gas_rates.usage ? member.gas_rates.usage / 100 : null };
+  }
+  const own = member.gas_current_retailer && member.gas_current_plan_name
+    ? GAS_PLANS.find((p) => p[0] === member.gas_current_retailer && p[1] === member.gas_zone && p[2].toLowerCase() === member.gas_current_plan_name!.toLowerCase())
+    : undefined;
+  return own ? { supply: own[4], usage: own[5][0]?.rate ?? null } : null;
 }

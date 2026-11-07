@@ -19,6 +19,7 @@ import GasPlanTable from "../components/GasPlanTable";
 import GasSeasonChart from "../components/GasSeasonChart";
 import { DEFAULT_GAS_PROFILE, VIC_GAS_HEATED_GJ, VIC_GAS_UNHEATED_GJ, annualFromGasBill, estimateGasAnnual, gasByMonth, heatingShareFor, monthsFromAnnual, periodMonths, type GasHeating, type GasProfile } from "@/lib/gasUsage";
 import BillPhotoUpload from "../components/BillPhotoUpload";
+import BillPagePrompt from "../components/BillPagePrompt";
 import Icon from "../components/Icon";
 import { guessGasZoneFromPostcode } from "@/lib/postcodeGas";
 import type { ExtractedBill } from "@/lib/billExtraction";
@@ -57,7 +58,11 @@ export default function GasCheck() {
   const [billRaw, setBillRaw] = useState("");
   const [planName, setPlanName] = useState("");
   const [retailer, setRetailer] = useState("");
+  // The rates off the bill (dollars), for "Your bill" beside each plan's rates (7 Nov 2026).
+  const [yourRates, setYourRates] = useState<{ supply: number | null; usage: number | null } | null>(null);
   const [fromPhoto, setFromPhoto] = useState(false);
+  // The retailer estimated the read on the bill we read (7 Nov 2026).
+  const [estimatedRead, setEstimatedRead] = useState(false);
   // No bill: a few questions about the home, priced on typical Victorian gas use.
   const [profile, setProfile] = useState<GasProfile>(DEFAULT_GAS_PROFILE);
   const [fromEstimate, setFromEstimate] = useState(false);
@@ -65,6 +70,8 @@ export default function GasCheck() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [elecOnly, setElecOnly] = useState(false);
+  // A gas front page was read: the pages so far, so page 2 can be added to them.
+  const [pagePrompt, setPagePrompt] = useState<{ bill: ExtractedBill; pages: Blob[] } | null>(null);
   // The no-bill questions, one step at a time (as on the electricity check).
   const [gq, setGq] = useState<1 | 2 | 3 | 4>(1);
   const [gqDir, setGqDir] = useState<"fwd" | "back">("fwd");
@@ -83,6 +90,7 @@ export default function GasCheck() {
           if (typeof d.billRaw === "string") setBillRaw(d.billRaw);
           if (typeof d.planName === "string") setPlanName(d.planName);
           if (typeof d.retailer === "string") setRetailer(d.retailer);
+          if (d.yourRates && typeof d.yourRates === "object") setYourRates(d.yourRates);
           if (d.fromBill && d.mj > 0) {
             setFromPhoto(true);
             setEntry("read");
@@ -102,17 +110,25 @@ export default function GasCheck() {
     if (!hydrated) return;
     const mj = parseFloat(mjRaw);
     try {
-      window.localStorage.setItem(KEY, JSON.stringify({ zone, days, mj: Number.isFinite(mj) ? mj : 0, billRaw, planName, retailer, periodEnd }));
+      window.localStorage.setItem(KEY, JSON.stringify({ zone, days, mj: Number.isFinite(mj) ? mj : 0, billRaw, planName, retailer, periodEnd, yourRates }));
     } catch { /* ignore */ }
-  }, [zone, days, mjRaw, billRaw, planName, retailer, periodEnd, hydrated]);
+  }, [zone, days, mjRaw, billRaw, planName, retailer, periodEnd, yourRates, hydrated]);
 
-  function fromBill(b: ExtractedBill) {
+  function fromBill(b: ExtractedBill, pages: Blob[] = []) {
     if (!b.gasMj) {
+      if (b.fuel === "gas" && pages.length > 0) {
+        // 7 Nov 2026: the front page of a gas bill (amount due, no MJ). Ask for page 2.
+        setElecOnly(false);
+        setPagePrompt({ bill: b, pages });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       // An electricity-only bill: point them to the right check.
       setElecOnly(b.fuel === "electricity" || b.fuel === null);
       return;
     }
     setElecOnly(false);
+    setPagePrompt(null);
     const w: string[] = [];
     if (b.postcode) { setPostcode(b.postcode); const guess = guessGasZoneFromPostcode(b.postcode); setZoneGuess(guess); if (guess) setZone(guess); }
     // The bill's own distributor beats the postcode guess.
@@ -127,13 +143,17 @@ export default function GasCheck() {
     setBillRaw(b.gasBillTotal ? String(b.gasBillTotal) : "");
     setPlanName(b.gasPlanName ?? "");
     setRetailer(b.retailerName ?? "");
+    setEstimatedRead(!!b.usageEstimated);
+    setYourRates(b.gasSupplyCentsPerDay || b.gasUsageCentsPerMj ? { supply: b.gasSupplyCentsPerDay ? b.gasSupplyCentsPerDay / 100 : null, usage: b.gasUsageCentsPerMj ? b.gasUsageCentsPerMj / 100 : null } : null);
     // Utilo compares home plans: flag business and embedded-network gas bills.
     const flags: string[] = [];
     if (b.embeddedNetwork) flags.push("This bill looks like it's from an embedded network (gas supplied through your building). We can't compare those yet, so treat this result with care.");
     if (b.accountType === "business" || b.demandCharge) flags.push("This looks like a business gas bill. Utilo compares home plans for now, so a result here could mislead.");
     setWarnings([...flags, ...w, ...(b.warnings ?? [])]);
     setFromPhoto(true);
-    setEntry(w.length ? "type" : "read");
+    // 7 Nov 2026: a clean read goes straight to the result, like electricity; the
+    // result's read strip shows what was read, with "Check" to change it.
+    setEntry(w.length ? "type" : "result");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -218,6 +238,15 @@ export default function GasCheck() {
   if (entry === "snap") {
     return (
       <>
+        {pagePrompt && (
+          <div className={snap.readCard}>
+            <div className={snap.readHead}>
+              <span className={snap.readTick} aria-hidden="true">✓</span>
+              {pagePrompt.bill.retailerName ? `Got the front of your ${pagePrompt.bill.retailerName} gas bill` : "Got the front of your gas bill"}
+            </div>
+            <BillPagePrompt bill={pagePrompt.bill} pages={pagePrompt.pages} onApply={fromBill} typeItIn={<>Or <button type="button" className={g.textBtn} onClick={() => { setPagePrompt(null); setFromEstimate(false); go("type"); }}>type your usage in</button>: the MJ and days are on the &ldquo;understand your bill&rdquo; page.</>} />
+          </div>
+        )}
         <BillPhotoUpload variant="hero" fuel="gas" onApply={fromBill} highlight={zoneSaves.length > 0 && zoneSaves[0].save >= 1 ? (
           <div className={g.savePill}>
             <span className={g.saveDot} aria-hidden="true" />
@@ -478,6 +507,17 @@ export default function GasCheck() {
         <button type="button" className={styles.backLink} onClick={() => go(fromPhoto ? "read" : fromEstimate ? "estimate" : "type")}>← Edit my details</button>
         {gasDataReady && <span className={g.meta}>{ranked.length} gas plans on {zone}, from the {GAS_RETAILER_COUNT} gas retailers we track · prices checked {fmtDate(GAS_PLAN_DATA_DATE)}</span>}
       </div>
+      {fromPhoto && haveBill && (
+        <div className={styles.readStrip}>
+          <span className={styles.readStripTick} aria-hidden="true">✓</span>
+          <span className={styles.readStripText}>
+            <b>Read from your {retailer ? `${retailer} ` : ""}gas bill</b>
+            <span>{Math.round(parseFloat(mjRaw) || 0).toLocaleString("en-AU")} MJ over {days} days · {money(bill ?? 0)}{planName ? ` · ${planName}` : ""}{zone ? ` · ${zone}` : ""}</span>
+            {estimatedRead && <span className={styles.readStripNote}>Your retailer estimated this read, so the next bill may correct the usage. The ranking holds; the dollars can move a little.</span>}
+          </span>
+          <button type="button" className={styles.readStripEdit} onClick={() => go("read")}>Check</button>
+        </div>
+      )}
 
       {!gasDataReady || !top || !bench ? (
         <div className={g.waiting}>
@@ -562,6 +602,7 @@ export default function GasCheck() {
                   perLabel="a year"
                   zone={zone}
                   currentRetailer={retailer || null}
+                  yourRates={haveBill ? yourRates : null}
                 />
                 <GasSeasonChart
                   heating={months.heating}

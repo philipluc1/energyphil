@@ -1,6 +1,7 @@
 /* Gas on My Dashboard: the electricity layout in warmer colours. */
 .wrap { display: flex; flex-direction: column; gap: 0; }
-.hero { --v-good: #13795b; --v-mild: #c2410c; --v-severe: #c0392b; --v-est: #b45309; --amount: #ffd166; --side-best: #ffb86b; }
+/* 7 Nov 2026: the gas card is orange whatever the verdict, so gas never looks like the electricity card. */
+.hero { --v-good: #c2410c; --v-mild: #b45309; --v-severe: #b91c1c; --v-est: #b45309; --amount: #ffd166; --amount-good: #ffe08a; --side-best: #ffb86b; --pill-good-bg: rgba(255, 255, 255, 0.92); --pill-good-fg: #9a3412; }
 .gasPill { display: inline-flex; align-items: center; gap: 6px; }
 .gasPill svg { color: #ffb86b; }
 .youBox { border-left-color: #c2410c; }
@@ -44,3 +45,10 @@
 .fuelText { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
 @media (max-width: 480px) { .fuelBtn, .fuelOn { padding: 10px 8px; font-size: 14px; gap: 8px; } .fuelSub { font-size: 11px; } }
 @media (max-width: 640px) { .viewToggle { width: 100%; display: grid; grid-template-columns: 1fr 1fr; } .vBtn, .vOn { justify-content: center; padding: 8px 6px; font-size: 12.5px; } }
+/* "Your bill" beside a plan's rates (7 Nov 2026). */
+.ratesCmp thead th { text-align: right; font-size: 12px; font-weight: 800; color: var(--grey); padding: 0 0 6px; display: table-cell; }
+.ratesCmp thead th:first-child { text-align: left; }
+.ratesCmp td { text-align: right; padding: 6px 0 6px 12px; white-space: nowrap; }
+.win { color: #15803d; font-weight: 800; }
+.win::before { content: "✓ "; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

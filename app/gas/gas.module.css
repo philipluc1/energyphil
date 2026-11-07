@@ -76,3 +76,4 @@
 @keyframes savePulse { 0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); } 100% { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); } }
 @media (max-width: 520px) { .savePill { font-size: 14px; padding: 10px 12px; } }
 @media (prefers-reduced-motion: reduce) { .savePill, .saveDot { animation: none; } }
+.textBtn { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: #0d9488; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
