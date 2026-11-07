@@ -1,0 +1,12 @@
+.band { display: grid; grid-template-columns: 150px 1fr; gap: 22px; align-items: center; margin: 22px 0 6px; padding: 18px 20px; border-radius: 20px; background: #1e2a4a; color: #fff; }
+.phone { width: 150px; }
+.phone > button { border: 2px solid rgba(255, 255, 255, 0.22); box-shadow: none; }
+.kicker { margin: 0 0 4px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #fbbf24; }
+.copy h2 { margin: 0; font: 900 clamp(20px, 2.4vw, 26px)/1.15 "Archivo", sans-serif; letter-spacing: -0.02em; color: #fff; }
+.copy p:not(.kicker) { margin: 8px 0 0; font-size: 14.5px; line-height: 1.5; color: rgba(255, 255, 255, 0.82); }
+.btn { margin-top: 14px; padding: 11px 18px; border: 0; border-radius: 12px; background: #fde047; color: #111827; font: 800 15px/1 inherit; font-family: inherit; cursor: pointer; }
+.btn:hover { filter: brightness(1.04); }
+@media (max-width: 600px) {
+  .band { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .phone { width: 180px; }
+}

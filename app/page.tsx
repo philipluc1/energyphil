@@ -13,6 +13,7 @@ import SiteHeader from "./components/SiteHeader";
 import StateWaitlist from "./components/StateWaitlist";
 import Icon from "./components/Icon";
 import CountUp from "./components/CountUp";
+import HomeReel from "./components/HomeReel";
 import InfoTip from "./components/InfoTip";
 import SourceBanner from "./components/SourceBanner";
 import PlanBand from "./components/PlanBand";
@@ -158,6 +159,8 @@ export default function Home() {
             </li>
           )}
         </ul>
+
+        <HomeReel />
 
         {/* 3. How it works, as pictures. */}
         <section className={h.section} data-motion="" data-stagger="h2, li">

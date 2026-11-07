@@ -1,0 +1,14 @@
+.band { display: grid; grid-template-columns: 220px 1fr; gap: 32px; align-items: center; margin-top: 28px; padding: 26px; border-radius: 24px; background: var(--surface, #fff); border: 1px solid var(--border, #e6e8ef); }
+.phone { width: 220px; max-width: 100%; }
+.kicker { margin: 0 0 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #e11d48; }
+.copy h2 { margin: 0; font: 900 clamp(24px, 3vw, 32px)/1.1 "Archivo", sans-serif; letter-spacing: -0.02em; color: var(--ink, #111827); }
+.copy ul { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+.copy li { display: flex; gap: 12px; align-items: flex-start; font-size: 15.5px; line-height: 1.45; color: #334155; }
+.copy li b { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #1e2a4a; color: #fff; font-size: 13px; display: grid; place-items: center; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin-top: 20px; }
+.primary { display: inline-flex; align-items: center; padding: 12px 20px; border-radius: 12px; background: var(--amber, #f5a623); color: #111827; font-weight: 800; text-decoration: none; }
+.secondary { font-weight: 800; color: var(--navy-accent-text, #1e2a4a); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 720px) {
+  .band { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px; justify-items: center; text-align: left; }
+  .phone { width: 200px; }
+}

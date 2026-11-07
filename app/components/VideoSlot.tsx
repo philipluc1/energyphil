@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { LearnVideo } from "@/lib/learnContent";
+import ReelPlayer from "./ReelPlayer";
 import styles from "./videoslot.module.css";
 
 /** A video card. With a YouTube id it loads the player only after a click
@@ -9,7 +10,22 @@ import styles from "./videoslot.module.css";
  * it shows a "coming soon" tile. */
 export default function VideoSlot({ video }: { video: LearnVideo }) {
   const [playing, setPlaying] = useState(false);
-  const ready = Boolean(video.youtubeId);
+  const [missing, setMissing] = useState(false);
+  const ready = Boolean(video.youtubeId) || (Boolean(video.reel) && !missing);
+  // 7 Nov 2026: a reel hosted on the site plays in a vertical frame.
+  if (video.reel && !missing) {
+    return (
+      <div className={styles.card}>
+        <div className={styles.reelFrame}>
+          <ReelPlayer reel={video.reel} fallback="none" onUnavailable={() => setMissing(true)} className={styles.reel} />
+        </div>
+        <div className={styles.body}>
+          <h3>{video.title}</h3>
+          <p>{video.blurb}</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={styles.card}>
       <div className={styles.frame}>

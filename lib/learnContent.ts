@@ -1,4 +1,5 @@
 // Content for the /learn page. Edit here, not in the page.
+import { REELS, type Reel } from "./reels";
 
 export interface LearnVideo {
   id: string;
@@ -7,10 +8,12 @@ export interface LearnVideo {
   length: string;
   /** Paste a YouTube video id (the part after v=) once the video is published. */
   youtubeId?: string;
+  /** A reel hosted on the site (public/video). Shown as "coming soon" until the file exists. */
+  reel?: Reel;
 }
 
 export const VIDEOS: LearnVideo[] = [
-  { id: "how", title: "How Utilo works in 90 seconds", blurb: "From a few taps about your home to your cheapest plan.", length: "1:30" },
+  ...REELS.map((r) => ({ id: r.id, title: r.title, blurb: r.blurb, length: r.length, reel: r })),
   { id: "bill", title: "Reading your electricity bill", blurb: "Where to find your network, usage and rates.", length: "3:00" },
   { id: "vdo", title: "The default offer, explained", blurb: "What the VDO is and why it changes every July.", length: "2:30" },
 ];

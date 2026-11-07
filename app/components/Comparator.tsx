@@ -97,6 +97,7 @@ import styles from "./Comparator.module.css";
 import { marketActivity } from "@/lib/marketActivity";
 import CountUp from "./CountUp";
 import LockedPreviews from "./LockedPreviews";
+import ResultReel from "./ResultReel";
 import SiteFooter from "./SiteFooter";
 
 const PLAN_COUNT = PLANS.length;
@@ -2520,7 +2521,10 @@ export default function Comparator() {
               )}
               {/* 7 Nov 2026: a blurred taste of the dashboard on free results. */}
               {free && top && (
-                <LockedPreviews network={distributor} monthNow={(bench / days) * 30.4} monthBest={(top.total / days) * 30.4} haveBill={haveBill} retailer={currentRetailer ?? null} onUnlock={joinScroll} />
+                <>
+                  <ResultReel onJoin={joinScroll} retailer={currentRetailer ?? null} />
+                  <LockedPreviews network={distributor} monthNow={(bench / days) * 30.4} monthBest={(top.total / days) * 30.4} haveBill={haveBill} retailer={currentRetailer ?? null} onUnlock={joinScroll} />
+                </>
               )}
               {locked && worthSwitching && !atPricing && (
                 <div className={styles.stickyBar}>
