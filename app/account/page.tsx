@@ -52,10 +52,11 @@ import SolarCard from "../components/SolarCard";
 import { FREE_SHOWS_NAMES, PRICE_CHANGE_CLAUSE } from "@/lib/dataPolicy";
 import BillPhotoUpload from "../components/BillPhotoUpload";
 import BillTracker from "../components/BillTracker";
+import BillPagePrompt from "../components/BillPagePrompt";
 import BillReview from "../components/BillReview";
 import BillInbox from "../components/BillInbox";
 import MoneyFoundCard from "../components/MoneyFoundCard";
-import { isSingleRate, normaliseRates, type CurrentRates, type ExtractedBill } from "@/lib/billExtraction";
+import { isSingleRate, normaliseRates, shouldAskForAnotherPage, type CurrentRates, type ExtractedBill } from "@/lib/billExtraction";
 import SwitchReminder from "../components/SwitchReminder";
 import ReviewCard from "../components/ReviewCard";
 import EmailResultsButton from "../components/EmailResultsButton";
@@ -168,7 +169,7 @@ function useNarrow(): boolean {
 }
 // Old links (#read-bill, #join) still land on the right tab.
 const TAB_FROM_HASH: Record<string, Tab> = {
-  compare: "compare", market: "market", rewards: "rewards", home: "home", savings: "savings", "read-bill": "savings", "bill-inbox": "savings", membership: "membership", join: "membership",
+  compare: "compare", market: "market", rewards: "rewards", home: "home", savings: "savings", "read-bill": "savings", "bill-inbox": "savings", membership: "membership", join: "membership", "gas-bill": "home",
 };
 
 function statusLabel(status: string): string {
@@ -198,10 +199,17 @@ export default function AccountPage() {
   // A bill just read, waiting for the member to check it before it's saved.
   const [pendingBill, setPendingBill] = useState<{ bill: ExtractedBill; pages: Blob[]; n: number } | null>(null);
   const [billSaving, setBillSaving] = useState(false);
+  const [gasPagePrompt, setGasPagePrompt] = useState<{ bill: ExtractedBill; pages: Blob[]; n: number } | null>(null);
   function onBillRead(bill: ExtractedBill, pages: Blob[]) {
     setBillMsg("");
-    // Gas-only bills go straight through; electricity is checked first.
+    // Gas-only bills go straight through once the usage is there; electricity is
+    // checked first. 7 Nov 2026: a gas front page (amount due, no MJ) asks for page 2.
     if (bill.fuel === "gas") {
+      if (shouldAskForAnotherPage(bill) && pages.length > 0) {
+        setGasPagePrompt({ bill, pages, n: (gasPagePrompt?.n ?? 0) + 1 });
+        return;
+      }
+      setGasPagePrompt(null);
       void handleBill(bill);
       return;
     }
@@ -515,7 +523,7 @@ export default function AccountPage() {
   // The bill's own period first (2 Nov 2026), so "You now" is the dollar figure on their bill. No bill: a month.
   const [period, setPeriod] = useState<Period>("bill");
   // Which fuel the dashboard shows. #gas in the address opens gas.
-  const [fuel, setFuel] = useState<"elec" | "gas">(() => (typeof window !== "undefined" && window.location.hash === "#gas" ? "gas" : "elec"));
+  const [fuel, setFuel] = useState<"elec" | "gas">(() => (typeof window !== "undefined" && /^#gas/.test(window.location.hash) ? "gas" : "elec"));
   const [showSwitchForm, setShowSwitchForm] = useState(false);
   // Deal end dates (discount / benefit period, fixed price), editable on the Savings tab.
   const [dealForm, setDealForm] = useState<{ discount: string; fixed: string } | null>(null);
@@ -558,8 +566,9 @@ export default function AccountPage() {
       const header = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
       // 5 Nov 2026: "Upload my gas bill" (#read-bill) goes straight to the upload box, not the top
       // of Savings; and the address drops back to #savings so the same button works a second time.
-      if (h === "read-bill" || h === "bill-inbox") {
-        try { window.history.replaceState(null, "", "#savings"); } catch { /* ignore */ }
+      if (h === "gas-bill") setFuel("gas");
+      if (h === "read-bill" || h === "bill-inbox" || h === "gas-bill") {
+        try { window.history.replaceState(null, "", h === "gas-bill" ? "#gas" : "#savings"); } catch { /* ignore */ }
         // Cards above it (bill chart, rewards) load a moment later and push it down, so keep
         // lining it up for about two seconds, or until the person scrolls themselves.
         let tries = 0;
@@ -833,9 +842,12 @@ export default function AccountPage() {
     if (body?.ok) {
       setBillMsg(
         body.fuel === "gas"
-          ? body.retailer ? `Best gas match: ${body.retailer} — ${body.plan}. Reloading…` : `${body.message ?? "Gas details saved."} Reloading…`
+          ? body.retailer ? `Best gas match: ${body.retailer} — ${body.plan}. Opening your gas bill…` : `${body.message ?? "Gas details saved."} Reloading…`
           : `Best match: ${body.retailer} — ${body.plan}${body.gas?.retailer ? `; gas: ${body.gas.retailer}` : ""}. Reloading your dashboard…`,
       );
+      // 7 Nov 2026: a gas bill lands on the gas Home tab, at "Your bill in plain English".
+      // (replaceState, not location.hash: a hashchange would be handled now, before the reload.)
+      if (body.fuel === "gas") { try { window.history.replaceState(null, "", "#gas-bill"); } catch { /* ignore */ } }
       setTimeout(() => window.location.reload(), 1500);
     } else {
       setBillMsg(body?.message || "We couldn't use that bill.");
@@ -1433,6 +1445,11 @@ export default function AccountPage() {
                               onCancel={() => { setPendingBill(null); setBillMsg(""); }}
                               saving={billSaving}
                             />
+                          ) : gasPagePrompt ? (
+                            <div key={gasPagePrompt.n}>
+                              <BillPagePrompt bill={gasPagePrompt.bill} pages={gasPagePrompt.pages} onApply={onBillRead} typeItIn={<>Or <button type="button" className={styles.linkBtn} onClick={() => { setGasPagePrompt(null); void handleBill(gasPagePrompt.bill); }}>save what we found</button> and add the usage from your next bill.</>} />
+                              <p className={styles.panelText}><button type="button" className={styles.linkBtn} onClick={() => setGasPagePrompt(null)}>Start again</button></p>
+                            </div>
                           ) : (
                             <BillPhotoUpload onApply={onBillRead} />
                           )}

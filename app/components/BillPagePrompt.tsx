@@ -42,7 +42,9 @@ export default function BillPagePrompt({
       </b>
       <p>
         We couldn&apos;t find {listWords(shown)}.
-        {canAdd ? ` On most bills ${shown.length > 1 ? "they're" : "it's"} on page 2, with the usage and charges. Add that page and we'll read them together.` : ""}
+        {canAdd ? (bill.fuel === "gas"
+          ? ` On gas bills ${shown.length > 1 ? "they're" : "it's"} on the "understand your bill" page (usually page 2), under the meter readings. Add that page and we'll read them together.`
+          : ` On most bills ${shown.length > 1 ? "they're" : "it's"} on page 2, with the usage and charges. Add that page and we'll read them together.`) : ""}
         {needed.length === 0 ? " We can still compare plans without it." : ""}
       </p>
       {canAdd && <BillPhotoUpload variant="addPage" priorPages={pages} onApply={onApply} />}

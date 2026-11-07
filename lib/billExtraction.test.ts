@@ -31,7 +31,10 @@ const tou = sanitizeExtractedBill({ is_electricity_bill: true, distributor: "Cit
 assert.equal(billGaps(tou).some((g) => g.key === "usage"), false);
 
 // Gas-only bills are handled elsewhere.
-assert.deepEqual(billGaps(sanitizeExtractedBill({ is_electricity_bill: false, fuel: "gas", warnings: [] })), []);
+// 7 Nov 2026: a gas front page (amount due, no MJ) asks for page 2; a full gas read doesn't.
+assert.deepEqual(billGaps(sanitizeExtractedBill({ is_electricity_bill: false, fuel: "gas", warnings: [] })).filter((g) => g.needed).map((g) => g.key), ["usage", "days"]);
+assert.ok(shouldAskForAnotherPage(sanitizeExtractedBill({ is_electricity_bill: false, fuel: "gas", gas_bill_total: 41.52, warnings: [] })));
+assert.ok(!shouldAskForAnotherPage(sanitizeExtractedBill({ is_electricity_bill: false, fuel: "gas", gas_bill_total: 41.52, gas_mj: 857, gas_billing_days: 28, gas_distributor: "AusNet Services", gas_supply_cents_per_day: 117.7, gas_usage_cents_per_mj: 3.98, warnings: [] })));
 
 assert.equal(listWords(["a"]), "a");
 assert.equal(listWords(["a", "b", "c"]), "a, b and c");

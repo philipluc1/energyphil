@@ -479,7 +479,7 @@ function GasBillPlain({ uploadHref, total, mj, days, zone, retailer, planName, a
   const cents = (d: number) => `${(d * 100).toLocaleString("en-AU", { maximumFractionDigits: 1 })}c`;
   const n = (x: number) => Math.round(x).toLocaleString("en-AU");
   return (
-    <section className={bx.box} aria-labelledby="gas-plain-title">
+    <section id="gas-bill" className={bx.box} aria-labelledby="gas-plain-title">
       <div className={bx.headRow}>
         <div className={bx.head}>
           <h3 id="gas-plain-title" className={bx.title}>Your gas bill in plain English</h3>

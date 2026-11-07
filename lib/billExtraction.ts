@@ -272,7 +272,17 @@ export function billHasUsage(b: ExtractedBill): boolean {
 }
 
 export function billGaps(b: ExtractedBill): BillGap[] {
-  if (b.fuel === "gas") return [];
+  // 7 Nov 2026: gas bills too. The front page of a gas bill has the amount
+  // due; the MJ, the days and the rates sit on the "understand your bill" page.
+  if (b.fuel === "gas") {
+    const g: BillGap[] = [];
+    if (b.gasMj === null) g.push({ key: "usage", label: "how much gas you used (MJ)", needed: true });
+    if (b.gasBillingDays === null && b.billingDays === null) g.push({ key: "days", label: "the billing period", needed: true });
+    if (!b.gasDistributor && !b.postcode) g.push({ key: "network", label: "your gas network or postcode", needed: false });
+    if (b.gasBillTotal === null && b.currentBill === null) g.push({ key: "total", label: "the gas charges", needed: false });
+    if (b.gasSupplyCentsPerDay === null && b.gasUsageCentsPerMj === null) g.push({ key: "rates", label: "the rates you pay", needed: false });
+    return g;
+  }
   const gaps: BillGap[] = [];
   if (!billHasUsage(b)) gaps.push({ key: "usage", label: "how much electricity you used", needed: true });
   if (b.billingDays === null) gaps.push({ key: "days", label: "the billing period", needed: true });
