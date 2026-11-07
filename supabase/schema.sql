@@ -168,6 +168,8 @@ alter table public.subscribers add column if not exists demand_kw numeric;
 alter table public.subscribers add column if not exists gas_current_retailer text;
 -- The gas rates off the bill, {supply: c/day, usage: c/MJ} (7 Nov 2026).
 alter table public.subscribers add column if not exists gas_rates jsonb;
+-- When the one-off "first check" email went, after a member's first bill (8 Nov 2026).
+alter table public.subscribers add column if not exists first_check_emailed_at timestamptz;
 
 -- Household profile (people, dwelling, heating, EV, solar size, ...) captured
 -- on /check, so usage can be estimated for their shape rather than a general average.

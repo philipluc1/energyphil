@@ -176,6 +176,8 @@ async function handle(d: Received) {
       await db.from("subscribers").update({ money_found: next }).eq("id", sub.id);
     }
   }
+  // 8 Nov 2026: a member's very first bill gets the "first check" email from applyBill instead.
+  if (res.firstCheck) return;
   const worthOf = fm.perYear > 0 ? ` worth about ${money(fm.perYear)} a year` : fm.oneOff > 0 ? ` worth ${money(fm.oneOff)} back` : "";
   const alsoFound = fm.findings.length
     ? `<p style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;"><b>We also found ${fm.findings.length === 1 ? "one thing" : `${fm.findings.length} things`} on this bill${worthOf}:</b><br>${fm.findings.map((f) => `• ${esc(f.ask)}`).join("<br>")}<br>Your dashboard has exactly what to say.</p>`

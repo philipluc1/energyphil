@@ -7,6 +7,15 @@ import { billRowFrom } from "./billRows";
 import { DISTRIBUTORS, bestPlan, type Distributor, type UsageInput } from "./plans";
 import { vdoBillForUsage } from "./profileUsage";
 import { GAS_ZONES, bestGasPlan, gasBenchmark, type GasZone } from "./gasPlans";
+import fs from "node:fs";
+import path from "node:path";
+import { sendEmail } from "./email";
+import { firstNameOf } from "./emailParts";
+import { firstCheckEmail, type FirstCheckFuel } from "./emailTemplates";
+import { inboxAddress } from "./billInbox";
+import { REELS } from "./reels";
+import { SITE_URL } from "./site";
+import { WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 
 // After a member's bill has been read, store its figures on their membership
 // (so the monthly checks use real numbers) and record this month's check.
@@ -39,7 +48,7 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
   // Gas, when the bill has it (gas-only or dual). Saved on the membership and
   // priced against the gas plans we hold. Victoria has no gas default offer,
   // so the reference is the gas charges on the bill itself.
-  async function applyGas(): Promise<{ retailer: string; plan: string; saving: number } | null> {
+  async function applyGas(): Promise<{ retailer: string; plan: string; saving: number; nowYear: number; bestYear: number; currentRetailer: string | null } | null> {
     const zone = GAS_ZONES.includes(b?.gasDistributor) ? (b.gasDistributor as GasZone) : null;
     const gDays = num(b?.gasBillingDays) ?? num(b?.billingDays);
     const mj = num(b?.gasMj);
@@ -86,7 +95,7 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
       if (gErr) console.error("applyBill: gas update failed", gErr.message);
     }
     if (!best || !bench) return null;
-    return { retailer: best.plan[0], plan: best.plan[2], saving: bench.value - best.total };
+    return { retailer: best.plan[0], plan: best.plan[2], saving: bench.value - best.total, nowYear: (bench.value * 365) / gDays, bestYear: (best.total * 365) / gDays, currentRetailer: str(b?.retailerName, 80) };
   }
 
   if (b?.fuel === "gas") {
@@ -100,8 +109,9 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
       });
     }
     await clearInboxPending(memberEmail);
+    const firstCheck = await maybeSendFirstCheck(memberEmail, { elec: null, gas: { retailer: gas.retailer, planName: gas.plan, nowYear: gas.nowYear, bestYear: gas.bestYear, currentRetailer: gas.currentRetailer } });
 
-    return reply({ ok: true, fuel: "gas", retailer: gas.retailer, plan: gas.plan, saving: gas.saving, usedCurrentBill: num(b?.gasBillTotal) !== null });
+    return reply({ ok: true, fuel: "gas", retailer: gas.retailer, plan: gas.plan, saving: gas.saving, usedCurrentBill: num(b?.gasBillTotal) !== null, firstCheck });
   }
   const gasResult = b?.fuel === "dual" ? await applyGas() : null;
 
@@ -209,11 +219,16 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
   );
 
   await clearInboxPending(memberEmail);
+  const firstCheck = await maybeSendFirstCheck(memberEmail, {
+    elec: { retailer: top.plan[0], planName: top.plan[2], nowYear: (reference * 365) / days, bestYear: (top.total * 365) / days, currentRetailer: str(b?.retailerName, 80) },
+    gas: gasResult ? { retailer: gasResult.retailer, planName: gasResult.plan, nowYear: gasResult.nowYear, bestYear: gasResult.bestYear, currentRetailer: gasResult.currentRetailer } : null,
+  });
 
   return reply({
     ok: true,
     fuel: gasResult ? "dual" : "electricity",
     gas: gasResult,
+    firstCheck,
     retailer: top.plan[0],
     plan: top.plan[2],
     bestTotal: top.total,
@@ -241,4 +256,42 @@ function cleanRates(v: unknown): Record<string, number | null> | null {
 /** A YYYY-MM-DD date from the client, or null. */
 function isoDate(v: unknown): string | null {
   return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+
+/**
+ * The one-off "first check" email (8 Nov 2026): the first time a member's
+ * bill is read, their result plus what Plus does from here and how to keep
+ * the bills coming. Sent once per membership (`first_check_emailed_at`);
+ * returns true when it went, so the forwarding reply can stand down.
+ */
+async function maybeSendFirstCheck(memberEmail: string, r: { elec: FirstCheckFuel | null; gas: FirstCheckFuel | null }): Promise<boolean> {
+  if (!supabaseAdmin || (!r.elec && !r.gas)) return false;
+  const { data: sub, error } = await supabaseAdmin
+    .from("subscribers")
+    .select("id, customer_name, first_check_emailed_at, alert_min_saving, bill_inbox, unsubscribed")
+    .eq("email", memberEmail).eq("status", "active")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) {
+    if (/first_check_emailed_at/.test(error.message)) console.error("applyBill: subscribers.first_check_emailed_at is missing, no first-check email. Run supabase/schema.sql.");
+    else console.error("applyBill: first check lookup failed", error.message);
+    return false;
+  }
+  if (!sub || sub.first_check_emailed_at || sub.unsubscribed) return false;
+  // Claim it first, so two reads in quick succession can't both send.
+  const { data: claimed } = await supabaseAdmin.from("subscribers").update({ first_check_emailed_at: new Date().toISOString() }).eq("id", sub.id).is("first_check_emailed_at", null).select("id");
+  if (!claimed || !claimed.length) return false;
+  const reelPath = path.join(process.cwd(), "public", REELS[0].src);
+  const e = firstCheckEmail({
+    origin: SITE_URL,
+    name: firstNameOf(sub.customer_name),
+    elec: r.elec,
+    gas: r.gas,
+    alertMin: typeof sub.alert_min_saving === "number" && sub.alert_min_saving > 0 ? sub.alert_min_saving : WORTH_SWITCHING_PER_YEAR,
+    inboxAddress: sub.bill_inbox ? inboxAddress(sub.bill_inbox) : null,
+    reelUrl: fs.existsSync(reelPath) ? `${SITE_URL}/learn#watch` : null,
+    unsubscribeUrl: `${SITE_URL}/api/unsubscribe?type=subscriber&id=${sub.id}`,
+  });
+  const sent = await sendEmail({ to: memberEmail, subject: e.subject, title: e.title, html: e.html }).catch((err) => { console.error("applyBill: first check email failed", err); return false; });
+  if (!sent) console.warn("applyBill: first check email not sent for", sub.id);
+  return true;
 }

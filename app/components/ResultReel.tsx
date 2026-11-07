@@ -1,15 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import ReelPlayer from "./ReelPlayer";
 import { REELS } from "@/lib/reels";
 import styles from "./resultreel.module.css";
 
-/** Free result (7 Nov 2026): the "we check every morning" reel beside the Plus pitch. */
+/** Free result (7 Nov 2026): the "we check every morning" reel beside the Plus pitch; text alone until the file is there. */
 export default function ResultReel({ onJoin, retailer }: { onJoin: () => void; retailer?: string | null }) {
   const reel = REELS.find((r) => r.id === "daily") ?? REELS[0];
+  const [noReel, setNoReel] = useState(false);
   return (
-    <section className={styles.band} aria-labelledby="result-reel-title">
-      <div className={styles.phone}><ReelPlayer reel={reel} /></div>
+    <section className={`${styles.band} ${noReel ? styles.textOnly : ""}`} aria-labelledby="result-reel-title">
+      {!noReel && <div className={styles.phone}><ReelPlayer reel={reel} fallback="none" onUnavailable={() => setNoReel(true)} /></div>}
       <div className={styles.copy}>
         <p className={styles.kicker}>We check this every day</p>
         <h2 id="result-reel-title">Today&apos;s cheapest won&apos;t be next week&apos;s.</h2>

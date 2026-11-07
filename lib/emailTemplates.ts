@@ -14,7 +14,7 @@ import { namesList } from "./stickyPick";
 import { sameRetailer } from "./sameRetailer";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, alertPreview, billVsBest, joinCard, pains, plusMorning, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
+import { C, alertPreview, billVsBest, iconRow, iconRows, joinCard, pains, plusMorning, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -843,4 +843,83 @@ export function switchReminderEmail(i: {
     title: i.same ? "Today's the day: change your plan." : "Today's the day to switch.",
     html,
   };
+}
+
+/* ---------- First check (8 Nov 2026) ----------
+   Sent once, the first time a member's bill is read (uploaded or forwarded):
+   their result, what Plus does from here, and "keep the bills coming". After
+   this, the only emails are the morning alert when a plan beats theirs by their
+   alert amount, the discount-ending warning and the monthly summary. */
+export interface FirstCheckFuel {
+  retailer: string;          // the cheapest plan's retailer
+  planName: string;
+  nowYear: number;           // their bill, a year
+  bestYear: number;          // the cheapest plan, a year
+  currentRetailer?: string | null;
+}
+export function firstCheckEmail(i: {
+  origin: string;
+  name?: string | null;
+  elec: FirstCheckFuel | null;
+  gas: FirstCheckFuel | null;
+  alertMin: number;          // $ a year before we email
+  inboxAddress: string | null;
+  reelUrl: string | null;    // the "how it works" reel on the site, when the file is there
+  unsubscribeUrl: string;
+}): Email {
+  const saving = (f: FirstCheckFuel | null) => (f ? Math.max(0, f.nowYear - f.bestYear) : 0);
+  const sE = saving(i.elec), sG = saving(i.gas);
+  const total = sE + sG;
+  const anyWorth = sE >= WORTH_SWITCHING_PER_YEAR || sG >= WORTH_SWITCHING_PER_YEAR;
+  const subject = anyWorth ? `Your first check: about ${money(total)} a year on the table` : "Your first check: you're on a good deal";
+  const title = anyWorth ? "First check done. Here's where you stand." : "First check done. You're on a good deal.";
+  const dash = `${i.origin}/account`;
+
+  const fuelBlock = (f: FirstCheckFuel | null, label: string, icon: string, first: boolean) => {
+    if (!f) return "";
+    const sv = saving(f);
+    const worth = sv >= WORTH_SWITCHING_PER_YEAR;
+    const same = worth && sameRetailer(f.currentRetailer ?? null, f.retailer);
+    return fuelRow({
+      icon, fuel: label, first,
+      status: worth ? `${money(sv)} a year less` : "Stay put",
+      statusColor: worth ? C.green : C.teal,
+      line: worth
+        ? `<strong>${esc(f.retailer)}</strong>&rsquo;s ${esc(f.planName)} comes out about ${money(f.bestYear)} a year on your usage, against ${money(f.nowYear)} on your bill.${same ? " Same retailer: ask them to move you, no switch needed." : ""}`
+        : `Your plan is about ${money(f.nowYear)} a year on your usage. The cheapest we found (${esc(f.retailer)}, ${money(f.bestYear)}) doesn&rsquo;t beat it by ${money(WORTH_SWITCHING_PER_YEAR)}, so there&rsquo;s nothing to do.`,
+      link: worth ? { label: "See it on my dashboard", url: dash } : null,
+    });
+  };
+  const mainFuel = i.elec ?? i.gas;
+  const bars = mainFuel ? billVsBest({ origin: i.origin, nowLabel: "Your bill", now: mainFuel.nowYear, best: mainFuel.bestYear, money }) : "";
+
+  const html = `
+    ${greet(i.name)}
+    <p>We&rsquo;ve read your bill and priced every plan on your network against it. ${anyWorth ? `About <strong>${money(total)} a year</strong> is on the table.` : "Nothing beats your plan by enough to bother, which is good news."} Here&rsquo;s your result, and what happens from here.</p>
+    ${bars}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border:1px solid #e3e7f0;border-radius:16px;border-collapse:separate;padding:0 18px;">
+      ${fuelBlock(i.elec, "Electricity", "&#9889;", true)}
+      ${fuelBlock(i.gas, "Gas", "&#128293;", !i.elec)}
+    </table>
+    ${button("Open my dashboard", dash)}
+
+    ${heading("What happens now")}
+    ${iconRows([
+      iconRow("", "Every morning", "we re-price every plan against this bill. New offers, price rises, discounts ending: all of it."),
+      iconRow("", `Only when it matters`, `you get one email, the day a plan beats yours by ${money(i.alertMin)} a year or more. Otherwise, silence: no news is good news. Change the amount on your dashboard.`),
+      iconRow("", "On the 1st of each month", "a short summary: your bill, what you&rsquo;ve saved, what moved in the market."),
+      iconRow("", "A month before a discount ends", "a heads-up, if you&rsquo;ve told us the date."),
+    ])}
+    ${plusMorning(i.origin, dash)}
+    ${i.reelUrl ? `<p style="margin:0 0 20px;"><a href="${i.reelUrl}" style="font:700 15px ${F};color:${C.teal};text-decoration:underline;">Watch how it works (16 seconds) &rarr;</a></p>` : ""}
+
+    ${heading("Keep the bills coming")}
+    <p>Each new bill updates your numbers and re-checks every plan the same day. ${i.inboxAddress
+      ? `The easy way: forward every bill to your private address, <strong>${esc(i.inboxAddress)}</strong>, or set your email to do it for you. Two minutes, once.`
+      : "The easy way: set up bill forwarding on your dashboard (two minutes, once) and every bill your retailer sends comes straight to us."}</p>
+    ${button(i.inboxAddress ? "Set up automatic forwarding" : "Set up bill forwarding", `${i.origin}/account#bill-inbox`, "4px 0 20px")}
+    ${note(`We never call you and we never switch you. Switching is always your call, on the retailer&rsquo;s own site. ${esc(PRICE_CHANGE_CLAUSE)}`)}
+    ${signOff}
+    ${unsubscribe(i.unsubscribeUrl, "You're getting this because your first bill was read as a Utilo Plus member. Your daily checks keep running while you're a member; this link stops the extra emails.")}`;
+  return { subject, title, html };
 }

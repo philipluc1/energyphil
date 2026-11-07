@@ -63,10 +63,11 @@ export default function DashHeader({
                   <b>{name || "Your account"}</b>
                   <span>{email}</span>
                 </div>
-                {onHome && <button type="button" role="menuitem" onClick={() => { setOpen(false); onHome(); }}><Icon name="home" size={16} /> My home<small>Your power and gas bills in plain English</small></button>}
-                <button type="button" role="menuitem" onClick={() => { setOpen(false); onPlan(); }}><Icon name="receipt" size={16} /> My plan<small>Utilo Plus subscription and billing</small></button>
+                {onHome && <button type="button" role="menuitem" onClick={() => { setOpen(false); onHome(); }}><Icon name="home" size={16} /> My home</button>}
+                <button type="button" role="menuitem" onClick={() => { setOpen(false); onPlan(); }}><Icon name="receipt" size={16} /> My plan</button>
+                <Link role="menuitem" href="/market" target="_blank"><Icon name="chart" size={16} /> Market live</Link>
+                <Link role="menuitem" href="/learn" target="_blank"><Icon name="bulb" size={16} /> Learn</Link>
                 <Link role="menuitem" href="/faq" target="_blank"><Icon name="search" size={16} /> Help and FAQ</Link>
-                <Link role="menuitem" href="/learn" target="_blank"><Icon name="bulb" size={16} /> How prices work</Link>
                 <div className={s.small}>
                   <Link href="/privacy" target="_blank">Privacy</Link> · <Link href="/terms" target="_blank">Terms</Link> · <Link href="/" target="_blank">utilo.com.au</Link>
                 </div>
