@@ -90,51 +90,6 @@
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-United Energy",
    "vdo": 1531,
    "plans": 134
-  },
-  {
-   "date": "2026-11-06",
-   "network": "AusNet Services",
-   "cheapest": 1359,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-AusNet Services (electricity)",
-   "vdo": 1748,
-   "plans": 138
-  },
-  {
-   "date": "2026-11-06",
-   "network": "Citipower",
-   "cheapest": 1111,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Citipower",
-   "vdo": 1482,
-   "plans": 138
-  },
-  {
-   "date": "2026-11-06",
-   "network": "Jemena",
-   "cheapest": 1181,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Jemena",
-   "vdo": 1564,
-   "plans": 136
-  },
-  {
-   "date": "2026-11-06",
-   "network": "Powercor",
-   "cheapest": 1233,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Powercor",
-   "vdo": 1632,
-   "plans": 136
-  },
-  {
-   "date": "2026-11-06",
-   "network": "United Energy",
-   "cheapest": 1122,
-   "retailer": "GloBird Energy",
-   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-United Energy",
-   "vdo": 1531,
-   "plans": 136
   }
  ],
  "gasAbout": "Cheapest gas plan for a gas-heated home (45 GJ a year) on each gas network, and the middle plan of the market for the same use, $ a year incl. GST. Victoria has no default offer for gas.",
@@ -186,33 +141,6 @@
   },
   {
    "date": "2026-11-05",
-   "zone": "Multinet",
-   "cheapest": 1336,
-   "retailer": "Alinta Energy",
-   "plan": "HomeDeal Connect Gas - Multinet 1",
-   "typical": 2052,
-   "plans": 152
-  },
-  {
-   "date": "2026-11-06",
-   "zone": "AusNet Services",
-   "cheapest": 1439,
-   "retailer": "Alinta Energy",
-   "plan": "HomeDeal Connect Gas - Ausnet West",
-   "typical": 2046,
-   "plans": 175
-  },
-  {
-   "date": "2026-11-06",
-   "zone": "Australian Gas Networks",
-   "cheapest": 1364,
-   "retailer": "Alinta Energy",
-   "plan": "HomeDeal Connect Gas - AGN North",
-   "typical": 2065,
-   "plans": 263
-  },
-  {
-   "date": "2026-11-06",
    "zone": "Multinet",
    "cheapest": 1336,
    "retailer": "Alinta Energy",

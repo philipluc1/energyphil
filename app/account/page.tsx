@@ -189,6 +189,7 @@ export default function AccountPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [linkSent, setLinkSent] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [notMember, setNotMember] = useState(false);
   const [sending, setSending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
@@ -741,12 +742,21 @@ export default function AccountPage() {
     if (!supabase) return;
     setSending(true);
     setLoginError("");
+    setNotMember(false);
     // Our own branded sign-in email first; Supabase's generic one only if that's not set up.
     const ours = await fetch("/api/login-link", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: loginEmail }) }).catch(() => null);
     if (ours && ours.status === 400) {
       setSending(false);
       setLoginError("Please check the email address and try again.");
       return;
+    }
+    if (ours && ours.ok) {
+      const body = await ours.json().catch(() => null);
+      if (body && body.member === false) {
+        setSending(false);
+        setNotMember(true);
+        return;
+      }
     }
     if (!ours || !ours.ok) {
       const { error } = await supabase.auth.signInWithOtp({
@@ -1046,6 +1056,13 @@ export default function AccountPage() {
                 </form>
               )}
               {loginError && <p className={styles.error}>{loginError}</p>}
+              {notMember && !linkSent && (
+                <div className={styles.notMember}>
+                  <strong>No membership under {loginEmail}.</strong>
+                  <p>Check the spelling, or try the email you paid with. Not a member yet? <Link href="/pricing">See Utilo Plus</Link>, or <Link href="/check">run a free check</Link>.</p>
+                  <p className={styles.notMemberFine}>Nothing has been sent to this address.</p>
+                </div>
+              )}
             </>
           )}
 

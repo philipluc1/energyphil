@@ -17,18 +17,16 @@ import SiteFooter from "../components/SiteFooter";
 export const metadata = pageMeta({ title: `Utilo Plus: ${plusValue().monthly} a month or ${plusValue().annual} a year`, description: "The bill check is free. Utilo Plus re-prices every plan against your bill each morning and emails you only when switching is worth it.", path: "/pricing" });
 
 // Free check vs Plus, one line each. Detail lives in the (i) pop-ups.
-// "On your own": what it takes without Utilo (the free government and
-// retailer sites, by hand). Short words only: they sit in a narrow column on phones.
-const ROWS: { label: string; short: string; own: false | string; free: boolean | string; plus: boolean | string; tip?: string }[] = [
-  { label: "Your saving, from a photo of your bill", short: "Saving from a bill photo", own: "Type it in", free: "1 a quarter", plus: "Unlimited", tip: "Your first photo is free, no sign-up. Then, with your email, one free electricity and one free gas photo every 3 months. Typing the numbers in is always free." },
-  { label: "Every plan by name, with rates", short: "Every plan by name", own: "Search sites", free: true, plus: true },
-  { label: "Your result by email", short: "Result by email", own: false, free: true, plus: true },
-  { label: "Every plan re-checked every morning", short: "Re-checked every morning", own: "By hand", free: false, plus: true, tip: "Each day's new and updated offers, priced against the usage and rates on your bill. You don't lift a finger." },
-  { label: `An email when switching saves $${WORTH_SWITCHING_PER_YEAR}+`, short: `Email when you can save $${WORTH_SWITCHING_PER_YEAR}+`, own: false, free: false, plus: true, tip: "Silence otherwise. You can set your own amount on your dashboard." },
-  { label: "A month's warning before a discount ends", short: "Warning before a discount ends", own: "Diary it", free: false, plus: true, tip: "Most discounts end after a year, and the price usually jumps. We count down and warn you while there's time to move." },
-  { label: "A monthly summary of your bill and the market", short: "Monthly summary email", own: false, free: false, plus: true },
-  { label: "Dashboard: your year ahead, bill history, savings tally", short: "Dashboard and bill history", own: false, free: false, plus: true },
-  { label: "Gas watched too, same membership", short: "Gas watched too", own: "Separately", free: false, plus: true, tip: "The free gas check works for anyone. Plus re-checks your gas bill every morning as well." },
+// "On your own": the free government and retailer sites, by hand. Ticks and
+// dashes only (7 Nov 2026): the words made the column busy on phones.
+const ROWS: { label: string; short: string; own: boolean | string; free: boolean | string; plus: boolean | string; tip?: string }[] = [
+  { label: "Instant email results", short: "Instant email results", own: false, free: true, plus: true, tip: "Snap your bill, get your result on the spot and a copy by email. Your first photo is free, then one free electricity and one free gas photo every 3 months. Plus: unlimited." },
+  { label: "Re-checked every morning", short: "Re-checked every morning", own: true, free: false, plus: true, tip: "Each day's new and updated offers, priced against the usage and rates on your bill. You don't lift a finger." },
+  { label: `Email when you can save $${WORTH_SWITCHING_PER_YEAR}+`, short: `Email when you can save $${WORTH_SWITCHING_PER_YEAR}+`, own: false, free: false, plus: true, tip: "Silence otherwise. You can set your own amount on your dashboard." },
+  { label: "Live retailer changes", short: "Live retailer changes", own: true, free: false, plus: true, tip: "Every new offer, price change and discount ending, as it happens, and a month's warning before your own discount ends." },
+  { label: "Billing and analytics", short: "Billing and analytics", own: false, free: false, plus: true, tip: "Your bill in plain English, bill history, your year ahead, usage through the day and solar." },
+  { label: "Monthly savings", short: "Monthly savings", own: false, free: false, plus: true, tip: "A monthly summary of your bill, what you've saved and what moved in the market." },
+  { label: "Power and gas", short: "Power and gas", own: true, free: true, plus: true, tip: "The free check works for either. Plus watches both on the one membership." },
 ];
 
 function Mark({ v }: { v: boolean | string }) {

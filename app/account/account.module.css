@@ -588,3 +588,10 @@ details[open] > .panelSummary::after { content: " ▴"; }
 
 /* 5 Nov 2026 UI review: "Go to …", "I've switched" and "Remind me" share one shape, as on the Compare tab. */
 .stateActions > a, .stateActions > button { border-radius: 999px; }
+
+/* 7 Nov 2026: member login with an email we don't know. */
+.notMember { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: #fff7ed; border: 1px solid #fed7aa; font-size: 14.5px; line-height: 1.5; }
+.notMember strong { display: block; color: #9a3412; margin-bottom: 4px; overflow-wrap: anywhere; }
+.notMember p { margin: 0; color: #334155; }
+.notMember a { color: #0f766e; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.notMemberFine { margin-top: 6px !important; font-size: 12.5px; color: #64748b !important; }
