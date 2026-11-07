@@ -18,12 +18,15 @@ export default function DashHeader({
   isMember,
   onPlan,
   onLogout,
+  onHome,
 }: {
   email: string;
   name: string;
   isMember: boolean;
   /** Open the plan-and-billing tab. */
   onPlan: () => void;
+  /** Opens the Home tab: the bills in plain English (8 Nov 2026). */
+  onHome?: () => void;
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -60,7 +63,8 @@ export default function DashHeader({
                   <b>{name || "Your account"}</b>
                   <span>{email}</span>
                 </div>
-                <button type="button" role="menuitem" onClick={() => { setOpen(false); onPlan(); }}><Icon name="receipt" size={16} /> Plan and billing</button>
+                {onHome && <button type="button" role="menuitem" onClick={() => { setOpen(false); onHome(); }}><Icon name="home" size={16} /> My home<small>Your power and gas bills in plain English</small></button>}
+                <button type="button" role="menuitem" onClick={() => { setOpen(false); onPlan(); }}><Icon name="receipt" size={16} /> My plan<small>Utilo Plus subscription and billing</small></button>
                 <Link role="menuitem" href="/faq" target="_blank"><Icon name="search" size={16} /> Help and FAQ</Link>
                 <Link role="menuitem" href="/learn" target="_blank"><Icon name="bulb" size={16} /> How prices work</Link>
                 <div className={s.small}>

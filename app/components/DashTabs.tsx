@@ -23,11 +23,14 @@ export default function DashTabs<T extends string>({
   active,
   onChange,
   children,
+  below,
 }: {
   tabs: TabDef<T>[];
   active: T;
   onChange: (id: T) => void;
   children: ReactNode;
+  /** Rendered between the tab bar and the panel, outside the slide (8 Nov 2026: the fuel switch). */
+  below?: ReactNode;
 }) {
   const index = Math.max(0, tabs.findIndex((t) => t.id === active));
   // Which way to slide the new panel in (React's "adjust state while
@@ -124,6 +127,7 @@ export default function DashTabs<T extends string>({
           {tabs.map((t, i) => <span key={t.id} className={i === index ? styles.pageOn : styles.page} />)}
         </div>
       </div>
+      {below}
       <div
         key={active}
         id={`panel-${active}`}

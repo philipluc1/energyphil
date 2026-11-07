@@ -32,7 +32,7 @@
 @media (prefers-reduced-motion: reduce) { .empty { animation: none; } }
 
 /* The fuel switch above the dashboard: two big, obvious options. */
-.fuelSwitch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; margin: 0 0 16px; border-radius: 18px; background: var(--soft); border: 1px solid var(--border); position: relative; }
+.fuelSwitch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; margin: 14px 0 16px; border-radius: 18px; background: var(--soft); border: 1px solid var(--border); position: relative; }
 .fuelBtn, .fuelOn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 14px; border-radius: 13px; border: 0; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; background: transparent; color: var(--grey); transition: color 0.2s, background 0.25s, box-shadow 0.25s; }
 .fuelBtn:hover { color: var(--ink); background: color-mix(in srgb, var(--surface) 60%, transparent); }
 .fuelOn { background: var(--surface); color: var(--ink); box-shadow: 0 6px 18px -10px rgba(20, 24, 60, 0.45); }

@@ -2,6 +2,7 @@ import type { CurrentRates } from "@/lib/billExtraction";
 import { PLANS } from "@/lib/plans";
 import { AVERAGE_ANNUAL_KWH } from "@/lib/profileUsage";
 import Icon from "./Icon";
+import BillsByMonth, { BillPeriod } from "./BillsByMonth";
 import s from "./billexplainer.module.css";
 
 const money = (n: number) => (Math.abs(n) < 1 ? `${Math.round(Math.abs(n) * 100)}c` : `$${Math.abs(n).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
@@ -37,7 +38,7 @@ function bestFit(distributor: string): number | null {
  * be connected, what your solar earned, and where the money went. Built from
  * the numbers read off the bill (or typed), so it changes as they're fixed.
  */
-export default function BillExplainer({ f, uploadHref }: { f: BillFacts; uploadHref?: string }) {
+export default function BillExplainer({ f, uploadHref, member = false }: { f: BillFacts; uploadHref?: string; member?: boolean }) {
   const r = f.rates;
   const general = f.anytime + f.peak + f.shoulder + f.offpeak;
   const used = general + f.cl;
@@ -87,6 +88,7 @@ export default function BillExplainer({ f, uploadHref }: { f: BillFacts; uploadH
           <p className={s.sub}>
             {[f.retailer, f.planName].filter(Boolean).join(" · ")}
             {f.retailer || f.planName ? " · " : ""}
+            {member && <BillPeriod fuel="electricity" />}
             {f.days} days
           </p>
         </div>
@@ -178,6 +180,7 @@ export default function BillExplainer({ f, uploadHref }: { f: BillFacts; uploadH
           {perMonth !== null && <span>About <b>{money(perMonth)} a month</b></span>}
         </p>
       )}
+      {member && <BillsByMonth fuel="electricity" />}
     </section>
   );
 }

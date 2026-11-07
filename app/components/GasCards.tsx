@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import Icon from "./Icon";
+import BillsByMonth, { BillPeriod } from "./BillsByMonth";
 import RetailerLogo from "./RetailerLogo";
 import DayChanges from "./DayChanges";
 import DashOverlay from "./DashOverlay";
@@ -483,7 +484,7 @@ function GasBillPlain({ uploadHref, total, mj, days, zone, retailer, planName, a
       <div className={bx.headRow}>
         <div className={bx.head}>
           <h3 id="gas-plain-title" className={bx.title}>Your gas bill in plain English</h3>
-          <p className={bx.sub}>{[retailer, planName].filter(Boolean).join(" · ")}{retailer || planName ? " · " : ""}{days} days</p>
+          <p className={bx.sub}>{[retailer, planName].filter(Boolean).join(" · ")}{retailer || planName ? " · " : ""}<BillPeriod fuel="gas" />{days} days</p>
         </div>
         <a className={bx.upload} href={uploadHref}><Icon name="camera" size={15} /> Upload a new bill</a>
       </div>
@@ -547,6 +548,7 @@ function GasBillPlain({ uploadHref, total, mj, days, zone, retailer, planName, a
         <span>This bill: <b>{c$(total)}</b></span>
         <span>About <b>{c$(perMonth)} a month</b> at this rate{yearNow ? <>; about <b>{whole(yearNow)} over a year</b>, with winter</> : null}</span>
       </p>
+      <BillsByMonth fuel="gas" />
     </section>
   );
 }

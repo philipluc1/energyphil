@@ -1,0 +1,13 @@
+.wrap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border, #e6e8ef); }
+.head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; font-size: 13.5px; }
+.head b { color: var(--ink, #111827); }
+.head span { color: var(--grey, #5f6b82); font-size: 12.5px; }
+.bars { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; align-items: end; margin-top: 10px; height: 92px; }
+.col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; min-width: 0; height: 100%; }
+.amt { font-size: 10.5px; font-weight: 800; color: var(--ink, #111827); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar { width: 100%; max-width: 34px; border-radius: 6px 6px 3px 3px; background: #1e2a4a; }
+.part .bar { background: repeating-linear-gradient(135deg, #f5a623 0 4px, #fde7bf 4px 8px); }
+.full .bar { background: #f5a623; }
+.missing .bar, .now .bar { background: #e5e7eb; height: 6px !important; }
+.lab { font-size: 10.5px; color: var(--grey, #5f6b82); }
+.fine { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--grey, #5f6b82); }

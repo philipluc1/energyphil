@@ -1018,6 +1018,7 @@ export default function AccountPage() {
           name={firstName}
           isMember={isMember}
           onPlan={() => { changeTab("membership"); document.getElementById("dash-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+          onHome={() => { changeTab("home"); document.getElementById("dash-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
           onLogout={handleLogout}
         />
       ) : (
@@ -1111,9 +1112,13 @@ export default function AccountPage() {
 
               <div className={styles.dashGrid}>
               <div className={styles.dashMain}>
-              {/* Electricity or gas: one dashboard each, same shape. */}
+              {/* Always on top: are you on the cheapest plan? */}
+              {!subLoading && sub && <InstallBanner />}
+
               {!subLoading && (
-                <div className={gd.fuelSwitch} role="tablist" aria-label="Fuel">
+                <DashTabs tabs={tabs} active={shownTab} onChange={changeTab} below={shownTab === "membership" ? null :
+                  /* 8 Nov 2026: the fuel switch sits under the section tabs (Phil: sections first, then fuel). */
+                  <div className={gd.fuelSwitch} role="tablist" aria-label="Fuel">
                   <button type="button" role="tab" aria-selected={fuel === "elec"} className={fuel === "elec" ? gd.fuelOn : gd.fuelBtn} onClick={() => { setFuel("elec"); try { window.history.replaceState(null, "", "#"); } catch { /* ignore */ } }}>
                     <span className={`${gd.fuelIcon} ${gd.fuelElec}`}><Icon name="bolt" size={18} /></span>
                     <span className={gd.fuelText}>Electricity<span className={gd.fuelSub}>{cmpInput ? (cmpInput.currentRetailer ?? "your plan") : "no bill yet"}</span></span>
@@ -1123,12 +1128,7 @@ export default function AccountPage() {
                     <span className={gd.fuelText}>Gas<span className={gd.fuelSub}>{sub?.gas_zone && sub?.gas_mj ? (sub.gas_current_retailer ?? sub.gas_zone) : "no gas bill yet"}</span></span>
                   </button>
                 </div>
-              )}
-              {/* Always on top: are you on the cheapest plan? */}
-              {!subLoading && sub && <InstallBanner />}
-
-              {!subLoading && (
-                <DashTabs tabs={tabs} active={shownTab} onChange={changeTab}>
+                }>
                   {shownTab === "compare" && fuel === "gas" && (
                     <GasDashboard member={gasMember} isMember={isMember} period={period} onPeriod={setPeriod} />
                   )}
@@ -1163,7 +1163,7 @@ export default function AccountPage() {
                     <>
                       {/* Your bill in plain English, first (2 Nov 2026). The bill check moved to the foot of the tab. */}
                       {fuel === "elec" && cmpInput && !cmpInput.billIsPriced && (
-                        <BillExplainer f={{ retailer: cmpInput.currentRetailer, planName: cmpInput.currentPlanName, days: cmpInput.days, anytime: cmpInput.anytime, peak: cmpInput.peak, shoulder: cmpInput.shoulder, offpeak: cmpInput.offpeak, cl: cmpInput.cl, solarExportKwh: cmpInput.solarExportKwh, rates: cmpInput.currentRates ?? null, total: cmpInput.billTotal, distributor: cmpInput.distributor }} uploadHref={isMember ? "#read-bill" : "/check"} />
+                        <BillExplainer f={{ retailer: cmpInput.currentRetailer, planName: cmpInput.currentPlanName, days: cmpInput.days, anytime: cmpInput.anytime, peak: cmpInput.peak, shoulder: cmpInput.shoulder, offpeak: cmpInput.offpeak, cl: cmpInput.cl, solarExportKwh: cmpInput.solarExportKwh, rates: cmpInput.currentRates ?? null, total: cmpInput.billTotal, distributor: cmpInput.distributor }} uploadHref={isMember ? "#read-bill" : "/check"} member={isMember} />
                       )}
                       {fuel === "gas" ? (
                         // Gas (2 Nov 2026): gas details and gas use only, never the power bill's NMI, tariff or solar.
