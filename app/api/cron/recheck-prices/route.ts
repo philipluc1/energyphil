@@ -16,6 +16,7 @@ import { daysWatched, recapDue, savedSince, RECAP_PLANS, type Episode } from "@/
 import { marketActivity } from "@/lib/marketActivity";
 import { FOUNDING_OFFER, findPlan, fmtPrice } from "@/lib/pricingPlans";
 import { computeBest, gasAlertDecision, isMeaningfullyCheaper, priceOfPlan, referenceForUsage } from "@/lib/priceWatch";
+import { withGasReference } from "@/lib/gasReference";
 import { ratesFromJson } from "@/lib/billReconcile";
 import { switchedPlanNow } from "@/lib/switched";
 import type { CurrentRates } from "@/lib/billExtraction";
@@ -88,6 +89,7 @@ interface GasRow {
   gas_billing_days: number | null;
   gas_mj: number | null;
   gas_reference_total: number | null;
+  gas_rates?: { supply: number | null; usage: number | null } | null;
   gas_best_total: number | null;
   gas_best_retailer?: string | null;
   gas_best_plan_name?: string | null;
@@ -491,13 +493,15 @@ export async function GET(req: NextRequest) {
   let gasAlerts = 0;
   const { data: gasSubs, error: gasErr } = await supabaseAdmin
     .from("subscribers")
-    .select("id, email, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_best_total, gas_best_retailer, gas_best_plan_name, customer_name")
+    .select("id, email, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_rates, gas_best_total, gas_best_retailer, gas_best_plan_name, customer_name")
     .eq("status", "active")
     .eq("unsubscribed", false)
     .not("gas_zone", "is", null)
     .not("gas_mj", "is", null);
   if (gasErr) console.error("recheck-prices: gas members not loaded", gasErr.message);
-  for (const sub of (gasSubs ?? []) as GasRow[]) {
+  for (const raw of (gasSubs ?? []) as GasRow[]) {
+    // 8 Nov 2026: the yardstick from the bill's rates when they're on file.
+    const sub = withGasReference(raw);
     if (skip(sub.id)) continue;
     try {
       if (!GAS_ZONES.includes(sub.gas_zone as GasZone) || !sub.gas_mj) continue;

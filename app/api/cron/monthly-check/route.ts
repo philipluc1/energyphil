@@ -1,4 +1,5 @@
 import { foundSentence, foundTotals } from "@/lib/moneyFound";
+import { withGasReference } from "@/lib/gasReference";
 import { melbourneDay } from "@/lib/switchReminder";
 import { activeRowsToEmail } from "@/lib/oneMemberPerEmail";
 import { NextRequest, NextResponse } from "next/server";
@@ -40,6 +41,7 @@ interface Row {
   gas_billing_days?: number | null;
   gas_mj?: number | null;
   gas_reference_total?: number | null;
+  gas_rates?: { supply: number | null; usage: number | null } | null;
   switched_at?: string | null;
   switched_to?: string | null;
   monthly_summary?: boolean | null;
@@ -68,7 +70,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("subscribers")
     .select(
-      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, baseline_total, unsubscribed, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, switched_at, switched_to, last_notified_retailer, last_notified_plan_name, baseline_retailer, baseline_plan_name",
+      "id, email, distributor, billing_days, peak_kwh, shoulder_kwh, offpeak_kwh, anytime_kwh, controlled_load_kwh, solar_export_kwh, reference_total, baseline_total, unsubscribed, home_profile, gas_zone, gas_billing_days, gas_mj, gas_reference_total, gas_rates, switched_at, switched_to, last_notified_retailer, last_notified_plan_name, baseline_retailer, baseline_plan_name",
     )
     .eq("status", "active")
     .not("distributor", "is", null);
@@ -119,7 +121,8 @@ export async function GET(req: NextRequest) {
   let errors = 0;
   // One email per address, from the newest active membership (2 Nov 2026).
   const keep = await activeRowsToEmail(supabaseAdmin);
-  for (const sub of (data ?? []) as Row[]) {
+  for (const raw of (data ?? []) as Row[]) {
+    const sub = withGasReference(raw); // 8 Nov 2026: gas yardstick from the bill's rates
     if (keep && !keep.has(sub.id)) continue;
     try {
       // Worked out and written once, in lib/memberSummary.ts (the dashboard's "Email me my results" uses the same).

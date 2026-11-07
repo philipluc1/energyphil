@@ -36,6 +36,13 @@ function lanes(xs: number[], gap: number): number[] {
   });
 }
 
+/** A round tick step near the target: 1, 2, 5 × a power of ten. */
+function niceStep(target: number): number {
+  const p = Math.pow(10, Math.floor(Math.log10(Math.max(target, 1e-6))));
+  const m = target / p;
+  return (m >= 5 ? 5 : m >= 2 ? 2 : 1) * p;
+}
+
 /** Keep a label inside the plot: centred on x, or pinned to an edge near the ends. */
 const labelPos = (x: number) => (x > 80 ? { right: 0 } : x < 20 ? { left: 0 } : { left: `${x}%`, transform: "translateX(-50%)" });
 
@@ -64,12 +71,19 @@ export default function PriceLine({
 
   if (!items.length) return null;
   const all = [...items.map((i) => i.value), you, ...(vdo ? [vdo] : [])];
-  // 7 Nov 2026: the line starts at $0, so distances are true to the money
-  // ($67 sits at 70% of the way to $96, not at the far left). Before, it ran
-  // from the cheapest plan to the bill, which stretched a $29 gap across the
-  // whole width and made every result look like a chasm.
-  const lo = 0;
-  const hi = Math.max(...all);
+  // 8 Nov 2026: a dynamic axis. It runs from a round number a good way below
+  // the cheapest to just past the dearest, so the plans spread across the
+  // middle and the pin sits near the right, with $ ticks so the proportion is
+  // plain. (From the cheapest plan it made a $29 gap fill the chart; from $0
+  // it squashed every plan into the right-hand third.)
+  const vMin = Math.min(...all);
+  const vMax = Math.max(...all);
+  const range = Math.max(vMax - vMin, Math.max(vMax, 1) * 0.08);
+  const rawLo = Math.max(0, vMin - range * 0.6);
+  const rawHi = vMax + range * 0.08;
+  const step = niceStep((rawHi - rawLo) / 5);
+  const lo = Math.floor(rawLo / step) * step;
+  const hi = Math.ceil(rawHi / step) * step;
   const span = Math.max(hi - lo, 1);
   const x = (v: number) => 4 + ((v - lo) / span) * 92;
   const sorted = [...items].sort((a, b) => a.value - b.value);
@@ -98,9 +112,8 @@ export default function PriceLine({
   const dotBand = dotRows * DOT_ROW + (dotRows ? 6 : 0);
   const base = compact ? ROW + dotBand + 8 : bubbleRows * ROW + dotBand + 8; // where the line sits
   // Round $ ticks along the line so the scale is explicit.
-  const step = hi > 400 ? 100 : hi > 200 ? 50 : hi > 80 ? 20 : 10;
   const ticks: number[] = [];
-  for (let v = 0; v <= hi; v += step) ticks.push(v);
+  for (let v = lo; v <= hi + 1e-9; v += step) ticks.push(Math.round(v * 100) / 100);
   const cheaper = items.filter((i) => i.value < you - 0.005).length;
   const xYou = x(you);
   const xVdo = vdo ? x(vdo) : null;
@@ -203,11 +216,11 @@ export default function PriceLine({
             <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each dot is a plan at its price {per}, ★ the cheapest, the red pin {who}. Every plan is listed below.</>
           )
         ) : cheaper === items.length ? (
-          <><b className={s.bad}>{allBeat}</b> Each bubble or dot is a plan at its price {per}, from $0; the red pin is {who}; ★ marks the cheapest.</>
+          <><b className={s.bad}>{allBeat}</b> Each bubble or dot is a plan at its price {per}; the red pin is {who}; ★ marks the cheapest.</>
         ) : cheaper === 0 ? (
-          <><b className={s.good}>Nothing shown beats {who}.</b> Each bubble or dot is a plan at its price {per}, from $0.</>
+          <><b className={s.good}>Nothing shown beats {who}.</b> Each bubble or dot is a plan at its price {per}.</>
         ) : (
-          <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each bubble or dot is a plan at its price {per}, from $0; the red pin is {who}; ★ marks the cheapest.</>
+          <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each bubble or dot is a plan at its price {per}; the red pin is {who}; ★ marks the cheapest.</>
         )}
       </figcaption>
       )}

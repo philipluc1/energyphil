@@ -56,6 +56,7 @@ import BillPagePrompt from "../components/BillPagePrompt";
 import BillReview from "../components/BillReview";
 import BillInbox from "../components/BillInbox";
 import MoneyFoundCard from "../components/MoneyFoundCard";
+import { withGasReference } from "@/lib/gasReference";
 import { isSingleRate, normaliseRates, shouldAskForAnotherPage, type CurrentRates, type ExtractedBill } from "@/lib/billExtraction";
 import SwitchReminder from "../components/SwitchReminder";
 import ReviewCard from "../components/ReviewCard";
@@ -402,7 +403,8 @@ export default function AccountPage() {
           ? { ...row, current_rates: rates, anytime_kwh: row.peak_kwh, peak_kwh: 0, usage_mode: "simple", tariff_type: row.tariff_type === "time_of_use" ? "single_rate" : row.tariff_type }
           : { ...row, current_rates: rates, tariff_type: isSingleRate(rates) && row.tariff_type === "time_of_use" ? "single_rate" : row.tariff_type };
       }
-      setSub(row);
+      // 8 Nov 2026: the gas yardstick from the bill's rates when they're on file.
+      setSub(row ? withGasReference(row) : row);
       setSubLoading(false);
     }
 
