@@ -51,6 +51,8 @@
   font-size: 14px;
   line-height: 1.6;
 }
+.schemaWarn { margin: 0 0 16px; padding: 14px 16px; border-radius: 12px; background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; font-size: 14px; line-height: 1.55; }
+.schemaWarn code { font-family: "IBM Plex Mono", monospace; background: #fee2e2; padding: 2px 6px; border-radius: 5px; }
 .notice code {
   font-family: "IBM Plex Mono", monospace;
   background: var(--track);

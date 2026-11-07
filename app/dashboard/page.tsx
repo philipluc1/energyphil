@@ -14,6 +14,7 @@ import styles from "./dashboard.module.css";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DASH_COOKIE, dashCookieValid } from "@/lib/dashAuth";
+import { schemaHealth } from "@/lib/schemaHealth";
 
 // Always hit the database fresh — this is a live admin view, never cached.
 export const dynamic = "force-dynamic";
@@ -138,9 +139,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   };
   const periodLabel = f.period === "all" ? "all time" : `last ${PERIODS.find((p) => p.id === f.period)?.label ?? ""}`;
 
+  // 7 Nov 2026: say so when the database is behind the code (a missing column
+  // used to drop fields on save without a word).
+  const health = await schemaHealth(db);
+  const behind = health.missingColumns.length + health.missingTables.length > 0;
   return (
     <DashboardCharts stats={stats} subscriberStats={subscriberStats} funnel={funnel} filters={f} leadState={leadState}
-      top={<VisitorsSection report={pv.error ? null : visitReport(views, checkSids)} live={live} periodLabel={periodLabel} missing={visitsMissing} />}>
+      top={<>
+        {behind && (
+          <div className={styles.schemaWarn} role="alert">
+            <b>Database needs an update.</b> Run <code>supabase/schema.sql</code> in the Supabase SQL editor (it only adds what&apos;s missing; safe to run again).
+            {health.missingColumns.length > 0 && <> Missing columns on subscribers: <code>{health.missingColumns.join(", ")}</code>.</>}
+            {health.missingTables.length > 0 && <> Missing tables: <code>{health.missingTables.join(", ")}</code>.</>}
+            {" "}Until then, bills still save but those fields are dropped.
+          </div>
+        )}
+        <VisitorsSection report={pv.error ? null : visitReport(views, checkSids)} live={live} periodLabel={periodLabel} missing={visitsMissing} />
+      </>}>
       <GrowthSections
         rev={revenue(members, now)}
         churn={churnByMonth(members, now, months)}

@@ -64,7 +64,11 @@ export default function PriceLine({
 
   if (!items.length) return null;
   const all = [...items.map((i) => i.value), you, ...(vdo ? [vdo] : [])];
-  const lo = Math.min(...all);
+  // 7 Nov 2026: the line starts at $0, so distances are true to the money
+  // ($67 sits at 70% of the way to $96, not at the far left). Before, it ran
+  // from the cheapest plan to the bill, which stretched a $29 gap across the
+  // whole width and made every result look like a chasm.
+  const lo = 0;
   const hi = Math.max(...all);
   const span = Math.max(hi - lo, 1);
   const x = (v: number) => 4 + ((v - lo) / span) * 92;
@@ -73,13 +77,30 @@ export default function PriceLine({
   // On a phone the bubbles would pile up a dozen deep, so plans become small
   // dots and only the cheapest keeps its bubble; the list below has the rest.
   const compact = width < 520;
-  const rawLane = compact ? lanes(xs, (DOT_PX / Math.max(width, 200)) * 100) : lanes(xs, (BUBBLE_PX / Math.max(width, 200)) * 100);
+  const pct = (px: number) => (px / Math.max(width, 200)) * 100;
+  const rawLane = compact ? lanes(xs, pct(DOT_PX)) : lanes(xs, pct(BUBBLE_PX));
   // Dots past the last lane start a new column a few pixels to the right, so
   // plans at the same price still each get their own dot.
   const lane = compact ? rawLane.map((l) => l % DOT_LANES) : rawLane;
   const nudge = compact ? rawLane.map((l) => Math.floor(l / DOT_LANES) * 7) : rawLane.map(() => 0);
-  const rows = Math.max(...lane) + 1;
-  const base = compact ? ROW + rows * DOT_ROW + 8 : rows * ROW + 8; // where the line sits
+  // Wide screens: on a true scale the plans bunch up, so only the cheapest
+  // few keep a logo bubble (up to BUBBLE_ROWS deep) and the rest are dots
+  // just above the line, like the phone view.
+  const BUBBLE_ROWS = 3;
+  const isBubble = compact ? sorted.map((it) => it === (sorted.find((i) => i.cheapest) ?? sorted[0])) : rawLane.map((l) => l < BUBBLE_ROWS);
+  const dotIdx = sorted.map((_, i) => i).filter((i) => !isBubble[i]);
+  const dotRaw = lanes(dotIdx.map((i) => xs[i]), pct(DOT_PX));
+  const dotLane = new Map(dotIdx.map((i, k) => [i, compact ? dotRaw[k] % DOT_LANES : dotRaw[k] % DOT_LANES]));
+  const dotNudge = new Map(dotIdx.map((i, k) => [i, Math.floor(dotRaw[k] / DOT_LANES) * 7]));
+  const dotRows = dotIdx.length ? Math.max(...dotIdx.map((i) => dotLane.get(i)!)) + 1 : 0;
+  const bubbleRows = compact ? 1 : Math.max(0, ...sorted.map((_, i) => (isBubble[i] ? lane[i] : -1))) + 1;
+  const rows = compact ? dotRows : bubbleRows;
+  const dotBand = dotRows * DOT_ROW + (dotRows ? 6 : 0);
+  const base = compact ? ROW + dotBand + 8 : bubbleRows * ROW + dotBand + 8; // where the line sits
+  // Round $ ticks along the line so the scale is explicit.
+  const step = hi > 400 ? 100 : hi > 200 ? 50 : hi > 80 ? 20 : 10;
+  const ticks: number[] = [];
+  for (let v = 0; v <= hi; v += step) ticks.push(v);
   const cheaper = items.filter((i) => i.value < you - 0.005).length;
   const xYou = x(you);
   const xVdo = vdo ? x(vdo) : null;
@@ -99,17 +120,20 @@ export default function PriceLine({
       <div
         ref={ref}
         className={s.plot}
-        style={{ height: base + (vdoClash ? 78 : 50) }}
+        style={{ height: base + (vdoClash ? 88 : 60) }}
         role="img"
         aria-label={`${cheaper} of ${items.length} plans cost less than ${who} (${money(you)} ${per}).`}
       >
         <div className={s.track} style={{ top: base }} />
-        {compact && sorted.map((it, i) => (
-          it === best ? null : (
+        {ticks.map((v) => (
+          <span key={v} className={s.axisTick} style={{ left: `${x(v)}%`, top: base + 12 }} aria-hidden="true">{money(v)}</span>
+        ))}
+        {sorted.map((it, i) => (
+          isBubble[i] ? null : (
             <span
               key={it.retailer + it.plan + i}
               className={s.dot}
-              style={{ left: `calc(${xs[i]}% + ${nudge[i]}px)`, top: base - 4 - (lane[i] + 1) * DOT_ROW }}
+              style={{ left: `calc(${xs[i]}% + ${nudge[i] + (dotNudge.get(i) ?? 0)}px)`, top: base - 4 - ((dotLane.get(i) ?? 0) + 1) * DOT_ROW }}
               title={it.locked ? `Plus members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
             />
           )
@@ -125,32 +149,34 @@ export default function PriceLine({
               <span className={s.star} aria-label="Cheapest">★</span>
             </span>
             <span className={s.price}>{money(best.value)}</span>
-            <span className={s.stem} style={{ height: rows * DOT_ROW + 8 }} />
+            <span className={s.stem} style={{ height: dotBand + 8 }} />
           </div>
         )}
         {!compact && sorted.map((it, i) => (
-          <div
-            key={it.retailer + it.plan + i}
-            className={`${s.bubble} ${it.cheapest ? s.best : ""}`}
-            style={{ left: `${xs[i]}%`, top: (rows - 1 - lane[i]) * ROW, animationDelay: `${i * 60}ms` }}
-            title={it.locked ? `Plus members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
-          >
-            <span className={s.face}>
-              {it.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={it.retailer} size={36} square />}
-              {it.cheapest && <span className={s.star} aria-label="Cheapest">★</span>}
-            </span>
-            <span className={s.price}>{money(it.value)}</span>
-            <span className={s.stem} style={{ height: lane[i] * ROW + 8 }} />
-          </div>
+          !isBubble[i] ? null : (
+            <div
+              key={it.retailer + it.plan + i}
+              className={`${s.bubble} ${it.cheapest ? s.best : ""}`}
+              style={{ left: `${xs[i]}%`, top: (bubbleRows - 1 - lane[i]) * ROW, animationDelay: `${i * 60}ms` }}
+              title={it.locked ? `Plus members see this plan: ${money(it.value)} ${per}` : `${it.retailer}: ${it.plan}, ${money(it.value)} ${per}`}
+            >
+              <span className={s.face}>
+                {it.locked ? <span className={s.lock}><Icon name="lock" size={16} /></span> : <RetailerLogo name={it.retailer} size={36} square />}
+                {it.cheapest && <span className={s.star} aria-label="Cheapest">★</span>}
+              </span>
+              <span className={s.price}>{money(it.value)}</span>
+              <span className={s.stem} style={{ height: lane[i] * ROW + dotBand + 8 }} />
+            </div>
+          )
         ))}
         {xVdo !== null && vdo && (
           <>
             <span className={s.tick} style={{ left: `${xVdo}%`, top: base - 6 }} />
-            <span className={s.vdoLabel} style={{ ...labelPos(xVdo), top: base + (vdoClash ? 50 : 20) }}>Default offer {money(vdo)}</span>
+            <span className={s.vdoLabel} style={{ ...labelPos(xVdo), top: base + (vdoClash ? 60 : 30) }}>Default offer {money(vdo)}</span>
           </>
         )}
         <span className={s.pin} style={{ left: `${xYou}%`, top: base - 6 }} />
-        <span className={s.youLabel} style={{ ...labelPos(xYou), top: base + 18 }}>
+        <span className={s.youLabel} style={{ ...labelPos(xYou), top: base + 28 }}>
           <b>{youLabel}</b> {money(you)}
         </span>
       </div>
@@ -177,11 +203,11 @@ export default function PriceLine({
             <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each dot is a plan at its price {per}, ★ the cheapest, the red pin {who}. Every plan is listed below.</>
           )
         ) : cheaper === items.length ? (
-          <><b className={s.bad}>{allBeat}</b> Each bubble is a plan at its price {per}; the red pin is {who}; ★ marks the cheapest.</>
+          <><b className={s.bad}>{allBeat}</b> Each bubble or dot is a plan at its price {per}, from $0; the red pin is {who}; ★ marks the cheapest.</>
         ) : cheaper === 0 ? (
-          <><b className={s.good}>Nothing shown beats {who}.</b> Each bubble is a plan at its price {per}.</>
+          <><b className={s.good}>Nothing shown beats {who}.</b> Each bubble or dot is a plan at its price {per}, from $0.</>
         ) : (
-          <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each bubble is a plan at its price {per}; the red pin is {who}; ★ marks the cheapest.</>
+          <><b>{cheaper} of {items.length} plans shown cost less than {who}.</b> Each bubble or dot is a plan at its price {per}, from $0; the red pin is {who}; ★ marks the cheapest.</>
         )}
       </figcaption>
       )}

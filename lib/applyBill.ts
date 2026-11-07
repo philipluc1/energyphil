@@ -72,13 +72,16 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
       };
       let { error: gErr } = await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id);
       if (gErr && /gas_rates/.test(gErr.message)) {
+        console.error("applyBill: subscribers.gas_rates is missing, the gas rates were dropped. Run supabase/schema.sql.");
         delete gasRow.gas_rates;
         ({ error: gErr } = await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id));
       }
       if (gErr && /gas_current_retailer/.test(gErr.message)) {
+        console.error("applyBill: subscribers.gas_current_retailer is missing, the gas retailer was dropped. Run supabase/schema.sql.");
         delete gasRow.gas_current_retailer;
-        await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id);
+        ({ error: gErr } = await supabaseAdmin!.from("subscribers").update(gasRow).eq("id", subG.id));
       }
+      if (gErr) console.error("applyBill: gas update failed", gErr.message);
     }
     if (!best || !bench) return null;
     return { retailer: best.plan[0], plan: best.plan[2], saving: bench.value - best.total };
