@@ -1,4 +1,6 @@
 import { resultEmail } from "@/lib/emailTemplates";
+import { billLesson } from "@/lib/billLesson";
+import { readFees } from "@/lib/billExtraction";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { DISTRIBUTORS, computeBill, rankPlans, topOpen, type Distributor } from "@/lib/plans";
@@ -133,6 +135,12 @@ export async function POST(req: NextRequest) {
       marketChanges: market.ready ? market.newOffers + market.priceChanges : 0,
       year,
       currentRetailer,
+      lesson: average ? null : billLesson({
+        fuel: "electricity", days, usage: kwh, total: bill > 0 ? bill : null,
+        supplyPerDay: num(b?.supplyPerDay, 5) || null,
+        estimated: b?.readingType === "estimated" || b?.readingType === "mixed",
+        fees: readFees(b?.fees), discountLost: b?.discountLost === true,
+      })?.text ?? null,
     });
     const sent = await sendEmail({ to: email, subject: e.subject, title: e.title, html: e.html }).catch(() => false);
     if (sent) await supabaseAdmin.from("leads").update({ drip_step: 1, drip_sent_at: new Date().toISOString() }).eq("id", inserted.id);

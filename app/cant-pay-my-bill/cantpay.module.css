@@ -1,0 +1,15 @@
+.private { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #f4f6fb; color: #5f6b82; font-size: 0.92rem; }
+
+.steps, .facts { display: grid; gap: 10px; margin: 16px 0 4px; }
+.steps > div, .facts > div { display: grid; gap: 4px; padding: 14px 16px; border-radius: 12px; border: 1px solid #e3e7f0; background: #fff; }
+.steps b, .facts b { font-size: 1rem; color: #131c57; }
+.steps span, .facts span { font-size: 0.95rem; line-height: 1.5; color: #3b4458; }
+.facts { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.facts > div:first-child { background: #e6f6f5; border-color: #b9e3df; }
+.facts > div:first-child b { color: #0d6f78; font-size: 1.25rem; }
+
+.copy { margin-top: 12px; border: 1px solid #e3e7f0; border-radius: 12px; overflow: hidden; background: #fafbfd; }
+.copy pre { margin: 0; padding: 16px; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 0.95rem; line-height: 1.55; color: #1a1a1a; }
+.copy button { display: block; width: 100%; padding: 12px; border: 0; border-top: 1px solid #e3e7f0; background: #fff; font-family: inherit; font-size: 0.95rem; font-weight: 700; color: #0d6f78; cursor: pointer; }
+.copy button:hover { background: #e6f6f5; }
+.links a { color: #0d6f78; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }

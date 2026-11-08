@@ -36,3 +36,54 @@ test("latest pair skips bills without figures", () => {
   const p = latestPair(bills, (b) => b.kwh)!;
   assert.deepEqual(p.map((x) => x.periodEnd), ["2026-03-31", "2026-06-30"]);
 });
+
+import { explainBill } from "./billChange";
+const det = (o: Partial<{ supply: number | null; estimated: boolean; tariff: string | null; concession: number; rebate: number; otherCredits: number; fees: number }> = {}) => ({ supply: null, estimated: false, tariff: null, concession: 0, rebate: 0, otherCredits: 0, fees: 0, ...o });
+
+test("explain: the steps add up to the change", () => {
+  const e = explainBill(
+    { periodEnd: "2026-06-30", days: 91, amount: 300, usage: 1000, detail: det({ supply: 1.1 }) },
+    { periodEnd: "2026-09-30", days: 92, amount: 345, usage: 1150, detail: det({ supply: 1.19 }) },
+  )!;
+  assert.equal(e.headline, "$45 more than your last bill");
+  const all = e.steps.reduce((a, x) => a + x.dollars, 0);
+  // Small steps (under $3) are left out, so allow a few dollars.
+  assert.ok(Math.abs(all - 45) < 3, `steps sum ${all}`);
+  assert.equal(e.steps[0].key, "usage");
+  assert.match(e.sentence, /^\$\d+ from using more power/);
+  assert.ok(e.notes.some((n) => /\$1\.10 to \$1\.19 a day/.test(n)));
+});
+
+test("explain: concession dropped off and a fee", () => {
+  const e = explainBill(
+    { periodEnd: "2026-06-30", days: 91, amount: 280, usage: 1000, detail: det({ concession: 60 }) },
+    { periodEnd: "2026-09-30", days: 91, amount: 352, usage: 1000, detail: det({ fees: 12 }) },
+  )!;
+  const k = Object.fromEntries(e.steps.map((x) => [x.key, Math.round(x.dollars)]));
+  assert.equal(k.concession, 60);
+  assert.equal(k.fees, 12);
+  assert.equal(k.price, undefined);
+  assert.match(e.sentence, /the concession isn't on it/);
+});
+
+test("explain: estimated read and a rebate that's gone", () => {
+  const e = explainBill(
+    { periodEnd: "2026-06-30", days: 91, amount: 300, usage: 1000, detail: det({ rebate: 75 }) },
+    { periodEnd: "2026-09-30", days: 91, amount: 310, usage: 1030, detail: det({ estimated: true }) },
+  )!;
+  assert.match(e.notes[0], /estimated meter read/);
+  assert.match(e.notes[1], /\$75 in government rebates/);
+});
+
+test("explain: works without detail (typed bills), gas", () => {
+  const e = explainBill({ periodEnd: "2026-06-30", days: 61, amount: 400, usage: 9000 }, { periodEnd: "2026-08-31", days: 62, amount: 300, usage: 6000 }, "gas")!;
+  assert.match(e.headline, /\$100 less/);
+  assert.equal(e.steps[0].key, "usage");
+  assert.match(e.sentence, /using less gas/);
+});
+
+test("explain: about the same, offsetting", () => {
+  const e = explainBill({ periodEnd: "a", days: 91, amount: 300, usage: 1000 }, { periodEnd: "b", days: 91, amount: 302, usage: 900 })!;
+  assert.equal(e.headline, "About the same as your last bill");
+  assert.match(e.sentence, /roughly cancel out/);
+});

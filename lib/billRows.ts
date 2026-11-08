@@ -1,3 +1,5 @@
+import type { BillDetail } from "./billTracker";
+
 // Turns a bill (a photo read, or the tracker's typed-in form) into rows for
 // the `bills` table: one per fuel the bill has. Server-side only; everything
 // is checked, nothing from the browser is trusted as-is.
@@ -24,6 +26,33 @@ export interface BillRow {
   amount: number | null;
   retailer: string | null;
   source: "photo" | "typed";
+  detail?: BillDetail | null;
+}
+
+const creditSum = (b: Record<string, unknown>, fuel: "electricity" | "gas", kind: string) =>
+  Array.isArray(b.credits)
+    ? Math.round((b.credits as { kind?: unknown; fuel?: unknown; amount?: unknown }[])
+        .filter((c) => c && c.fuel === fuel && (kind === "other" ? c.kind !== "concession" && c.kind !== "rebate" : c.kind === kind))
+        .reduce((a, c) => a + (num(c.amount, 2000) ?? 0), 0) * 100) / 100
+    : 0;
+const feeSum = (b: Record<string, unknown>) =>
+  Array.isArray(b.fees) ? Math.round((b.fees as { amount?: unknown }[]).reduce((a, f) => a + (num(f?.amount, 500) ?? 0), 0) * 100) / 100 : 0;
+
+/** 8 Nov 2026: what a read bill showed beyond the totals, per fuel. Fees and the read type sit with electricity on a dual bill. */
+export function billDetailFrom(b: Record<string, unknown>, fuel: "electricity" | "gas"): BillDetail {
+  const gasOnly = b.fuel === "gas";
+  const mine = fuel === "electricity" || gasOnly;
+  const rates = b.currentRates as { supply?: unknown } | null | undefined;
+  const supply = fuel === "gas" ? (() => { const c = num(b.gasSupplyCentsPerDay, 500); return c !== null ? Math.round(c) / 100 : null; })() : num(rates?.supply, 5);
+  return {
+    supply: supply && supply > 0 ? supply : null,
+    estimated: mine && (b.readingType === "estimated" || b.readingType === "mixed" || b.usageEstimated === true),
+    tariff: fuel === "electricity" ? str(b.tariffType, 40) : null,
+    concession: creditSum(b, fuel, "concession"),
+    rebate: creditSum(b, fuel, "rebate"),
+    otherCredits: creditSum(b, fuel, "other"),
+    fees: mine ? feeSum(b) : 0,
+  };
 }
 
 /**
@@ -57,7 +86,7 @@ export function billRowFrom(b: Record<string, unknown> | null, email: string, fa
     const kwh = kwhParts.reduce((a, x) => a + x, 0);
     const amount = num(b.currentBill, 20000);
     if (days && days >= 1 && (kwh > 0 || amount !== null)) {
-      out.push({ email, fuel: "electricity", period_end: end, billing_days: Math.round(days), kwh: kwh > 0 ? Math.round(kwh) : null, mj: null, amount, retailer, source });
+      out.push({ email, fuel: "electricity", period_end: end, billing_days: Math.round(days), kwh: kwh > 0 ? Math.round(kwh) : null, mj: null, amount, retailer, source, detail: billDetailFrom(b, "electricity") });
     }
   }
   if (fuel === "gas" || fuel === "dual") {
@@ -65,7 +94,7 @@ export function billRowFrom(b: Record<string, unknown> | null, email: string, fa
     const mj = num(b.gasMj, 1_000_000);
     const amount = num(b.gasBillTotal, 20000);
     if (days && days >= 1 && (mj !== null || amount !== null)) {
-      out.push({ email, fuel: "gas", period_end: end, billing_days: Math.round(days), kwh: null, mj, amount, retailer, source });
+      out.push({ email, fuel: "gas", period_end: end, billing_days: Math.round(days), kwh: null, mj, amount, retailer, source, detail: billDetailFrom(b, "gas") });
     }
   }
   return out;

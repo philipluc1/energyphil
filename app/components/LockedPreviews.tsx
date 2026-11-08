@@ -56,8 +56,15 @@ export default function LockedPreviews({ network, monthNow, monthBest, haveBill,
       ),
     },
     {
-      key: "bill", title: haveBill ? "Your bill in plain English" : "Money found on your bills", sub: haveBill ? `What ${retailer ?? "your retailer"} charged you, and why` : "Fees, missed discounts and concessions, caught every bill",
-      body: (
+      // 8 Nov 2026: with a bill in hand, the taste is "why your next bill is different".
+      key: "bill", title: haveBill ? "Why your next bill went up" : "Money found on your bills", sub: haveBill ? `Every ${retailer ?? "new"} bill against the last, in dollars` : "Fees, missed discounts and concessions, caught every bill",
+      body: haveBill ? (
+        <ul className={s.rows} aria-hidden="true">
+          <li><b>Used more power a day</b><em>+$28</em></li>
+          <li><b>Higher prices</b><em>+$14</em></li>
+          <li><b>Concession not on it</b><em>+$60</em></li>
+        </ul>
+      ) : (
         <ul className={s.rows} aria-hidden="true">
           <li><b>Estimated read, not actual</b><em>+$31</em></li>
           <li><b>Discount not applied</b><em>+$24</em></li>

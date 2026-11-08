@@ -65,11 +65,31 @@ export interface ExtractedBill {
   newCharges: number | null;
   fees: { kind: "late_payment" | "paper_bill" | "payment_processing" | "reconnection" | "other"; amount: number }[];
   discountLost: boolean;
+  /** 8 Nov 2026: concessions, rebates and other credits on this bill, by fuel (positive $). */
+  credits?: BillCredit[];
   /** Looks like only part of a longer bill (e.g. "Page 1 of 2", or the summary page without usage and charges). */
   looksPartial: boolean;
   /** How many pages (photos) this read came from. */
   pages?: number;
   warnings: string[];
+}
+
+export interface BillCredit { kind: "concession" | "rebate" | "other"; fuel: "electricity" | "gas"; amount: number }
+
+/** Credits off the bill: known kinds, positive amounts under $2,000, at most 8. */
+export function readCredits(v: unknown): BillCredit[] {
+  if (!Array.isArray(v)) return [];
+  const out: BillCredit[] = [];
+  for (const c of v.slice(0, 8)) {
+    if (!c || typeof c !== "object") continue;
+    const o = c as Record<string, unknown>;
+    const kind = o.kind === "concession" || o.kind === "rebate" ? o.kind : "other";
+    const fuel = o.fuel === "gas" ? "gas" : "electricity";
+    const n = toFiniteNumber(o.amount_dollars ?? o.amount);
+    const amount = n === null ? null : Math.abs(n);
+    if (amount !== null && amount > 0 && amount < 2000) out.push({ kind, fuel, amount: Math.round(amount * 100) / 100 });
+  }
+  return out;
 }
 
 export interface CurrentRates {
@@ -252,6 +272,7 @@ export function sanitizeExtractedBill(raw: unknown): ExtractedBill {
     newCharges: (() => { const n = toFiniteNumber(r.new_charges_total); return n !== null && n > 0 && n < 100000 ? n : null; })(),
     fees: readFees(r.fees),
     discountLost: r.discount_not_applied === true,
+    credits: readCredits(r.credits),
     looksPartial: r.looks_partial === true,
     warnings,
   };

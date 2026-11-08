@@ -22,9 +22,9 @@ export const metadata = pageMeta({ title: `Utilo Plus: ${plusValue().monthly} a 
 const ROWS: { label: string; short: string; own: boolean | string; free: boolean | string; plus: boolean | string; tip?: string }[] = [
   { label: "Instant email results", short: "Instant email results", own: false, free: true, plus: true, tip: "Snap your bill, get your result on the spot and a copy by email. Your first photo is free, then one free electricity and one free gas photo every 3 months. Plus: unlimited." },
   { label: "Re-checked every morning", short: "Re-checked every morning", own: true, free: false, plus: true, tip: "Each day's new and updated offers, priced against the usage and rates on your bill. You don't lift a finger." },
-  { label: `Email when you can save $${WORTH_SWITCHING_PER_YEAR}+`, short: `Email when you can save $${WORTH_SWITCHING_PER_YEAR}+`, own: false, free: false, plus: true, tip: "Silence otherwise. You can set your own amount on your dashboard." },
+  { label: `Email when you can save $${WORTH_SWITCHING_PER_YEAR}+`, short: `Email when you can save $${WORTH_SWITCHING_PER_YEAR}+`, own: false, free: false, plus: true, tip: "Quiet means you're fine. We only email when a plan beats yours by that much a year. You can set your own amount on your dashboard." },
   { label: "Live retailer changes", short: "Live retailer changes", own: true, free: false, plus: true, tip: "Every new offer, price change and discount ending, as it happens, and a month's warning before your own discount ends." },
-  { label: "Billing and analytics", short: "Billing and analytics", own: false, free: false, plus: true, tip: "Your bill in plain English, bill history, your year ahead, usage through the day and solar." },
+  { label: "Billing and analytics", short: "Billing and analytics", own: false, free: false, plus: true, tip: "Your bill in plain English, why each bill went up or down (in dollars), bill history, your year ahead, usage through the day and solar." },
   { label: "Monthly savings", short: "Monthly savings", own: false, free: false, plus: true, tip: "A monthly summary of your bill, what you've saved and what moved in the market." },
   { label: "Power and gas", short: "Power and gas", own: true, free: true, plus: true, tip: "The free check works for either. Plus watches both on the one membership." },
 ];
@@ -74,6 +74,7 @@ export default function PricingPage() {
               <span className={`${p.cCell} ${p.cPlusCell}`}><Mark v={r.plus} /></span>
             </div>
           ))}
+          <p className={p.quiet}><Icon name="check" size={16} /> <span><b>We email when you can save ${WORTH_SWITCHING_PER_YEAR} or more. Quiet means you&apos;re fine.</b> Most people only switch for $50 a year or more, so that&apos;s where we set the line. Change it any time.</span></p>
           <p className={p.cFoot}>On your own: the free government and retailer sites, done by hand whenever you remember to.</p>
         </section>
 

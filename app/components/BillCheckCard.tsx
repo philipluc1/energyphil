@@ -138,6 +138,7 @@ export default function BillCheckCard({ check, retailer, facts, title = "We chec
     <li key={i.id} className={level === "ok" ? s.ok : level === "info" ? s.info : level === "act" ? `${s.warn} ${s.act}` : s.warn}>
       <b>{f && i.id === "concession" ? "You could get a 17.5% concession." : i.title}</b>
       {f?.perYear ? <span className={s.worth}>about {whole(f.perYear)} a year</span> : f?.oneOff ? <span className={s.worth}>{whole(f.oneOff)} back</span> : i.perYear && i.perYear >= 1 && i.level === "act" ? <span className={s.worth}>about {whole(i.perYear)} a year</span> : null} {f ? f.ask : i.body}
+      {i.link && <> <a href={i.link.href} className={s.issueLink}>{i.link.label} →</a></>}
       {askCard && (
         <span className={s.askCard}>
           Do you have a Pensioner Concession, Health Care or DVA Gold card?

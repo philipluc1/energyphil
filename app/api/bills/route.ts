@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveBillRows } from "@/lib/saveBills";
 import { requireActiveMember } from "@/lib/memberAccess";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { billRowFrom } from "@/lib/billRows";
@@ -15,9 +16,9 @@ export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => null);
   const rows = billRowFrom(b, member.email);
   if (!rows.length) return NextResponse.json({ ok: false, message: "We need the bill's end date, the days it covers, and the amount or usage." }, { status: 400 });
-  const { error } = await supabaseAdmin.from("bills").upsert(rows, { onConflict: "email,fuel,period_end" });
+  const { error } = await saveBillRows(rows, "bills");
   if (error) {
-    const missing = /relation|schema cache|does not exist/i.test(error.message);
+    const missing = /relation|schema cache|does not exist/i.test(error);
     return NextResponse.json({ ok: false, message: missing ? "Run supabase/schema.sql in Supabase to switch on the bill tracker." : "Couldn't save that bill. Try again." });
   }
   return NextResponse.json({ ok: true, saved: rows.length });

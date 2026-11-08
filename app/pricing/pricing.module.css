@@ -51,3 +51,8 @@
 /* 2 Nov 2026: the regular price, struck through, during the founding offer */
 .was { margin-right: 6px; font-size: 0.55em; font-weight: 800; color: var(--grey-soft); text-decoration-thickness: 2px; vertical-align: 0.3em; }
 .vBest .was { color: rgba(255, 255, 255, 0.75); }
+
+/* 8 Nov 2026: the $50 line, said out loud, so silence reads as the product. */
+.quiet { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0 4px; padding: 12px 14px; border-radius: 12px; background: #ecfdf5; color: #065f46; font-size: 0.95rem; line-height: 1.45; }
+.quiet b { color: #064e3b; }
+.quiet svg { flex: none; margin-top: 3px; }

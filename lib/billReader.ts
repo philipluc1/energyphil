@@ -160,6 +160,19 @@ export const TOOL_SCHEMA = {
           required: ["kind", "amount_dollars"],
         },
       },
+      credits: {
+        type: "array",
+        description: "Credits on this bill for this period, each as a positive dollar amount: a government concession for card holders ('Annual Electricity Concession', 'Winter Gas Concession', 'pensioner concession'), a government rebate or bill relief ('Energy Bill Relief Fund', 'Power Saving Bonus', 'Commonwealth rebate'), and any other credit such as a sign-up credit or goodwill credit. Do NOT include payments received, the solar feed-in credit, or the plan's ordinary pay-on-time or direct-debit discount. Say which fuel each is on. Empty if none.",
+        items: {
+          type: "object",
+          properties: {
+            kind: { type: "string", enum: ["concession", "rebate", "other"] },
+            fuel: { type: "string", enum: ["electricity", "gas"] },
+            amount_dollars: { type: "number", description: "The credit in dollars including GST, as a positive number." },
+          },
+          required: ["kind", "fuel", "amount_dollars"],
+        },
+      },
       discount_not_applied: {
         type: "boolean",
         description: "True if the bill says a pay-on-time, direct-debit or other conditional discount was NOT applied or was lost this period (for example 'You missed your pay-on-time discount'). False otherwise.",

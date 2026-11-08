@@ -961,6 +961,8 @@ export default function Comparator() {
         peak: usage.peak, shoulder: usage.shoulder, offpeak: usage.offpeak, anytime: usage.anytime, cl: usage.cl,
         currentBill, wantsAlerts, customerName, address, suburb, postcode, currentRetailer,
         hasSolar: hasSolarEff, solarExportKwh: hasSolarEff ? solarExportKwh : 0, homeProfile: profile,
+        // 8 Nov 2026: what the result email's "From your bill" line is built from.
+        supplyPerDay: myRates?.supply ?? null, readingType: billCheck?.readingType ?? null, fees: billCheck?.fees ?? [], discountLost: billCheck?.discountLost === true,
       }),
     }).catch(() => null);
     const body = res ? await res.json().catch(() => null) : null;

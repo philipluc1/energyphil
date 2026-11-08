@@ -59,6 +59,8 @@ export interface BillIssue {
   perYear?: number;
   /** Dollars on this bill (e.g. charges the usage doesn't explain). */
   amount?: number;
+  /** 8 Nov 2026: a page that helps (e.g. /cant-pay-my-bill). */
+  link?: { label: string; href: string };
 }
 
 const whole = (n: number) => "$" + Math.round(n).toLocaleString("en-AU");
@@ -128,6 +130,7 @@ export function billIssues(x: IssueInput): BillIssue[] {
       level: "info",
       title: x.paymentPlan ? "Your bill mentions a payment plan." : "Your bill shows an amount overdue.",
       body: `If you're behind, talk to ${who} before you switch: retailers have to offer payment help, and switching can end a payment arrangement.`,
+      link: { label: "Your rights if you can't pay", href: "/cant-pay-my-bill" },
     });
   }
 

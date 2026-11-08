@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { trackMonths, type Fuel, type TrackedBill } from "@/lib/billTracker";
 import { MONTH_NAMES } from "@/lib/profileUsage";
+import BillWhy from "./BillWhy";
 import s from "./billsbymonth.module.css";
 
 // 8 Nov 2026: the member's own bills on the plain-English card. The date
@@ -14,16 +15,28 @@ const DAY = 86_400_000;
 const fmt = (iso: string, withYear: boolean) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "short", ...(withYear ? { year: "numeric" } : {}), timeZone: "UTC" });
 const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-AU")}`;
 
+const COLS = "id, fuel, period_end, billing_days, kwh, mj, amount, retailer, source";
+/**
+ * The member's bills, oldest first (one fuel, or all). 8 Nov 2026: with each
+ * bill's detail for "why it changed"; a database without bills.detail yet
+ * still loads the bills, just without it. null = couldn't load.
+ */
+export async function selectBills(fuel?: Fuel): Promise<TrackedBill[] | null> {
+  if (!supabase) return [];
+  const q = (cols: string) => { const b = supabase!.from("bills").select(cols); return (fuel ? b.eq("fuel", fuel) : b).order("period_end", { ascending: true }); };
+  let { data, error } = await q(`${COLS}, detail`);
+  if (error && /detail/.test(error.message)) ({ data, error } = await q(COLS));
+  if (error) return null;
+  return ((data ?? []) as unknown as TrackedBill[]).map((b) => ({ ...b, kwh: b.kwh === null ? null : Number(b.kwh), mj: b.mj === null ? null : Number(b.mj), amount: b.amount === null ? null : Number(b.amount), detail: b.detail ?? null }));
+}
+
 export function useMemberBills(fuel: Fuel): TrackedBill[] | null {
   const [bills, setBills] = useState<TrackedBill[] | null>(null);
   useEffect(() => {
     let on = true;
     (async () => {
-      if (!supabase) { setBills([]); return; }
-      const { data, error } = await supabase.from("bills").select("id, fuel, period_end, billing_days, kwh, mj, amount, retailer, source").eq("fuel", fuel).order("period_end", { ascending: true });
-      if (!on) return;
-      if (error) { setBills([]); return; }
-      setBills(((data ?? []) as TrackedBill[]).map((b) => ({ ...b, kwh: b.kwh === null ? null : Number(b.kwh), mj: b.mj === null ? null : Number(b.mj), amount: b.amount === null ? null : Number(b.amount) })));
+      const list = await selectBills(fuel);
+      if (on) setBills(list ?? []);
     })();
     return () => { on = false; };
   }, [fuel]);
@@ -55,6 +68,9 @@ export default function BillsByMonth({ fuel }: { fuel: Fuel }) {
   const billed = months.filter((m) => m.status === "full" || m.status === "part");
   const perMonth = billed.length ? billed.reduce((a, m) => a + m.amount, 0) / billed.length : 0;
   return (
+    <>
+    {/* 8 Nov 2026: why the latest bill differs from the one before. */}
+    <BillWhy bills={bills} fuel={fuel} />
     <div className={s.wrap}>
       <div className={s.head}>
         <b>Your {fuel === "gas" ? "gas" : "power"} bills by month</b>
@@ -71,5 +87,6 @@ export default function BillsByMonth({ fuel }: { fuel: Fuel }) {
       </div>
       <p className={s.fine}>From the bills you&apos;ve uploaded or forwarded, spread across the days each one covers. Striped months are only partly covered; grey ones have no bill yet.</p>
     </div>
+    </>
   );
 }

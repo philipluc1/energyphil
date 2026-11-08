@@ -6,7 +6,8 @@ import BillPhotoUpload from "./BillPhotoUpload";
 import { supabase } from "@/lib/supabaseClient";
 import { monthBill, trackMonths, trackerTotals, type Fuel, type TrackedBill, type TrackedMonth } from "@/lib/billTracker";
 import { MONTH_NAMES } from "@/lib/profileUsage";
-import { billChange, latestPair } from "@/lib/billChange";
+import { explainBill, latestPair } from "@/lib/billChange";
+import { selectBills } from "./BillsByMonth";
 import type { ExtractedBill } from "@/lib/billExtraction";
 import s from "./billtracker.module.css";
 
@@ -39,10 +40,9 @@ export default function BillTracker({ initialFuel = "electricity", gasAccount = 
   const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
-    if (!supabase) { setBills([]); return; }
-    const { data, error } = await supabase.from("bills").select("id, fuel, period_end, billing_days, kwh, mj, amount, retailer, source").order("period_end", { ascending: true });
-    if (error) { setFailed(true); setBills([]); return; }
-    setBills(((data ?? []) as TrackedBill[]).map((b) => ({ ...b, kwh: b.kwh === null ? null : Number(b.kwh), mj: b.mj === null ? null : Number(b.mj), amount: b.amount === null ? null : Number(b.amount) })));
+    const list = await selectBills();
+    if (list === null) { setFailed(true); setBills([]); return; }
+    setBills(list);
   }, []);
   useEffect(() => { const t = setTimeout(() => { void load(); }, 0); return () => clearTimeout(t); }, [load]);
 
@@ -52,7 +52,7 @@ export default function BillTracker({ initialFuel = "electricity", gasAccount = 
   // "Why did my bill change?" (2 Nov 2026): the latest bill against the one before, in one line.
   const change = useMemo(() => {
     const pair = latestPair((bills ?? []).filter((b) => b.fuel === fuel), (b) => (fuel === "gas" ? b.mj : b.kwh));
-    return pair ? billChange(pair[0], pair[1], fuel === "gas" ? "gas" : "power") : null;
+    return pair ? explainBill(pair[0], pair[1], fuel === "gas" ? "gas" : "power") : null;
   }, [bills, fuel]);
   const unit = fuel === "gas" ? "MJ" : "kWh";
   const val = (m: TrackedMonth) => (view === "amount" ? m.amount : m.usage);
@@ -74,8 +74,7 @@ export default function BillTracker({ initialFuel = "electricity", gasAccount = 
           </p>
           {change && (
             <p className={s.change}>
-              <b>Latest bill: {change.headline}.</b>
-              {change.reasons.length > 0 ? <> {change.reasons.slice(0, 2).join(", and ").replace(/^./, (c) => c.toUpperCase())}.</> : null}
+              <b>Latest bill: {change.headline}.</b> {change.sentence}
             </p>
           )}
         </div>

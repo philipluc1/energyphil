@@ -4,6 +4,7 @@ import { billCheckFromBill, forStorage } from "./billCheck";
 import { gasChargesForComparison, type CurrentRates } from "./billExtraction";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { billRowFrom } from "./billRows";
+import { saveBillRows } from "./saveBills";
 import { DISTRIBUTORS, bestPlan, type Distributor, type UsageInput } from "./plans";
 import { vdoBillForUsage } from "./profileUsage";
 import { GAS_ZONES, bestGasPlan, gasBenchmark, type GasZone } from "./gasPlans";
@@ -14,6 +15,7 @@ import { firstNameOf } from "./emailParts";
 import { firstCheckEmail, type FirstCheckFuel } from "./emailTemplates";
 import { inboxAddress } from "./billInbox";
 import { REELS } from "./reels";
+import { lessonFromBill } from "./billLesson";
 import { SITE_URL } from "./site";
 import { WORTH_SWITCHING_PER_YEAR } from "./dataPolicy";
 
@@ -40,8 +42,7 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
   {
     const rows = billRowFrom(b, memberEmail, new Date().toISOString().slice(0, 10));
     if (rows.length) {
-      const { error: tErr } = await supabaseAdmin.from("bills").upsert(rows, { onConflict: "email,fuel,period_end" });
-      if (tErr) console.warn("apply-bill: bill tracker not saved (run supabase/schema.sql)", tErr.message);
+      await saveBillRows(rows, "apply-bill");
     }
   }
 
@@ -109,7 +110,7 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
       });
     }
     await clearInboxPending(memberEmail);
-    const firstCheck = await maybeSendFirstCheck(memberEmail, { elec: null, gas: { retailer: gas.retailer, planName: gas.plan, nowYear: gas.nowYear, bestYear: gas.bestYear, currentRetailer: gas.currentRetailer } });
+    const firstCheck = await maybeSendFirstCheck(memberEmail, { elec: null, gas: { retailer: gas.retailer, planName: gas.plan, nowYear: gas.nowYear, bestYear: gas.bestYear, currentRetailer: gas.currentRetailer } }, b);
 
     return reply({ ok: true, fuel: "gas", retailer: gas.retailer, plan: gas.plan, saving: gas.saving, usedCurrentBill: num(b?.gasBillTotal) !== null, firstCheck });
   }
@@ -222,7 +223,7 @@ export async function applyBillForMember(memberEmail: string, b: any): Promise<R
   const firstCheck = await maybeSendFirstCheck(memberEmail, {
     elec: { retailer: top.plan[0], planName: top.plan[2], nowYear: (reference * 365) / days, bestYear: (top.total * 365) / days, currentRetailer: str(b?.retailerName, 80) },
     gas: gasResult ? { retailer: gasResult.retailer, planName: gasResult.plan, nowYear: gasResult.nowYear, bestYear: gasResult.bestYear, currentRetailer: gasResult.currentRetailer } : null,
-  });
+  }, b);
 
   return reply({
     ok: true,
@@ -264,7 +265,8 @@ function isoDate(v: unknown): string | null {
  * the bills coming. Sent once per membership (`first_check_emailed_at`);
  * returns true when it went, so the forwarding reply can stand down.
  */
-async function maybeSendFirstCheck(memberEmail: string, r: { elec: FirstCheckFuel | null; gas: FirstCheckFuel | null }): Promise<boolean> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function maybeSendFirstCheck(memberEmail: string, r: { elec: FirstCheckFuel | null; gas: FirstCheckFuel | null }, bill: any = null): Promise<boolean> {
   if (!supabaseAdmin || (!r.elec && !r.gas)) return false;
   const { data: sub, error } = await supabaseAdmin
     .from("subscribers")
@@ -290,6 +292,7 @@ async function maybeSendFirstCheck(memberEmail: string, r: { elec: FirstCheckFue
     inboxAddress: sub.bill_inbox ? inboxAddress(sub.bill_inbox) : null,
     reelUrl: fs.existsSync(reelPath) ? `${SITE_URL}/learn#watch` : null,
     unsubscribeUrl: `${SITE_URL}/api/unsubscribe?type=subscriber&id=${sub.id}`,
+    lessons: [r.elec ? lessonFromBill(bill, "electricity") : null, r.gas ? lessonFromBill(bill, "gas") : null].filter((l) => l !== null).map((l) => l!.text),
   });
   const sent = await sendEmail({ to: memberEmail, subject: e.subject, title: e.title, html: e.html }).catch((err) => { console.error("applyBill: first check email failed", err); return false; });
   if (!sent) console.warn("applyBill: first check email not sent for", sub.id);

@@ -467,3 +467,8 @@ alter table public.subscribers add column if not exists inbox_gmail_link text;
 alter table public.subscribers add column if not exists concession_card boolean;
 -- 5 Nov 2026: money found on each bill (the running total on the dashboard, monthly email and renewal recap).
 alter table public.subscribers add column if not exists money_found jsonb;
+
+-- 8 Nov 2026: "why this bill went up". What each read bill showed beyond its
+-- totals (supply charge a day, estimated read, tariff, concession, rebate and
+-- other credits, fees), so the next bill can be explained against it.
+alter table public.bills add column if not exists detail jsonb;

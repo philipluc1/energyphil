@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { whyForBill } from "@/lib/billWhy";
+import { lessonFromBill } from "@/lib/billLesson";
+import { billChangeBlock, lessonLine } from "@/lib/emailParts";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { readBill, type BillFile } from "@/lib/billReader";
 import { applyBillForMember } from "@/lib/applyBill";
@@ -182,13 +185,23 @@ async function handle(d: Received) {
   const alsoFound = fm.findings.length
     ? `<p style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;"><b>We also found ${fm.findings.length === 1 ? "one thing" : `${fm.findings.length} things`} on this bill${worthOf}:</b><br>${fm.findings.map((f) => `• ${esc(f.ask)}`).join("<br>")}<br>Your dashboard has exactly what to say.</p>`
     : "";
+  // 8 Nov 2026: why this bill differs from the last one, and one line from the bill itself.
+  const whys = await whyForBill(email, bill);
+  const whyHtml = whys.map((w) => billChangeBlock({
+    title: whys.length > 1 ? `Why your ${w.fuel === "gas" ? "gas" : "power"} bill is different` : "Why this bill is different",
+    headline: esc(w.why.headline), sentence: esc(w.why.sentence),
+    steps: w.why.steps.map((x) => ({ label: esc(x.label), dollars: x.dollars })), notes: w.why.notes.map(esc),
+  })).join("");
+  // The money finder below already covers fees, a missed discount and an estimated read.
+  const lesson = lessonFromBill(bill, bill.fuel === "gas" ? "gas" : "electricity", ["estimated", "fee", "discount"]);
+  const extra = `${whyHtml}${lesson ? lessonLine(esc(lesson.text)) : ""}`;
   await sendEmail({
     to: email,
     subject: `Your ${bill.retailerName ?? "energy"} bill is in`,
     title: worth ? `You could save about ${money(yearly!)} a year` : "Bill in. You're on a good deal",
     html: worth
-      ? `<p>We read the bill you forwarded and re-checked every plan. <b>${esc(res.retailer)}</b>'s ${esc(res.plan)} comes out about <b>${money(yearly!)} a year</b> less on your usage.</p>${alsoFound}`
-      : `<p>We read the bill you forwarded and re-checked every plan. Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more${fm.findings.length ? "" : ", so there's nothing to do"}. We'll keep watching.</p>${alsoFound}`,
+      ? `<p>We read the bill you forwarded and re-checked every plan. <b>${esc(res.retailer)}</b>'s ${esc(res.plan)} comes out about <b>${money(yearly!)} a year</b> less on your usage.</p>${extra}${alsoFound}`
+      : `<p>We read the bill you forwarded and re-checked every plan. Nothing beats your plan by ${money(WORTH_SWITCHING_PER_YEAR)} a year or more${fm.findings.length ? "" : ", so there's nothing to do"}. We'll keep watching.</p>${extra}${alsoFound}`,
     cta: fm.findings.length && !worth ? { label: "See what to say", url: `${SITE_URL}/account#home` } : { label: worth ? "See the plan" : "Open my dashboard", url: worth ? `${SITE_URL}/account` : dash },
   });
 }

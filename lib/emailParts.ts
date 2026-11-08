@@ -127,6 +127,35 @@ export function tip(html: string): string {
   return `<p style="margin:0 0 18px;padding:12px 14px;border-radius:10px;background:${C.amberTint};font-size:14px;line-height:1.5;color:${C.ink};">${html}</p>`;
 }
 
+/** 8 Nov 2026: one plain sentence from the person's own bill (lib/billLesson). */
+export function lessonLine(text: string): string {
+  return `<p style="margin:0 0 18px;padding:10px 14px;border-left:3px solid ${C.teal};background:${C.tealTint};border-radius:0 10px 10px 0;font-size:14px;line-height:1.5;color:${C.ink};"><b style="color:${C.teal};">From your bill:</b> ${text}</p>`;
+}
+
+/**
+ * 8 Nov 2026: "Why this bill is different": the change in one line, a bar per
+ * reason (red pushed it up, green brought it down) and the notes underneath.
+ */
+export function billChangeBlock(i: { title: string; headline: string; sentence: string; steps: { label: string; dollars: number }[]; notes: string[] }): string {
+  const max = Math.max(1, ...i.steps.map((x) => Math.abs(x.dollars)));
+  const rows = i.steps.slice(0, 5).map((x) => {
+    const up = x.dollars > 0;
+    const w = Math.max(4, Math.round((Math.abs(x.dollars) / max) * 100));
+    return `<tr>
+      <td style="padding:5px 10px 5px 0;font-size:13.5px;color:${C.ink};width:44%;">${x.label}</td>
+      <td width="40%" style="padding:5px 0;width:40%;"><table role="presentation" width="${w}%" cellspacing="0" cellpadding="0" style="width:${w}%;border-collapse:collapse;"><tr><td height="12" style="height:12px;line-height:12px;font-size:0;border-radius:6px;background:${up ? "#e8590c" : C.green};">&nbsp;</td></tr></table></td>
+      <td style="padding:5px 0 5px 10px;font:700 13.5px ${F};color:${up ? "#c2410c" : C.green};white-space:nowrap;text-align:right;">${up ? "+" : "&minus;"}${money(Math.abs(x.dollars))}</td>
+    </tr>`;
+  }).join("");
+  return `<div style="margin:0 0 20px;padding:16px 18px;border:1px solid #e3e7f0;border-radius:16px;">
+    <p style="margin:0 0 4px;font:700 12px ${F};letter-spacing:.06em;text-transform:uppercase;color:${C.grey};">${i.title}</p>
+    <p style="margin:0 0 6px;font:700 18px ${F};color:${C.navy};">${i.headline}</p>
+    <p style="margin:0 0 10px;font-size:14px;line-height:1.5;color:${C.ink};">${i.sentence}</p>
+    ${rows ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">${rows}</table>` : ""}
+    ${i.notes.length ? `<p style="margin:10px 0 0;font-size:13px;line-height:1.5;color:${C.grey};">${i.notes.join("<br>")}</p>` : ""}
+  </div>`;
+}
+
 /** Unsubscribe line at the very end of the body. */
 export function unsubscribe(url: string, why: string): string {
   return `<p style="margin:24px 0 0;font-size:12px;line-height:1.5;color:#888;">${why} <a href="${url}" style="color:#888;">Unsubscribe from these emails</a>.</p>`;

@@ -18,6 +18,24 @@ export interface TrackedBill {
   amount: number | null;
   retailer: string | null;
   source: "photo" | "typed";
+  /** 8 Nov 2026: what the bill showed beyond the totals, for "why did it change". */
+  detail?: BillDetail | null;
+}
+
+/** Kept with each read bill (bills.detail), so the next bill can be explained against it. */
+export interface BillDetail {
+  /** Supply charge, $ a day incl. GST. */
+  supply: number | null;
+  /** Estimated (or partly estimated) meter read. */
+  estimated: boolean;
+  /** "flat", "time of use", "demand"... as the bill names it. */
+  tariff: string | null;
+  /** Credits this period, $ (positive). */
+  concession: number;
+  rebate: number;
+  otherCredits: number;
+  /** Fees this period, $. */
+  fees: number;
 }
 
 export interface TrackedMonth {

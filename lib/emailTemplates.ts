@@ -14,7 +14,7 @@ import { namesList } from "./stickyPick";
 import { sameRetailer } from "./sameRetailer";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
 import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
-import { C, alertPreview, billVsBest, iconRow, iconRows, joinCard, pains, plusMorning, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
+import { C, lessonLine, alertPreview, billVsBest, iconRow, iconRows, joinCard, pains, plusMorning, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
 
@@ -45,6 +45,7 @@ export function resultEmail(i: {
   marketChanges?: number;      // offers new or changed on their network in 30 days
   year?: { label: string; best: number; now: number }[];  // 12 months ahead, for the Plus preview
   currentRetailer?: string | null;  // who they're with now, if they said or the bill showed
+  lesson?: string | null;           // 8 Nov 2026: one line from their own bill (lib/billLesson)
 }): Email {
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
   const same = worth && FREE_SHOWS_NAMES && i.vsBill && sameRetailer(i.currentRetailer, i.retailer);
@@ -90,6 +91,7 @@ export function resultEmail(i: {
     ${worth ? chips(SWITCH_FACTS) : ""}
     ${ranking}
     ${facts.length ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${C.grey};">${facts.join("<br>")}</p>` : ""}
+    ${i.lesson ? lessonLine(esc(i.lesson)) : ""}
 
     ${/* 6 Nov 2026: the Plus pitch, rebuilt to convert. The three things people tell us, then what
          Plus does about each, shown as a short animation (public/email/plus-morning.gif). */""}
@@ -97,7 +99,7 @@ export function resultEmail(i: {
     ${pains([
       { n: i.marketChanges && i.marketChanges > 0 ? `${i.marketChanges}` : "100+", label: "offers changed on your network in 30 days", fix: "Today's cheapest is rarely next month's. We re-check every one against your bill, every morning." },
       { n: "23.1c", label: "peak, 17.8c off-peak, 112c a day: rates nobody can read", fix: "We turn your bill into plain English: what you used, what each part cost, and where the money went." },
-      { n: "+$61", label: "on the bill, and nobody says why", fix: "Estimated read, a discount that fell off, a late fee: we spot it and tell you what to say to get it back." },
+      { n: "+$61", label: "on the bill, and nobody says why", fix: "Every bill you send, we show what changed since the last one, in dollars: usage, prices, days, a concession or rebate gone. A late fee or missed discount, we tell you what to say to get it back." },
     ])}
     ${plusMorning(i.origin, `${i.origin}/pricing`)}
     ${joinCard({
@@ -866,6 +868,7 @@ export function firstCheckEmail(i: {
   inboxAddress: string | null;
   reelUrl: string | null;    // the "how it works" reel on the site, when the file is there
   unsubscribeUrl: string;
+  lessons?: string[];        // 8 Nov 2026: one line per fuel from their own bill
 }): Email {
   const saving = (f: FirstCheckFuel | null) => (f ? Math.max(0, f.nowYear - f.bestYear) : 0);
   const sE = saving(i.elec), sG = saving(i.gas);
@@ -901,12 +904,13 @@ export function firstCheckEmail(i: {
       ${fuelBlock(i.elec, "Electricity", "&#9889;", true)}
       ${fuelBlock(i.gas, "Gas", "&#128293;", !i.elec)}
     </table>
+    ${(i.lessons ?? []).map((t) => lessonLine(esc(t))).join("")}
     ${button("Open my dashboard", dash)}
 
     ${heading("What happens now")}
     ${iconRows([
       iconRow("", "Every morning", "we re-price every plan against this bill. New offers, price rises, discounts ending: all of it."),
-      iconRow("", `Only when it matters`, `you get one email, the day a plan beats yours by ${money(i.alertMin)} a year or more. Otherwise, silence: no news is good news. Change the amount on your dashboard.`),
+      iconRow("", `Only when it matters`, `you get one email, the day a plan beats yours by ${money(i.alertMin)} a year or more. <b>Quiet means you&rsquo;re fine.</b> Change the amount on your dashboard.`),
       iconRow("", "On the 1st of each month", "a short summary: your bill, what you&rsquo;ve saved, what moved in the market."),
       iconRow("", "A month before a discount ends", "a heads-up, if you&rsquo;ve told us the date."),
     ])}

@@ -66,6 +66,7 @@ export default function LearnPage() {
             <a href="#data">Our data</a>
             <Link href="/ev">EV calculator</Link>
             <Link href="/gas">Gas check</Link>
+            <Link href="/cant-pay-my-bill">Can&apos;t pay a bill?</Link>
           </div>
         </section>
         <FeelingCard />
