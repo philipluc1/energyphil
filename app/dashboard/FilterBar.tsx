@@ -7,6 +7,11 @@ import styles from "./dashboard.module.css";
 
 export const SECTIONS = [
   { id: "visitors", label: "Visitors" },
+  { id: "growth", label: "Members growth" },
+  { id: "funnel", label: "Funnel and ad payback" },
+  { id: "plan", label: "Plan vs actual" },
+  { id: "cash", label: "Revenue and cash ahead" },
+  { id: "value", label: "Value delivered and churn risk" },
   { id: "launch", label: "Launch" },
   { id: "revenue", label: "Revenue and retention" },
   { id: "didnt", label: "Didn't join" },

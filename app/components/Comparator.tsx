@@ -55,6 +55,7 @@ import type { ExtractedBill } from "@/lib/billExtraction";
 import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { periodBreakdown } from "@/lib/savings";
 import BillPhotoUpload, { FREE_EMAIL_KEY } from "./BillPhotoUpload";
+import EmailGate from "./EmailGate";
 import PricingSection, { type SubscribeProfile } from "./PricingSection";
 import SaveCheck from "./SaveCheck";
 import HowWeWorkedItOut from "./HowWeWorkedItOut";
@@ -296,8 +297,11 @@ export default function Comparator() {
   useEffect(() => {
     let saved = "";
     try { saved = window.localStorage.getItem(FREE_EMAIL_KEY) ?? ""; } catch { /* storage off */ }
-    if (saved) Promise.resolve().then(() => setEmail((cur) => cur || saved));
+    if (saved) Promise.resolve().then(() => { setEmail((cur) => cur || saved); setGaveEmail(true); });
   }, []);
+  // 9 Nov 2026 (Phil): free results show the saving, then ask for an email before the retailers and plans.
+  // Once given (here, or for a free bill photo), it's remembered on this device.
+  const [gaveEmail, setGaveEmail] = useState(false);
   const [wantsAlerts, setWantsAlerts] = useState(false);
   const [leadStatus, setLeadStatus] = useState<LeadStatus>("idle");
   const [scanBanner, setScanBanner] = useState<{ retailer: string | null; warnings: string[] } | null>(null);
@@ -969,7 +973,14 @@ export default function Comparator() {
     // Saved but the email didn't go (the email service isn't working): say so, don't claim it was sent.
     setLeadStatus(res?.ok ? (body?.emailed === false ? "notSent" : "saved") : "error");
     // The same email unlocks the next free bill photo.
-    if (res?.ok) { try { window.localStorage.setItem(FREE_EMAIL_KEY, email.trim().toLowerCase()); } catch { /* storage off */ } }
+    if (res?.ok) {
+      try { window.localStorage.setItem(FREE_EMAIL_KEY, email.trim().toLowerCase()); } catch { /* storage off */ }
+      // Coming through the email step: open the results and take them to the plans.
+      if (!gaveEmail) {
+        setGaveEmail(true);
+        setTimeout(() => document.getElementById("plans-compared")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+      }
+    }
   }
 
   // The cheapest plan this household can get (offers needing a membership,
@@ -980,6 +991,7 @@ export default function Comparator() {
   const member = useMember();
   const free = member !== true;
   const locked = free && !FREE_SHOWS_NAMES;
+  const gated = free && hydrated && !gaveEmail && leadStatus !== "saved" && leadStatus !== "notSent";
   // Free users see plans from #3 on; the cheapest ones are for members.
   const TOP_LOCKED = 2;
   const FREE_ROWS = 3;
@@ -2496,7 +2508,7 @@ export default function Comparator() {
                     </div>
                     <span className={r.op} aria-hidden="true">→</span>
                     <div className={r.tile}>
-                      <span className={r.tileLabel}>{locked ? "With the cheapest plan" : haveBill && sameRetailer(currentRetailer, top.plan[0]) ? `${top.plan[0]}, ${currentPlanSame(top) ? "today's rates" : "new plan"}` : `With ${top.plan[0]}`}</span>
+                      <span className={r.tileLabel}>{locked || gated ? "With the cheapest plan" : haveBill && sameRetailer(currentRetailer, top.plan[0]) ? `${top.plan[0]}, ${currentPlanSame(top) ? "today's rates" : "new plan"}` : `With ${top.plan[0]}`}</span>
                       <b><CountUp value={top.total * k} format={fmtCurrency} /></b>
                       <small>{perLabel}</small>
                     </div>
@@ -2512,7 +2524,7 @@ export default function Comparator() {
                     {!haveBill && " Add your bill to compare against what you really pay."}
                   </p>
                   {/* Same retailer, different plan (2 Nov 2026): folded away, open on tap. */}
-                  {!locked && haveBill && sameRetailer(currentRetailer, top.plan[0]) && (
+                  {!locked && !gated && haveBill && sameRetailer(currentRetailer, top.plan[0]) && (
                     <details className={r.sameFold}>
                       <summary>No need to change retailer <span>how</span></summary>
                       <p>
@@ -2522,7 +2534,11 @@ export default function Comparator() {
                       </p>
                     </details>
                   )}
-                  {locked ? (
+                  {gated ? (
+                    <EmailGate dark email={email} setEmail={setEmail} wantsAlerts={wantsAlerts} setWantsAlerts={setWantsAlerts} onSubmit={handleLeadSubmit} status={leadStatus}
+                      title={`See which plan saves you $${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")} a year`}
+                      sub={`Pop in your email to see the retailer, the plan and all ${matches.length} plans compared. We'll email you a copy too.`} />
+                  ) : locked ? (
                     <button type="button" className={r.heroBtn} onClick={joinScroll}>
                       <Icon name="lock" size={16} /> See which retailer →
                     </button>
@@ -2549,13 +2565,13 @@ export default function Comparator() {
                 </div>
               )}
               {/* 7 Nov 2026: a blurred taste of the dashboard on free results. */}
-              {free && top && (
+              {free && top && !gated && (
                 <>
                   <ResultReel onJoin={joinScroll} retailer={currentRetailer ?? null} />
                   <LockedPreviews network={distributor} monthNow={(bench / days) * 30.4} monthBest={(top.total / days) * 30.4} haveBill={haveBill} retailer={currentRetailer ?? null} onUnlock={joinScroll} />
                 </>
               )}
-              {locked && worthSwitching && !atPricing && (
+              {locked && !gated && worthSwitching && !atPricing && (
                 <div className={styles.stickyBar}>
                   <button type="button" className={styles.stickyBtn} onClick={joinScroll}>
                     <Icon name="lock" size={15} /> See the cheapest plan · save ${Math.round(periodBreakdown(bench - top.total, days).annual).toLocaleString("en-AU")}/yr →
@@ -2586,6 +2602,11 @@ export default function Comparator() {
                   </div>
                 </div>
               )}
+              {gated && !worthSwitching && (
+                <EmailGate email={email} setEmail={setEmail} wantsAlerts={wantsAlerts} setWantsAlerts={setWantsAlerts} onSubmit={handleLeadSubmit} status={leadStatus}
+                  title={`See all ${matches.length} plans compared`} sub="Pop in your email to see every retailer and plan priced for your home. We'll email you a copy too." />
+              )}
+              {!gated && (<>
               <section className={styles.planListTop} aria-label="Plans compared" id="plans-compared" style={{ scrollMarginTop: 90 }}>
                     <div className={r.listHead}>
                       <div className={r.listTitleRow}>
@@ -3001,6 +3022,7 @@ export default function Comparator() {
                 </div>
               </details>
 
+              </>)}
               <Disclosures priceDate={fmtUpdated()} />
 
             </>

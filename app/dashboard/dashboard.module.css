@@ -362,6 +362,11 @@
 .fReset { margin-left: 8px; border: 0; background: none; padding: 0; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--navy-accent-text); cursor: pointer; }
 .fNote { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--grey-soft); }
 @media (max-width: 560px) { .fGroup { grid-template-columns: 1fr; gap: 4px; } .filterBar { position: static; } }
+:global(html[data-dash-hide~="growth"]) [data-sec="growth"],
+:global(html[data-dash-hide~="funnel"]) [data-sec="funnel"],
+:global(html[data-dash-hide~="plan"]) [data-sec="plan"],
+:global(html[data-dash-hide~="cash"]) [data-sec="cash"],
+:global(html[data-dash-hide~="value"]) [data-sec="value"],
 :global(html[data-dash-hide~="launch"]) [data-sec="launch"],
 :global(html[data-dash-hide~="revenue"]) [data-sec="revenue"],
 :global(html[data-dash-hide~="didnt"]) [data-sec="didnt"],
@@ -394,3 +399,12 @@
 /* 6 Nov 2026: the new logo. */
 .adminLogo { display: block; height: 26px; }
 .loginLogo { display: block; height: 34px; margin: 0 auto; width: fit-content; }
+
+/* 9 Nov 2026: owner analytics (members growth, funnel, plan vs actual, cash, value) */
+.toolRow { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.segRow { display: flex; flex-wrap: wrap; gap: 6px; }
+.vsPlan { color: var(--grey-soft); font-size: 12px; }
+.spendForm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 13px; }
+.spendForm select, .spendForm input { border: 1.5px solid var(--border); background: var(--surface); color: var(--ink); border-radius: 9px; padding: 7px 10px; font: inherit; font-size: 13px; }
+.spendForm input { width: 110px; }
+.spendForm button:disabled { opacity: 0.5; cursor: default; }

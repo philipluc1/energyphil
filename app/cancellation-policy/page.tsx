@@ -21,7 +21,7 @@ export default function CancellationPolicyPage() {
           <h1>Cancellation Policy</h1>
           <div className={styles.updated}>Last updated {LAST_UPDATED}</div>
           <p className={styles.lede}>
-            The comparison on <Link href="/check">the check page</Link> is always free, with no sign-up. This
+            The comparison on <Link href="/check">the check page</Link> is always free; you just need an email to see the full results. This
             page covers the paid monitoring subscription — Monthly, Quarterly, and Half-yearly — plus the
             once-off plan.
           </p>

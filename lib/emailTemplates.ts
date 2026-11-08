@@ -46,19 +46,20 @@ export function resultEmail(i: {
   year?: { label: string; best: number; now: number }[];  // 12 months ahead, for the Plus preview
   currentRetailer?: string | null;  // who they're with now, if they said or the bill showed
   lesson?: string | null;           // 8 Nov 2026: one line from their own bill (lib/billLesson)
+  gas?: boolean;                    // 9 Nov 2026: a gas result (no default offer for gas; compared with a typical gas plan)
 }): Email {
   const worth = i.yearly >= WORTH_SWITCHING_PER_YEAR;
   const same = worth && FREE_SHOWS_NAMES && i.vsBill && sameRetailer(i.currentRetailer, i.retailer);
   const v = plusValue();
   const subject = worth ? `Your result: about ${money(i.yearly)} a year` : "Your Utilo result";
   const title = worth ? (i.vsBill ? "You could pay less." : "Here's your result.") : "You're on a good deal.";
-  const nowWord = i.vsBill ? "Your bill" : "Default offer";
+  const nowWord = i.vsBill ? "Your bill" : i.gas ? "A typical gas plan" : "Default offer";
   const card = worth
     ? planCard({
         kicker: same ? "Cheapest for you · same retailer" : "Cheapest for you",
         retailer: FREE_SHOWS_NAMES ? i.retailer : "Utilo Plus shows which retailer",
         planName: FREE_SHOWS_NAMES ? i.planName : "The plan name, rates and sign-up conditions are on your dashboard.",
-        figure: { amount: i.yearly, after: i.vsBill ? "a year less than your bill." : "a year less than the default offer." },
+        figure: { amount: i.yearly, after: i.vsBill ? "a year less than your bill." : i.gas ? "a year less than a typical gas plan." : "a year less than the default offer." },
         link: FREE_SHOWS_NAMES ? retailerLink(i.retailer) : { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` },
       })
     : statusBox({ kicker: "Your result", headline: "Nothing beats it by enough to bother", body: `The cheapest plan we found saves less than ${money(WORTH_SWITCHING_PER_YEAR)} a year. Stay put.`, tone: "green" });
@@ -87,7 +88,9 @@ export function resultEmail(i: {
     ${stats}
     ${card}
     ${same ? sameRetailerBonus({ retailer: i.retailer, planName: i.planName ?? "their cheapest plan for you", amount: i.yearly }) : ""}
-    ${!i.vsBill && worth ? tip(`This is against the default offer. <strong>Snap your bill</strong> for your exact saving: <a href="${i.origin}/check">check again with a photo</a>.`) : ""}
+    ${!i.vsBill && worth ? (i.gas
+      ? tip(`This is against a typical gas plan. <strong>Snap your gas bill</strong> for your exact saving: <a href="${i.origin}/gas">check again with a photo</a>.`)
+      : tip(`This is against the default offer. <strong>Snap your bill</strong> for your exact saving: <a href="${i.origin}/check">check again with a photo</a>.`)) : ""}
     ${worth ? chips(SWITCH_FACTS) : ""}
     ${ranking}
     ${facts.length ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${C.grey};">${facts.join("<br>")}</p>` : ""}

@@ -25,7 +25,7 @@ export default function FaqPage() {
           <div className={home.faq}>
             <details className={home.faqItem} open>
               <summary>Is it really free?</summary>
-              <p>Yes. The check is free and you don&apos;t need an account. Your first bill photo is free, no sign-up; after that, add your email for one free electricity and one free gas photo every 3 months. Typing the numbers in is always free. Utilo Plus pays for the ongoing part: unlimited photos, every plan re-priced against your home each morning, an email when switching is worth it, and a saved result each month.</p>
+              <p>Yes. The check is free and you don&apos;t need an account: you see your saving straight away, and pop in your email to see which plans and retailers (we email you a copy). Your first bill photo is free; after that, add your email for one free electricity and one free gas photo every 3 months. Typing the numbers in is always free. Utilo Plus pays for the ongoing part: unlimited photos, every plan re-priced against your home each morning, an email when switching is worth it, and a saved result each month.</p>
             </details>
             <details className={home.faqItem}>
               <summary>I&apos;m not in Victoria. Can I use it?</summary>

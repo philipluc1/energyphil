@@ -15,6 +15,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DASH_COOKIE, dashCookieValid } from "@/lib/dashAuth";
 import { schemaHealth } from "@/lib/schemaHealth";
+import OwnerAnalytics from "./OwnerAnalytics";
+import { atRisk, breakEvenPerMember, channelPayback, funnelWeeks, growthSeries, mrrTrend, periodKeys, planVsActual, priceMix, readsByMonth, renewalsAhead, valueDelivered, type MemberDetail, type SpendRow } from "@/lib/ownerAnalytics";
+import { BASE_TARGETS, PLAN_SOURCE } from "@/lib/planTargets";
 
 // Always hit the database fresh — this is a live admin view, never cached.
 export const dynamic = "force-dynamic";
@@ -139,6 +142,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   };
   const periodLabel = f.period === "all" ? "all time" : `last ${PERIODS.find((p) => p.id === f.period)?.label ?? ""}`;
 
+  // 9 Nov 2026: members growth, funnel and ad payback, plan vs actual, cash ahead, value and risk.
+  const owner = await ownerAnalytics(db, allMembers, members, events, f, since, now, periodLabel);
+
   // 7 Nov 2026: say so when the database is behind the code (a missing column
   // used to drop fields on save without a word).
   const health = await schemaHealth(db);
@@ -156,6 +162,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
         <VisitorsSection report={pv.error ? null : visitReport(views, checkSids)} live={live} periodLabel={periodLabel} missing={visitsMissing} />
       </>}>
+      <OwnerAnalytics {...owner} />
       <GrowthSections
         rev={revenue(members, now)}
         churn={churnByMonth(members, now, months)}
@@ -192,4 +199,42 @@ async function unpaidCheckouts(members: MemberRow[], now: Date, days: number, pl
   } catch (e) {
     return { checkouts: [], note: `Couldn't reach Stripe: ${(e as Error).message}` };
   }
+}
+
+/** Everything the 9 Nov 2026 sections need, loaded once. Each query copes with an older database. */
+async function ownerAnalytics(db: NonNullable<typeof supabaseAdmin>, allMembers: MemberRow[], members: MemberRow[], events: CheckEventRow[], f: ReturnType<typeof parseFilters>, since: number, now: Date, periodLabel: string) {
+  const DAY = 86_400_000;
+  const weeksAgo = new Date(now.getTime() - 13 * 7 * DAY).toISOString();
+  const yearAgo = new Date(now.getTime() - 400 * DAY).toISOString();
+  const pv = await db.from("page_views").select("created_at, sid, source").gte("created_at", weeksAgo).limit(100000);
+  const lq = await db.from("leads").select("created_at, source").gte("created_at", weeksAgo).limit(20000);
+  const leadRows = lq.error ? (await db.from("leads").select("created_at").gte("created_at", weeksAgo).limit(20000)).data ?? [] : lq.data ?? [];
+  const sp = await db.from("ad_spend").select("month, channel, amount").limit(5000);
+  const spend = (sp.data ?? []) as SpendRow[];
+  const rd = await db.from("bill_reads").select("created_at").gte("created_at", yearAgo).limit(100000);
+  const bl = await db.from("bills").select("email, created_at").limit(100000);
+  const bills = (bl.data ?? []) as { email: string; created_at: string }[];
+  const DETAIL = "id, created_at, email, plan, status, amount_cents, current_period_end, customer_name, source, canceled_at, cancel_at, bill_inbox, inbox_last_at, money_found, last_notified_at, switched_at";
+  const det = await db.from("subscribers").select(DETAIL).limit(10000);
+  // An older database without the newer columns: fall back to the members already loaded.
+  const detail = fromSource(onPlan((det.error ? allMembers : det.data ?? allMembers) as unknown as MemberDetail[], f), f);
+  const evs = fromSource(events as (CheckEventRow & { source?: string | null })[], f);
+  const spendMonths = periodKeys("month", 6, now);
+  return {
+    growth: { week: growthSeries(members, evs, "week", 12, now), month: growthSeries(members, evs, "month", 12, now) },
+    funnel: funnelWeeks(fromSource((pv.data ?? []) as { created_at: string; sid: string; source?: string | null }[], f), evs, fromSource(leadRows as { created_at: string; source?: string | null }[], f), members, 8, now),
+    channels: channelPayback(events, onPlan(allMembers, f), spend, since || null),
+    breakEven: breakEvenPerMember(),
+    periodLabel,
+    spendMonths,
+    spendMissing: !!sp.error,
+    plan: planVsActual(BASE_TARGETS, events, allMembers, now),
+    planSource: PLAN_SOURCE,
+    mrr: mrrTrend(members, 12, now),
+    mix: priceMix(members, now),
+    renewals: renewalsAhead(members, now),
+    reads: readsByMonth((rd.data ?? []) as { created_at: string }[], 12, now),
+    value: valueDelivered(detail, bills, now, 8),
+    risk: atRisk(detail, bills, now),
+  };
 }

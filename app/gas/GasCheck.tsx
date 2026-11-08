@@ -18,7 +18,9 @@ import RetailerLogo from "../components/RetailerLogo";
 import GasPlanTable from "../components/GasPlanTable";
 import GasSeasonChart from "../components/GasSeasonChart";
 import { DEFAULT_GAS_PROFILE, VIC_GAS_HEATED_GJ, VIC_GAS_UNHEATED_GJ, annualFromGasBill, estimateGasAnnual, gasByMonth, heatingShareFor, monthsFromAnnual, periodMonths, type GasHeating, type GasProfile } from "@/lib/gasUsage";
-import BillPhotoUpload from "../components/BillPhotoUpload";
+import BillPhotoUpload, { FREE_EMAIL_KEY } from "../components/BillPhotoUpload";
+import EmailGate from "../components/EmailGate";
+import { useMember } from "@/lib/useMember";
 import BillPagePrompt from "../components/BillPagePrompt";
 import Icon from "../components/Icon";
 import { guessGasZoneFromPostcode } from "@/lib/postcodeGas";
@@ -63,6 +65,17 @@ export default function GasCheck() {
   const [fromPhoto, setFromPhoto] = useState(false);
   // The retailer estimated the read on the bill we read (7 Nov 2026).
   const [estimatedRead, setEstimatedRead] = useState(false);
+  // 9 Nov 2026 (Phil): the saving first, then an email for the retailers and plans. Remembered on this device; members skip it.
+  const member = useMember();
+  const [email, setEmail] = useState("");
+  const [wantsAlerts, setWantsAlerts] = useState(false);
+  const [gateStatus, setGateStatus] = useState<"idle" | "saving" | "saved" | "notSent" | "error">("idle");
+  const [gaveEmail, setGaveEmail] = useState(false);
+  useEffect(() => {
+    let saved = "";
+    try { saved = window.localStorage.getItem(FREE_EMAIL_KEY) ?? ""; } catch { /* storage off */ }
+    if (saved) Promise.resolve().then(() => { setEmail(saved); setGaveEmail(true); });
+  }, []);
   // The printed total was set aside for rates × usage (a credit or adjustment on the bill).
   const [billBasis, setBillBasis] = useState<{ printed: number } | null>(null);
   // No bill: a few questions about the home, priced on typical Victorian gas use.
@@ -507,6 +520,22 @@ export default function GasCheck() {
   }
 
   /* ---------- 4. Result ---------- */
+  const gated = hydrated && member !== true && !gaveEmail;
+  async function submitGate(e: React.FormEvent) {
+    e.preventDefault();
+    setGateStatus("saving");
+    const res = await fetch("/api/gas-lead", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, wantsAlerts, zone, days, mj, bill: haveBill ? bill : null, currentRetailer: retailer || null, supplyCentsPerDay: yourRates?.supply ? yourRates.supply * 100 : null, estimated: estimatedRead }),
+    }).catch(() => null);
+    const body = res ? await res.json().catch(() => null) : null;
+    if (!res?.ok) { setGateStatus("error"); return; }
+    setGateStatus(body?.emailed === false ? "notSent" : "saved");
+    try { window.localStorage.setItem(FREE_EMAIL_KEY, email.trim().toLowerCase()); } catch { /* storage off */ }
+    setGaveEmail(true);
+    setTimeout(() => document.getElementById("gas-best")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+  }
   return (
     <>
       <div className={g.topBar}>
@@ -539,22 +568,33 @@ export default function GasCheck() {
               <div className={styles.resultHeroLabel}>Good news</div>
               <div className={styles.resultHeroNum}>You&apos;re on a good gas deal</div>
               <div className={styles.resultHeroSub}>Nothing beats it by {money0(WORTH_SWITCHING_PER_YEAR)} a year or more. Plus members get told when that changes.</div>
+              {gated && (
+                <EmailGate fuel="gas" email={email} setEmail={setEmail} wantsAlerts={wantsAlerts} setWantsAlerts={setWantsAlerts} onSubmit={submitGate} status={gateStatus}
+                  title={`See all ${ranked.length} gas plans compared`} sub="Pop in your email to see every retailer and plan priced for your home. We'll email you a copy too." />
+              )}
             </div>
           ) : (
             <div className={`${styles.resultHero} ${haveBill ? styles.resultHeroBad : ""}`}>
               <span className={styles.resultHeroKicker}>{haveBill ? "Based on your gas bill" : fromEstimate ? (gasPick === "average" ? "For the average gas home, vs a typical gas plan" : "For a home like yours, vs a typical gas plan") : "Compared with a typical gas plan"}</span>
               <div className={styles.resultHeroLabel}>{haveBill ? "You could save about" : "The cheapest gas plan saves up to"}</div>
               <div className={styles.resultHeroNum}>{money0(Math.max(0, yearly))}</div>
-              <div className={styles.resultHeroSub}>a year with {top.plan[0]}{haveBill ? ", vs your gas bill" : ". Add your gas charges for your own saving."}</div>
+              <div className={styles.resultHeroSub}>a year with {gated ? "the cheapest gas plan" : top.plan[0]}{haveBill ? ", vs your gas bill" : ". Add your gas charges for your own saving."}</div>
+              {gated ? (
+                <EmailGate fuel="gas" email={email} setEmail={setEmail} wantsAlerts={wantsAlerts} setWantsAlerts={setWantsAlerts} onSubmit={submitGate} status={gateStatus}
+                  title={`See which plan saves you ${money0(Math.max(0, yearly))} a year`}
+                  sub={`Pop in your email to see the retailer, the plan and all ${ranked.length} gas plans compared. We'll email you a copy too.`} />
+              ) : (
               <div className={styles.heroPlusRow}>
                 <a href="#gas-plus" className={styles.resultHeroBtn} onClick={(e) => { e.preventDefault(); document.getElementById("gas-plus")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Keep this checked every day →</a>
                 {RETAILER_LINKS[top.plan[0]] && <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={zone} data-fuel="G" target="_blank" rel="noopener noreferrer" className={styles.quietLink}>or see the plan on {top.plan[0]}&apos;s site ↗</a>}
               </div>
+              )}
               <span className={styles.resultHeroFine}>{fromEstimate ? "Priced on a whole year of typical use for a home like yours. " : "From this bill, scaled to a year. Gas use swings with the seasons (a winter bill overstates it), so treat it as a guide. "}{PRICE_CHANGE_CLAUSE}</span>
             </div>
           )}
 
-          <div className={styles.bestCard}>
+          {!gated && (<>
+          <div className={styles.bestCard} id="gas-best" style={{ scrollMarginTop: 90 }}>
             <span className={styles.bestTag}>{worth || !haveBill ? "Cheapest gas plan for you" : "Cheapest we found"}</span>
             {/* 7 Nov 2026 (Phil): the logo sits with the name; no sign-up terms or "get this plan" box, since that's the retailer's process. */}
             <div className={styles.retailerRow}><RetailerLogo name={top.plan[0]} size={44} /><div className={styles.retailer}>{top.plan[0]}</div></div>
@@ -625,6 +665,7 @@ export default function GasCheck() {
               </>
             );
           })()}
+          </>)}
         </>
       )}
     </>

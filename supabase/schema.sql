@@ -472,3 +472,16 @@ alter table public.subscribers add column if not exists money_found jsonb;
 -- totals (supply charge a day, estimated read, tariff, concession, rebate and
 -- other credits, fees), so the next bill can be explained against it.
 alter table public.bills add column if not exists detail jsonb;
+
+-- 9 Nov 2026: owner dashboard ad spend, per month and channel (Meta, ChatGPT,
+-- Google, Other ads), for cost per free check and per member. Server only.
+create table if not exists public.ad_spend (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  month date not null,
+  channel text not null,
+  amount numeric not null check (amount >= 0),
+  unique (month, channel)
+);
+alter table public.ad_spend enable row level security;
+-- No policies: only the server (secret key) reads and writes it.

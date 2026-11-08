@@ -87,7 +87,7 @@ export default function HeroSnap({ plans, retailers, gasPlans, gasRetailers }: {
         <p className={s.fine}>
           {fuel === "nbn"
             ? "Electricity and gas are live today. Internet joins the same Utilo Plus when it opens, at no extra cost."
-            : <>Free, no sign-up, about a minute. Paper bill, PDF or a screenshot from your retailer&apos;s app.</>}
+            : <>Free, about a minute, no account needed. Paper bill, PDF or a screenshot from your retailer&apos;s app.</>}
         </p>
       </div>
     </div>

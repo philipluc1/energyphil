@@ -16,7 +16,7 @@ export const RECENT_SUBSCRIBER_COLUMNS = [
 /** 9 Nov 2026: newer columns on other tables ("table.column"). bill_inbox used to sit in the
  *  tables list by mistake (it's a subscribers column), so the dashboard always said it was missing. */
 export const RECENT_OTHER_COLUMNS = ["bills.detail"];
-export const RECENT_TABLES = ["bill_reads", "check_events", "page_views", "live_sessions", "review_clicks"];
+export const RECENT_TABLES = ["bill_reads", "ad_spend", "check_events", "page_views", "live_sessions", "review_clicks"];
 
 /** The column a PostgREST error names, in any of its three phrasings. */
 export function columnFromError(message: string): string | null {

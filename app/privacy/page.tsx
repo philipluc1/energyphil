@@ -63,7 +63,7 @@ export default function PrivacyPolicyPage() {
               members, to identify your account.
             </li>
             <li>
-              <strong>Your email address</strong>, if you ask for your result by email, opt in to price alerts, or join.
+              <strong>Your email address</strong>, when you see your full check results (we email you a copy), opt in to tips, price alerts and offers, or join. Giving it for your results doesn&apos;t sign you up to anything else: we only send tips and offers if you tick the box, and every email has an unsubscribe link.
             </li>
             <li>
               <strong>Membership details</strong>, if you join: your plan, payment status, Stripe customer reference, the date you switched, and

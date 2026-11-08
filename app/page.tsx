@@ -28,7 +28,7 @@ import SiteFooter from "./components/SiteFooter";
 // description that reads like the page (Google swaps in footer text when the two don't match).
 export const metadata = pageMeta({
   title: "Utilo: free power and gas bill check for Victorian homes",
-  description: "Snap your electricity or gas bill and see the cheapest plan for your home in about a minute, priced on your own usage. Free, no sign-up, no calls. Utilo Plus re-checks it every morning.",
+  description: "Snap your electricity or gas bill and see the cheapest plan for your home in about a minute, priced on your own usage. Free, no account, no calls. Utilo Plus re-checks it every morning.",
   path: "/",
   absoluteTitle: true,
 });
