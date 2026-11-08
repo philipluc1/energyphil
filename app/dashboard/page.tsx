@@ -149,7 +149,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {behind && (
           <div className={styles.schemaWarn} role="alert">
             <b>Database needs an update.</b> Run <code>supabase/schema.sql</code> in the Supabase SQL editor (it only adds what&apos;s missing; safe to run again).
-            {health.missingColumns.length > 0 && <> Missing columns on subscribers: <code>{health.missingColumns.join(", ")}</code>.</>}
+            {health.missingColumns.length > 0 && <> Missing columns: <code>{health.missingColumns.join(", ")}</code>.</>}
             {health.missingTables.length > 0 && <> Missing tables: <code>{health.missingTables.join(", ")}</code>.</>}
             {" "}Until then, bills still save but those fields are dropped.
           </div>

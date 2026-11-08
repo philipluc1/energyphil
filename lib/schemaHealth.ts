@@ -10,10 +10,13 @@ export interface SchemaHealth { missingColumns: string[]; missingTables: string[
 
 /** The newer subscriber columns, oldest first, so the list reads like a to-do. */
 export const RECENT_SUBSCRIBER_COLUMNS = [
-  "demand_kw", "gas_current_retailer", "gas_rates", "inbox_last_at", "inbox_last_status", "inbox_pending", "inbox_gmail_code",
-  "switch_remind_on", "switch_remind_note", "money_found", "review_asks", "review_clicked_at", "monthly_summary", "alert_min_saving", "concession_card",
+  "demand_kw", "gas_current_retailer", "gas_rates", "bill_inbox", "inbox_last_at", "inbox_last_status", "inbox_pending", "inbox_gmail_code",
+  "switch_remind_on", "switch_remind_note", "money_found", "review_asks", "review_clicked_at", "monthly_summary", "alert_min_saving", "concession_card", "first_check_emailed_at",
 ];
-export const RECENT_TABLES = ["bill_inbox", "bill_reads", "check_events", "page_views", "live_sessions", "review_clicks"];
+/** 9 Nov 2026: newer columns on other tables ("table.column"). bill_inbox used to sit in the
+ *  tables list by mistake (it's a subscribers column), so the dashboard always said it was missing. */
+export const RECENT_OTHER_COLUMNS = ["bills.detail"];
+export const RECENT_TABLES = ["bill_reads", "check_events", "page_views", "live_sessions", "review_clicks"];
 
 /** The column a PostgREST error names, in any of its three phrasings. */
 export function columnFromError(message: string): string | null {
@@ -34,6 +37,11 @@ export async function schemaHealth(db: SupabaseClient): Promise<SchemaHealth> {
     if (!c || !cols.includes(c)) break;
     missingColumns.push(c);
     cols = cols.filter((x) => x !== c);
+  }
+  for (const tc of RECENT_OTHER_COLUMNS) {
+    const [t, c] = tc.split(".");
+    const { error } = await db.from(t).select(c).limit(1);
+    if (error && columnFromError(error.message) === c) missingColumns.push(tc);
   }
   const missingTables: string[] = [];
   for (const t of RECENT_TABLES) {
