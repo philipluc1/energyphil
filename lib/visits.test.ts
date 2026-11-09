@@ -43,3 +43,25 @@ test("live: only tabs seen in the last two minutes", () => {
   ], now);
   assert.deepEqual(r, { count: 2, pages: [{ path: "/check", n: 2 }] });
 });
+
+test("time on site: check-ins add short gaps only", async () => {
+  const { activeSecondsToAdd, timeReport, fmtDuration } = await import("./visits");
+  const t0 = Date.parse("2026-11-09T00:00:00Z");
+  assert.equal(activeSecondsToAdd(null, t0), 0);
+  assert.equal(activeSecondsToAdd("2026-11-09T00:00:00Z", t0 + 45_000), 45);
+  assert.equal(activeSecondsToAdd("2026-11-09T00:00:00Z", t0 + 80_000), 60); // capped
+  assert.equal(activeSecondsToAdd("2026-11-09T00:00:00Z", t0 + 600_000), 0); // came back to a background tab
+  const v = (sid: string, path: string, device = "phone") => ({ created_at: "2026-11-09T00:00:00Z", sid, path, ref: null, device, first: true });
+  const r = timeReport(
+    [{ sid: "a", active_seconds: 5 }, { sid: "b", active_seconds: 95 }, { sid: "c", active_seconds: 300 }, { sid: "zzz", active_seconds: 999 }],
+    [v("a", "/"), v("b", "/"), v("c", "/gas", "desktop")],
+    new Set(["c"]),
+  );
+  assert.equal(r.visits, 3); // zzz isn't in this period's views
+  assert.equal(r.average, 133); assert.equal(r.median, 95);
+  assert.equal(Math.round(r.quickExit * 100), 33);
+  assert.equal(r.checkers, 300); assert.equal(r.others, 50);
+  assert.equal(r.byLanding.get("/"), 50);
+  assert.deepEqual(r.buckets.map((b) => b.visits), [1, 0, 0, 1, 1, 0]);
+  assert.equal(fmtDuration(95), "1m 35s"); assert.equal(fmtDuration(42), "42s");
+});

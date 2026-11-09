@@ -1,4 +1,4 @@
-import { pageLabel, type VisitReport } from "@/lib/visits";
+import { fmtDuration, pageLabel, type TimeReport, type VisitReport } from "@/lib/visits";
 import LiveNow from "./LiveNow";
 import styles from "./dashboard.module.css";
 
@@ -8,11 +8,14 @@ const n0 = (n: number) => n.toLocaleString("en-AU");
 /** Visitors (2 Nov 2026): who's on now, where people land, what they look at, who sent them. */
 export default function VisitorsSection({
   report,
+  time,
   live,
   periodLabel,
   missing,
 }: {
   report: VisitReport | null;
+  /** Time on site (9 Nov 2026); null until the SQL is run. */
+  time?: TimeReport | null;
   live: { ok: boolean; count?: number; pages?: { path: string; n: number }[]; message?: string };
   periodLabel: string;
   /** The tables aren't in the database yet. */
@@ -43,6 +46,55 @@ export default function VisitorsSection({
           <div className={styles.statValue}>{pct(report?.startedCheck ?? 0, report?.visitors ?? 0)}</div>
           <div className={styles.statLabel}>Started a check ({n0(report?.startedCheck ?? 0)} visitors)</div>
         </div>
+        <div className={styles.statCard}>
+          <div className={styles.statValue}>{time?.visits ? fmtDuration(time.average) : "–"}</div>
+          <div className={styles.statLabel}>Average time on site{time?.visits ? ` (typical ${fmtDuration(time.median)})` : ""}</div>
+        </div>
+      </div>
+
+      <div className={styles.chartGrid}>
+        <div className={styles.tableCard}>
+          <div className={styles.chartTitle}>Time on site</div>
+          {time === null || time === undefined ? (
+            <p className={styles.emptyNote}>Starts once the 9 Nov SQL is run in Supabase. Counted from then on.</p>
+          ) : !time.visits ? (
+            <p className={styles.emptyNote}>No visits timed yet in this period.</p>
+          ) : (
+            <>
+              <ul className={styles.barList}>
+                {time.buckets.map((b) => (
+                  <li key={b.label}>
+                    <span>{b.label}</span>
+                    <span className={styles.barTrack}><span style={{ width: `${(b.visits / Math.max(1, ...time.buckets.map((x) => x.visits))) * 100}%` }} /></span>
+                    <b>{pct(b.visits, time.visits)}</b>
+                  </li>
+                ))}
+              </ul>
+              <p className={styles.emptyNote}>
+                {pct(Math.round(time.quickExit * time.visits), time.visits)} left within 10 seconds. Time counts only while the page is open and in view.
+              </p>
+            </>
+          )}
+        </div>
+        <div className={styles.tableCard}>
+          <div className={styles.chartTitle}>Who stays longer</div>
+          {!time?.visits ? (
+            <p className={styles.emptyNote}>Nothing yet.</p>
+          ) : (
+            <div className={styles.tableScroll}>
+              <table className={styles.table}>
+                <thead><tr><th>Visits</th><th>Average time</th></tr></thead>
+                <tbody>
+                  <tr><td>Started a check</td><td>{fmtDuration(time.checkers)}</td></tr>
+                  <tr><td>Didn&apos;t start a check</td><td>{fmtDuration(time.others)}</td></tr>
+                  {time.byDevice.map((d) => (
+                    <tr key={d.device}><td>{d.device.charAt(0).toUpperCase() + d.device.slice(1)} <span className={styles.notYet}>({n0(d.visits)})</span></td><td>{fmtDuration(d.average)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles.chartGrid}>
@@ -53,13 +105,14 @@ export default function VisitorsSection({
           ) : (
             <div className={styles.tableScroll}>
               <table className={styles.table}>
-                <thead><tr><th>Page</th><th>Visitors</th><th>Started a check</th></tr></thead>
+                <thead><tr><th>Page</th><th>Visitors</th><th>Started a check</th>{time?.visits ? <th>Avg time</th> : null}</tr></thead>
                 <tbody>
                   {report.landing.map((l) => (
                     <tr key={l.path}>
                       <td>{pageLabel(l.path)}{pageLabel(l.path) !== l.path ? <span className={styles.pillSoft}>{l.path}</span> : null}</td>
                       <td>{n0(l.visitors)}</td>
                       <td>{n0(l.checks)} <span className={styles.notYet}>({pct(l.checks, l.visitors)})</span></td>
+                      {time?.visits ? <td>{time.byLanding.has(l.path) ? fmtDuration(time.byLanding.get(l.path)!) : "–"}</td> : null}
                     </tr>
                   ))}
                 </tbody>

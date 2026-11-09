@@ -314,10 +314,10 @@ export default function DashboardCharts({
                       )}
                     </td>
                     <td>
-                      {lead.estimated_saving !== null ? (
+                      {lead.estimated_saving != null ? (
                         <>
                           {fmtCurrency(lead.estimated_saving)}
-                          {lead.estimated_saving_pct !== null && (
+                          {lead.estimated_saving_pct != null && (
                             <span className={styles.planName}>{fmtPct(lead.estimated_saving_pct)}</span>
                           )}
                         </>

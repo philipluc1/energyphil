@@ -137,3 +137,82 @@ export function liveNow(rows: { sid: string; path: string | null; last_seen: str
   for (const r of live) m.set(r.path ?? "/", (m.get(r.path ?? "/") ?? 0) + 1);
   return { count: live.length, pages: top(m, (v) => v, 8).map(([path, n]) => ({ path, n })) };
 }
+
+// ── Time on site (9 Nov 2026) ───────────────────────────────────────────────
+// Each tab session keeps a running total of seconds the page was open and in
+// view. An open tab checks in every 45 seconds and once more when it's hidden
+// or closed; the time since the last check-in is added only if it's short
+// (a tab left in the background, or a laptop asleep, doesn't count).
+
+/** Gaps longer than this between check-ins mean they weren't looking. */
+export const ACTIVE_GAP_S = 90;
+/** The most one check-in can add. */
+export const ACTIVE_STEP_MAX_S = 60;
+
+/** Seconds to add for a check-in at `now`, given the previous one. */
+export function activeSecondsToAdd(prevLastSeen: string | null | undefined, now: number): number {
+  if (!prevLastSeen) return 0;
+  const gap = (now - Date.parse(prevLastSeen)) / 1000;
+  if (!(gap > 0) || gap > ACTIVE_GAP_S) return 0;
+  return Math.round(Math.min(gap, ACTIVE_STEP_MAX_S));
+}
+
+export interface TimeRow { sid: string; started_at?: string | null; active_seconds?: number | null }
+
+export interface TimeReport {
+  visits: number;
+  /** Seconds. */
+  average: number;
+  median: number;
+  /** Share of visits under 10 seconds. */
+  quickExit: number;
+  buckets: { label: string; visits: number }[];
+  /** Average for visits that started a check, and for those that didn't. */
+  checkers: number;
+  others: number;
+  byLanding: Map<string, number>;
+  byDevice: { device: string; average: number; visits: number }[];
+}
+
+const BUCKETS: [string, number][] = [["Under 10s", 10], ["10–30s", 30], ["30s–1 min", 60], ["1–3 min", 180], ["3–10 min", 600], ["10 min +", Infinity]];
+const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0);
+
+/** Average and typical time on site, for the visits in `views` (so the dashboard's period and source filters apply). */
+export function timeReport(times: TimeRow[], views: ViewRow[], checkSids: Set<string>): TimeReport {
+  const landing = new Map<string, ViewRow>();
+  for (const v of [...views].sort((a, b) => (a.created_at < b.created_at ? -1 : 1))) {
+    const cur = landing.get(v.sid);
+    if (!cur || (v.first && !cur.first)) landing.set(v.sid, v);
+  }
+  const rows = times.filter((t) => landing.has(t.sid)).map((t) => ({ sid: t.sid, s: Math.max(0, Math.round(t.active_seconds ?? 0)) }));
+  const secs = rows.map((r) => r.s).sort((a, b) => a - b);
+  const median = secs.length ? (secs.length % 2 ? secs[(secs.length - 1) / 2] : Math.round((secs[secs.length / 2 - 1] + secs[secs.length / 2]) / 2)) : 0;
+  const group = (key: (sid: string) => string) => {
+    const m = new Map<string, number[]>();
+    for (const r of rows) { const k = key(r.sid); const l = m.get(k); if (l) l.push(r.s); else m.set(k, [r.s]); }
+    return m;
+  };
+  const byLanding = new Map(Array.from(group((sid) => landing.get(sid)!.path)).map(([k, v]) => [k, avg(v)]));
+  const byDevice = Array.from(group((sid) => landing.get(sid)!.device ?? "desktop")).map(([device, v]) => ({ device, average: avg(v), visits: v.length })).sort((a, b) => b.visits - a.visits);
+  let lo = 0;
+  const buckets = BUCKETS.map(([label, hi]) => { const n = secs.filter((s) => s >= lo && s < hi).length; lo = hi; return { label, visits: n }; });
+  return {
+    visits: rows.length,
+    average: avg(secs),
+    median,
+    quickExit: rows.length ? secs.filter((s) => s < 10).length / rows.length : 0,
+    buckets,
+    checkers: avg(rows.filter((r) => checkSids.has(r.sid)).map((r) => r.s)),
+    others: avg(rows.filter((r) => !checkSids.has(r.sid)).map((r) => r.s)),
+    byLanding,
+    byDevice,
+  };
+}
+
+/** 95 → "1m 35s", 42 → "42s", 3700 → "1h 1m". */
+export function fmtDuration(s: number): string {
+  s = Math.max(0, Math.round(s));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+  return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+}

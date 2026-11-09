@@ -485,3 +485,10 @@ create table if not exists public.ad_spend (
 );
 alter table public.ad_spend enable row level security;
 -- No policies: only the server (secret key) reads and writes it.
+
+-- 9 Nov 2026: time on site. Each visit (browser tab) keeps when it started,
+-- the seconds it was open and in view, and pages seen. Kept 13 months.
+alter table public.live_sessions add column if not exists started_at timestamptz;
+alter table public.live_sessions add column if not exists active_seconds integer not null default 0;
+alter table public.live_sessions add column if not exists pages integer not null default 0;
+create index if not exists live_sessions_started on public.live_sessions (started_at desc);

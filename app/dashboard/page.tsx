@@ -5,7 +5,7 @@ import DashboardCharts from "./DashboardCharts";
 import GrowthSections, { type AbandonedCheckout } from "./GrowthSections";
 import { abandonedLeads, cancelReasons, churnByMonth, churnDate, cohorts, revenue, type LeadLite, type MemberRow } from "@/lib/adminReports";
 import { PERIODS, fromSource, inPeriod, monthsFor, onPlan, parseFilters, periodDays, periodStart } from "@/lib/adminFilters";
-import { LIVE_WINDOW_MS, liveNow, visitReport, type ViewRow } from "@/lib/visits";
+import { LIVE_WINDOW_MS, liveNow, timeReport, visitReport, type TimeRow, type ViewRow } from "@/lib/visits";
 import VisitorsSection from "./VisitorsSection";
 import ReviewsSection from "./ReviewsSection";
 import { reviewUrl } from "@/lib/reviews";
@@ -125,6 +125,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const checkSids = new Set(((await ckQ).data ?? []).map((r: { sid: string }) => r.sid));
   const lv = await db.from("live_sessions").select("sid, path, last_seen").gte("last_seen", new Date(now.getTime() - LIVE_WINDOW_MS).toISOString()).limit(5000);
   const live = lv.error ? { ok: false, message: "Run the latest SQL to turn this on." } : { ok: true, ...liveNow(lv.data ?? [], now.getTime()) };
+  // 9 Nov 2026: time on site, per visit (only visits counted since the SQL was run).
+  let tmQ = db.from("live_sessions").select("sid, started_at, active_seconds").not("started_at", "is", null).order("started_at", { ascending: false }).limit(50000);
+  if (since) tmQ = tmQ.gte("started_at", new Date(since).toISOString());
+  const tm = await tmQ;
+  const time = tm.error ? null : timeReport((tm.data ?? []) as TimeRow[], views, checkSids);
   // Google reviews (2 Nov 2026).
   const rvm = await db.from("subscribers").select("review_asks, review_clicked_at").or("review_asks.gt.0,review_clicked_at.not.is.null").limit(10000);
   let rcQ = db.from("review_clicks").select("source").limit(50000);
@@ -160,7 +165,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {" "}Until then, bills still save but those fields are dropped.
           </div>
         )}
-        <VisitorsSection report={pv.error ? null : visitReport(views, checkSids)} live={live} periodLabel={periodLabel} missing={visitsMissing} />
+        <VisitorsSection report={pv.error ? null : visitReport(views, checkSids)} time={time} live={live} periodLabel={periodLabel} missing={visitsMissing} />
       </>}>
       <OwnerAnalytics {...owner} />
       <GrowthSections

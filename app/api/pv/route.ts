@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sourceValue } from "@/lib/attribution";
-import { cleanPath, deviceOf, refHost } from "@/lib/visits";
+import { activeSecondsToAdd, cleanPath, deviceOf, refHost } from "@/lib/visits";
 
 // Page views and "on the site now" (2 Nov 2026), for the owner dashboard. See
 // lib/visits.ts for what's kept: no name, email, IP address or browser string.
@@ -34,9 +34,22 @@ export async function POST(req: NextRequest) {
     });
     quiet(error);
   }
-  const { error } = await supabaseAdmin.from("live_sessions").upsert({ sid, path, last_seen: now }, { onConflict: "sid" });
+  // 9 Nov 2026: the same row keeps a running total of time on site (seconds
+  // the tab was open and in view) and pages seen, for the owner dashboard.
+  const prev = await supabaseAdmin.from("live_sessions").select("last_seen, started_at, active_seconds, pages").eq("sid", sid).limit(1);
+  const p = (prev.error ? null : prev.data?.[0]) as { last_seen?: string; started_at?: string | null; active_seconds?: number | null; pages?: number | null } | null;
+  let { error } = await supabaseAdmin.from("live_sessions").upsert({
+    sid,
+    path,
+    last_seen: now,
+    started_at: p?.started_at ?? now,
+    active_seconds: (p?.active_seconds ?? 0) + activeSecondsToAdd(p?.last_seen, Date.now()),
+    pages: (p?.pages ?? 0) + (b?.t === "view" ? 1 : 0),
+  }, { onConflict: "sid" });
+  // Before the 9 Nov SQL is run: still count "on the site now".
+  if (error && /column|schema cache/i.test(error.message)) ({ error } = await supabaseAdmin.from("live_sessions").upsert({ sid, path, last_seen: now }, { onConflict: "sid" }));
   quiet(error);
-  // Now and then, clear out tabs that closed more than a day ago.
-  if (Math.random() < 0.02) await supabaseAdmin.from("live_sessions").delete().lt("last_seen", new Date(Date.now() - 86_400_000).toISOString());
+  // Now and then, clear out visits older than 13 months (kept for time on site).
+  if (Math.random() < 0.01) await supabaseAdmin.from("live_sessions").delete().lt("last_seen", new Date(Date.now() - 400 * 86_400_000).toISOString());
   return none;
 }

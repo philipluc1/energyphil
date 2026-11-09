@@ -32,11 +32,16 @@ export default function PageTracker() {
     } catch { /* private mode: count it as a later page */ }
     send({ t: "view", path, first, ref: first ? document.referrer : null });
     const ping = () => { if (document.visibilityState === "visible") send({ t: "ping", path }); };
+    // 9 Nov 2026: one more check-in as the tab is hidden or closed, so the
+    // time on the last page counts (time on site, owner dashboard).
+    const onVis = () => send({ t: "ping", path });
     const timer = window.setInterval(ping, PING_EVERY_MS);
-    document.addEventListener("visibilitychange", ping);
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", onVis);
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", ping);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", onVis);
     };
   }, [path]);
   return null;
