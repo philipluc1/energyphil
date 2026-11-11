@@ -7,14 +7,15 @@ import Wordmark from "./Wordmark";
 
 // "other" is for pages not represented by a nav tab (the policy/info pages
 // below) — none of the three tabs show as active there.
-export default function SiteHeader({ active }: { active: "home" | "check" | "pricing" | "learn" | "faq" | "account" | "business" | "other" }) {
+// `still`: the logo doesn't animate (the home page plays the big one instead, 11 Nov 2026).
+export default function SiteHeader({ active, still = false }: { active: "home" | "check" | "pricing" | "learn" | "faq" | "account" | "business" | "other"; still?: boolean }) {
   const biz = active === "business";
   return (
     <header className={styles.top}>
       <div className={styles.bar}>
         <Link href="/" className={styles.brandLink} aria-label="Utilo home">
           {/* 6 Nov 2026: the new logo, animated once per visit. */}
-          <span className={styles.brandLogo}><Wordmark animate /></span>
+          <span className={styles.brandLogo}><Wordmark animate={!still} /></span>
         </Link>
         {/* Who it's for (1 Nov 2026): homes today, businesses coming. */}
         <nav className={styles.audience} aria-label="Who it's for">

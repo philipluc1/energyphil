@@ -10,10 +10,10 @@ import { PLUS_NAME, perWeekWords } from "@/lib/pricingPlans";
 import { marketActivity } from "@/lib/marketActivity";
 import { typicalHouseholdExample } from "@/lib/savings";
 import SiteHeader from "./components/SiteHeader";
+import Wordmark from "./components/Wordmark";
 import StateWaitlist from "./components/StateWaitlist";
 import Icon from "./components/Icon";
 import CountUp from "./components/CountUp";
-import HomeReel from "./components/HomeReel";
 import InfoTip from "./components/InfoTip";
 import SourceBanner from "./components/SourceBanner";
 import PlanBand from "./components/PlanBand";
@@ -84,56 +84,29 @@ export default function Home() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, "\\u003c") }} />
-      <SiteHeader active="other" />
+      <SiteHeader active="other" still />
 
       <main className={h.page}>
         <SourceBanner />
 
-        {/* 1. The hook (2 Nov 2026, "precise and technical"): few words, one amber button, and a bill being read. */}
-        <section className={`${h.hero} ${h.heroTech}`}>
-          <div className={h.heroText}>
-            <h1 className={h.h1}>
-              Stop overpaying.
-              <br />
-              <span className={h.h1Accent}>Start saving.</span>
-            </h1>
-            <p className={h.lede}>Snap your power or gas bill. We price it against plans from {RETAILER_COUNT} retailers, then <b className={h.ledeEvery}>re-check it every morning</b> with {PLUS_NAME}.</p>
-            <div className={h.ctas}>
-              <Link href="/check" className={h.primary}>
-                <Icon name="camera" size={20} /> Snap my bill, free
-              </Link>
-            </div>
-            {/* No bill to hand: the postcode, then a few questions (2 Nov 2026; label shortened 4 Nov). */}
+        {/* 1. The intro (11 Nov 2026, Phil): the animated logo, as in the logo video, then the two
+            ways to start in the middle of the screen. Everything else is a scroll away. */}
+        <section className={h.intro} aria-labelledby="home-h1">
+          <div className={h.introLogo}><Wordmark ink="#FFFFFF" animate="hero" /></div>
+          <h1 id="home-h1" className={h.introH1}>
+            Stop overpaying. <span className={h.introAccent}>Start saving.</span>
+          </h1>
+          <div className={h.introCard}>
+            <Link href="/check" className={h.primary}>
+              <Icon name="camera" size={20} /> Snap my bill, free
+            </Link>
+            {/* No bill to hand: the postcode, then a few questions. */}
             <div className={h.pcStart}><PostcodeStart /></div>
-            {/* 4 Nov 2026: the two fuel cards became one line (decluttered). */}
-            {/* 7 Nov 2026: decluttered. A gas bill is recognised and handed to the gas check; member login is in the menu. */}
             <p className={h.gasLine}>Power or gas bill, PDF or photo. We work out which.</p>
           </div>
-
-          {/* A bill being read, line by line: what the check does, as a picture. Example figures, labelled. */}
-          <div className={h.heroArt} aria-label="Example: a typical home's quarterly bill, checked">
-            <div className={h.readCard}>
-              <div className={h.readHead}>
-                <span className={h.readTitle}><Icon name="camera" size={14} /> Reading your bill</span>
-                <span className={h.readTag}>Example</span>
-              </div>
-              <div className={h.readScan} aria-hidden="true" />
-              <dl className={h.readRows}>
-                <div><dt>Period</dt><dd>91 days</dd></div>
-                <div><dt>Usage</dt><dd>{Math.round(ex.annualUsageKwh * 91 / 365).toLocaleString("en-AU")} kWh</dd></div>
-                <div><dt>Retailers compared</dt><dd>{RETAILER_COUNT}</dd></div>
-                <div className={h.readRule} />
-                <div><dt>Your bill</dt><dd>{money(bench * 91 / 365)}</dd></div>
-                <div className={h.readBest}><dt>Cheapest plan</dt><dd>{money(best * 91 / 365)} <span aria-hidden="true">✓</span></dd></div>
-              </dl>
-              <div className={h.readSave}><span>You save</span><b>{money(Math.max(0, bench - best))} a year</b></div>
-              <div className={h.readFoot}><Icon name="refresh" size={14} /> Re-checked every morning with {PLUS_NAME}</div>
-            </div>
-            <span className={h.rcFoot}>
-              Typical home, 4,000 kWh a year, on the default offer
-              <InfoTip label="About this example">Averaged across Victoria&apos;s five networks on today&apos;s prices, single-rate plans, pay-on-time discounts included. Your bill gives your own number.</InfoTip>
-            </span>
-          </div>
+          <a href="#steps" className={h.scrollCue}>
+            How it works <span aria-hidden="true">↓</span>
+          </a>
         </section>
 
         {/* 2. Three numbers, no paragraph. */}
@@ -160,12 +133,41 @@ export default function Home() {
           )}
         </ul>
 
-        <HomeReel />
-
         {/* 3. How it works, as pictures. */}
-        <section className={h.section} data-motion="" data-stagger="h2, li">
-          <h2 className={h.h2}>Three steps</h2>
+        <section id="steps" className={h.section} data-motion="" data-stagger="h2, li">
+          <h2 className={h.h2}>Three Easy Steps</h2>
           <StepsVisual />
+        </section>
+
+        {/* 3a. What a check shows (moved down from the top, 11 Nov 2026). */}
+        <section className={`${h.section} ${h.exampleSec}`} data-motion="">
+          <h2 className={h.h2}>What you&apos;ll see</h2>
+          <div className={h.exampleWrap}>
+            {/* A bill being read, line by line: what the check does, as a picture. Example figures, labelled. */}
+            <div className={h.heroArt} aria-label="Example: a typical home's quarterly bill, checked">
+              <div className={h.readCard}>
+                <div className={h.readHead}>
+                  <span className={h.readTitle}><Icon name="camera" size={14} /> Reading your bill</span>
+                  <span className={h.readTag}>Example</span>
+                </div>
+                <div className={h.readScan} aria-hidden="true" />
+                <dl className={h.readRows}>
+                  <div><dt>Period</dt><dd>91 days</dd></div>
+                  <div><dt>Usage</dt><dd>{Math.round(ex.annualUsageKwh * 91 / 365).toLocaleString("en-AU")} kWh</dd></div>
+                  <div><dt>Retailers compared</dt><dd>{RETAILER_COUNT}</dd></div>
+                  <div className={h.readRule} />
+                  <div><dt>Your bill</dt><dd>{money(bench * 91 / 365)}</dd></div>
+                  <div className={h.readBest}><dt>Cheapest plan</dt><dd>{money(best * 91 / 365)} <span aria-hidden="true">✓</span></dd></div>
+                </dl>
+                <div className={h.readSave}><span>You save</span><b>{money(Math.max(0, bench - best))} a year</b></div>
+                <div className={h.readFoot}><Icon name="refresh" size={14} /> Re-checked every morning with {PLUS_NAME}</div>
+              </div>
+              <span className={h.rcFoot}>
+                Typical home, 4,000 kWh a year, on the default offer
+                <InfoTip label="About this example">Averaged across Victoria&apos;s five networks on today&apos;s prices, single-rate plans, pay-on-time discounts included. Your bill gives your own number.</InfoTip>
+              </span>
+            </div>
+          </div>
         </section>
 
         {/* 3b. What members get (1 Nov 2026). */}

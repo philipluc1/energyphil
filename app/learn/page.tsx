@@ -72,7 +72,7 @@ export default function LearnPage() {
         <FeelingCard />
 
         <section id="how" className={learn.block} data-motion="">
-          <h2 className={home.h2}>Three steps</h2>
+          <h2 className={home.h2}>Three Easy Steps</h2>
           <StepsVisual />
         </section>
 

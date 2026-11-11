@@ -234,3 +234,31 @@
 .memberLine { margin: 6px 0 0; font-size: 13.5px; color: var(--grey); }
 .memberLine a { color: var(--navy-accent-text, #24307a); font-weight: 800; text-decoration: none; border-bottom: 1.5px solid currentColor; }
 .memberLine a:hover { color: #ea580c; }
+
+/* 11 Nov 2026: the intro. The animated logo on navy (as in the logo video), then the two ways to start. */
+.intro { position: relative; margin: 14px 0 8px; padding: clamp(40px, 7vh, 72px) 22px 28px; border-radius: 22px; background: #1E2A4A; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: min(calc(100svh - 110px), 780px); overflow: hidden; isolation: isolate; }
+.introLogo { height: clamp(64px, 13vw, 132px); width: 100%; display: flex; justify-content: center; }
+.introH1 { margin: clamp(22px, 4vh, 36px) 0 0; font: 900 clamp(26px, 4.2vw, 42px)/1.05 "Archivo", sans-serif; letter-spacing: -0.03em; color: #fff; }
+.introAccent { color: var(--amber); white-space: nowrap; }
+.introCard { width: 100%; max-width: 480px; margin-top: clamp(22px, 4vh, 34px); padding: 22px; border-radius: 18px; background: #fff; color: var(--ink); text-align: left; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.55); }
+.introCard .primary { width: 100%; justify-content: center; border-radius: 12px; box-shadow: 0 10px 24px -14px rgba(245, 166, 35, 0.9); }
+.introCard .pcStart { margin-top: 18px; }
+.introCard .gasLine { margin-top: 12px; text-align: center; }
+.scrollCue { margin-top: clamp(20px, 4vh, 34px); display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 800; color: rgba(255, 255, 255, 0.78); text-decoration: none; }
+.scrollCue:hover { color: #fff; }
+.scrollCue span { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .introH1 { animation: introUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.2s both; }
+  .introCard { animation: introUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 1.5s both; }
+  .scrollCue { animation: introUp 0.6s ease-out 2.6s both; }
+  .scrollCue span { animation: cue 1.6s ease-in-out 3.2s infinite; }
+}
+@keyframes introUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes cue { 0%, 100% { transform: none; } 50% { transform: translateY(5px); } }
+@media (max-width: 520px) {
+  .intro { margin-left: -8px; margin-right: -8px; padding-left: 16px; padding-right: 16px; border-radius: 18px; }
+  .introCard { padding: 18px 16px; }
+}
+.exampleWrap { display: flex; justify-content: center; }
+.exampleSec .heroArt { display: flex; width: 100%; max-width: 420px; }
+.section[id] { scroll-margin-top: 90px; }
