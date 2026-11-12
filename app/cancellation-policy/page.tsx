@@ -9,7 +9,7 @@ import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Cancellation Policy", description: "How to cancel a Utilo membership, and what happens when you do.", path: "/cancellation-policy" });
 
-const LAST_UPDATED = "4 November 2026";
+const LAST_UPDATED = "12 November 2026";
 
 export default function CancellationPolicyPage() {
   return (
@@ -22,8 +22,8 @@ export default function CancellationPolicyPage() {
           <div className={styles.updated}>Last updated {LAST_UPDATED}</div>
           <p className={styles.lede}>
             The comparison on <Link href="/check">the check page</Link> is always free; you just need an email to see the full results. This
-            page covers the paid monitoring subscription — Monthly, Quarterly, and Half-yearly — plus the
-            once-off plan.
+            page covers Utilo Plus, the paid monitoring membership: one yearly plan for new members (older monthly,
+            quarterly and half-yearly plans work the same way), plus the once-off plan.
           </p>
         </section>
 
@@ -34,7 +34,7 @@ export default function CancellationPolicyPage() {
         </div>
 
         <section className={styles.section}>
-          <h2>Cancelling a Monthly, Quarterly, or Half-yearly plan</h2>
+          <h2>Cancelling your membership</h2>
           <p>There&apos;s no lock-in and no cancellation fee. You can cancel at any time by:</p>
           <ul>
             <li>

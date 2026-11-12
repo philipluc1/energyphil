@@ -10,7 +10,7 @@ import SiteFooter from "../components/SiteFooter";
 
 export const metadata = pageMeta({ title: "Terms of Service", description: "The terms for using Utilo's free check and membership.", path: "/terms" });
 
-const LAST_UPDATED = "4 November 2026";
+const LAST_UPDATED = "12 November 2026";
 
 // Plain-English terms. Draft for review by a lawyer before launch.
 export default function TermsPage() {
@@ -75,9 +75,9 @@ export default function TermsPage() {
         <section className={styles.section}>
           <h2>5. Membership</h2>
           <p>
-            Membership is billed through Stripe at the price shown when you join. Monthly, quarterly and half-yearly memberships
-            renew automatically until you cancel, which you can do at any time from My Dashboard. We email yearly members a reminder about two
-            weeks before each renewal, with the date and the price. Founding price: members who join before 1 February 2027 pay $45 a year (members who joined on the monthly plan at $7 a month keep it); from 1 February 2027 the price for new members is $55 a year. From 12 November 2026 new memberships are yearly only. Anyone who joined at $39 a year keeps that price on the same terms. Members who joined on the special keep the price they joined on for as long as their membership
+            Membership is billed through Stripe at the price shown when you join. New memberships are yearly and
+            renew automatically each year until you cancel (older monthly, quarterly and half-yearly memberships renew the same way), which you can do at any time from My Dashboard. We email yearly members a reminder about two
+            weeks before each renewal, with the date and the price. Founding price: members who join before 1 February 2027 pay $45 a year (members already on the monthly plan keep it); from 1 February 2027 the price for new members is $55 a year. Anyone who joined at $39 a year keeps that price on the same terms. Members who joined on the special keep the price they joined on for as long as their membership
             continues without a break; if it ends and they re-join later, the price at that time applies. The once-off membership is a
             single payment and never renews. Cancelling stops future charges; you keep access to
             the end of the period you&apos;ve paid for. There&apos;s one membership per email address: if you&apos;re charged twice for

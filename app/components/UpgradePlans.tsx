@@ -21,6 +21,9 @@ export default function UpgradePlans({ currentPlan, currentAmount = null, onChan
   const founding = isFoundingAmount(currentPlan, currentAmount);
   const isOnceOff = currentPlan === "once_off";
 
+  // 12 Nov 2026: yearly is the only plan on sale, so a yearly member has nothing to switch to.
+  if (!retired && !isOnceOff && recurring.every((p) => p.id === currentPlan)) return null;
+
   async function change(planId: PlanId) {
     if (!supabase) return;
     setBusy(planId); setMsg("");
