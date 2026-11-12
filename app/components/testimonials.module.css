@@ -1,0 +1,22 @@
+/* 12 Nov 2026: reviews on the home page. Small on purpose. */
+.wrap { margin-top: 48px; }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 12px; }
+.h2 { margin: 0; font: 900 clamp(22px, 3vw, 28px)/1.1 "Archivo", sans-serif; letter-spacing: -0.03em; color: var(--navy); }
+.summary { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--grey); }
+.summary b { color: var(--ink); }
+.stars, .cardStars { color: #f5a623; letter-spacing: 1px; }
+.off { color: #d9deea; }
+.strip { position: relative; }
+.track { list-style: none; margin: 0; padding: 2px 2px 10px; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+.card { flex: 0 0 min(300px, 82%); scroll-snap-align: start; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; background: #fff; border: 1px solid var(--border, #e3e7f0); }
+.cardStars { font-size: 14px; }
+.body { margin: 0; font-size: 14px; line-height: 1.45; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.who { margin-top: auto; font-size: 13px; color: var(--ink); }
+.src { color: var(--grey); }
+.arrows { display: flex; justify-content: flex-end; gap: 6px; }
+.arrows button { width: 34px; height: 34px; border-radius: 99px; border: 1.5px solid var(--border, #e3e7f0); background: #fff; color: var(--navy); font-weight: 900; cursor: pointer; }
+.arrows button:hover { border-color: var(--navy); }
+@media (pointer: coarse) { .arrows { display: none; } }
+.empty { margin: 0; padding: 14px 16px; border-radius: 14px; background: #fff; border: 1px dashed #cfd5e6; font-size: 14px; color: var(--grey); }
+.leave { margin: 10px 0 0; font-size: 13.5px; color: var(--grey); }
+.leave a { color: var(--navy-accent-text, #24307a); font-weight: 800; text-decoration: none; border-bottom: 1.5px solid currentColor; }

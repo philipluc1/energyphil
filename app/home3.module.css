@@ -236,7 +236,8 @@
 .memberLine a:hover { color: #ea580c; }
 
 /* 11 Nov 2026: the intro. The animated logo on navy (as in the logo video), then the two ways to start. */
-.intro { position: relative; margin: 14px 0 8px; padding: clamp(40px, 7vh, 72px) 22px 28px; border-radius: 22px; background: #1E2A4A; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: min(calc(100svh - 110px), 780px); overflow: hidden; isolation: isolate; }
+.intro { position: relative; width: 100%; background: #1E2A4A; color: #fff; overflow: hidden; isolation: isolate; }
+.introInner { max-width: 1120px; margin: 0 auto; padding: clamp(40px, 7vh, 72px) 20px 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: min(calc(100svh - 64px), 820px); }
 .introLogo { height: clamp(64px, 13vw, 132px); width: 100%; display: flex; justify-content: center; }
 .introH1 { margin: clamp(22px, 4vh, 36px) 0 0; font: 900 clamp(26px, 4.2vw, 42px)/1.05 "Archivo", sans-serif; letter-spacing: -0.03em; color: #fff; }
 .introAccent { color: var(--amber); white-space: nowrap; }
@@ -256,9 +257,17 @@
 @keyframes introUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes cue { 0%, 100% { transform: none; } 50% { transform: translateY(5px); } }
 @media (max-width: 520px) {
-  .intro { margin-left: -8px; margin-right: -8px; padding-left: 16px; padding-right: 16px; border-radius: 18px; }
+  .introInner { padding-left: 16px; padding-right: 16px; }
   .introCard { padding: 18px 16px; }
 }
 .exampleWrap { display: flex; justify-content: center; }
 .exampleSec .heroArt { display: flex; width: 100%; max-width: 420px; }
 .section[id] { scroll-margin-top: 90px; }
+
+/* 12 Nov 2026: the button says "Upload" on a computer, "Snap or upload" on a phone. */
+.onPhone { display: none; }
+.onDesk, .onPhone { align-items: center; gap: 10px; }
+.onDesk { display: inline-flex; }
+@media (pointer: coarse), (max-width: 640px) { .onDesk { display: none; } .onPhone { display: inline-flex; } }
+.introFine { margin: 12px 0 0; text-align: center; font-size: 13px; line-height: 1.45; color: var(--grey); }
+.introFine b { display: block; margin-top: 2px; color: var(--navy); font-weight: 800; }

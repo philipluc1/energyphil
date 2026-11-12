@@ -1,0 +1,15 @@
+/* 12 Nov 2026: iPhone and Android apps, coming soon. */
+.wrap { margin-top: 48px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px 32px; align-items: center; padding: 24px; border-radius: 20px; background: #eef1f8; }
+.kicker { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; background: #fff3d6; color: #8a5300; font-size: 12.5px; font-weight: 800; }
+.h2 { margin: 10px 0 0; font: 900 clamp(22px, 3vw, 28px)/1.1 "Archivo", sans-serif; letter-spacing: -0.03em; color: var(--navy); }
+.lede { margin: 8px 0 0; font-size: 15px; line-height: 1.45; color: var(--grey); }
+.how { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.5; color: var(--grey); }
+.how b { color: var(--ink); }
+.badges { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.badge { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: #1E2A4A; color: #fff; font-weight: 900; font-size: 17px; opacity: 0.92; }
+.badge small { display: block; font-size: 11px; font-weight: 600; opacity: 0.75; letter-spacing: 0.02em; }
+@media (max-width: 720px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); padding: 20px 16px; }
+  .badges { flex-direction: row; }
+  .badge { flex: 1; font-size: 15px; padding: 11px 12px; }
+}

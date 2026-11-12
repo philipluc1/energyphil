@@ -11,6 +11,8 @@ import { marketActivity } from "@/lib/marketActivity";
 import { typicalHouseholdExample } from "@/lib/savings";
 import SiteHeader from "./components/SiteHeader";
 import Wordmark from "./components/Wordmark";
+import Testimonials from "./components/Testimonials";
+import AppComing from "./components/AppComing";
 import StateWaitlist from "./components/StateWaitlist";
 import Icon from "./components/Icon";
 import CountUp from "./components/CountUp";
@@ -85,28 +87,33 @@ export default function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, "\\u003c") }} />
       <SiteHeader active="other" still />
 
-      <main className={h.page}>
-        <SourceBanner />
-
-        {/* 1. The intro (11 Nov 2026, Phil): the animated logo, as in the logo video, then the two
+        {/* 1. The intro (11 Nov 2026, Phil; full width 12 Nov): the animated logo, as in the logo video, then the two
             ways to start in the middle of the screen. Everything else is a scroll away. */}
         <section className={h.intro} aria-labelledby="home-h1">
+          <div className={h.introInner}>
           <div className={h.introLogo}><Wordmark ink="#FFFFFF" animate="hero" /></div>
           <h1 id="home-h1" className={h.introH1}>
             Stop overpaying. <span className={h.introAccent}>Start saving.</span>
           </h1>
           <div className={h.introCard}>
+            {/* 12 Nov 2026 (Phil): "Upload" on a computer; "Snap or upload" on a phone. */}
             <Link href="/check" className={h.primary}>
-              <Icon name="camera" size={20} /> Snap my bill, free
+              <span className={h.onDesk}><Icon name="upload" size={20} /> Upload my bill, free</span>
+              <span className={h.onPhone}><Icon name="camera" size={20} /> Snap or upload my bill, free</span>
             </Link>
             {/* No bill to hand: the postcode, then a few questions. */}
             <div className={h.pcStart}><PostcodeStart /></div>
-            <p className={h.gasLine}>Power or gas bill, PDF or photo. We work out which.</p>
+            <p className={h.introFine}>Power or gas, photo or PDF. <b>Proudly Australian, here to help homes stop overpaying.</b></p>
           </div>
           <a href="#steps" className={h.scrollCue}>
             How it works <span aria-hidden="true">↓</span>
           </a>
+          </div>
         </section>
+
+      <main className={h.page}>
+        <SourceBanner />
+
 
         {/* 2. Three numbers, no paragraph. */}
         <ul className={h.stats} data-motion="" data-stagger=":scope > li">
@@ -177,6 +184,9 @@ export default function Home() {
           cards={<JoinDirect cancelPath="/" />}
         />
 
+        {/* 4a. Reviews from members (12 Nov 2026): real ones only, added on the owner dashboard. */}
+        <Testimonials />
+
         {/* 5. Questions, folded. */}
         <section className={h.section} data-motion="" data-stagger="h2, details">
           <h2 className={h.h2}>Quick answers</h2>
@@ -207,6 +217,9 @@ export default function Home() {
             </details>
           </div>
         </section>
+
+        {/* 5a. iPhone and Android apps, coming (12 Nov 2026). */}
+        <AppComing />
 
         {hasFounderStory && (
           <section className={h.section}>

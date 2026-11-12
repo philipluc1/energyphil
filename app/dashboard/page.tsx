@@ -8,6 +8,7 @@ import { PERIODS, fromSource, inPeriod, monthsFor, onPlan, parseFilters, periodD
 import { LIVE_WINDOW_MS, liveNow, timeReport, visitReport, type TimeRow, type ViewRow } from "@/lib/visits";
 import VisitorsSection from "./VisitorsSection";
 import ReviewsSection from "./ReviewsSection";
+import type { Testimonial } from "@/lib/testimonials";
 import { reviewUrl } from "@/lib/reviews";
 import { stripe } from "@/lib/stripeClient";
 import styles from "./dashboard.module.css";
@@ -145,6 +146,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     clickedAfterAsk: rvRows.filter((r) => (r.review_asks ?? 0) > 0 && r.review_clicked_at).length,
     bySource: Array.from(srcCount.entries()).map(([source, n]) => ({ source, n })).sort((a, b) => b.n - a.n),
   };
+  // 12 Nov 2026: reviews shown on the home page.
+  const tst = await db.from("testimonials").select("id, name, place, stars, body, source, review_date, shown, created_at").order("created_at", { ascending: false }).limit(200);
   const periodLabel = f.period === "all" ? "all time" : `last ${PERIODS.find((p) => p.id === f.period)?.label ?? ""}`;
 
   // 9 Nov 2026: members growth, funnel and ad payback, plan vs actual, cash ahead, value and risk.
@@ -180,7 +183,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         checkoutsNote={note}
         leadState={leadState}
       />
-      <ReviewsSection {...reviews} ready={!!reviewUrl()} missing={reviewMissing} />
+      <ReviewsSection {...reviews} ready={!!reviewUrl()} missing={reviewMissing} testimonials={tst.error ? [] : ((tst.data ?? []) as Testimonial[])} testimonialsMissing={!!tst.error} />
     </DashboardCharts>
   );
 }

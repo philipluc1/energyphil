@@ -1,4 +1,6 @@
 import styles from "./dashboard.module.css";
+import TestimonialsAdmin from "./TestimonialsAdmin";
+import type { Testimonial } from "@/lib/testimonials";
 
 const SOURCE_LABEL: Record<string, string> = {
   switched: "Email, 3 weeks after switching",
@@ -6,11 +8,13 @@ const SOURCE_LABEL: Record<string, string> = {
   reminder: "Reminder email",
   recap: "Renewal recap email",
   dashboard: "Dashboard card",
+  link: "Review link you sent",
+  home: "Home page",
 };
 const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "–");
 
 /** Google reviews (2 Nov 2026): who we've asked, who clicked through, and from where. */
-export default function ReviewsSection({ asked, clicked, clickedAfterAsk, bySource, ready, missing }: { asked: number; clicked: number; clickedAfterAsk: number; bySource: { source: string; n: number }[]; ready: boolean; missing: boolean }) {
+export default function ReviewsSection({ asked, clicked, clickedAfterAsk, bySource, ready, missing, testimonials = [], testimonialsMissing = false }: { asked: number; clicked: number; clickedAfterAsk: number; bySource: { source: string; n: number }[]; ready: boolean; missing: boolean; testimonials?: Testimonial[]; testimonialsMissing?: boolean }) {
   const top = bySource[0]?.n ?? 0;
   return (
     <div data-sec="reviews">
@@ -57,6 +61,7 @@ export default function ReviewsSection({ asked, clicked, clickedAfterAsk, bySour
           </ul>
         </div>
       </div>
+      <TestimonialsAdmin list={testimonials} missing={testimonialsMissing} />
     </div>
   );
 }

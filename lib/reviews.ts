@@ -4,7 +4,7 @@
 // Links go through /api/review so the owner dashboard can count clicks; Google
 // doesn't tell us who actually left a review.
 
-export const REVIEW_SOURCES = ["switched", "member", "reminder", "recap", "dashboard"] as const;
+export const REVIEW_SOURCES = ["switched", "member", "reminder", "recap", "dashboard", "link", "home"] as const;
 export type ReviewSource = (typeof REVIEW_SOURCES)[number];
 
 /** The Google "Ask for reviews" link, set in Vercel as NEXT_PUBLIC_GOOGLE_REVIEW_URL. Null until it's set. */

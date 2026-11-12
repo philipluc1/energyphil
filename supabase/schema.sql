@@ -492,3 +492,19 @@ alter table public.live_sessions add column if not exists started_at timestamptz
 alter table public.live_sessions add column if not exists active_seconds integer not null default 0;
 alter table public.live_sessions add column if not exists pages integer not null default 0;
 create index if not exists live_sessions_started on public.live_sessions (started_at desc);
+
+-- 12 Nov 2026: real reviews shown on the home page, added by the owner on the
+-- dashboard (copied word for word from Google or a member's email).
+create table if not exists public.testimonials (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  name text not null,
+  place text,
+  stars smallint not null check (stars between 1 and 5),
+  body text not null,
+  source text not null default 'Google',
+  review_date date,
+  shown boolean not null default true
+);
+create index if not exists testimonials_created on public.testimonials (created_at desc);
+alter table public.testimonials enable row level security;
