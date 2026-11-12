@@ -633,7 +633,7 @@ export function plusMorning(origin: string, url: string): string {
    times their saving covers it, three ticks, and the button. Bulletproof-ish
    button (a table cell with a background) so it stays a button in Outlook. */
 export function joinCard(o: {
-  url: string; special?: string | null; regular?: string | null; annual: string; perWeek: string; monthly: string;
+  url: string; special?: string | null; regular?: string | null; annual: string; perWeek: string; monthly?: string;
   times?: string | null; saving?: number | null; ticks: string[]; button?: string;
 }): string {
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;border-collapse:separate;">
@@ -644,7 +644,7 @@ export function joinCard(o: {
       </tr></table>
       ${keepWhite(`
       <div style="margin:16px 0 2px;font:900 40px/1 ${F};color:#ffffff;letter-spacing:-1px;">${o.regular ? `<span style="font:700 22px ${F};color:#9aa3c7;text-decoration:line-through;vertical-align:middle;margin-right:8px;">${o.regular}</span>` : ""}${o.annual}<span style="font:700 16px ${F};color:#c7cde0;letter-spacing:0;"> a year</span></div>
-      <div style="font:14px/1.5 ${F};color:#c7cde0;">That's ${o.perWeek} a week. Or ${o.monthly} a month, no lock-in.</div>
+      <div style="font:14px/1.5 ${F};color:#c7cde0;">That's ${o.perWeek} a week. No lock-in: cancel any time.</div>
       ${o.times && o.saving ? `<div style="margin:14px 0 0;padding:10px 14px;border-radius:12px;background:#1f2a66;font:700 14px/1.4 ${F};color:#ffffff;"><span style="color:#8ef0b0;">&#10003;</span> Your ${money(o.saving)} a year saving covers it <span style="color:#f5c15c;">${o.times} times over</span>.</div>` : ""}
       <table role="presentation" cellspacing="0" cellpadding="0" style="margin:14px 0 0;">
         ${o.ticks.map((t) => `<tr><td style="padding:3px 0;font:14px/1.5 ${F};color:#e9ecf7;"><span style="color:#8ef0b0;font-weight:900;">&#10003;</span>&nbsp; ${t}</td></tr>`).join("")}

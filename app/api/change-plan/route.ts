@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   const b = await req.json().catch(() => null);
   const plan = findPlan(String(b?.planId ?? "") as PlanId);
-  if (!plan || plan.mode !== "subscription" || !plan.onSale) return NextResponse.json({ ok: false, message: "Pick the yearly or monthly plan." });
+  if (!plan || plan.mode !== "subscription" || !plan.onSale) return NextResponse.json({ ok: false, message: "Pick the yearly plan." });
 
   const { data: sub } = await supabaseAdmin
     .from("subscribers")

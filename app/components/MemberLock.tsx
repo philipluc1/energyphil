@@ -5,9 +5,9 @@ import Icon from "./Icon";
 import { plusValue } from "@/lib/pricingPlans";
 import m from "./memberlock.module.css";
 
-/** "$7 a month ($84 a year), or $39 yearly: save $45. Cancel any time." From the price list, so it never drifts. */
+/** "$45 a year, 87c a week. Cancel any time." From the price list, so it never drifts (12 Nov 2026: yearly only). */
 const v = plusValue();
-export const MEMBER_PRICE_LINE = `${v.monthly} a month (${v.monthlyYear} a year), or ${v.annual} yearly: save ${v.save}. Cancel any time.`;
+export const MEMBER_PRICE_LINE = `${v.yearLine}. Cancel any time.`;
 
 // Shapes for the blurred placeholder rows (no real plan names are in the page).
 const BAR = [62, 48, 70, 55, 66, 44, 58, 50];

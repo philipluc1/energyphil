@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FOUNDING_OFFER, PRICING_PLANS, SALE_BUBBLE, fmtPrice, isFoundingAmount, plusValue, priceFor, regularPrice, type PlanId } from "@/lib/pricingPlans";
+import { PRICING_PLANS, fmtPrice, isFoundingAmount, plusValue, priceFor, regularPrice, type PlanId } from "@/lib/pricingPlans";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./upgradeplans.module.css";
 
@@ -41,12 +41,14 @@ export default function UpgradePlans({ currentPlan, currentAmount = null, onChan
       <div className={styles.title}>Change your plan</div>
       <p className={styles.sub}>
         {isOnceOff
-          ? "You're on the once-off plan, which never renews. To move to a yearly or monthly plan, email us and we'll sort it."
-          : `Same checking either way. ${plusValue().line} Changes are prorated on your next invoice.`}
+          ? "You're on the once-off plan, which never renews. To move to the yearly plan, email us and we'll sort it."
+          : currentPlan === "monthly"
+            ? `Same checking either way. ${plusValue().line} Changes are prorated on your next invoice.`
+            : "You're on the yearly plan, our only plan for new members. Same checking all year."}
       </p>
       {retired && (
         <p className={styles.retired}>
-          You&apos;re on an older {retired.name.toLowerCase()} plan ({fmtPrice(currentAmount ?? retired.priceCents)} {retired.cadenceLabel}) we no longer offer. It keeps working; switch to monthly or yearly any time.
+          You&apos;re on an older {retired.name.toLowerCase()} plan ({fmtPrice(currentAmount ?? retired.priceCents)} {retired.cadenceLabel}) we no longer offer. It keeps working; switch to yearly any time.
         </p>
       )}
       <div className={styles.grid}>
@@ -55,11 +57,7 @@ export default function UpgradePlans({ currentPlan, currentAmount = null, onChan
           const yearly = p.id === "annual";
           return (
             <div key={p.id} className={`${styles.plan} ${yearly ? styles.best : ""} ${current ? styles.current : ""}`}>
-              {FOUNDING_OFFER && !current ? (
-                <span className={`${styles.ribbon} ${styles.sale}`}>{SALE_BUBBLE}</span>
-              ) : yearly ? (
-                <span className={styles.ribbon}>Best value · save {v.save}</span>
-              ) : null}
+              {yearly && !current && currentPlan === "monthly" ? <span className={styles.ribbon}>Save {v.save} a year</span> : null}
               <b>{p.name}</b>
               <span className={styles.price}>
                 {!current && regularPrice(p.id) ? <s className={styles.anchor}>{fmtPrice(regularPrice(p.id)!)}</s> : null} {fmtPrice(current && currentAmount ? currentAmount : priceFor(p.id, founding))} <small>{p.cadenceLabel}</small>

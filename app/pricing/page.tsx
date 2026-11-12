@@ -14,7 +14,7 @@ import h from "../home3.module.css";
 import p from "./pricing.module.css";
 import SiteFooter from "../components/SiteFooter";
 
-export const metadata = pageMeta({ title: `Utilo Plus: ${plusValue().monthly} a month or ${plusValue().annual} a year`, description: "The bill check is free. Utilo Plus re-prices every plan against your bill each morning and emails you only when switching is worth it.", path: "/pricing" });
+export const metadata = pageMeta({ title: `Utilo Plus: ${plusValue().annual} a year`, description: "The bill check is free. Utilo Plus re-prices every plan against your bill each morning and emails you only when switching is worth it.", path: "/pricing" });
 
 // Free check vs Plus, one line each. Detail lives in the (i) pop-ups.
 // "On your own": the free government and retailer sites, by hand. Ticks and
@@ -46,11 +46,9 @@ export default function PricingPage() {
           <h1 className={p.h1}>Stop paying the loyalty tax.</h1>
           <p className={h.lede}>Discounts quietly end. Prices change every 1 July. People who stay put often pay more. {PLUS_NAME} watches your power and gas every day, from your own bill, and tells you when to move, and when not to bother.</p>
           <div className={p.value}>
-            <div className={`${p.vBox} ${p.vBest}`}><b>{regularPrice("annual") ? <s className={p.was}>{fmtPrice(regularPrice("annual")!)}</s> : null}{v.annual}</b><span>a year{FOUNDING_OFFER ? `, ${SPECIAL_NAME}` : ""}</span></div>
+            <div className={`${p.vBox} ${p.vBest}`}><b>{regularPrice("annual") ? <s className={p.was}>{fmtPrice(regularPrice("annual")!)}</s> : null}{v.annual}</b><span>a year{FOUNDING_OFFER ? ", founding price" : ""}</span></div>
             <span className={p.vEq}>=</span>
             <div className={p.vBox}><b>{v.perWeek}</b><span>a week</span></div>
-            <span className={p.vOr}>or</span>
-            <div className={p.vBox}><b>{regularPrice("monthly") ? <s className={p.was}>{fmtPrice(regularPrice("monthly")!)}</s> : null}{v.monthly}</b><span>month to month</span></div>
           </div>
           {FOUNDING_OFFER && <p className={p.founding}>{foundingLine()} Cancel any time from your dashboard.</p>}
         </section>

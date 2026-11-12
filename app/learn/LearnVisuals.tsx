@@ -140,7 +140,7 @@ export function RolesVisual({ planCount, retailers }: { planCount: number; retai
         ))}
       </div>
       <p className={v.gNote}>
-        Utilo prices {planCount} plans from {retailers} retailers, not every plan in the market. Utilo Plus is {plusValue().monthly} a month ({plusValue().monthlyYear} a year), or {plusValue().annual} a year.
+        Utilo prices {planCount} plans from {retailers} retailers, not every plan in the market. Utilo Plus is {plusValue().annual} a year.
       </p>
     </>
   );

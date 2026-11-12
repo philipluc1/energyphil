@@ -13,7 +13,7 @@ import { RETAILER_LINKS } from "./retailerLinks";
 import { namesList } from "./stickyPick";
 import { sameRetailer } from "./sameRetailer";
 import { REFERRAL_CREDIT_CENTS, REFERRAL_FRIEND_CENTS, referralDollars } from "./referralOffer";
-import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, SPECIAL_NAME, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
+import { FOUNDING_OFFER, SPECIAL_ENDS_LABEL, SPECIAL_ENDS_SHORT, fmtPrice, plusValue, regularPrice, timesPrice } from "./pricingPlans";
 import { C, lessonLine, alertPreview, billVsBest, iconRow, iconRows, joinCard, pains, plusMorning, sameRetailerBonus, pillars, youVsUs, screen, miniVerdict, plusAnimation, stars, bigFigure, endTimeline, keepBg, keepWhite, button, chips, columns, countdown, glance, glanceRow, greet, hBars, heading, firstNameOf, heroPanel, legend, miniBars, money, moneyHero, note, planCard, signOff, statRow, statusBox, step, steps, tiles, tip, unsubscribe, versus, yearStrip } from "./emailParts";
 import type { SummaryFacts } from "./monthlySummary";
 import { middayWorthIt } from "./monthlySummary";
@@ -107,7 +107,7 @@ export function resultEmail(i: {
     ${plusMorning(i.origin, `${i.origin}/pricing`)}
     ${joinCard({
       url: `${i.origin}/pricing`,
-      special: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : null,
+      special: FOUNDING_OFFER ? "Founding price" : null,
       regular: regularPrice("annual") ? fmtPrice(regularPrice("annual")!) : null,
       annual: v.annual, perWeek: v.perWeek, monthly: v.monthly,
       times: worth ? timesPrice(i.yearly) : null, saving: worth ? i.yearly : null,
@@ -151,9 +151,8 @@ export function followUpMembership(i: {
     ${yearStrip(melbMonth)}
     ${alertPreview({ title: "A cheaper plan for you", body: `A plan on your network now beats your pick by about ${money(120)} a year. Tap to see it.` })}
     ${statRow([
-      { big: v.annual, small: FOUNDING_OFFER ? `a year, ${SPECIAL_NAME}${ra ? ` (regular ${fmtPrice(ra)})` : ""}` : "a year", tone: "green" },
+      { big: v.annual, small: FOUNDING_OFFER ? `a year, founding price${ra ? ` (${fmtPrice(ra)} for new members from ${SPECIAL_ENDS_SHORT})` : ""}` : "a year", tone: "green" },
       { big: v.perWeek, small: "a week", tone: "navy" },
-      { big: v.monthly, small: "or month to month", tone: "amber" },
     ])}
     ${button("See Utilo Plus", `${i.origin}/pricing`)}
     <p style="margin:0 0 8px;font-size:13px;color:#5f6b82;">No lock-in: cancel any time. Not a cent from retailers.</p>
@@ -171,7 +170,7 @@ export function followUpWeek(i: { origin: string; retailer: string | null; planN
   const yearly = i.yearly && i.yearly >= WORTH_SWITCHING_PER_YEAR ? i.yearly : null;
   const html = `
     ${greet(i.name)}
-    <p>${FREE_SHOWS_NAMES && i.retailer ? `A week ago we found a cheaper plan for you with ${esc(i.retailer)}${i.planName ? ` (&ldquo;${esc(i.planName)}&rdquo;)` : ""}.` : "A week ago we found a cheaper plan for you."} Utilo Plus re-checks it every morning and warns you before your discount ends: <a href="${i.origin}/pricing">${plusValue().monthly} a month, or ${plusValue().annual} a year</a>.</p>
+    <p>${FREE_SHOWS_NAMES && i.retailer ? `A week ago we found a cheaper plan for you with ${esc(i.retailer)}${i.planName ? ` (&ldquo;${esc(i.planName)}&rdquo;)` : ""}.` : "A week ago we found a cheaper plan for you."} Utilo Plus re-checks it every morning and warns you before your discount ends: <a href="${i.origin}/pricing">${plusValue().annual} a year</a>.</p>
     ${yearly && i.nowYear && i.bestYear
       ? versus({ before: { label: i.vsBill ? "Staying on your plan" : "The default offer", value: i.nowYear }, after: { label: FREE_SHOWS_NAMES && i.retailer ? `Switching to ${esc(i.retailer)}` : "Switching", value: i.bestYear }, gapLabel: "Staying put costs" })
       : yearly ? bigFigure({ figure: money(yearly), label: "Still on the old plan?", body: `What staying put costs you a year: about ${money(yearly / 12)} every month.`, tone: "amber" }) : ""}
@@ -245,9 +244,9 @@ export function leadInvite(i: {
     ])}
     ${plusAnimation(i.origin, tagged("/pricing"))}
     ${heroPanel({
-      pill: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
+      pill: FOUNDING_OFFER ? "Founding price" : "Utilo Plus",
       headline: `${ra ? `<s style="opacity:0.55;font-weight:700;">${fmtPrice(ra)}</s> ` : ""}${v.annual} a year: ${v.perWeek} a week`,
-      body: `${yearly && timesPrice(yearly) ? `Your saving is <strong>${timesPrice(yearly)} times</strong> the price. ` : ""}Or ${v.monthly} month to month.${FOUNDING_OFFER ? " Your price stays locked in while you stay." : ""} Cancel any time. Not a cent from retailers.`,
+      body: `${yearly && timesPrice(yearly) ? `Your saving is <strong>${timesPrice(yearly)} times</strong> the price. ` : ""}${FOUNDING_OFFER ? "Your price stays locked in while you stay." : ""} Cancel any time. Not a cent from retailers.`,
       button: { label: "Start Utilo Plus", url: tagged("/pricing") },
     })}
     <p style="margin:0 0 8px;font-size:13px;color:#5f6b82;">Not ready? <a href="${tagged("/check")}">Check again with today's prices</a>, free.</p>
@@ -340,9 +339,9 @@ export function inviteFollowUp(i: {
     ${heading("And when something changes")}
     ${alertPreview({ title: "Your discount ends in 30 days", body: `${yearly ? `Moving now keeps about ${money(yearly)} a year in your pocket.` : "Here's the plan to move to before it does."} Tap to see it.` })}
     ${heroPanel({
-      pill: FOUNDING_OFFER ? `${SPECIAL_NAME} · ends ${SPECIAL_ENDS_SHORT}` : "Utilo Plus",
+      pill: FOUNDING_OFFER ? "Founding price" : "Utilo Plus",
       headline: `${ra ? `<s style="opacity:0.55;font-weight:700;">${fmtPrice(ra)}</s> ` : ""}${v.annual} a year: ${v.perWeek} a week`,
-      body: `Your dashboard is ready the moment you join: no forms, it builds itself from your check. Or ${v.monthly} month to month.${FOUNDING_OFFER ? " Your price stays locked in while you stay." : ""} Cancel any time. Not a cent from retailers.`,
+      body: `Your dashboard is ready the moment you join: no forms, it builds itself from your check.${FOUNDING_OFFER ? " Your price stays locked in while you stay." : ""} Cancel any time. Not a cent from retailers.`,
       button: { label: "Get my dashboard", url: tagged("/pricing") },
     })}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you checked your plan with Utilo and we invited you to Plus last week. It's the last one about it.")}`;
@@ -391,7 +390,7 @@ export function cheaperForLead(i: { origin: string; previousRetailer: string | n
     ${i.prevYear && i.newYear && FREE_SHOWS_NAMES ? versus({ before: { label: i.previousRetailer ? `Your earlier best (${esc(i.previousRetailer)})` : "Your earlier best", value: i.prevYear }, after: { label: esc(i.retailer), value: i.newYear }, gapLabel: "Now cheaper by" }) : ""}
     ${planCard({ kicker: "New cheapest in your area", retailer: FREE_SHOWS_NAMES ? i.retailer : "Utilo Plus shows which retailer", planName: FREE_SHOWS_NAMES ? i.planName : "The plan, its rates and sign-up conditions are on your dashboard.", figure: { amount: i.yearly, after: "a year cheaper than your earlier best match." }, link: FREE_SHOWS_NAMES ? retailerLink(i.retailer) : { label: "Unlock the cheapest plans", url: `${i.origin}/pricing` }, tone: "amber" })}
     ${button("Check it with my bill", `${i.origin}/check`)}
-    ${tip(`This is priced on the usage from your earlier check. Utilo Plus watches your own bill every morning and warns you before your discount ends: <a href="${i.origin}/pricing">${plusValue().monthly} a month, or ${plusValue().annual} a year</a>.`)}
+    ${tip(`This is priced on the usage from your earlier check. Utilo Plus watches your own bill every morning and warns you before your discount ends: <a href="${i.origin}/pricing">${plusValue().annual} a year</a>.`)}
     ${note(esc(PRICE_CHANGE_CLAUSE))}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because you asked to be told about cheaper plans.")}`;
   return { subject: "A cheaper electricity plan just showed up in your area", title: "Prices moved in your favour.", html };
@@ -665,7 +664,7 @@ export function renewalRecap(i: {
       { sym: "&#9993;", title: "Only emails that pay", text: `One email when switching saves ${money(WORTH_SWITCHING_PER_YEAR)}+ a year.`, tint: "green" },
       { sym: "&#9638;", title: "Your bills in one place", text: "Snap each bill, power and gas, and see your year build up.", tint: "navy" },
     ])}
-    ${statusBox({ kicker: "Your renewal", headline: `${esc(i.priceLabel)} on ${esc(i.renewsOn)}`, body: `${i.founding ? `Your ${SPECIAL_NAME} price stays the same. ` : ""}Nothing to do to keep going. To change or cancel, it's on your dashboard under Plus, any time before then.`, tone: "teal" })}
+    ${statusBox({ kicker: "Your renewal", headline: `${esc(i.priceLabel)} on ${esc(i.renewsOn)}`, body: `${i.founding ? `Your founding price stays the same. ` : ""}Nothing to do to keep going. To change or cancel, it's on your dashboard under Plus, any time before then.`, tone: "teal" })}
     ${button("Open my dashboard", `${i.origin}/account#membership`)}
     ${i.reviewLink ? `${stars().replace("24px", "16px").replace("margin:0 0 6px", "margin:8px 0 4px")}<p style="margin:0 0 8px;font-size:14px;">A year in: how are we doing? <a href="${i.reviewLink}">Leave us a Google review</a>. It takes a minute and helps other Victorians decide.</p>` : ""}
     ${unsubscribe(i.unsubscribeUrl, "You're getting this because your Utilo Plus membership renews soon.")}`;
@@ -739,7 +738,7 @@ export function membershipCancelled(i: {
   const scheduled = i.kind === "scheduled" && !!i.endsOn;
   const today = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", timeZone: "Australia/Melbourne" });
   const priceNote = i.lockedPrice && i.regularPrice
-    ? tip(`<strong>About your price.</strong> Your ${esc(i.lockedPrice)} ${SPECIAL_NAME} price stays only while you're a member. ${FOUNDING_OFFER ? `Rejoin before ${SPECIAL_ENDS_LABEL} and you'll get it again; after that it's ${esc(i.regularPrice)}.` : `If you rejoin later, it's ${esc(i.regularPrice)}.`}`)
+    ? tip(`<strong>About your price.</strong> Your ${esc(i.lockedPrice)} founding price stays only while you're a member. ${FOUNDING_OFFER ? `Rejoin before ${SPECIAL_ENDS_LABEL} and you'll get it again; after that it's ${esc(i.regularPrice)}.` : `If you rejoin later, it's ${esc(i.regularPrice)}.`}`)
     : "";
   const html = `
     ${greet(i.name)}

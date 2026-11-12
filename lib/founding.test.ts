@@ -30,7 +30,7 @@ test("regular prices show struck through during the founding offer", () => {
   assert.equal(regularPrice("annual"), 5500);
   assert.equal(regularPrice("monthly"), 900);
   assert.equal(regularPrice("quarterly"), null);
-  assert.match(foundingLine(), /New Year special: \$45 a year \(regular \$55\) or \$7 a month \(regular \$9\) when you join before 1 February 2027/);
+  assert.match(foundingLine(), /Founding price: \$45 a year, locked in while you stay\. New members pay \$55 from 1 February 2027/);
 });
 
 import { foundingOpenAt, listPriceNow } from "./pricingPlans";

@@ -34,11 +34,11 @@ export default function PlanBand({
       </div>
       {/* What you get: the hero of the band. */}
       {gets && <ul className={styles.gets}>
-        {/* 7 Nov 2026 (Phil): one line each, no small print. */}
-        <li><span className={styles.getIcon}><Icon name="refresh" size={20} /></span><b>Every plan checked, every day</b></li>
-        <li><span className={styles.getIcon}><Icon name="bell" size={20} /></span><b>Live pricing on your own bill</b></li>
-        <li><span className={styles.getIcon}><Icon name="mail" size={20} /></span><b>Only emails that pay</b></li>
-        <li><span className={styles.getIcon}><Icon name="home" size={20} /></span><b>One membership, every bill</b></li>
+        {/* 12 Nov 2026 (Phil): the "As a Utilo Plus member, you get…" row folded in here: a title and one short line each. */}
+        <li><span className={`${styles.getIcon} ${styles.gBolt}`}><Icon name="bolt" size={20} /></span><b>Instant answers</b><span>Snap your bill, see your saving.</span></li>
+        <li><span className={`${styles.getIcon} ${styles.gDollar}`}><Icon name="dollar" size={20} /></span><b>Every plan checked, every day</b><span>Priced on your own bill, in dollars.</span></li>
+        <li><span className={`${styles.getIcon} ${styles.gCheck}`}><Icon name="check" size={20} /></span><b>You stay in control</b><span>We prompt. You decide. Only emails that pay.</span></li>
+        <li><span className={`${styles.getIcon} ${styles.gHome}`}><Icon name="home" size={20} /></span><b>One membership, every bill</b><span>Power and gas, one price.</span></li>
       </ul>}
       {children && <div className={styles.step}>{children}</div>}
       <div className={styles.cards}>{cards}</div>

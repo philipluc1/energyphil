@@ -64,7 +64,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     interval: "month",
     intervalCount: 1,
     blurb: "Cancel anytime.",
-    onSale: true,
+    // 12 Nov 2026 (Phil): one price, yearly only. Monthly members keep their plan.
+    onSale: false,
   },
   {
     id: "quarterly",
@@ -192,6 +193,8 @@ export function plusValue() {
     savePct: Math.round((save / monthlyYear) * 100),
     /** "$7 a month is $84 a year. Pay yearly: $45, you save $39." */
     line: `${fmtPrice(monthly.priceCents)} a month is ${fmtPrice(monthlyYear)} a year. Pay yearly: ${fmtPrice(annual.priceCents)}, you save ${fmtPrice(save)}.`,
+    /** "$45 a year, 87c a week." (12 Nov 2026: yearly is the only plan on sale.) */
+    yearLine: `${fmtPrice(annual.priceCents)} a year, ${annual.priceCents / 52 < 100 ? `${Math.round(annual.priceCents / 52)}c` : fmtPrice(Math.round(annual.priceCents / 52))} a week`,
     /** The yearly price a week: "87c". */
     perWeek: annual.priceCents / 52 < 100 ? `${Math.round(annual.priceCents / 52)}c` : fmtPrice(Math.round(annual.priceCents / 52)),
   };
@@ -253,8 +256,13 @@ export function perWeekWords(): string {
   return c < 100 ? "under $1 a week" : `about $${(c / 100).toFixed(2)} a week`;
 }
 export const foundingLine = () => {
-  const ra = regularPrice("annual"), rm = regularPrice("monthly");
-  return `${SPECIAL_NAME}: ${fmtPrice(findPlan("annual")!.priceCents)} a year${ra ? ` (regular ${fmtPrice(ra)})` : ""} or ${fmtPrice(findPlan("monthly")!.priceCents)} a month${rm ? ` (regular ${fmtPrice(rm)})` : ""} when you join before ${SPECIAL_ENDS_LABEL}. Your price stays locked in while you stay.`;
+  const ra = regularPrice("annual");
+  return `Founding price: ${fmtPrice(findPlan("annual")!.priceCents)} a year, locked in while you stay.${ra ? ` New members pay ${fmtPrice(ra)} from ${SPECIAL_ENDS_LABEL}.` : ""}`;
+};
+/** The small print under a struck-through regular price (12 Nov 2026): the regular price is real from this date. */
+export const regularFromLine = () => {
+  const ra = regularPrice("annual");
+  return ra ? `New members pay ${fmtPrice(ra)} from ${SPECIAL_ENDS_SHORT} 2027` : null;
 };
 
 /** How many times over a yearly saving pays for the yearly price (1 decimal under 10), or null if under 2×. */

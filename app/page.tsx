@@ -17,7 +17,6 @@ import CountUp from "./components/CountUp";
 import InfoTip from "./components/InfoTip";
 import SourceBanner from "./components/SourceBanner";
 import PlanBand from "./components/PlanBand";
-import MemberGets from "./components/MemberGets";
 import JoinDirect from "./components/JoinDirect";
 import PostcodeStart from "./components/PostcodeStart";
 import { StepsVisual } from "./learn/LearnVisuals";
@@ -169,9 +168,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* 3b. What members get (1 Nov 2026). */}
-        <MemberGets />
 
         {/* 4. Utilo Plus, front and centre, with direct checkout. */}
         <PlanBand
