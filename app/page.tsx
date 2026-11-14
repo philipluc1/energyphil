@@ -105,6 +105,15 @@ export default function Home() {
             <div className={h.pcStart}><PostcodeStart /></div>
             <p className={h.introFine}>Power or gas, photo or PDF. <b>Proudly Australian, here to help homes stop overpaying.</b></p>
           </div>
+          {/* 14 Nov 2026 (Phil): the live numbers, one slim row in the navy on phone and desktop. */}
+          <ul className={h.liveRow} aria-label="Utilo today">
+            <li><b><CountUp value={PLANS.length + GAS_PLANS.length} /></b><span className={h.liveLbl}>plans</span></li>
+            <li><b><CountUp value={RETAILER_COUNT} /></b><span className={h.liveLbl}>retailers</span></li>
+            <li><b><span className={h.liveDot} aria-hidden="true" />Daily</b><span className={h.liveLbl}>price checks</span></li>
+            {market.ready && changed > 0 && (
+              <li><Link href="/market"><b><CountUp value={changed} /></b><span className={h.liveLbl}>30-day changes</span></Link></li>
+            )}
+          </ul>
           <a href="#steps" className={h.scrollCue}>
             How it works <span aria-hidden="true">↓</span>
           </a>
@@ -114,30 +123,6 @@ export default function Home() {
       <main className={h.page}>
         <SourceBanner />
 
-
-        {/* 2. Three numbers, no paragraph. */}
-        <ul className={h.stats} data-motion="" data-stagger=":scope > li">
-          <li className={h.stat}>
-            <span className={`${h.statIcon} ${h.siPlans}`}><Icon name="search" size={20} /></span>
-            <span className={h.statText}><b className={h.statNum}><CountUp value={PLANS.length + GAS_PLANS.length} /></b><span className={h.statLabel}>power and gas plans</span></span>
-          </li>
-          <li className={h.stat}>
-            <span className={`${h.statIcon} ${h.siRetailers}`}><Icon name="bolt" size={20} /></span>
-            <span className={h.statText}><b className={h.statNum}><CountUp value={RETAILER_COUNT} /></b><span className={h.statLabel}>retailers compared</span></span>
-          </li>
-          <li className={h.stat}>
-            <span className={`${h.statIcon} ${h.siDaily}`}><Icon name="refresh" size={20} /></span>
-            <span className={h.statText}><b className={h.statNum}>Daily</b><span className={h.statLabel}><span className={h.liveDot} aria-hidden="true" /> prices updated</span></span>
-          </li>
-          {market.ready && changed > 0 && (
-            <li className={`${h.stat} ${h.statLink}`}>
-              <Link href="/market">
-                <span className={`${h.statIcon} ${h.siMarket}`}><Icon name="chart" size={20} /></span>
-                <span className={h.statText}><b className={h.statNum}><CountUp value={changed} /></b><span className={h.statLabel}>changes in 30 days →</span></span>
-              </Link>
-            </li>
-          )}
-        </ul>
 
         {/* 3. How it works, as pictures. */}
         <section id="steps" className={h.section} data-motion="" data-stagger="h2, li">
