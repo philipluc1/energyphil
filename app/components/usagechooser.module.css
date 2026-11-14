@@ -60,3 +60,5 @@
 .heroSlim h1 { margin-bottom: 4px; }
 .plainHead { margin: 0 0 12px; font: 900 clamp(19px, 2.6vw, 22px)/1.2 "Archivo", sans-serif; letter-spacing: -0.02em; color: var(--navy, #1E2A4A); }
 .homeLink { align-self: flex-start; margin-top: 4px; padding: 6px 2px; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--navy-accent-text, #24307a); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.rowIcon { display: grid; place-items: center; width: 20px; height: 20px; color: var(--navy, #1E2A4A); }
+.uploadBody { margin: -2px 0 6px; }

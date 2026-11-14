@@ -319,6 +319,7 @@ export default function Comparator() {
   const [showRates, setShowRates] = useState(false);
   // 14 Nov 2026 (Phil: "simplify this page"): what you pay now sits behind a link.
   const [showPay, setShowPay] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   // The bill's usage looked too thin and we used the average; they can insist
   // on their own numbers. Remembered for those exact numbers only.
   const [keepUsageFor, setKeepUsageFor] = useState<string | null>(null);
@@ -1559,7 +1560,8 @@ export default function Comparator() {
 
         {entry === "wizard" && (
           <>
-        {!scanBanner && (!onePage || qp === qPages[0]) && <BillPhotoUpload variant="strip" onApply={handleBillExtracted} />}
+        {/* 14 Nov 2026 (Phil): on the simple page the photo is an option under "Enter my usage" instead. */}
+        {!scanBanner && !onePage && <BillPhotoUpload variant="strip" onApply={handleBillExtracted} />}
         {scanBanner && (
           <div className={styles.scanBanner}>
             <div className={styles.scanBannerHead}>
@@ -1631,13 +1633,15 @@ export default function Comparator() {
             {/* 1. What kind of property: Utilo compares homes on their own account. */}
             <div className={`${s1.q} ${s1.qFirst}`}>
               <span className={s1.qLabel}>What are you checking?</span>
-              <div className={s1.types}>
+              {/* 14 Nov 2026 (Phil): three simple square tiles. */}
+              <div className={s1.tiles}>
                 {([
-                  ["home", "My home", "A house, townhouse or unit with its own electricity account"],
-                  ["embedded", "Apartment billed by the building", "Your power bill comes from the building, strata or an embedded network company"],
-                  ["business", "A business", "A shop, office, warehouse or other business premises"],
-                ] as [PropertyType, string, string][]).map(([v, t, d]) => (
-                  <button key={v} type="button" aria-pressed={propertyType === v} className={propertyType === v ? s1.typeOn : s1.type} onClick={() => setPropertyType(v)}>
+                  ["home", "home", "Home", "House or unit"],
+                  ["embedded", "building", "Apartment", "Billed by the building"],
+                  ["business", "store", "Business", "Shop or office"],
+                ] as [PropertyType, "home" | "building" | "store", string, string][]).map(([v, ic, t, d]) => (
+                  <button key={v} type="button" aria-pressed={propertyType === v} className={`${s1.tile} ${propertyType === v ? s1.tileOn : ""}`} onClick={() => setPropertyType(v)}>
+                    <span className={s1.tileIcon} aria-hidden="true"><Icon name={ic} size={26} /></span>
                     <b>{t}</b>
                     <span>{d}</span>
                   </button>
@@ -1931,6 +1935,21 @@ export default function Comparator() {
                 compact
               />
                     <EstimateStrip profile={profile} forecast={billForecast} />
+                  </div>
+                )}
+
+                {/* 14 Nov 2026 (Phil): the bill photo, as the third option. */}
+                <button type="button" aria-expanded={showUpload} className={`${uc.row} ${showUpload ? uc.rowOn : ""}`} onClick={() => setShowUpload((v) => !v)}>
+                  <span className={uc.rowIcon} aria-hidden="true"><Icon name="camera" size={18} /></span>
+                  <span className={uc.rowText}>
+                    <b>Snap or upload my bill</b>
+                    <small>Most accurate: your real usage and rates. About 30 seconds.</small>
+                  </span>
+                  <span className={uc.chev} aria-hidden="true">▾</span>
+                </button>
+                {showUpload && (
+                  <div className={uc.uploadBody}>
+                    <BillPhotoUpload variant="strip" onApply={handleBillExtracted} stripTitle="Your bill, read for you" stripSub="Power bill, photo or PDF. We fill in everything and skip the questions." />
                   </div>
                 )}
                 {/* 14 Nov 2026: the home questions are still there, as a link. */}
