@@ -58,7 +58,7 @@ export default function SiteMenu({ active }: { active: string }) {
           </ul>
           <div className={s.foot}>
             <AccountNavLink className={s.login} />
-            <Link href="/check" className={s.cta} onClick={() => setOpen(false)}>Free check <span aria-hidden="true">→</span></Link>
+            <Link href="/check?start=questions" className={s.cta} onClick={() => setOpen(false)}>Free check <span aria-hidden="true">→</span></Link>
           </div>
         </nav>
       )}

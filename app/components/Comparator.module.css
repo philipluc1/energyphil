@@ -1874,3 +1874,6 @@
 .bestCard .retailerRow { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 8px; }
 .bestCard .retailerRow .retailer { margin-top: 0; }
 .bestCard .switchBtn { margin-top: 14px; }
+/* 14 Nov 2026: the plan count as one sentence. */
+.counterLine { margin: 16px 0 10px; padding: 12px 14px; border-radius: 12px; background: #eef1f8; font-size: 15px; line-height: 1.5; color: var(--ink); }
+.counterLine b { color: var(--navy); font-weight: 800; }

@@ -37,6 +37,7 @@ import NotifyMe from "./NotifyMe";
 import s1 from "./step1.module.css";
 import s2 from "./step2.module.css";
 import uc from "./usagechooser.module.css";
+import ph from "./plushook.module.css";
 import {
   DEFAULT_PROFILE,
   AVERAGE_ANNUAL_KWH,
@@ -98,7 +99,6 @@ import styles from "./Comparator.module.css";
 import { marketActivity } from "@/lib/marketActivity";
 import CountUp from "./CountUp";
 import LockedPreviews from "./LockedPreviews";
-import ResultReel from "./ResultReel";
 import SiteFooter from "./SiteFooter";
 
 const PLAN_COUNT = PLANS.length;
@@ -317,6 +317,8 @@ export default function Comparator() {
   // The rates on their current plan, typed from the bill (or read off it).
   const [ratesForm, setRatesForm] = useState<RatesForm>(EMPTY_RATES_FORM);
   const [showRates, setShowRates] = useState(false);
+  // 14 Nov 2026 (Phil: "simplify this page"): what you pay now sits behind a link.
+  const [showPay, setShowPay] = useState(false);
   // The bill's usage looked too thin and we used the average; they can insist
   // on their own numbers. Remembered for those exact numbers only.
   const [keepUsageFor, setKeepUsageFor] = useState<string | null>(null);
@@ -541,13 +543,14 @@ export default function Comparator() {
   // Which of the three usage options is open on the one-page questions.
   const usagePick: "average" | "home" | "bill" = usageSource === "average" ? "average" : billRowOpen ? "bill" : "home";
   // The average home needs no questions about the home: straight to the estimate.
+  // 14 Nov 2026: typing in your own kWh skips them too (only "Not sure?" asks about the home).
   // Questions first, postcode last (Phil, 2 Nov 2026): page 1 (home or business, postcode) comes just before the estimate.
   // A postcode from the home page that gives us the network skips that step (3 Nov 2026, Phil: "minimise the pages").
   // The suburb isn't needed to price plans (the postcode sets the network), so a postcode with
   // several suburbs skips it too. A PO Box, unknown or mismatched postcode still stops there.
   const pcLoc = pcFromHome ? checkLocality(localities, postcode, suburb) : null;
   const skipPlace = pcFromHome && networkFrom !== null && propertyType === "home" && (pcLoc?.status === "ok" || pcLoc?.status === "needSuburb");
-  const qPages: (1 | 2 | 3 | 4 | 5)[] = (usagePick === "average" ? [2, 1, 5] : [2, 3, 4, 1, 5]).filter((n) => !(skipPlace && n === 1)) as (1 | 2 | 3 | 4 | 5)[];
+  const qPages: (1 | 2 | 3 | 4 | 5)[] = (usagePick !== "home" ? [2, 1, 5] : [2, 3, 4, 1, 5]).filter((n) => !(skipPlace && n === 1)) as (1 | 2 | 3 | 4 | 5)[];
   const qIdx = Math.max(0, qPages.indexOf(qp));
   const Q_TITLES: Record<number, string> = { 1: "Where you live", 2: "Your usage", 3: "About your home", 4: "Anything else", 5: "Your estimate" };
   function goQ(to: 1 | 2 | 3 | 4 | 5, dir: "fwd" | "back") {
@@ -1421,12 +1424,14 @@ export default function Comparator() {
               </div>
             )}
         {entry !== "snap" && (!onePage || qp === qPages[0]) && (
-        <section className={styles.hero}>
-          <span className={styles.residentialTag}>Victorian homes · NSW, SA, QLD coming</span>
-          <h1>{entry === "read" ? "Here's what we read" : "Check your plan"}</h1>
+        <section className={`${styles.hero} ${onePage ? uc.heroSlim : ""}`}>
+          {!onePage && <span className={styles.residentialTag}>Victorian homes · NSW, SA, QLD coming</span>}
+          <h1>{entry === "read" ? "Here's what we read" : onePage ? "Check your power plan" : "Check your plan"}</h1>
           <p className={styles.lede}>
             {entry === "read" ? (
               <>Have a quick look, then see your result.</>
+            ) : onePage ? (
+              <>Gas instead? <Link href="/gas">Check gas</Link>.</>
             ) : (
               <>Or skip the questions: a photo of your bill does it all. Gas bill? <Link href="/gas">Check gas</Link>.</>
             )}
@@ -1865,6 +1870,9 @@ export default function Comparator() {
 
         {(onePage ? propertyType === "home" && !nonVic && qp >= 2 && qp <= 4 : inputStep === 2) && (
           <div className={styles.card}>
+            {onePage && qp === 2 ? (
+              <h2 className={uc.plainHead}>No bill? How much power do you use?</h2>
+            ) : (
             <div className={styles.stepHead}>
               <div className={`${styles.stepIcon} ${styles.stepIconTeal}`}>
                 <IconPeople />
@@ -1876,47 +1884,35 @@ export default function Comparator() {
                 <span className={styles.stepSub}>{!onePage ? "Rough answers are fine. They tell us how much power you use, and when." : qp === 2 ? "Pick one. You can switch any time and the results follow." : qp === 3 ? "Rough answers are fine. They tell us how much power you use, and when." : "Tap all that apply. They change when, and how much, power you use."}</span>
               </div>
             </div>
+            )}
             {onePage ? (
               qp === 2 ? (
               <div className={uc.choose} role="radiogroup" aria-label="How to work out your usage">
                 <button type="button" role="radio" aria-checked={usagePick === "average"} className={`${uc.row} ${usagePick === "average" ? uc.rowOn : ""}`} onClick={() => pickUsage("average")}>
                   <span className={uc.radio} aria-hidden="true" />
                   <span className={uc.rowText}>
-                    <b>Use the average home</b>
-                    <small>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year, the Victorian benchmark. No bill needed.</small>
+                    <b>Average home</b>
+                    <small>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year, a typical Victorian home.</small>
                   </span>
                   <span className={uc.badge}>Quickest</span>
                 </button>
                 {usagePick === "average" && (
                   <div className={uc.body}>
                     <p className={uc.avgLine}>
-                      We&apos;ll price every plan for <b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year</b> (about {(AVERAGE_ANNUAL_KWH / 365).toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh a day), the usage the Essential Services Commission uses for the default offer.{" "}
+                      We&apos;ll price every plan for <b>{AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year</b>.{" "}
                       <InfoTip label="About the average home">
+                        The usage the Essential Services Commission uses for the default offer, about {(AVERAGE_ANNUAL_KWH / 365).toLocaleString("en-AU", { maximumFractionDigits: 1 })} kWh a day. 
                         It shows what each plan costs a typical Victorian home on your network. Your own costs could be quite different: a bill, or a few answers about your home, gives a sharper answer.
                       </InfoTip>
                     </p>
                   </div>
                 )}
 
-                <button type="button" role="radio" aria-checked={usagePick === "home"} className={`${uc.row} ${usagePick === "home" ? uc.rowOn : ""}`} onClick={() => pickUsage("home")}>
-                  <span className={uc.radio} aria-hidden="true" />
-                  <span className={uc.rowText}>
-                    <b>Estimate from my home</b>
-                    <small>A few taps about who lives there, heating and hot water.</small>
-                  </span>
-                  <span className={uc.chev} aria-hidden="true">▾</span>
-                </button>
-                {usagePick === "home" && (
-                  <div className={uc.body}>
-                    <p className={uc.avgLine}>About a minute: tap <b>Next</b> for the questions.</p>
-                  </div>
-                )}
-
                 <button type="button" role="radio" aria-checked={usagePick === "bill"} className={`${uc.row} ${usagePick === "bill" ? uc.rowOn : ""}`} onClick={() => pickUsage("bill")}>
                   <span className={uc.radio} aria-hidden="true" />
                   <span className={uc.rowText}>
-                    <b>Enter the kWh from my bill</b>
-                    <small>One number from your last bill. Most accurate without a photo.</small>
+                    <b>Enter my usage</b>
+                    <small>The kWh from a bill, or your best guess.</small>
                   </span>
                   <span className={uc.chev} aria-hidden="true">▾</span>
                 </button>
@@ -1937,7 +1933,14 @@ export default function Comparator() {
                     <EstimateStrip profile={profile} forecast={billForecast} />
                   </div>
                 )}
-                {usagePick !== "bill" && (
+                {/* 14 Nov 2026: the home questions are still there, as a link. */}
+                <button type="button" className={uc.homeLink} onClick={() => { pickUsage("home"); goQ(3, "fwd"); }}>
+                  {usagePick === "home" ? "Estimating from your home: tap Next for the questions" : "Not sure? Answer a few quick questions about your home →"}
+                </button>
+                {usagePick !== "bill" && !showPay && !currentBillRaw && (
+                  <button type="button" className={uc.homeLink} onClick={() => setShowPay(true)}>+ Add what you pay now (optional)</button>
+                )}
+                {usagePick !== "bill" && (showPay || !!currentBillRaw) && (
                   <div className={uc.payBox}>
                     <h3 className={w.qTitle}>Roughly what do you pay? <span className={w.opt}>(optional)</span></h3>
                     <p className={w.qSub}>For one bill. Leave it blank and we&apos;ll compare against the default offer, the government&apos;s reference price.</p>
@@ -1986,14 +1989,6 @@ export default function Comparator() {
               </div>
             </div>
 
-            {onePage && (
-              <p className={w.switchLine}>
-                Got the whole bill?{" "}
-                <button type="button" onClick={() => { setUsageSource("bill"); setInputStep(3); }}>Type in all its numbers</button>{" "}
-                or snap it at the top for exact figures and your real rates.
-              </p>
-            )}
-
             {/* Q: bill or estimate */}
             {!onePage && <section className={w.q}>
               <div className={w.qHead}>
@@ -2029,11 +2024,11 @@ export default function Comparator() {
                 {!onePage && <span className={w.qNum}>{qn(2)}</span>}
                 <div>
                   <h3 className={w.qTitle}>{usageSource !== "bill" ? "How often do you get a bill?" : "How long does your bill cover?"}</h3>
-                  <p className={w.qSub}>{usageSource !== "bill" ? "So we show costs for the same period." : "Look for the billing period, e.g. “1 Jul to 30 Sep”."}</p>
+                  {usageSource === "bill" && <p className={w.qSub}>Look for the billing period, e.g. “1 Jul to 30 Sep”.</p>}
                 </div>
               </div>
               <div className={w.pills}>
-                {([[30, "Monthly"], [61, "Every 2 months"], [91, "Quarterly"]] as [number, string][]).map(([d, l]) => (
+                {([[30, "Monthly"], [61, "2 months"], [91, "Quarterly"]] as [number, string][]).map(([d, l]) => (
                   <button key={d} type="button" aria-pressed={days === d} className={days === d ? w.pillOn : w.pill} onClick={() => setDays(d)}>{l}</button>
                 ))}
                 <label className={w.inline} style={{ marginTop: 0 }}>
@@ -2228,10 +2223,15 @@ export default function Comparator() {
               </>
             )}
 
-            <div className={styles.counterStrip}>
-              <span className={styles.count}>{matches.length}</span>
-              <span className={styles.txt}>of {totalInDist} plans on your network will be priced for you</span>
-            </div>
+            {/* 14 Nov 2026 (Phil): one sentence, the numbers in bold; the bill line moved down here. */}
+            <p className={styles.counterLine}><b>{matches.length} of {totalInDist} plans</b> on your network will be priced for you.</p>
+            {onePage && (
+              <p className={w.switchLine}>
+                Got the whole bill?{" "}
+                <button type="button" onClick={() => { setUsageSource("bill"); setInputStep(3); }}>Type in all its numbers</button>{" "}
+                or <button type="button" onClick={() => goQ(qPages[0], "back")}>snap or upload it</button> for exact figures and your real rates.
+              </p>
+            )}
           </div>
         )}
 
@@ -2405,7 +2405,8 @@ export default function Comparator() {
             </div>
           ) : (
             <>
-              {useAvg && (
+              {/* 14 Nov 2026 (Phil): the plain "Average Victorian home" line moved into the result's heading; only the bill warning stays here. */}
+              {useAvg && billUsageThin && usageSource === "bill" && (
                 <div className={styles.avgNote} role="status">
                   <Icon name="chart" size={18} />
                   <div>
@@ -2469,32 +2470,18 @@ export default function Comparator() {
                   year ({Math.round(usageKwh).toLocaleString("en-AU")} kWh), so we&apos;ve put your bill on the same usage at its own price per kWh: {fmtCurrency(billMoved.to)}.
                 </p>
               )}
-              {(!haveBill || useEst || useAvg) && (
-                <div className={styles.exactTop}>
-                  <BillPhotoUpload
-                    variant="strip"
-                    onApply={handleBillExtracted}
-                    stripTitle="Get your exact answer in about a minute"
-                    stripSub={
-                      useAvg
-                        ? "A photo of your bill gives your real usage and rates."
-                        : !haveBill
-                          ? `We don't know what you pay now${currentRetailer ? ` or which ${currentRetailer} plan you're on` : ""}, so we've compared against the default offer, the government's reference price. A photo of your bill fixes that.`
-                          : "Your usage is estimated from your answers. A photo of your bill makes it exact."
-                    }
-                  />
-                  <button
-                    type="button"
-                    className={styles.accuracyLink}
-                    onClick={() => { setStage("input"); setInputStep(3); setUsageSource("bill"); setShowRates(true); scrollToTop(); }}
-                  >
-                    Or type your rates and usage instead →
-                  </button>
+              {/* 14 Nov 2026 (Phil): the "Get your exact answer" photo card removed from the result; "Edit my details" goes back to it. */}
+              {/* 14 Nov 2026 (Phil): the daily check sits above the result, short. */}
+              {worthSwitching && free && !gated && (
+                <div className={`${ph.card} ${ph.above}`}>
+                  <b className={ph.title}><Icon name="refresh" size={18} /> We check this every day, automatically, for you.</b>
+                  <span className={ph.sub}>Today&apos;s cheapest won&apos;t be next week&apos;s.</span>
+                  <button type="button" className={ph.btn} onClick={joinScroll}>Keep this checked every day →</button>
                 </div>
               )}
               {worthSwitching && (
                 <div className={r.hero}>
-                  <span className={r.kicker}>{useAvg ? "Based on an average Victorian home" : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? (reconciled.basis === "rates" ? "Based on your rates" : "Based on your bill") : "Based on your usage"}</span>
+                  <span className={r.kicker}>{useAvg ? `Average Victorian home · ${AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year` : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? (reconciled.basis === "rates" ? "Based on your rates" : "Based on your bill") : "Based on your usage"}</span>
                   <div className={r.heroLabel}>{haveBill ? "You could save" : "The cheapest plan could save you up to"}</div>
                   <div className={r.heroNum}>
                     <CountUp value={Math.round(perYear(bench - top.total))} format={(n) => `$${Math.round(n).toLocaleString("en-AU")}`} />
@@ -2521,7 +2508,6 @@ export default function Comparator() {
                   </div>
                   <p className={r.heroNote}>
                     Cheapest of {matches.length} plans from {retailersHere} retailers{RETAILER_COUNT >= BROAD_COVERAGE ? "" : ", not every retailer in Victoria"}.
-                    {!haveBill && " Add your bill to compare against what you really pay."}
                   </p>
                   {/* Same retailer, different plan (2 Nov 2026): folded away, open on tap. */}
                   {!locked && !gated && haveBill && sameRetailer(currentRetailer, top.plan[0]) && (
@@ -2536,8 +2522,8 @@ export default function Comparator() {
                   )}
                   {gated ? (
                     <EmailGate dark email={email} setEmail={setEmail} wantsAlerts={wantsAlerts} setWantsAlerts={setWantsAlerts} onSubmit={handleLeadSubmit} status={leadStatus}
-                      title={`See which plan saves you $${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")} a year`}
-                      sub={`Pop in your email to see the retailer, the plan and all ${matches.length} plans compared. We'll email you a copy too.`} />
+                      title={`Unlock the plan that saves you $${Math.round(perYear(bench - top.total)).toLocaleString("en-AU")} a year`}
+                      sub={`Free. See the retailer, the plan and all ${matches.length} plans, and get a copy by email.`} />
                   ) : locked ? (
                     <button type="button" className={r.heroBtn} onClick={joinScroll}>
                       <Icon name="lock" size={16} /> See which retailer →
@@ -2545,9 +2531,8 @@ export default function Comparator() {
                   ) : free ? (
                     // 7 Nov 2026 (Phil): on the free result the hero sells the daily check, not the plan.
                     // The plan is a scroll away in the list; Plus is what we want them to do next.
+                    // 14 Nov 2026 (Phil): the daily-check card now sits above the result; here just the link to the plan.
                     <div className={r.heroPlus}>
-                      <p>{heroChanges > 0 ? <><b>{heroChanges} offers changed</b> on your network in 30 days. </> : null}Today&apos;s cheapest can change next week. Utilo Plus re-checks this against your bill every morning and emails you the day a plan beats it.</p>
-                      <button type="button" className={r.heroBtn} onClick={joinScroll}>Keep this checked every day →</button>
                       <a href="#top-plan" className={r.heroLink} onClick={(e) => { e.preventDefault(); openTopRow(); }}>or see the {top.plan[0]} plan ↓</a>
                     </div>
                   ) : (
@@ -2567,7 +2552,6 @@ export default function Comparator() {
               {/* 7 Nov 2026: a blurred taste of the dashboard on free results. */}
               {free && top && !gated && (
                 <>
-                  <ResultReel onJoin={joinScroll} retailer={currentRetailer ?? null} />
                   <LockedPreviews network={distributor} monthNow={(bench / days) * 30.4} monthBest={(top.total / days) * 30.4} haveBill={haveBill} retailer={currentRetailer ?? null} onUnlock={joinScroll} />
                 </>
               )}
@@ -2604,7 +2588,7 @@ export default function Comparator() {
               )}
               {gated && !worthSwitching && (
                 <EmailGate email={email} setEmail={setEmail} wantsAlerts={wantsAlerts} setWantsAlerts={setWantsAlerts} onSubmit={handleLeadSubmit} status={leadStatus}
-                  title={`See all ${matches.length} plans compared`} sub="Pop in your email to see every retailer and plan priced for your home. We'll email you a copy too." />
+                  title={`Unlock all ${matches.length} plans, ranked for your home`} sub="Free. See every retailer and plan, and get a copy by email." />
               )}
               {!gated && (<>
               <section className={styles.planListTop} aria-label="Plans compared" id="plans-compared" style={{ scrollMarginTop: 90 }}>

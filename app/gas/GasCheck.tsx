@@ -570,7 +570,7 @@ export default function GasCheck() {
               <div className={styles.resultHeroSub}>Nothing beats it by {money0(WORTH_SWITCHING_PER_YEAR)} a year or more. Plus members get told when that changes.</div>
               {gated && (
                 <EmailGate fuel="gas" email={email} setEmail={setEmail} wantsAlerts={wantsAlerts} setWantsAlerts={setWantsAlerts} onSubmit={submitGate} status={gateStatus}
-                  title={`See all ${ranked.length} gas plans compared`} sub="Pop in your email to see every retailer and plan priced for your home. We'll email you a copy too." />
+                  title={`Unlock all ${ranked.length} gas plans, ranked for your home`} sub="Free. See every retailer and plan, and get a copy by email." />
               )}
             </div>
           ) : (
@@ -581,8 +581,8 @@ export default function GasCheck() {
               <div className={styles.resultHeroSub}>a year with {gated ? "the cheapest gas plan" : top.plan[0]}{haveBill ? ", vs your gas bill" : ". Add your gas charges for your own saving."}</div>
               {gated ? (
                 <EmailGate fuel="gas" email={email} setEmail={setEmail} wantsAlerts={wantsAlerts} setWantsAlerts={setWantsAlerts} onSubmit={submitGate} status={gateStatus}
-                  title={`See which plan saves you ${money0(Math.max(0, yearly))} a year`}
-                  sub={`Pop in your email to see the retailer, the plan and all ${ranked.length} gas plans compared. We'll email you a copy too.`} />
+                  title={`Unlock the plan that saves you ${money0(Math.max(0, yearly))} a year`}
+                  sub={`Free. See the retailer, the plan and all ${ranked.length} gas plans, and get a copy by email.`} />
               ) : (
               <div className={styles.heroPlusRow}>
                 <a href="#gas-plus" className={styles.resultHeroBtn} onClick={(e) => { e.preventDefault(); document.getElementById("gas-plus")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Keep this checked every day →</a>

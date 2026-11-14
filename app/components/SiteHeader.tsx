@@ -36,7 +36,8 @@ export default function SiteHeader({ active, still = false }: { active: "home" |
           </Link>
           <AccountNavLink className={active === "account" ? styles.navLinkActive : styles.navLink} />
         </nav>
-        <Link href="/check" className={`${styles.navCta} ${active === "check" ? styles.navCtaOn : ""}`}>
+        {/* 14 Nov 2026 (Phil): straight to the simple page: snap or upload, or pick your usage. */}
+        <Link href="/check?start=questions" className={`${styles.navCta} ${active === "check" ? styles.navCtaOn : ""}`}>
           Free check <span aria-hidden="true">→</span>
         </Link>
         {/* Phones and small tablets: everything else behind the three-line menu (4 Nov 2026). */}
