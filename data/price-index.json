@@ -143,7 +143,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-AusNet Services (electricity)",
    "vdo": 1748,
-   "plans": 136
+   "plans": 135
   },
   {
    "date": "2026-11-12",
@@ -152,7 +152,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Citipower",
    "vdo": 1482,
-   "plans": 136
+   "plans": 135
   },
   {
    "date": "2026-11-12",
@@ -161,7 +161,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Jemena",
    "vdo": 1564,
-   "plans": 134
+   "plans": 133
   },
   {
    "date": "2026-11-12",
@@ -170,7 +170,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Powercor",
    "vdo": 1632,
-   "plans": 134
+   "plans": 133
   },
   {
    "date": "2026-11-12",
@@ -179,7 +179,52 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-United Energy",
    "vdo": 1531,
-   "plans": 134
+   "plans": 133
+  },
+  {
+   "date": "2026-11-13",
+   "network": "AusNet Services",
+   "cheapest": 1359,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-AusNet Services (electricity)",
+   "vdo": 1748,
+   "plans": 133
+  },
+  {
+   "date": "2026-11-13",
+   "network": "Citipower",
+   "cheapest": 1111,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Citipower",
+   "vdo": 1482,
+   "plans": 133
+  },
+  {
+   "date": "2026-11-13",
+   "network": "Jemena",
+   "cheapest": 1181,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Jemena",
+   "vdo": 1564,
+   "plans": 131
+  },
+  {
+   "date": "2026-11-13",
+   "network": "Powercor",
+   "cheapest": 1233,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Powercor",
+   "vdo": 1632,
+   "plans": 131
+  },
+  {
+   "date": "2026-11-13",
+   "network": "United Energy",
+   "cheapest": 1122,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-United Energy",
+   "vdo": 1531,
+   "plans": 131
   }
  ],
  "gasAbout": "Cheapest gas plan for a gas-heated home (45 GJ a year) on each gas network, and the middle plan of the market for the same use, $ a year incl. GST. Victoria has no default offer for gas.",
@@ -291,6 +336,33 @@
    "plan": "HomeDeal Connect Gas - Multinet 1",
    "typical": 2101,
    "plans": 150
+  },
+  {
+   "date": "2026-11-13",
+   "zone": "AusNet Services",
+   "cheapest": 1439,
+   "retailer": "Alinta Energy",
+   "plan": "HomeDeal Connect Gas - Ausnet West",
+   "typical": 2095,
+   "plans": 171
+  },
+  {
+   "date": "2026-11-13",
+   "zone": "Australian Gas Networks",
+   "cheapest": 1389,
+   "retailer": "Alinta Energy",
+   "plan": "HomeDeal Connect Gas - AGN North",
+   "typical": 2112,
+   "plans": 252
+  },
+  {
+   "date": "2026-11-13",
+   "zone": "Multinet",
+   "cheapest": 1442,
+   "retailer": "Alinta Energy",
+   "plan": "HomeDeal Connect Gas - Multinet 1",
+   "typical": 2106,
+   "plans": 148
   }
  ]
 }
