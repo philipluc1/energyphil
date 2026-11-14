@@ -454,3 +454,8 @@ li.rowPick > .pickBubble { position: absolute; top: -10px; left: 40px; margin: 0
 /* 5 Nov 2026 UI review: every "Show all / Show the next" button looks the same. */
 .more { min-height: 44px; padding: 0 18px; border: 1.5px solid #d5dbea; border-radius: 12px; background: #fff; color: #22306e; font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer; }
 .mdMore { min-height: 44px; padding: 0 18px; border: 1.5px solid #d5dbea; border-radius: 12px; background: #fff; color: #22306e; font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer; }
+
+/* 14 Nov 2026: the hero says how, in one line, and from → to. */
+.heroHow { margin: -4px 0 0; font-size: 15.5px; line-height: 1.45; opacity: 0.95; }
+.heroHow b { font-weight: 800; }
+.heroFromTo { display: block; margin-top: 4px; font-size: 13.5px; opacity: 0.8; }

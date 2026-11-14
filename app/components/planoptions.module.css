@@ -1,0 +1,22 @@
+/* 14 Nov 2026: "Your options" cards on the member Compare tab. */
+.wrap { margin: 0 0 14px; }
+.h { margin: 0 0 10px; font-size: 18px; font-weight: 900; letter-spacing: -0.02em; color: var(--ink); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 16px; background: var(--surface, #fff); border: 1.5px solid var(--border, #e3e7f0); }
+.pick { border: 2px solid #2f9e8f; box-shadow: 0 10px 26px rgba(47, 158, 143, 0.14); }
+.pickTag { position: absolute; top: -11px; left: 14px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; background: #2f9e8f; color: #fff; font-size: 11.5px; font-weight: 800; }
+.title { font-size: 15px; font-weight: 900; color: var(--ink); line-height: 1.25; }
+.sub { font-size: 12.5px; color: var(--grey); line-height: 1.4; }
+.who { display: flex; align-items: center; gap: 10px; margin-top: 6px; min-width: 0; }
+.names { display: flex; flex-direction: column; min-width: 0; }
+.names b { font-size: 14.5px; color: var(--ink); }
+.names small { font-size: 12.5px; color: var(--grey); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.money { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.cost { font-size: 22px; font-weight: 900; color: var(--ink); letter-spacing: -0.02em; }
+.cost small { font-size: 12.5px; font-weight: 600; color: var(--grey); }
+.save { padding: 3px 9px; border-radius: 99px; background: #e7f6ec; color: #15803d; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.more { padding: 3px 9px; border-radius: 99px; background: #fdecea; color: #b42318; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.vs { font-size: 11.5px; color: var(--grey); }
+.go { margin-top: auto; padding: 10px 14px; border-radius: 11px; background: #1E2A4A; color: #fff; font-size: 14px; font-weight: 800; text-align: center; text-decoration: none; }
+.pick .go { background: #f5a623; color: #1f2937; }
+.card .go { margin-top: 10px; }

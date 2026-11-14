@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState, type ReactNode } from "react";
 import RetailerLogo from "./RetailerLogo";
 import ComplaintBadge from "./ComplaintBadge";
 import PriceLine from "./PriceLine";
+import RankedBars from "./RankedBars";
 import { OfferChips } from "./OfferTerms";
 import { GAS_RETAILER_COUNT, type GasPlanRow, type RankedGas } from "@/lib/gasPlans";
 import { describeOffer, topOpen } from "@/lib/planExtras";
@@ -67,7 +68,7 @@ export function GasRates({ plan, days, yours, planLabel }: { plan: GasPlanRow; d
 }
 
 export default function GasPlanTable({
-  ranked, days, mj, k, you, youLabel, perLabel, zone, currentRetailer, chart = true, controls, note, yourRates = null,
+  ranked, days, mj, k, you, youLabel, perLabel, zone, currentRetailer, chart = true, controls, note, yourRates = null, bars = false, title = "Gas retailer comparison",
 }: {
   ranked: RankedGas[];
   days: number;
@@ -83,6 +84,9 @@ export default function GasPlanTable({
   zone: string;
   currentRetailer: string | null;
   chart?: boolean;
+  /** 14 Nov 2026: ranked bars instead of the price line (the member dashboard). */
+  bars?: boolean;
+  title?: string;
   /** Extra controls under the heading (the dashboard's what-if bar). */
   controls?: ReactNode;
   /** The usage line under the price chart. */
@@ -114,13 +118,25 @@ export default function GasPlanTable({
     <>
       <section className={v.table}>
         <div className={v.tableHead}>
-          <h3 className={s.h3}>Gas retailer comparison</h3>
+          <h3 className={s.h3}>{title}</h3>
           <div className={s.viewToggle} role="tablist">
             <button type="button" role="tab" aria-selected={!allPlans} className={!allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(false); setShownCount(6); }}>Cheapest per retailer <em>{retailers}</em></button>
             <button type="button" role="tab" aria-selected={allPlans} className={allPlans ? s.vOn : s.vBtn} onClick={() => { setAllPlans(true); setShownCount(6); }}>All plans <em>{ranked.length}</em></button>
           </div>
         </div>
-        {chart && you !== null && perRetailer.length > 0 && (
+        {bars && you !== null && list.length > 0 && (
+          <RankedBars
+            items={list.map((m) => ({ retailer: m.plan[0], plan: m.plan[2], value: m.total * k, pick: m === pick }))}
+            you={you * k}
+            youLabel={youLabel}
+            them={youLabel === "A typical plan" ? "a typical gas plan" : youLabel === "Your plan" ? "your plan" : "your bill"}
+            vdo={null}
+            per={perLabel}
+            unit={allPlans ? "gas plans" : "retailers' best gas plans"}
+            note={note}
+          />
+        )}
+        {!bars && chart && you !== null && perRetailer.length > 0 && (
           <div className={v.chart}>
             <PriceLine
               items={perRetailer.slice(0, 8).map((m) => ({ retailer: m.plan[0], plan: m.plan[2], value: m.total * k, cheapest: m === top }))}

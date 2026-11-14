@@ -85,14 +85,21 @@ export default function PlanAside({ d, uploadHref, best, onEdit }: { d: PlanAsid
         </div>
       )}
 
-      <dl className={s.rows}>
-        <Row label="Network" value={d.distributor} />
-        <Row label="Meter (NMI)" value={d.nmi ? maskNmi(d.nmi) : null} />
-        <Row label="Address" value={d.address} />
-        <Row label="Tariff" value={d.tariff} />
-        <Row label="Usage" value={d.kwhPerDay !== null ? `${d.kwhPerDay.toFixed(1)} kWh a day` : null} />
-        <Row label="Solar" value={d.hasSolar === null ? null : d.hasSolar ? "Yes" : "No"} />
-      </dl>
+      {/* 14 Nov 2026: the details fold into one line; tap for the meter and address. */}
+      <details className={s.fold}>
+        <summary>
+          {[d.distributor, d.tariff ? d.tariff.toLowerCase() : null, d.hasSolar ? "solar" : null, d.kwhPerDay !== null ? `${d.kwhPerDay.toFixed(1)} kWh a day` : null].filter(Boolean).join(" · ") || "Your details"}
+          <span className={s.foldMore} aria-hidden="true">▾</span>
+        </summary>
+        <dl className={s.rows}>
+          <Row label="Network" value={d.distributor} />
+          <Row label="Meter (NMI)" value={d.nmi ? maskNmi(d.nmi) : null} />
+          <Row label="Address" value={d.address} />
+          <Row label="Tariff" value={d.tariff} />
+          <Row label="Usage" value={d.kwhPerDay !== null ? `${d.kwhPerDay.toFixed(1)} kWh a day` : null} />
+          <Row label="Solar" value={d.hasSolar === null ? null : d.hasSolar ? "Yes" : "No"} />
+        </dl>
+      </details>
 
       {best ? (
         <div className={s.rates}>

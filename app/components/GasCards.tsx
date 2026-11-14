@@ -65,13 +65,15 @@ export default function GasCards({ member, only, noRewards = false }: {
   member: GasMember;
   /** "rewardsCard": just the gas rewards card (the Savings tab). "market" / "rewards": the full
    * views for the phone's Market and Rewards tabs. "forecast": just the year-ahead card. */
-  only?: "rewardsCard" | "market" | "rewards" | "forecast";
+  only?: "rewardsCard" | "market" | "rewards" | "forecast" | "marketCard";
   noRewards?: boolean;
 }) {
   const c = useGasCtx(member);
   if (!c) return null;
   if (only === "rewardsCard") return <GasMarket c={c} rewardsOnly />;
   if (only === "forecast") return <GasForecastCard c={c} />;
+  // 14 Nov 2026: the side card alone, for the Compare tab.
+  if (only === "marketCard") return <GasMarket c={c} noRewards={noRewards} />;
   if (only === "market") return <GasMarket c={c} inline="market" />;
   if (only === "rewards") return <MarketRewards fuel="G" matches={c.ranked} you={c.you} perYear={c.perYear} against={c.against} locked={new Set<unknown>()} whole={whole} />;
   return (

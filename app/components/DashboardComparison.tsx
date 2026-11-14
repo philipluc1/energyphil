@@ -4,7 +4,7 @@ import OfferDate from "./OfferDate";
 import RatesCompare from "./RatesCompare";
 import Icon from "./Icon";
 import PriceAddsUp from "./PriceAddsUp";
-import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { RETAILER_COUNT, billDetail, rankPlans, topOpen, isEvFriendly, fmtRateCents, fmtRatePerDay, type Distributor, type UsageInput, type PlanRow } from "@/lib/plans";
@@ -19,17 +19,17 @@ import { RETAILER_LINKS } from "@/lib/retailerLinks";
 import { FREE_SHOWS_NAMES, WORTH_SWITCHING_PER_YEAR, OVERPRICED_PER_YEAR, OVERPRICED_SHARE } from "@/lib/dataPolicy";
 import { stickyPick } from "@/lib/stickyPick";
 import { useCountUp } from "@/lib/useCountUp";
-import PriceLine from "./PriceLine";
 import PlanViewToggle from "./PlanViewToggle";
 import { cheapestPerRetailer } from "@/lib/onePerRetailer";
-import FunEquivalents from "./FunEquivalents";
+import RankedBars from "./RankedBars";
+import PlanOptions, { type PlanOption } from "./PlanOptions";
 import RetailerLogo from "./RetailerLogo";
 import ComplaintBadge from "./ComplaintBadge";
 import DayChanges from "./DayChanges";
 import type { BillCheckFacts } from "./BillCheckCard";
 import { PLAN_VS_BILL_TAG, planVsBill, samePlanName } from "@/lib/planVersion";
 import { reconcileBill, type BillMismatch } from "@/lib/billReconcile";
-import { showLabel, showOptions, showPeriod, showScale, showTab, type ShowPeriod } from "@/lib/periods";
+import { showLabel, showPeriod, showScale, type ShowPeriod } from "@/lib/periods";
 import { rateRows } from "@/lib/rateRows";
 import { standardVsVdo } from "@/lib/vdoCompare";
 import { sameRetailer } from "@/lib/sameRetailer";
@@ -196,55 +196,44 @@ interface Props {
 
 /** Top of the dashboard: are you on the cheapest plan or not. Always shown
  *  above the tabs. */
-export function VerdictCard({ input, member, period, onPeriod }: Props) {
+export function VerdictCard({ input, member }: Props) {
   // Everyone sees names (FREE_SHOWS_NAMES); the watching is what Plus adds.
   const names = member || FREE_SHOWS_NAMES;
   const c = useMemo(() => compute(input), [input]);
-  const per = showPeriod(period, !!c?.haveBill, input.days);
-  const k = c ? showScale(per, input.days) : 0;
-  const perLabel = showLabel(per, input.days);
-  const opts = showOptions(!!c?.haveBill, input.days);
-  // The headline uses the same scaling as the tiles below it.
-  const shown = useCountUp(c ? Math.max(0, (c.you - c.top.total) * k) : 0);
+  // 14 Nov 2026 (Phil): one message, one action. Always a year (no period tabs here).
+  const shown = useCountUp(c ? Math.max(0, c.savingYear) : 0);
   if (!c) return null;
-  const { top, haveBill, you, savingYear, verdict, severe } = c;
-  const { distributor, days, currentRetailer, currentPlanName, source } = input;
-  const bestTerms = planPriceType(top.plan[0], top.plan[2]);
+  const { top, haveBill, you, savingYear, verdict, severe, perYear } = c;
+  const { days, currentRetailer, source } = input;
   // The cheapest plan is with the retailer they already pay (2 Nov 2026).
   const samePlace = names && haveBill && sameRetailer(currentRetailer, top.plan[0]);
-  // Same plan name as the bill: they're on older rates; the retailer offers new customers today's.
-  const sameName = samePlace && !!currentPlanName && samePlanName(currentPlanName, top.plan[2], top.plan[0]);
-
-  // Paying more than the government reference price is flagged in red (any amount from 1%).
-  const overVdo = haveBill && c.vdo > 0 && Math.round(((you - c.vdo) / c.vdo) * 100) >= 1;
+  const link = RETAILER_LINKS[top.plan[0]];
   return (
     <section className={`${styles.verdict} ${styles[verdict]} ${severe ? styles.severe : ""}`}>
       <div className={styles.verdictTop}>
         <span className={styles.pill}>
-          {verdict === "good"
-            ? "✓ You're on a good deal"
-            : severe
-              ? "You're paying far more than you need to"
-              : verdict === "bad"
-                ? "You could pay less"
-                : "Estimate from your answers"}
+          {verdict === "good" ? "✓ You're on a good deal" : verdict === "bad" ? "You could pay less" : "Estimate"}
         </span>
-        <div className={styles.toggle} role="tablist" aria-label="Show figures per" style={{ "--i": Math.max(0, opts.indexOf(per)) } as CSSProperties}>
-          <span className={styles.thumb} aria-hidden="true" />
-          {opts.map((p) => (
-            <button key={p} type="button" role="tab" aria-selected={per === p} className={per === p ? styles.on : styles.tbtn} onClick={() => onPeriod(p)}>
-              {showTab(p, input.days)}
-            </button>
-          ))}
-        </div>
       </div>
       <h2 className={styles.headline}>
         {verdict === "good"
           ? "Nothing beats your plan by enough to bother."
           : verdict === "bad"
-            ? <>You could save <span className={styles.amount}>{whole(shown)}</span> {perLabel}</>
-            : <>Against the default offer, the cheapest plan saves up to <span className={styles.amount}>{whole(shown)}</span> {perLabel}</>}
+            ? <>You could save <span className={styles.amount}>{whole(shown)}</span> a year</>
+            : <>The cheapest plan saves up to <span className={styles.amount}>{whole(shown)}</span> a year</>}
       </h2>
+      {verdict !== "good" && savingYear > 0 && (
+        <p className={styles.heroHow}>
+          {!names
+            ? "Plus members see which retailer and plan."
+            : samePlace
+              ? <>by moving to <b>{top.plan[0]}&apos;s &ldquo;{top.plan[2]}&rdquo;</b>. You stay with {top.plan[0]}: no switching.</>
+              : <>by switching to <b>{top.plan[0]}</b>, &ldquo;{top.plan[2]}&rdquo;.</>}
+          <span className={styles.heroFromTo}>
+            {haveBill ? "Your bill" : "The default offer"} {whole(you * perYear)} a year → {names ? top.plan[0] : "the cheapest plan"} {whole(top.total * perYear)}
+          </span>
+        </p>
+      )}
       {/* "Don't bother switching" (2 Nov 2026): saying so plainly is the proof we're independent. */}
       {verdict === "good" && (
         <p className={styles.stayPut}>
@@ -252,84 +241,33 @@ export function VerdictCard({ input, member, period, onPeriod }: Props) {
           {member ? "We'll tell you the day that changes." : "Prices move, so check again in a few months."}
         </p>
       )}
-      {/* The small print that changes the number: one quiet strip, open on tap. */}
-      {(c.mismatch || overVdo) && (
+      {/* The bill and its usage don't add up: still worth saying, it changes the number. */}
+      {c.mismatch && (
         <div className={styles.facts}>
-          {overVdo && (
-            <details className={`${styles.fact} ${styles.factBad}`}>
-              <summary><Icon name="alert" size={14} /> <b>Yours is {Math.round(((you - c.vdo) / c.vdo) * 100)}% more than the default offer</b><span className={styles.factMore}>why it matters</span></summary>
-              <p>
-                The default offer is the government&apos;s reference price: {money(c.vdo * k)} {perLabel} for your usage. Most people can do better than
-                the default, so a plan that costs more than it is one worth moving off.
-              </p>
-            </details>
-          )}
-          {c.mismatch && <MismatchNote m={c.mismatch} member={member} />}
+          <MismatchNote m={c.mismatch} member={member} />
         </div>
       )}
-      <div className={styles.versus}>
-        <div className={styles.side} style={{ "--n": 0 } as CSSProperties}>
-          <span className={styles.sideLabel}>{haveBill ? "You now" : "Default offer"}</span>
-          <b>{haveBill ? currentRetailer ?? "Your current plan" : "VDO"}</b>
-          <span className={styles.sidePlan}>{haveBill ? currentPlanName ?? (c.basis === "rates" ? "your rates" : "from your bill") : `${distributor} network`}</span>
-          <span key={per} className={styles.sideCost}>{money(you * k)}</span>
-          {haveBill && input.currentPriceType === "fixed" && (
-            <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price{input.currentFixedUntil ? ` until ${fmtDay(input.currentFixedUntil)}` : ""}</span>
-          )}
-        </div>
-        <div className={styles.arrow} aria-hidden="true">→</div>
-        <div className={`${styles.side} ${styles.sideBest}`} style={{ "--n": 1 } as CSSProperties}>
-          <span className={styles.sideLabel}>
-            {c.top === c.cheapestPlan ? "Cheapest we found" : "Our pick"}
-            {samePlace && <span className={styles.sameBubble}>{sameName ? "Your retailer · today's rates" : "Your retailer · new plan"}</span>}
-          </span>
-          {names ? (
-            <>
-              <b>{top.plan[0]}</b>
-              <span className={styles.sidePlan}>{top.plan[2]}</span>
-            </>
-          ) : (
-            <>
-              <b className={styles.sideLocked}><Icon name="lock" size={16} /> Plus members see which</b>
-              <span className={styles.sidePlan}>Retailer and plan hidden</span>
-            </>
-          )}
-          <span key={per} className={styles.sideCost}>{money(top.total * k)}</span>
-          {names && bestTerms === "fixed" && <span className={styles.sideTerms}><Icon name="lock" size={12} /> Fixed price</span>}
-          {names && <span className={styles.sideChips}><OfferChips o={c.offerFor(top.plan)} /></span>}
-        </div>
-        {verdict !== "good" && savingYear > 0 && (
-          <>
-            <div className={styles.arrow} aria-hidden="true">=</div>
-            <div className={`${styles.side} ${styles.sideSave}`} style={{ "--n": 2 } as CSSProperties}>
-              <span className={styles.sideLabel}>You save</span>
-              <b>{samePlace ? "By changing plan" : "By switching"}</b>
-              <span className={styles.sidePlan}>{perLabel}, {samePlace ? `staying with ${top.plan[0]}` : `to ${names ? top.plan[0] : "the cheapest plan"}`}</span>
-              <span key={per} className={styles.sideCost}>{money((you - top.total) * k)}</span>
-            </div>
-          </>
-        )}
-      </div>
-      {verdict !== "good" && savingYear > 0 && <FunEquivalents dollars={savingYear} />}
       <div className={styles.verdictActions}>
         {!names && (
           <a href="#membership" className={styles.go}><Icon name="lock" size={15} /> See which retailer →</a>
         )}
-        {names && verdict !== "good" && RETAILER_LINKS[top.plan[0]] && (
-          <a href={RETAILER_LINKS[top.plan[0]]} data-plan={top.plan[2]} data-network={input.distributor} data-same={samePlace ? "1" : undefined} target="_blank" rel="noopener noreferrer" className={styles.go}>{`Go to ${top.plan[0]} →`}</a>
+        {names && verdict !== "good" && link && (
+          <a href={link} data-plan={top.plan[2]} data-network={input.distributor} data-same={samePlace ? "1" : undefined} target="_blank" rel="noopener noreferrer" className={styles.go}>
+            {samePlace ? `Change plan with ${top.plan[0]} →` : `Go to ${top.plan[0]} →`}
+          </a>
         )}
         {member && verdict !== "good" && savingYear > 0 && (
-          <SwitchReminder retailer={top.plan[0]} plan={top.plan[2]} savingYear={savingYear} link={RETAILER_LINKS[top.plan[0]]} nmi={input.nmi} dark same={samePlace} />
+          <SwitchReminder retailer={top.plan[0]} plan={top.plan[2]} savingYear={savingYear} link={link} nmi={input.nmi} dark same={samePlace} />
         )}
         {!haveBill && <a href={member ? "#read-bill" : "/check"} className={styles.ghost}>Upload your bill for your real numbers</a>}
       </div>
       <p className={styles.fine}>
         {c.average
-          ? `Priced today for the average Victorian home (${AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year), because we don't have enough of your usage yet. Upload a full bill for your own numbers.`
+          ? `Priced today for the average Victorian home (${AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year), because we don't have enough of your usage yet.`
           : input.billIsPriced
-            ? `Priced today for the plan you switched to, on the usage from your last bill`
-            : `Priced today from ${source === "bill" ? "your last bill" : "your answers"}`}{" "}({per === "bill" ? `your ${days}-day bill, shown as it is` : `${days}-day period, shown ${perLabel}`}).
-        {member ? " We re-run this every morning and email you only when a move is worth it." : " Estimates only; confirm with the retailer before switching."}
+            ? `Priced today for the plan you switched to, on the usage from your last bill (${days} days), shown a year.`
+            : `Priced today from ${source === "bill" ? `your last bill (${days} days)` : "your answers"}, shown a year.`}
+        {member ? " Re-checked every morning; we email you only when a move is worth it." : " Estimates only; confirm with the retailer before switching."}
       </p>
     </section>
   );
@@ -456,7 +394,7 @@ export function MemberMarket({ input, member, compact = false, only, noRewards =
 
 /** The Compare tab: chart plus every comparable plan, ranked. Table on wide
  *  screens, one card per retailer on phones. */
-export function CompareSection({ input: billInput, member, period, profile = null }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette; profile?: HomeProfile | null }) {
+export function CompareSection({ input: billInput, member, profile = null }: Omit<Props, "onPeriod"> & { chartPalette?: ResultsChartPalette; profile?: HomeProfile | null }) {
   // Top 6, then 10 more, then everything (1 Nov 2026).
   const [shownCount, setShownCount] = useState(6);
   // Which plan's rates are open (retailer + plan), on the table or the phone cards.
@@ -485,7 +423,8 @@ export function CompareSection({ input: billInput, member, period, profile = nul
   const perRetailer = cheapestPerRetailer(allMatches, top);
   const matches = allPlans ? allMatches : perRetailer;
   const { days, currentRetailer, currentPlanName, source } = input;
-  const per = showPeriod(period, haveBill, days);
+  // 14 Nov 2026 (Phil): the member Compare tab is yearly throughout.
+  const per = showPeriod("year", haveBill, days);
   const k = showScale(per, days);
   const perLabel = showLabel(per, days);
   // Each plan against the Victorian Default Offer for the same usage, as a percentage.
@@ -514,7 +453,6 @@ export function CompareSection({ input: billInput, member, period, profile = nul
         ? input.currentRates.anytime !== null ? "charged at one price all day" : input.currentRates.peak !== null ? "charged by time of day" : ""
         : input.peak + input.shoulder + input.offpeak > 0 ? "charged by time of day" : "charged at one price all day") +
       (input.cl > 0 ? ", plus a separate hot-water meter" : "");
-  const retailerBest = currentRetailer ? allMatches.find((m) => m.plan[0] === currentRetailer && !m.restricted) ?? null : null;
   // "Before you switch" and "Your rates vs the cheapest" stay on the real bill's
   // pick: a what-if re-ranks the table, not the recommendation.
   const real = base ?? c;
@@ -533,34 +471,41 @@ export function CompareSection({ input: billInput, member, period, profile = nul
   // The pick's row in the list gets a box and an "Our pick" bubble.
   const isPick = (m: (typeof matches)[number]) => !!showPick && !!real.top && m.plan[0] === real.top.plan[0] && m.plan[2] === real.top.plan[2];
 
+  // "Your options" (14 Nov 2026): stay and change plan; cheapest anywhere; cheapest with no conditions.
+  const options: PlanOption[] = [];
+  if (names && !real.cheapest) {
+    const same = (r: string) => real.haveBill && sameRetailer(currentRetailer, r);
+    const opt = (key: PlanOption["key"], m: (typeof realOpen)[number]): PlanOption => ({
+      key, retailer: m.plan[0], plan: m.plan[2], cost: m.total * real.perYear, saving: (real.you - m.total) * real.perYear,
+      pick: m.plan[0] === real.top.plan[0] && m.plan[2] === real.top.plan[2], same: same(m.plan[0]),
+    });
+    const seen = new Set<string>();
+    const add = (o: PlanOption | null) => { if (!o) return; const id = `${o.retailer}|${o.plan}`; if (seen.has(id)) return; seen.add(id); options.push(o); };
+    const stayPlan = real.haveBill && currentRetailer ? realOpen.find((m) => sameRetailer(currentRetailer, m.plan[0])) ?? null : null;
+    if (stayPlan && (real.you - stayPlan.total) * real.perYear >= 1) add(opt("stay", stayPlan));
+    const elsewhere = realOpen.find((m) => !same(m.plan[0])) ?? null;
+    add(elsewhere ? opt("cheapest", elsewhere) : null);
+    add(noStrings ? opt("nostrings", noStrings) : null);
+  }
+
   return (
     <>
-      {retailerBest && retailerBest !== top && isLocked(retailerBest) && (
-        <div className={styles.stay}>
-          <b>Staying with {currentRetailer}?</b> One of the {lockedTop.length} cheapest plans is theirs, at {money(retailerBest.total * k)} {perLabel}.
-          Plus members see which one, so you can ask {currentRetailer} to move you without changing company.
-        </div>
-      )}
-      {retailerBest && retailerBest !== top && !isLocked(retailerBest) && (
-        <div className={styles.stay}>
-          <b>Staying with {currentRetailer}?</b> Their cheapest current plan for you is &ldquo;{retailerBest.plan[2]}&rdquo; at {money(retailerBest.total * k)} {perLabel},{" "}
-          <span className={styles.stayGap}>{whole((retailerBest.total - top.total) * k)} more</span> than {member || FREE_SHOWS_NAMES ? top.plan[0] : "the cheapest plan"}.
-          {!haveBill && <> You may be on an older, dearer {currentRetailer} plan: upload your bill to see what you actually pay.</>}
-        </div>
-      )}
+      {/* 14 Nov 2026: the "Staying with …?" lines became the first of these options. */}
+      {!whatIf && <PlanOptions options={options} against={real.haveBill ? "your bill" : "the default offer"} network={input.distributor} />}
 
       <section className={styles.table}>
         <div className={styles.tableHead}>
-          <h3>Retailer comparison</h3>
+          <h3>How you compare</h3>
           <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setShownCount(6); }} retailers={perRetailer.length} plans={allMatches.length} />
         </div>
         <div className={styles.chart}>
-          <PriceLine
-            items={matches.slice(0, 8).map((m) => ({ retailer: m.plan[0], plan: m.plan[2], value: m.total * k, locked: isLocked(m), cheapest: m === top }))}
+          <RankedBars
+            items={matches.map((m) => ({ retailer: m.plan[0], plan: m.plan[2], value: m.total * k, locked: isLocked(m), pick: isPick(m) }))}
             you={you * k}
-            youLabel={haveBill ? (c.basis === "rates" ? "Your plan" : "Your bill") : "The default offer"}
+            youLabel={haveBill ? (c.basis === "rates" ? "Your plan" : "Your bill") : "Default offer"}
             vdo={haveBill ? vdo * k : null}
             per={perLabel}
+            unit={allPlans ? "plans" : "retailers' best plans"}
             note={
               whatIf ? (
                 <>What if: priced for about <b>{Math.round(kwhPeriod).toLocaleString("en-AU")} kWh {perLabel}</b> ({kwhDay.toFixed(1)} kWh a day){haveBill ? <>, on your plan&apos;s rates</> : null}. <button type="button" className={ins.wiReset} onClick={resetWhatIf}>Back to my bill</button></>
@@ -629,12 +574,6 @@ export function CompareSection({ input: billInput, member, period, profile = nul
           </div>
         )}
 
-        {/* Our pick is the boxed row with the bubble (1 Nov 2026); no banner above. */}
-        {showPick && noStrings && noStrings !== real.top && (
-          <p className={styles.noStringsLine}>
-            Rather no conditions? <b>{noStrings.plan[0]}</b> is the cheapest without pay-on-time or direct-debit discounts, {whole((noStrings.total - real.top.total) * real.perYear)} a year more.
-          </p>
-        )}
 
         {/* Wide screens: the full table */}
         <div className={styles.tableWide}>

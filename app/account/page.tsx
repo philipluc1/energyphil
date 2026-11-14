@@ -954,16 +954,19 @@ export default function AccountPage() {
     setTimeout(() => document.getElementById("deal-dates")?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
   }
 
-  const sideCardList = (withPlan: boolean) => (
+  // 14 Nov 2026 (Phil): Compare keeps the side column short: your plan and the market.
+  // The midday plan, year ahead, price-rise watch and homes like yours sit beside My home and Savings.
+  const sideCardList = (withPlan: boolean, compareOnly = false) => (
     <>
       {fuel === "gas" && <GasAside member={gasMember} />}
-      {fuel === "gas" && (marketTabs ? <GasCards member={gasMember} only="forecast" /> : <GasCards member={gasMember} noRewards={shownTab === "savings"} />)}
+      {/* 14 Nov 2026: on Compare, gas keeps just the market card beside it, like electricity (the year-ahead card sits with My home). */}
+      {fuel === "gas" && (compareOnly ? (!marketTabs && <GasCards member={gasMember} only="marketCard" />) : marketTabs ? <GasCards member={gasMember} only="forecast" /> : <GasCards member={gasMember} noRewards={shownTab === "savings"} />)}
       {withPlan && fuel === "elec" && planData && <PlanAside d={planData} uploadHref={isMember ? "#read-bill" : "/check"} best={bestForRates} onEdit={editDetails} />}
-      {fuel === "elec" && cmpInput && myShape && <MiddayCard input={cmpInput} shape={myShape.shape} evOvernight={myShape.evOvernight} profile={homeProfile} member={isMember} />}
-      {fuel === "elec" && cmpInput && <ForecastCard input={cmpInput} profile={homeProfile} member={isMember} />}
-      {fuel === "elec" && isMember && <CountdownCard input={cmpInput} discountEndsAt={sub!.discount_ends_at ?? null} fixedUntil={sub!.current_price_fixed_until ?? null} onEdit={editDealDates} />}
+      {fuel === "elec" && !compareOnly && cmpInput && myShape && <MiddayCard input={cmpInput} shape={myShape.shape} evOvernight={myShape.evOvernight} profile={homeProfile} member={isMember} />}
+      {fuel === "elec" && !compareOnly && cmpInput && <ForecastCard input={cmpInput} profile={homeProfile} member={isMember} />}
+      {fuel === "elec" && !compareOnly && isMember && <CountdownCard input={cmpInput} discountEndsAt={sub!.discount_ends_at ?? null} fixedUntil={sub!.current_price_fixed_until ?? null} onEdit={editDealDates} />}
       {fuel === "elec" && cmpInput && !marketTabs && <MemberMarket input={cmpInput} member={isMember} compact noRewards={shownTab === "savings"} />}
-      {fuel === "elec" && cmpInput && homeProfile && <LikeYoursCard input={cmpInput} profile={homeProfile} />}
+      {fuel === "elec" && !compareOnly && cmpInput && homeProfile && <LikeYoursCard input={cmpInput} profile={homeProfile} />}
           <div className={styles.panelCard}>
             <div className={styles.panelTitle}>Gas</div>
             {isMember && sub!.gas_zone && sub!.gas_mj ? (
@@ -1008,7 +1011,7 @@ export default function AccountPage() {
       <TipCarousel />
     </>
   );
-  const sideCards = sideCardList(true);
+  const sideCards = sideCardList(true, shownTab === "compare");
 
   return (
     <>
@@ -1320,7 +1323,7 @@ export default function AccountPage() {
                               </p>
                               <div className={styles.stateActions}>
                                 {RETAILER_LINKS[summary.bestRetailer] && (
-                                  <a href={RETAILER_LINKS[summary.bestRetailer]} data-plan={summary.bestPlan ?? undefined} data-network={rateDist ?? undefined} data-same={summary.sameRetailer ? "1" : undefined} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>{`Go to ${summary.bestRetailer} →`}</a>
+                                  <a href={RETAILER_LINKS[summary.bestRetailer]} data-plan={summary.bestPlan ?? undefined} data-network={rateDist ?? undefined} data-same={summary.sameRetailer ? "1" : undefined} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>{summary.sameRetailer ? `Change plan with ${summary.bestRetailer} →` : `Go to ${summary.bestRetailer} →`}</a>
                                 )}
                                 {!showSwitchForm && (
                                   <button type="button" className={styles.btnGhost} onClick={() => setShowSwitchForm(true)}>{summary.sameRetailer ? "I've changed plan" : "I've switched"}</button>
@@ -1512,6 +1515,10 @@ export default function AccountPage() {
                               <li>A bill read and saved check every month</li>
                               <li>An email only when switching is worth it (you choose how much, below)</li>
                             </ul>
+                            {/* 14 Nov 2026: how to cancel, in plain view (the plan-switch box no longer shows for yearly members). */}
+                            <p className={styles.panelText} style={{ margin: "10px 0 0", fontSize: 13 }}>
+                              To cancel, tap Manage billing. Your membership keeps running to the end of the period you&apos;ve paid for. <Link href="/cancellation-policy">Cancellation Policy</Link>
+                            </p>
                           </section>
                           <MemberSettings />
                           <UpgradePlans currentPlan={sub!.plan} currentAmount={sub!.amount_cents} onChanged={(planId, cents) => setSub((p) => (p ? { ...p, plan: planId, amount_cents: cents } : p))} />
