@@ -895,9 +895,11 @@ export default function Comparator() {
   // Benchmark: what they pay now if given, else the Victorian Default Offer
   // priced at THIS household's usage (not the generic typical-household figure).
   const bench = haveBill ? (currentBill as number) : vdoBillForUsage(distributor, usage);
+  const member = useMember();
   const PERIOD_LABEL = { month: "a month", quarter: "a quarter", year: "a year" } as const;
   // "Your bill" needs a bill; without one, a month.
-  const period = periodChoice === "bill" && !(haveBill && days > 0) ? "month" : periodChoice;
+  // 14 Nov 2026 (Phil): the free check shows yearly figures only, no period tabs.
+  const period = member !== true ? "year" : periodChoice === "bill" && !(haveBill && days > 0) ? "month" : periodChoice;
   const perLabel = period === "bill" ? `for ${days} days` : PERIOD_LABEL[period];
   // The bill's own period first, then a quarter (or a month, if the bill is already about a quarter) and a year, both scaled from it.
   const periodOptions: ("bill" | "month" | "quarter" | "year")[] = haveBill && days > 0 ? ["bill", Math.abs(days - 365 / 4) <= 3 ? "month" : "quarter", "year"] : ["month", "quarter", "year"];
@@ -992,7 +994,6 @@ export default function Comparator() {
   const top = topOpen(matches);
   // Every plan by name for everyone (FREE_SHOWS_NAMES); Plus is sold on
   // watching. `free` decides where the Plus pitch goes, `locked` whether names hide.
-  const member = useMember();
   const free = member !== true;
   const locked = free && !FREE_SHOWS_NAMES;
   const gated = free && hydrated && !gaveEmail && leadStatus !== "saved" && leadStatus !== "notSent";
@@ -1039,7 +1040,7 @@ export default function Comparator() {
   // three are open; the rest sit behind the members' teaser.
   const filtering = offerFilter !== "all" || tariffFilter !== "all";
   const filteredMatches = filtering
-    ? matches.filter((m) => (offerFilter === "all" || m.plan[3] === offerFilter) && (tariffFilter === "all" || (tariffFilter === "single" ? m.plan[5] !== null : m.plan[5] === null)))
+    ? matches.filter((m) => ((member !== true ? "MARKET" : offerFilter) === "all" || m.plan[3] === (member !== true ? "MARKET" : offerFilter)) && (tariffFilter === "all" || (tariffFilter === "single" ? m.plan[5] !== null : m.plan[5] === null)))
     : matches;
   const perRetailer = cheapestPerRetailer(filteredMatches, filteredMatches.includes(top as (typeof matches)[number]) ? top : null);
   const listed = allPlans ? filteredMatches : perRetailer;
@@ -2614,25 +2615,26 @@ export default function Comparator() {
                     <div className={r.listHead}>
                       <div className={r.listTitleRow}>
                         <b>{allPlans ? "All plans, cheapest first" : "Cheapest plan from each retailer"}</b>
-                        <div className={r.periodSeg} role="tablist" aria-label="Show prices per">
+                        {!free && <div className={r.periodSeg} role="tablist" aria-label="Show prices per">
                           {periodOptions.map((pp) => (
                             <button key={pp} type="button" role="tab" aria-selected={period === pp} className={period === pp ? r.periodSegOn : undefined} onClick={() => setPeriod(pp)}>
                               {pp === "bill" ? `Your bill · ${days} days` : pp === "month" ? "Monthly" : pp === "quarter" ? "Quarterly" : "Yearly"}
                             </button>
                           ))}
-                        </div>
+                        </div>}
                       </div>
                       <div className={r.listTools}>
-                        <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setRowCount(6); }} retailers={perRetailer.length} plans={filteredMatches.length} />
+                        {/* 14 Nov 2026 (Phil): the free check shows market offers, one per retailer: no view toggle or offer-type filter. */}
+                        {!free && <PlanViewToggle all={allPlans} onChange={(v) => { setAllPlans(v); setRowCount(6); }} retailers={perRetailer.length} plans={filteredMatches.length} />}
                         <div className={r.filters} role="group" aria-label="Filter plans">
-                          <label className={r.filter}>
+                          {!free && <label className={r.filter}>
                             <span className={r.srOnly}>Offer type</span>
                             <select value={offerFilter} onChange={(e) => setOfferFilter(e.target.value as typeof offerFilter)}>
                               <option value="all">All offers</option>
                               <option value="MARKET">Market offers</option>
                               <option value="STANDING">Standing offers</option>
                             </select>
-                          </label>
+                          </label>}
                           <label className={r.filter}>
                             <span className={r.srOnly}>Tariff</span>
                             <select value={tariffFilter} onChange={(e) => setTariffFilter(e.target.value as typeof tariffFilter)}>
@@ -2645,7 +2647,7 @@ export default function Comparator() {
                       </div>
                       {member === true && !FREE_SHOWS_NAMES && <span className={r.memberView}><Icon name="check" size={13} /> Member view: you see every plan by name. Free checks see the 2 cheapest locked.</span>}
                       <span className={r.legendLine}>
-                        Prices {perLabel}, discounts included. Green = your saving.
+                        {free ? <>Market offers, yearly, discounts included.</> : <>Prices {perLabel}, discounts included. Green = your saving.</>}
                         <InfoTip label="What the labels mean">
                           The green figure is what you&apos;d save against {haveBill ? "your bill" : "the default offer"}. Use the filters to show <b>market offers</b> (a retailer&apos;s own deal) or <b>standing offers</b> (the regulated default price, usually dearer), and single-rate or time-of-use plans. Prices assume you pay on time. Green ✓ labels are in the price; blue ones (credits, other conditions) aren&apos;t; amber ! ones are limits or fees to know about.
                         </InfoTip>
