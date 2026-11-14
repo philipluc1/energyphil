@@ -13,19 +13,19 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "–");
 
-/** Google reviews (2 Nov 2026): who we've asked, who clicked through, and from where. */
+/** Reviews (2 Nov 2026; Utilo's own review page from 14 Nov): who we've asked, who clicked through, and the reviews themselves. */
 export default function ReviewsSection({ asked, clicked, clickedAfterAsk, bySource, ready, missing, testimonials = [], testimonialsMissing = false }: { asked: number; clicked: number; clickedAfterAsk: number; bySource: { source: string; n: number }[]; ready: boolean; missing: boolean; testimonials?: Testimonial[]; testimonialsMissing?: boolean }) {
   const top = bySource[0]?.n ?? 0;
   return (
-    <div data-sec="reviews">
+    <div data-sec="reviews" id="reviews">
       <div className={styles.sectionHeader}>
-        <span className={styles.sectionTitle}>Google reviews</span>
-        <span className={styles.sectionNote}>Who we&apos;ve asked and who clicked through. Google doesn&apos;t tell us who actually left one: your Google profile has the count.</span>
+        <span className={styles.sectionTitle}>Reviews</span>
+        <span className={styles.sectionNote}>Who we&apos;ve asked, who opened the review page, and the reviews waiting for you to approve.</span>
       </div>
       {(!ready || missing) && (
         <div className={styles.notice}>
           {missing ? <>Run the latest SQL in Supabase to turn review requests on. </> : null}
-          {!ready ? <>Add your Google review link in Vercel as <code>NEXT_PUBLIC_GOOGLE_REVIEW_URL</code> (then redeploy). Until then no review emails go out and the dashboard card stays hidden.</> : null}
+          {!ready ? <>Review requests are off.</> : null}
         </div>
       )}
       <div className={styles.statRow}>

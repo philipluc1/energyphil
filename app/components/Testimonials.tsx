@@ -1,6 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { averageStars, type Testimonial } from "@/lib/testimonials";
-import { reviewUrl } from "@/lib/reviews";
 import TestimonialStrip from "./TestimonialStrip";
 import s from "./testimonials.module.css";
 
@@ -16,7 +15,6 @@ export default async function Testimonials() {
     if (!error) list = (data ?? []) as Testimonial[];
   }
   const avg = averageStars(list);
-  const canReview = !!reviewUrl();
   return (
     <section className={s.wrap} aria-labelledby="reviews-h" data-motion="">
       <div className={s.head}>
@@ -33,7 +31,7 @@ export default async function Testimonials() {
       ) : (
         <p className={s.empty}>We&apos;re new, so reviews from our first members will show here. Every one is real, and we never pay or reward anyone for one.</p>
       )}
-      {canReview && <p className={s.leave}>A member? <a href="/api/review?src=home" rel="nofollow">Tell us how we did on Google →</a></p>}
+      <p className={s.leave}>Used Utilo? <a href="/api/review?src=home" rel="nofollow">Leave a review →</a></p>
     </section>
   );
 }

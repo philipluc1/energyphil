@@ -32,9 +32,9 @@ export default function ReviewCard({ switched }: { switched: boolean }) {
       <div className={s.stars} aria-hidden="true">★★★★★</div>
       <div className={s.body}>
         <h3 id="review-card-title">How did we do?</h3>
-        <p>You switched with Utilo. A Google review, good or bad, helps other Victorians decide and tells us what to fix. About a minute.</p>
+        <p>You switched with Utilo. An honest review, good or bad, helps other Victorians decide and tells us what to fix. About a minute.</p>
         <div className={s.actions}>
-          <a className={s.go} href={`/api/review?src=dashboard&id=${state.id}`} target="_blank" rel="noopener" onClick={() => window.setTimeout(hide, 500)}>Leave a Google review</a>
+          <a className={s.go} href={`/api/review?src=dashboard&id=${state.id}`} target="_blank" rel="noopener" onClick={() => window.setTimeout(hide, 500)}>Leave a review</a>
           <button type="button" className={s.later} onClick={hide}>Not now</button>
         </div>
       </div>

@@ -38,6 +38,7 @@ import s1 from "./step1.module.css";
 import s2 from "./step2.module.css";
 import uc from "./usagechooser.module.css";
 import ph from "./plushook.module.css";
+import hp from "./heropick.module.css";
 import {
   DEFAULT_PROFILE,
   AVERAGE_ANNUAL_KWH,
@@ -2502,30 +2503,33 @@ export default function Comparator() {
               {worthSwitching && (
                 <div className={r.hero}>
                   <span className={r.kicker}>{useAvg ? `Average Victorian home · ${AVERAGE_ANNUAL_KWH.toLocaleString("en-AU")} kWh a year` : useEst ? (billForecast ? (calFigure === "kwh" && typedCalKwh > 0 ? "Forecast from your bill's kWh" : "Forecast from your bill's total") : "Estimated from your answers") : haveBill ? (reconciled.basis === "rates" ? "Based on your rates" : "Based on your bill") : "Based on your usage"}</span>
-                  <div className={r.heroLabel}>{haveBill ? "You could save" : "The cheapest plan could save you up to"}</div>
-                  <div className={r.heroNum}>
-                    <CountUp value={Math.round(perYear(bench - top.total))} format={(n) => `$${Math.round(n).toLocaleString("en-AU")}`} />
-                    <span> a year</span>
-                  </div>
-                  <div className={r.compare}>
-                    <div className={r.tile}>
-                      <span className={r.tileLabel}>{haveBill ? `${youName} now` : "The default offer"}</span>
-                      <b><CountUp value={bench * k} format={fmtCurrency} /></b>
-                      <small>{perLabel}{haveBill && k !== 1 ? ` · your ${days}-day bill was ${fmtCurrency(bench)}` : ""}</small>
-                    </div>
-                    <span className={r.op} aria-hidden="true">→</span>
-                    <div className={r.tile}>
-                      <span className={r.tileLabel}>{locked || gated ? "With the cheapest plan" : haveBill && sameRetailer(currentRetailer, top.plan[0]) ? `${top.plan[0]}, ${currentPlanSame(top) ? "today's rates" : "new plan"}` : `With ${top.plan[0]}`}</span>
-                      <b><CountUp value={top.total * k} format={fmtCurrency} /></b>
-                      <small>{perLabel}</small>
-                    </div>
-                    <span className={r.op} aria-hidden="true">=</span>
-                    <div className={`${r.tile} ${r.tileSave}`}>
-                      <span className={r.tileLabel}>You save</span>
-                      <b><CountUp value={(bench - top.total) * k} format={fmtCurrency} /></b>
-                      <small>{perLabel}</small>
-                    </div>
-                  </div>
+                  {/* 14 Nov 2026 (Phil): the cheapest retailer first, with its logo and the saving in a box; then your offer vs theirs. */}
+                  {(() => {
+                    const named = !locked && !gated;
+                    const same = haveBill && sameRetailer(currentRetailer, top.plan[0]);
+                    const saveYear = Math.round(perYear(bench - top.total));
+                    return (
+                      <>
+                        <div className={hp.pick}>
+                          <div className={hp.who}>
+                            <span className={hp.logo} aria-hidden="true">{named ? <RetailerLogo name={top.plan[0]} size={44} square /> : <Icon name="lock" size={20} />}</span>
+                            <span className={hp.whoText}>
+                              <small>{same ? "Cheapest: your own retailer" : "Cheapest retailer"}</small>
+                              <b>{named ? top.plan[0] : "Unlock to see"}</b>
+                            </span>
+                          </div>
+                          <div className={hp.save}>
+                            Save{haveBill ? " " : " up to "}
+                            <b><CountUp value={saveYear} format={(n) => `$${Math.round(n).toLocaleString("en-AU")}`} /></b> a year
+                          </div>
+                        </div>
+                        <dl className={hp.rows}>
+                          <div><dt>{haveBill ? `${youName} now` : "Your offer"}</dt><dd><CountUp value={bench * k} format={fmtCurrency} /> <span>{perLabel}</span></dd></div>
+                          <div><dt>With {named ? top.plan[0] : "the cheapest plan"}</dt><dd><CountUp value={top.total * k} format={fmtCurrency} /> <span>{perLabel}</span></dd></div>
+                        </dl>
+                      </>
+                    );
+                  })()}
                   <p className={r.heroNote}>
                     Cheapest of {matches.length} plans from {retailersHere} retailers{RETAILER_COUNT >= BROAD_COVERAGE ? "" : ", not every retailer in Victoria"}.
                   </p>

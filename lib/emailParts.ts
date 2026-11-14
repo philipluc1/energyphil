@@ -479,7 +479,7 @@ export function endTimeline(o: { leftTitle: string; leftSmall: string; rightTitl
   </table>`;
 }
 
-/** Five gold stars, decoration only (not links: every review goes to the same Google page). */
+/** Five gold stars, decoration only (not links: every review goes to the same review page). */
 export function stars(): string {
   return `<div style="margin:0 0 6px;font:24px/1 ${F};letter-spacing:4px;color:${C.amber};">&#9733;&#9733;&#9733;&#9733;&#9733;</div>`;
 }

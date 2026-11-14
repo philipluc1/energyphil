@@ -43,6 +43,7 @@ export default function SiteFooter() {
             <Link href="/business">Business <em>Soon</em></Link>
             <Link href="/default-offer">The default offer</Link>
             <Link href="/cant-pay-my-bill">Can&apos;t pay a bill?</Link>
+            <Link href="/review">Leave a review</Link>
           </div>
           <div>
             <h3>Legal</h3>

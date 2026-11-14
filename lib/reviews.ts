@@ -8,12 +8,12 @@ export const REVIEW_SOURCES = ["switched", "member", "reminder", "recap", "dashb
 export type ReviewSource = (typeof REVIEW_SOURCES)[number];
 
 /** The Google "Ask for reviews" link, set in Vercel as NEXT_PUBLIC_GOOGLE_REVIEW_URL. Null until it's set. */
-export function reviewUrl(): string | null {
-  const u = (process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL ?? "").trim();
-  return /^https:\/\/[^\s]+$/.test(u) ? u : null;
+/** Where a review is left (14 Nov 2026, Phil): Utilo's own review page, not Google. */
+export function reviewUrl(): string {
+  return "/review";
 }
 
-/** Our tracked link: counts the click, then sends them to Google. */
+/** Our tracked link: counts the click, then opens the review page. */
 export const trackedReviewLink = (origin: string, subscriberId: string | null, src: ReviewSource) =>
   `${origin}/api/review?src=${src}${subscriberId ? `&id=${subscriberId}` : ""}`;
 

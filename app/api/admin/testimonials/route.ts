@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
   const no = await guard(req); if (no) return no;
   const p = parseTestimonial(await req.json().catch(() => null));
   if (!p.ok) return fail(p.message);
-  const { error } = await supabaseAdmin!.from("testimonials").insert({ ...p.value, shown: true });
+  let { error } = await supabaseAdmin!.from("testimonials").insert({ ...p.value, shown: true, approved_at: new Date().toISOString() });
+  if (error && /column/i.test(error.message)) ({ error } = await supabaseAdmin!.from("testimonials").insert({ ...p.value, shown: true }));
   if (error) return fail(missing(error.message), 500);
   revalidatePath("/");
   return NextResponse.json({ ok: true });
@@ -33,7 +34,8 @@ export async function PATCH(req: NextRequest) {
   const no = await guard(req); if (no) return no;
   const b = await req.json().catch(() => null);
   if (!UUID.test(String(b?.id ?? "")) || typeof b?.shown !== "boolean") return fail("Bad request.");
-  const { error } = await supabaseAdmin!.from("testimonials").update({ shown: b.shown }).eq("id", b.id);
+  let { error } = await supabaseAdmin!.from("testimonials").update(b.shown ? { shown: true, approved_at: new Date().toISOString() } : { shown: false }).eq("id", b.id);
+  if (error && /column/i.test(error.message)) ({ error } = await supabaseAdmin!.from("testimonials").update({ shown: b.shown }).eq("id", b.id));
   if (error) return fail(missing(error.message), 500);
   revalidatePath("/");
   return NextResponse.json({ ok: true });

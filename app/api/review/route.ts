@@ -3,15 +3,13 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { REVIEW_SOURCES, reviewUrl, type ReviewSource } from "@/lib/reviews";
 
 // The review link in emails and on the dashboard (2 Nov 2026): counts the
-// click for the owner dashboard, then sends them on to Google.
+// click for the owner dashboard, then opens the review page (in-house since 14 Nov 2026).
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BOT = /bot|crawler|spider|preview|headless|slurp|facebookexternalhit|linkexpander|safelinks/i;
 
 export async function GET(req: NextRequest) {
-  const to = reviewUrl();
-  const home = new URL("/", req.url);
-  if (!to) return NextResponse.redirect(home);
+  const to = new URL(reviewUrl(), req.url);
   const src = req.nextUrl.searchParams.get("src") as ReviewSource | null;
   const id = req.nextUrl.searchParams.get("id");
   // Mail scanners open links before people do; don't count those.

@@ -147,7 +147,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     bySource: Array.from(srcCount.entries()).map(([source, n]) => ({ source, n })).sort((a, b) => b.n - a.n),
   };
   // 12 Nov 2026: reviews shown on the home page.
-  const tst = await db.from("testimonials").select("id, name, place, stars, body, source, review_date, shown, created_at").order("created_at", { ascending: false }).limit(200);
+  const tst = await db.from("testimonials").select("*").order("created_at", { ascending: false }).limit(200);
   const periodLabel = f.period === "all" ? "all time" : `last ${PERIODS.find((p) => p.id === f.period)?.label ?? ""}`;
 
   // 9 Nov 2026: members growth, funnel and ad payback, plan vs actual, cash ahead, value and risk.

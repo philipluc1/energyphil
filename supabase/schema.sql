@@ -508,3 +508,9 @@ create table if not exists public.testimonials (
 );
 create index if not exists testimonials_created on public.testimonials (created_at desc);
 alter table public.testimonials enable row level security;
+
+-- 14 Nov 2026: reviews left on utilo.com.au/review wait for the owner's approval.
+alter table public.testimonials add column if not exists email text;
+alter table public.testimonials add column if not exists ip text;
+alter table public.testimonials add column if not exists approved_at timestamptz;
+create index if not exists testimonials_email on public.testimonials (email, created_at desc);

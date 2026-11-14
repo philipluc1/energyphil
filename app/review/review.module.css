@@ -1,0 +1,30 @@
+/* 14 Nov 2026: Utilo's own review page. */
+.card { max-width: 560px; margin: 8px auto 48px; padding: 20px; border-radius: 18px; background: #fff; border: 1px solid var(--border, #e3e7f0); box-shadow: 0 10px 30px rgba(19, 28, 87, 0.08); display: flex; flex-direction: column; gap: 14px; }
+.stars { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.stars legend { font-weight: 800; font-size: 15px; color: var(--ink); margin-bottom: 4px; text-align: center; width: 100%; }
+.stars div { display: flex; gap: 6px; }
+.stars button { width: 48px; height: 48px; border: 0; border-radius: 12px; background: #f3f5fa; color: #d3d8e4; font-size: 30px; line-height: 1; cursor: pointer; transition: transform 0.12s; }
+.stars button:hover { transform: scale(1.06); }
+.stars button.on { background: #fff4d6; color: #f5a623; }
+.starLabel { font-size: 13px; color: var(--grey); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > span { font-weight: 800; font-size: 14px; color: var(--ink); }
+.field small { font-weight: 500; color: var(--grey); }
+.field input, .field textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1.5px solid var(--border, #d6dbe7); border-radius: 11px; font: inherit; font-size: 16px; color: var(--ink); background: #fff; }
+.field input:focus, .field textarea:focus { outline: 2px solid var(--amber, #f5a623); outline-offset: 1px; border-color: var(--amber, #f5a623); }
+.hint { font-size: 12.5px; color: var(--grey); }
+.row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .row { grid-template-columns: minmax(0, 1fr); } }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.4; color: var(--ink); cursor: pointer; }
+.check input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: #131c57; }
+.trap { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.err { margin: 0; font-size: 14px; font-weight: 700; color: #b91c1c; }
+.submit { padding: 14px 18px; border: 0; border-radius: 12px; background: #f5a623; color: #1f2937; font: inherit; font-weight: 800; font-size: 16px; cursor: pointer; }
+.submit:disabled { opacity: 0.6; }
+.fine { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--grey); text-align: center; }
+.fine a { color: var(--navy-accent-text, #24307a); font-weight: 700; }
+.thanks { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 10px 0; }
+.thanks > span { color: #f5a623; font-size: 26px; letter-spacing: 3px; }
+.thanks b { font-size: 20px; color: var(--navy); }
+.thanks p { margin: 0; color: var(--grey); line-height: 1.5; }
+.thanks a { margin-top: 6px; font-weight: 800; color: var(--navy-accent-text, #24307a); }

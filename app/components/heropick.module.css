@@ -1,0 +1,15 @@
+/* 14 Nov 2026: the result's top: cheapest retailer with logo and the saving, then your offer vs theirs. */
+.pick { width: 100%; box-sizing: border-box; margin: 14px 0 0; padding: 14px; border-radius: 16px; background: #fff; color: #131c57; text-align: left; box-shadow: 0 10px 30px rgba(10, 30, 30, 0.18); }
+.who { display: flex; align-items: center; gap: 12px; }
+.logo { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: #f3f5fa; color: #131c57; overflow: hidden; }
+.whoText { display: flex; flex-direction: column; min-width: 0; }
+.whoText small { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
+.whoText b { font-size: 1.15rem; font-weight: 800; line-height: 1.25; color: #131c57; overflow-wrap: anywhere; }
+.save { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: #f9dd55; color: #131c57; font-size: 1.05rem; font-weight: 700; line-height: 1.3; text-align: center; }
+.save b { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.01em; }
+.rows { width: 100%; box-sizing: border-box; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 2px; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
+.rows > div:last-child { border-bottom: 0; }
+.rows dt { font-size: 0.92rem; color: rgba(255, 255, 255, 0.85); text-align: left; }
+.rows dd { margin: 0; font-size: 1.05rem; font-weight: 800; color: #fff; white-space: nowrap; }
+.rows dd span { font-size: 0.8rem; font-weight: 500; color: rgba(255, 255, 255, 0.7); }
