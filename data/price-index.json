@@ -503,7 +503,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-AusNet Services (electricity)",
    "vdo": 1748,
-   "plans": 136
+   "plans": 137
   },
   {
    "date": "2026-11-21",
@@ -512,7 +512,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Citipower",
    "vdo": 1482,
-   "plans": 136
+   "plans": 137
   },
   {
    "date": "2026-11-21",
@@ -521,7 +521,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Jemena",
    "vdo": 1564,
-   "plans": 134
+   "plans": 135
   },
   {
    "date": "2026-11-21",
@@ -530,7 +530,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-Powercor",
    "vdo": 1632,
-   "plans": 134
+   "plans": 135
   },
   {
    "date": "2026-11-21",
@@ -539,7 +539,7 @@
    "retailer": "GloBird Energy",
    "plan": "GloBird FULLHOUSE Residential (Flat Rate Without Controlled Load)-United Energy",
    "vdo": 1531,
-   "plans": 134
+   "plans": 135
   }
  ],
  "gasAbout": "Cheapest gas plan for a gas-heated home (45 GJ a year) on each gas network, and the middle plan of the market for the same use, $ a year incl. GST. Victoria has no default offer for gas.",
