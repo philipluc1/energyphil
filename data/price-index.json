@@ -765,6 +765,51 @@
    "plan": "GloBird WHOLESAVE Residential (Flat Rate) - United Energy",
    "vdo": 1531,
    "plans": 137
+  },
+  {
+   "date": "2026-11-28",
+   "network": "AusNet Services",
+   "cheapest": 1115,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird WHOLESAVE Residential (Flat Rate) - AusNet Services (electricity)",
+   "vdo": 1748,
+   "plans": 139
+  },
+  {
+   "date": "2026-11-28",
+   "network": "Citipower",
+   "cheapest": 889,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird WHOLESAVE Residential (Flat Rate) - Citipower",
+   "vdo": 1482,
+   "plans": 139
+  },
+  {
+   "date": "2026-11-28",
+   "network": "Jemena",
+   "cheapest": 930,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird WHOLESAVE Residential (Flat Rate) - Jemena",
+   "vdo": 1564,
+   "plans": 137
+  },
+  {
+   "date": "2026-11-28",
+   "network": "Powercor",
+   "cheapest": 1013,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird WHOLESAVE Residential (Flat Rate) - Powercor",
+   "vdo": 1632,
+   "plans": 137
+  },
+  {
+   "date": "2026-11-28",
+   "network": "United Energy",
+   "cheapest": 913,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird WHOLESAVE Residential (Flat Rate) - United Energy",
+   "vdo": 1531,
+   "plans": 137
   }
  ],
  "gasAbout": "Cheapest gas plan for a gas-heated home (45 GJ a year) on each gas network, and the middle plan of the market for the same use, $ a year incl. GST. Victoria has no default offer for gas.",
@@ -1221,6 +1266,33 @@
   },
   {
    "date": "2026-11-27",
+   "zone": "Multinet",
+   "cheapest": 1412,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential(Melbourne Metropolitan Area)-Multinet",
+   "typical": 1951,
+   "plans": 149
+  },
+  {
+   "date": "2026-11-28",
+   "zone": "AusNet Services",
+   "cheapest": 1353,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential(Adjoining West)-AusNet Services (gas)",
+   "typical": 2008,
+   "plans": 172
+  },
+  {
+   "date": "2026-11-28",
+   "zone": "Australian Gas Networks",
+   "cheapest": 1280,
+   "retailer": "GloBird Energy",
+   "plan": "GloBird FULLHOUSE Residential(Murray)-Australian Gas Networks",
+   "typical": 2092,
+   "plans": 253
+  },
+  {
+   "date": "2026-11-28",
    "zone": "Multinet",
    "cheapest": 1412,
    "retailer": "GloBird Energy",
